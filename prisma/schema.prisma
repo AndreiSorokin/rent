@@ -8,14 +8,93 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
   password  String
-  role      Role     @default(STAFF)
-  createdAt DateTime @default(now())
+  name      String?
+  role      Role      @default(USER)
+  storeId   Int?
+  store     Store?    @relation(fields: [storeId], references: [id])
+  createdAt DateTime  @default(now())
 }
 
 enum Role {
   ADMIN
-  STAFF
+  USER
+}
+
+model Store {
+  id         Int      @id @default(autoincrement())
+  name       String
+  users      User[]
+  pavilions Pavilion[]
+}
+
+model AdditionalCharge {
+  id          Int      @id @default(autoincrement())
+  name        String
+  amount      Float
+
+  pavilionId  Int
+  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+
+  payments AdditionalChargePayment[]
+  createdAt   DateTime @default(now())
+}
+
+model AdditionalChargePayment {
+  id                 Int @id @default(autoincrement())
+
+  additionalChargeId Int
+  additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id])
+
+  amountPaid         Float
+  paidAt             DateTime @default(now())
+}
+
+
+model Pavilion {
+  id               Int       @id @default(autoincrement())
+  number           String
+  squareMeters     Float
+  pricePerSqM      Float
+  status           PavilionStatus @default(AVAILABLE)
+
+  tenantName       String?
+  rentAmount       Float?
+  utilitiesAmount  Float?
+
+  additionalCharges AdditionalCharge[]
+  payments Payment[]
+  contracts Contract[]
+
+  storeId          Int
+  store            Store @relation(fields: [storeId], references: [id])
+}
+
+
+enum PavilionStatus {
+  AVAILABLE
+  RENTED
+}
+
+model Payment {
+  id          Int       @id @default(autoincrement())
+  pavilionId  Int
+  pavilion    Pavilion  @relation(fields: [pavilionId], references: [id])
+  rentPaid      Float?    // actual amount paid for rent
+  utilitiesPaid Float?    // actual amount paid for utilities
+  createdAt     DateTime @default(now())
+}
+
+model Contract {
+  id          Int      @id @default(autoincrement())
+  fileName    String
+  filePath    String
+  fileType    String  
+
+  pavilionId  Int
+  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+
+  uploadedAt  DateTime @default(now())
 }
