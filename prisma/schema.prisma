@@ -13,21 +13,32 @@ model User {
   password  String
   name      String?
   role      Role      @default(USER)
-  storeId   Int?
-  store     Store?    @relation(fields: [storeId], references: [id])
+  stores    StoreUser[]
   createdAt DateTime  @default(now())
 }
 
-enum Role {
-  ADMIN
-  USER
+model StoreUser {
+  id        Int  @id @default(autoincrement())
+
+  userId    Int
+  user      User @relation(fields: [userId], references: [id])
+
+  storeId   Int
+  store     Store @relation(fields: [storeId], references: [id])
+
+  permissions Permission[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
 }
+
 
 model Store {
   id         Int      @id @default(autoincrement())
   name       String
-  users      User[]
-  pavilions Pavilion[]
+  storeUsers StoreUser[]
+  pavilions  Pavilion[]
 }
 
 model AdditionalCharge {
@@ -68,7 +79,6 @@ model Pavilion {
   payments Payment[]
   contracts Contract[]
 
-  storeId          Int
   store            Store @relation(fields: [storeId], references: [id])
 }
 
@@ -82,6 +92,7 @@ model Payment {
   id          Int       @id @default(autoincrement())
   pavilionId  Int
   pavilion    Pavilion  @relation(fields: [pavilionId], references: [id])
+  period        DateTim
   rentPaid      Float?    // actual amount paid for rent
   utilitiesPaid Float?    // actual amount paid for utilities
   createdAt     DateTime @default(now())
@@ -97,4 +108,29 @@ model Contract {
   pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
 
   uploadedAt  DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Permission {
+  VIEW_PAVILIONS
+  EDIT_PAVILIONS
+
+  VIEW_PAYMENTS
+  CALCULATE_PAYMENTS
+  EDIT_PAYMENTS
+
+  VIEW_CHARGES
+  EDIT_CHARGES
+
+  VIEW_CONTRACTS
+  EDIT_CONTRACTS
+  UPLOAD_CONTRACTS
+  DELETE_CONTRACTS
+
+  INVITE_USERS
+  ASSIGN_PERMISSIONS
 }

@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Delete,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { Prisma } from '@prisma/client';
@@ -16,6 +17,11 @@ export class StoresController {
   @Post()
   create(@Body() data: Prisma.StoreCreateInput) {
     return this.service.create(data);
+  }
+
+  @Delete(':id')
+  delete(@Param('id', ParseIntPipe) id: number) {
+    return this.service.delete(id);
   }
 
   @Get()

@@ -10,6 +10,10 @@ export class StoresService {
     return this.prisma.store.create({ data });
   }
 
+  delete(id: number) {
+    return this.prisma.store.delete({ where: { id } });
+  }
+
   findAll() {
     return this.prisma.store.findMany({
       include: { users: true, pavilions: true },
