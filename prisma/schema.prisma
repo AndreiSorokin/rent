@@ -79,6 +79,7 @@ model Pavilion {
   payments Payment[]
   contracts Contract[]
 
+  storeId          Int
   store            Store @relation(fields: [storeId], references: [id])
 }
 
@@ -92,7 +93,7 @@ model Payment {
   id          Int       @id @default(autoincrement())
   pavilionId  Int
   pavilion    Pavilion  @relation(fields: [pavilionId], references: [id])
-  period        DateTim
+  period        DateTime
   rentPaid      Float?    // actual amount paid for rent
   utilitiesPaid Float?    // actual amount paid for utilities
   createdAt     DateTime @default(now())
