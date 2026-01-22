@@ -6,10 +6,14 @@ import {
   Param,
   ParseIntPipe,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { Prisma } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores')
 export class StoresController {
   constructor(private readonly service: StoresService) {}
