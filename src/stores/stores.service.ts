@@ -16,14 +16,28 @@ export class StoresService {
 
   findAll() {
     return this.prisma.store.findMany({
-      include: { users: true, pavilions: true },
+      include: {
+        storeUsers: {
+          include: {
+            user: true,
+          },
+        },
+        pavilions: true,
+      },
     });
   }
 
   findOne(id: number) {
     return this.prisma.store.findUnique({
       where: { id },
-      include: { users: true, pavilions: true },
+      include: {
+        storeUsers: {
+          include: {
+            user: true,
+          },
+        },
+        pavilions: true,
+      },
     });
   }
 }
