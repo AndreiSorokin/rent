@@ -18,19 +18,21 @@ import { Permission } from '@prisma/client';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores/:storeId/users')
 export class StoreUserController {
-  constructor(private service: StoreUserService) {}
+  constructor(private readonly service: StoreUserService) {}
 
+  // Invite user to store
+  @Post('invite')
   @Permissions(Permission.INVITE_USERS)
-  @Post(':userId/invite')
   invite(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Body('userId', ParseIntPipe) userId: number,
   ) {
     return this.service.inviteUser(storeId, userId);
   }
 
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  // Assign permissions
   @Patch(':userId/permissions')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
   assignPermissions(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
@@ -39,14 +41,16 @@ export class StoreUserController {
     return this.service.assignPermissions(storeId, userId, permissions);
   }
 
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  // List users in store
   @Get()
+  @Permissions(Permission.VIEW_PAVILIONS)
   list(@Param('storeId', ParseIntPipe) storeId: number) {
     return this.service.listUsers(storeId);
   }
 
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  // Remove user
   @Delete(':userId')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
   remove(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,

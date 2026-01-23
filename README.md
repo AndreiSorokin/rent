@@ -1,4 +1,9 @@
-
+Missing:
+StoreUserController (invites & permissions)
+Pavilion CRUD endpoints
+Payment aggregation endpoints
+File upload handling
+Dashboard queries
 
 
 main hierarhy:

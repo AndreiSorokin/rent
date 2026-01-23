@@ -1,49 +1,93 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { PavilionStatus } from '@prisma/client';
 
 @Injectable()
 export class PavilionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  // Get all pavilions
-  findAll() {
+  async create(
+    storeId: number,
+    data: {
+      number: string;
+      squareMeters: number;
+      pricePerSqM: number;
+      status?: PavilionStatus;
+    },
+  ) {
+    return this.prisma.pavilion.create({
+      data: {
+        ...data,
+        storeId,
+      },
+    });
+  }
+
+  async findAll(storeId: number) {
     return this.prisma.pavilion.findMany({
+      where: { storeId },
       include: {
         additionalCharges: true,
-        contracts: true,
         payments: true,
+        contracts: true,
       },
     });
   }
 
-  // Get pavilion by ID
-  findOne(id: number) {
-    return this.prisma.pavilion.findUnique({
-      where: { id },
+  async findOne(storeId: number, id: number) {
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id, storeId },
       include: {
         additionalCharges: true,
-        contracts: true,
         payments: true,
+        contracts: true,
       },
     });
+
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
+    return pavilion;
   }
 
-  // Create pavilion
-  create(data: Prisma.PavilionCreateInput) {
-    return this.prisma.pavilion.create({ data });
-  }
+  async update(
+    storeId: number,
+    id: number,
+    data: Partial<{
+      number: string;
+      squareMeters: number;
+      pricePerSqM: number;
+      status: PavilionStatus;
+      tenantName: string | null;
+      rentAmount: number | null;
+      utilitiesAmount: number | null;
+    }>,
+  ) {
+    await this.ensureExists(storeId, id);
 
-  // Update pavilion
-  update(id: number, data: Prisma.PavilionUpdateInput) {
     return this.prisma.pavilion.update({
       where: { id },
       data,
     });
   }
 
-  // Delete pavilion
-  delete(id: number) {
-    return this.prisma.pavilion.delete({ where: { id } });
+  async delete(storeId: number, id: number) {
+    await this.ensureExists(storeId, id);
+
+    return this.prisma.pavilion.delete({
+      where: { id },
+    });
+  }
+
+  private async ensureExists(storeId: number, id: number) {
+    const exists = await this.prisma.pavilion.findFirst({
+      where: { id, storeId },
+      select: { id: true },
+    });
+
+    if (!exists) {
+      throw new NotFoundException('Pavilion not found');
+    }
   }
 }
