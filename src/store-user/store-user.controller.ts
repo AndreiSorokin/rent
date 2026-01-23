@@ -1,12 +1,12 @@
 import {
-  Controller,
-  Post,
-  Patch,
-  Get,
-  Delete,
-  Param,
   Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
   ParseIntPipe,
+  Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { StoreUserService } from './store-user.service';
@@ -20,17 +20,21 @@ import { Permission } from '@prisma/client';
 export class StoreUserController {
   constructor(private readonly service: StoreUserService) {}
 
-  // Invite user to store
+  /**
+   * Invite user to store (no permissions by default)
+   */
   @Post('invite')
-  @Permissions(Permission.INVITE_USERS)
-  invite(
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  inviteUser(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body('userId', ParseIntPipe) userId: number,
   ) {
     return this.service.inviteUser(storeId, userId);
   }
 
-  // Assign permissions
+  /**
+   * Assign permissions to a store user
+   */
   @Patch(':userId/permissions')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   assignPermissions(
@@ -41,17 +45,20 @@ export class StoreUserController {
     return this.service.assignPermissions(storeId, userId, permissions);
   }
 
-  // List users in store
+  /**
+   * List all users in store
+   */
   @Get()
-  @Permissions(Permission.VIEW_PAVILIONS)
-  list(@Param('storeId', ParseIntPipe) storeId: number) {
+  listUsers(@Param('storeId', ParseIntPipe) storeId: number) {
     return this.service.listUsers(storeId);
   }
 
-  // Remove user
+  /**
+   * Remove user from store
+   */
   @Delete(':userId')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
-  remove(
+  removeUser(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
   ) {
