@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -95,7 +96,23 @@ export class StoresService {
   /**
    * Delete store (only if empty)
    */
-  async delete(storeId: number) {
+  async delete(storeId: number, userId: number) {
+    // Ensure store exists and user is owner/admin
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store admin can delete store');
+    }
+
+    // Ensure no pavilions exist
     const pavilionCount = await this.prisma.pavilion.count({
       where: { storeId },
     });
@@ -105,9 +122,14 @@ export class StoresService {
         'Cannot delete store with existing pavilions',
       );
     }
-
-    return this.prisma.store.delete({
-      where: { id: storeId },
-    });
+    // Transaction: delete StoreUsers → delete Store
+    return this.prisma.$transaction([
+      this.prisma.storeUser.deleteMany({
+        where: { storeId },
+      }),
+      this.prisma.store.delete({
+        where: { id: storeId },
+      }),
+    ]);
   }
 }

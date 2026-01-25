@@ -13,7 +13,7 @@ import { PavilionsService } from './pavilions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
-import { Permission, PavilionStatus } from '@prisma/client';
+import { Permission, PavilionStatus, Prisma } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores/:storeId/pavilions')
@@ -24,16 +24,25 @@ export class PavilionsController {
   @Permissions(Permission.EDIT_PAVILIONS)
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body()
-    data: {
-      number: string;
-      squareMeters: number;
-      pricePerSqM: number;
-      status?: PavilionStatus;
-    },
+    @Body() data: Prisma.PavilionCreateInput,
   ) {
     return this.service.create(storeId, data);
   }
+
+  // @Post()
+  // @Permissions(Permission.EDIT_PAVILIONS)
+  // create(
+  //   @Param('storeId', ParseIntPipe) storeId: number,
+  //   @Body()
+  //   data: {
+  //     number: string;
+  //     squareMeters: number;
+  //     pricePerSqM: number;
+  //     status?: PavilionStatus;
+  //   },
+  // ) {
+  //   return this.service.create(storeId, data);
+  // }
 
   @Get()
   @Permissions(Permission.VIEW_PAVILIONS)
@@ -54,20 +63,30 @@ export class PavilionsController {
   @Permissions(Permission.EDIT_PAVILIONS)
   update(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Param('id', ParseIntPipe) id: number,
-    @Body()
-    data: Partial<{
-      number: string;
-      squareMeters: number;
-      pricePerSqM: number;
-      status: PavilionStatus;
-      tenantName: string | null;
-      rentAmount: number | null;
-      utilitiesAmount: number | null;
-    }>,
+    @Param('id', ParseIntPipe) pavilionId: number,
+    @Body() data: Prisma.PavilionUpdateInput,
   ) {
-    return this.service.update(storeId, id, data);
+    return this.service.update(storeId, pavilionId, data);
   }
+
+  // @Patch(':id')
+  // @Permissions(Permission.EDIT_PAVILIONS)
+  // update(
+  //   @Param('storeId', ParseIntPipe) storeId: number,
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body()
+  //   data: Partial<{
+  //     number: string;
+  //     squareMeters: number;
+  //     pricePerSqM: number;
+  //     status: PavilionStatus;
+  //     tenantName: string | null;
+  //     rentAmount: number | null;
+  //     utilitiesAmount: number | null;
+  //   }>,
+  // ) {
+  //   return this.service.update(storeId, id, data);
+  // }
 
   @Delete(':id')
   @Permissions(Permission.EDIT_PAVILIONS)

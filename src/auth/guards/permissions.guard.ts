@@ -33,6 +33,8 @@ export class PermissionsGuard implements CanActivate {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const storeId = Number(request.params.storeId);
 
+    console.log('Required:', requiredPermissions);
+
     if (!user || !storeId) {
       throw new ForbiddenException('Invalid access');
     }
@@ -51,6 +53,10 @@ export class PermissionsGuard implements CanActivate {
     if (!storeUser) {
       throw new ForbiddenException('User not part of this store');
     }
+
+    console.log('User:', user);
+    console.log('Store:', storeId);
+    console.log('StoreUser:', storeUser);
 
     const hasPermission = requiredPermissions.every((permission) =>
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access

@@ -23,11 +23,11 @@ export class StoreUserController {
   /**
    * Invite user to store (no permissions by default)
    */
-  @Post('invite')
+  @Post(':userId/invite')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   inviteUser(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body('userId', ParseIntPipe) userId: number,
+    @Param('userId', ParseIntPipe) userId: number,
   ) {
     return this.service.inviteUser(storeId, userId);
   }

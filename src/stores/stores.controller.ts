@@ -12,8 +12,9 @@ import {
 import { StoresService } from './stores.service';
 import { Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores')
 export class StoresController {
   constructor(private readonly service: StoresService) {}
@@ -37,7 +38,10 @@ export class StoresController {
   }
 
   @Delete(':id')
-  delete(@Param('id', ParseIntPipe) id: number) {
-    return this.service.delete(id);
+  delete(@Param('id', ParseIntPipe) storeId: number, @Req() req: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const userId = req.user.id;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return this.service.delete(storeId, userId);
   }
 }
