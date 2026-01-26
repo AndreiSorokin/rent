@@ -21,6 +21,7 @@ export class PavilionsController {
   constructor(private readonly service: PavilionsService) {}
 
   @Post()
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   @Permissions(Permission.CREATE_PAVILIONS)
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
@@ -55,6 +56,7 @@ export class PavilionsController {
   }
 
   @Delete(':pavilionId')
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   @Permissions(Permission.DELETE_PAVILIONS)
   delete(
     @Param('storeId', ParseIntPipe) storeId: number,

@@ -15,6 +15,7 @@ export class PaymentsService {
         pavilionId,
         rentPaid: data.rentPaid,
         utilitiesPaid: data.utilitiesPaid,
+        // period: new Date(),
       },
     });
   }
