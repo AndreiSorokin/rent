@@ -10,6 +10,7 @@ After MVP:
 1. Add password strength
 2. Reset password
 3. Forgot password
+4. kick from a store
 
 
 

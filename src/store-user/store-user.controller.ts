@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { StoreUserService } from './store-user.service';
@@ -32,22 +33,17 @@ export class StoreUserController {
     return this.service.inviteUser(storeId, userId);
   }
 
-  /**
-   * Assign permissions to a store user
-   */
-  @Patch(':userId/permissions')
+  //Assign and remove permissions
+  @Put(':userId/permissions')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
-  assignPermissions(
+  setPermissions(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
     @Body('permissions') permissions: Permission[],
   ) {
-    return this.service.assignPermissions(storeId, userId, permissions);
+    return this.service.setPermissions(storeId, userId, permissions);
   }
 
-  /**
-   * List all users in store
-   */
   @Get()
   listUsers(@Param('storeId', ParseIntPipe) storeId: number) {
     return this.service.listUsers(storeId);

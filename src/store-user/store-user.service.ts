@@ -17,8 +17,8 @@ export class StoreUserService {
     });
   }
 
-  // Assign permissions to a user in a store
-  async assignPermissions(
+  //Assign and remove permissions
+  async setPermissions(
     storeId: number,
     userId: number,
     permissions: Permission[],
@@ -29,7 +29,9 @@ export class StoreUserService {
       },
     });
 
-    if (!storeUser) throw new NotFoundException('User not part of this store');
+    if (!storeUser) {
+      throw new NotFoundException('User not part of this store');
+    }
 
     return this.prisma.storeUser.update({
       where: {
