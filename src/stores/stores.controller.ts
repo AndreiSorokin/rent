@@ -21,8 +21,10 @@ export class StoresController {
 
   @Post()
   create(@Body() data: Prisma.StoreCreateInput, @Req() req: any) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-    return this.service.create(data, req.user.id);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+    const userId = req.user.id;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return this.service.create(data, userId);
   }
 
   @Get()

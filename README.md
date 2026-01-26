@@ -22,7 +22,7 @@ Store
 
 Clarification:
 1. We use Permission-based access control 
-2.
+2. When registering we can select whether it's admin or user
 
 Suggestions:
 1. If you delete store or pavilion it will go to "recently deleted" section where you can restore them if they have been deleted by mistake

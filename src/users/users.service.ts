@@ -1,28 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  // Create Admin user
-  async createAdmin(data: Prisma.UserCreateInput) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+  async create(email: string, password: string, name?: string) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Email already in use');
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
     return this.prisma.user.create({
       data: {
-        ...data,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        password: hashedPassword,
-        role: Role.ADMIN,
+        email,
+        password: hashed,
+        name,
       },
     });
   }
 
   // Get all users
-  findAll() {
-    return this.prisma.user.findMany();
+  async findAll() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+      },
+    });
   }
 }
