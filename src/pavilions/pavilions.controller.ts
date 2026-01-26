@@ -21,7 +21,7 @@ export class PavilionsController {
   constructor(private readonly service: PavilionsService) {}
 
   @Post()
-  @Permissions(Permission.EDIT_PAVILIONS)
+  @Permissions(Permission.CREATE_PAVILIONS)
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body() data: Prisma.PavilionCreateInput,
@@ -55,7 +55,7 @@ export class PavilionsController {
   }
 
   @Delete(':pavilionId')
-  @Permissions(Permission.EDIT_PAVILIONS)
+  @Permissions(Permission.DELETE_PAVILIONS)
   delete(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,

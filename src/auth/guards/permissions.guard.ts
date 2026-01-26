@@ -54,10 +54,6 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('User not part of this store');
     }
 
-    console.log('User:', user);
-    console.log('Store:', storeId);
-    console.log('StoreUser:', storeUser);
-
     const hasPermission = requiredPermissions.every((permission) =>
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       storeUser.permissions.includes(permission),

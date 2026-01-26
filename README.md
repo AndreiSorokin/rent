@@ -1,7 +1,4 @@
 Missing:
-StoreUserController (invites & permissions)
-Pavilion page???
-Pavilion CRUD endpoints
 Payment aggregation endpoints
 File upload handling
 Dashboard queries
@@ -11,6 +8,7 @@ After MVP:
 2. Reset password
 3. Forgot password
 4. kick from a store
+5. Paid subscribtion
 
 
 
