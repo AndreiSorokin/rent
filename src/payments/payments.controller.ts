@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,5 +42,14 @@ export class PaymentsController {
   list(@Param('pavilionId', ParseIntPipe) pavilionId: number) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
     return this.service.list(pavilionId);
+  }
+
+  @Get('summary')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  getMonthlySummary(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Query('period') period: string,
+  ) {
+    return this.service.getMonthlySummary(pavilionId, new Date(period));
   }
 }

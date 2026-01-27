@@ -6,6 +6,76 @@ import { startOfMonth } from 'date-fns';
 export class PaymentsService {
   constructor(private prisma: PrismaService) {}
 
+  async getMonthlySummary(pavilionId: number, period: Date) {
+    const normalizedPeriod = startOfMonth(period);
+
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      include: {
+        additionalCharges: true,
+        payments: {
+          where: { period: normalizedPeriod },
+        },
+      },
+    });
+
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
+    const payment = pavilion.payments[0];
+
+    const expectedRent = pavilion.squareMeters * pavilion.pricePerSqM;
+
+    const expectedUtilities = pavilion.utilitiesAmount ?? 0;
+
+    const expectedAdditional = pavilion.additionalCharges.reduce(
+      (sum, c) => sum + c.amount,
+      0,
+    );
+
+    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+
+    const paidRent = payment?.rentPaid ?? 0;
+    const paidUtilities = payment?.utilitiesPaid ?? 0;
+
+    const paidAdditional = await this.prisma.additionalChargePayment.aggregate({
+      where: {
+        additionalCharge: { pavilionId },
+        paidAt: {
+          gte: normalizedPeriod,
+          lt: startOfMonth(
+            new Date(
+              normalizedPeriod.getFullYear(),
+              normalizedPeriod.getMonth() + 1,
+            ),
+          ),
+        },
+      },
+      _sum: { amountPaid: true },
+    });
+
+    const paidTotal =
+      paidRent + paidUtilities + (paidAdditional._sum.amountPaid ?? 0);
+
+    return {
+      period: normalizedPeriod,
+      expected: {
+        rent: expectedRent,
+        utilities: expectedUtilities,
+        additional: expectedAdditional,
+        total: expectedTotal,
+      },
+      paid: {
+        rent: paidRent,
+        utilities: paidUtilities,
+        additional: paidAdditional._sum.amountPaid ?? 0,
+        total: paidTotal,
+      },
+      balance: expectedTotal - paidTotal,
+    };
+  }
+
   //Create/Update payment record for a month
   async addPayment(
     pavilionId: number,

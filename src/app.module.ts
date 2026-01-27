@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { StoreUserModule } from './store-user/store-user.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AdditionalChargeModule } from './additional-charge/additional-charge.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     StoreUserModule,
     PaymentsModule,
     AnalyticsModule,
+    AdditionalChargeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
