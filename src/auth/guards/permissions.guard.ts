@@ -30,12 +30,30 @@ export class PermissionsGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const user = request.user;
+
+    if (!user) {
+      throw new ForbiddenException('Invalid access');
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const storeId = Number(request.params.storeId);
+    let storeId = Number(request.params.storeId);
 
-    console.log('Required:', requiredPermissions);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    if (!storeId && request.params.pavilionId) {
+      const pavilion = await this.prisma.pavilion.findUnique({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        where: { id: Number(request.params.pavilionId) },
+        select: { storeId: true },
+      });
 
-    if (!user || !storeId) {
+      if (!pavilion) {
+        throw new ForbiddenException('Pavilion not found');
+      }
+
+      storeId = pavilion.storeId;
+    }
+
+    if (!storeId) {
       throw new ForbiddenException('Invalid access');
     }
 
