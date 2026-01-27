@@ -22,10 +22,18 @@ export class PaymentsController {
   @Permissions(Permission.CREATE_PAYMENTS)
   addPayment(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
-    @Body() data: { rentPaid?: number; utilitiesPaid?: number },
+    @Body()
+    body: {
+      period: string;
+      rentPaid?: number;
+      utilitiesPaid?: number;
+    },
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-    return this.service.addPayment(pavilionId, data);
+    const period = new Date(body.period);
+    return this.service.addPayment(pavilionId, period, {
+      rentPaid: body.rentPaid,
+      utilitiesPaid: body.utilitiesPaid,
+    });
   }
 
   @Get()

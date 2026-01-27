@@ -96,6 +96,7 @@ model Payment {
   rentPaid      Float?    // actual amount paid for rent
   utilitiesPaid Float?    // actual amount paid for utilities
   createdAt     DateTime @default(now())
+  @@unique([pavilionId, period])
 }
 
 model Contract {
