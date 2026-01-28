@@ -20,6 +20,21 @@ import { Permission } from '@prisma/client';
 export class AdditionalChargeController {
   constructor(private service: AdditionalChargeService) {}
 
+  @Post(':id/pay')
+  @Permissions(Permission.CREATE_CHARGES)
+  payCharge(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('amountPaid') amountPaid: number,
+  ) {
+    return this.service.payCharge(id, amountPaid);
+  }
+
+  @Get(':id/payments')
+  @Permissions(Permission.VIEW_CHARGES)
+  listPayments(@Param('id', ParseIntPipe) id: number) {
+    return this.service.listPayments(id);
+  }
+
   @Post()
   @Permissions(Permission.CREATE_CHARGES)
   create(

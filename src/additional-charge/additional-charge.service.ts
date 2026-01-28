@@ -5,6 +5,30 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class AdditionalChargeService {
   constructor(private prisma: PrismaService) {}
 
+  async payCharge(additionalChargeId: number, amountPaid: number) {
+    const charge = await this.prisma.additionalCharge.findUnique({
+      where: { id: additionalChargeId },
+    });
+
+    if (!charge) {
+      throw new NotFoundException('Additional charge not found');
+    }
+
+    return this.prisma.additionalChargePayment.create({
+      data: {
+        additionalChargeId,
+        amountPaid,
+      },
+    });
+  }
+
+  async listPayments(additionalChargeId: number) {
+    return this.prisma.additionalChargePayment.findMany({
+      where: { additionalChargeId },
+      orderBy: { paidAt: 'asc' },
+    });
+  }
+
   create(pavilionId: number, data: { name: string; amount: number }) {
     return this.prisma.additionalCharge.create({
       data: {

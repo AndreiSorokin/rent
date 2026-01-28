@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { startOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 @Injectable()
 export class PaymentsService {
@@ -8,13 +8,28 @@ export class PaymentsService {
 
   async getMonthlySummary(pavilionId: number, period: Date) {
     const normalizedPeriod = startOfMonth(period);
+    const start = startOfMonth(normalizedPeriod);
+    const end = endOfMonth(normalizedPeriod);
 
     const pavilion = await this.prisma.pavilion.findUnique({
       where: { id: pavilionId },
       include: {
-        additionalCharges: true,
+        additionalCharges: {
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: start,
+                  lte: end,
+                },
+              },
+            },
+          },
+        },
         payments: {
-          where: { period: normalizedPeriod },
+          where: {
+            period: normalizedPeriod,
+          },
         },
       },
     });
@@ -23,40 +38,44 @@ export class PaymentsService {
       throw new NotFoundException('Pavilion not found');
     }
 
-    const payment = pavilion.payments[0];
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const payment = pavilion.payments[0]; // one payment per month
+
+    /* ======================
+      EXPECTED AMOUNTS
+    ====================== */
 
     const expectedRent = pavilion.squareMeters * pavilion.pricePerSqM;
-
     const expectedUtilities = pavilion.utilitiesAmount ?? 0;
 
     const expectedAdditional = pavilion.additionalCharges.reduce(
-      (sum, c) => sum + c.amount,
+      (sum, charge) => sum + charge.amount,
       0,
     );
 
     const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
 
+    /* ======================
+      PAID AMOUNTS
+    ====================== */
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const paidRent = payment?.rentPaid ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const paidUtilities = payment?.utilitiesPaid ?? 0;
 
-    const paidAdditional = await this.prisma.additionalChargePayment.aggregate({
-      where: {
-        additionalCharge: { pavilionId },
-        paidAt: {
-          gte: normalizedPeriod,
-          lt: startOfMonth(
-            new Date(
-              normalizedPeriod.getFullYear(),
-              normalizedPeriod.getMonth() + 1,
-            ),
-          ),
-        },
-      },
-      _sum: { amountPaid: true },
-    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
+    const paidAdditional = pavilion.additionalCharges.reduce(
+      (sum, charge) =>
+        sum + charge.payments.reduce((pSum, p) => pSum + p.amountPaid, 0),
+      0,
+    );
 
-    const paidTotal =
-      paidRent + paidUtilities + (paidAdditional._sum.amountPaid ?? 0);
+    const paidTotal = paidRent + paidUtilities + paidAdditional;
+
+    /* ======================
+      RESULT
+    ====================== */
 
     return {
       period: normalizedPeriod,
@@ -69,7 +88,7 @@ export class PaymentsService {
       paid: {
         rent: paidRent,
         utilities: paidUtilities,
-        additional: paidAdditional._sum.amountPaid ?? 0,
+        additional: paidAdditional,
         total: paidTotal,
       },
       balance: expectedTotal - paidTotal,
