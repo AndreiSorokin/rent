@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String?
+  stores    StoreUser[]
+  createdAt DateTime  @default(now())
+}
+
+model StoreUser {
+  id        Int  @id @default(autoincrement())
+
+  userId    Int
+  user      User @relation(fields: [userId], references: [id])
+
+  storeId   Int
+  store     Store @relation(fields: [storeId], references: [id])
+
+  permissions Permission[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storeId])
+}
+
+
+model Store {
+  id         Int      @id @default(autoincrement())
+  name       String
+  storeUsers StoreUser[]
+  pavilions  Pavilion[]
+}
+
+model AdditionalCharge {
+  id          Int      @id @default(autoincrement())
+  name        String
+  amount      Float
+
+  pavilionId  Int
+  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+
+  payments AdditionalChargePayment[]
+  createdAt   DateTime @default(now())
+}
+
+model AdditionalChargePayment {
+  id                 Int @id @default(autoincrement())
+
+  additionalChargeId Int
+  additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id])
+
+  amountPaid         Float
+  paidAt             DateTime @default(now())
+}
+
+
+model Pavilion {
+  id               Int       @id @default(autoincrement())
+  number           String
+  squareMeters     Float
+  pricePerSqM      Float
+  status           PavilionStatus @default(AVAILABLE)
+
+  tenantName       String?
+  rentAmount       Float?
+  utilitiesAmount  Float?
+
+  additionalCharges AdditionalCharge[]
+  payments Payment[]
+  contracts Contract[]
+
+  storeId          Int
+  store            Store @relation(fields: [storeId], references: [id])
+}
+
+
+enum PavilionStatus {
+  AVAILABLE
+  RENTED
+}
+
+model Payment {
+  id          Int       @id @default(autoincrement())
+  pavilionId  Int
+  pavilion    Pavilion  @relation(fields: [pavilionId], references: [id])
+  period        DateTime
+  rentPaid      Float?    // actual amount paid for rent
+  utilitiesPaid Float?    // actual amount paid for utilities
+  createdAt     DateTime @default(now())
+  @@unique([pavilionId, period])
+}
+
+model Contract {
+  id          Int      @id @default(autoincrement())
+  fileName    String
+  filePath    String
+  fileType    String  
+
+  pavilionId  Int
+  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+
+  uploadedAt  DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Permission {
+  VIEW_PAVILIONS
+  CREATE_PAVILIONS
+  EDIT_PAVILIONS
+  DELETE_PAVILIONS
+
+  VIEW_PAYMENTS
+  CREATE_PAYMENTS
+  EDIT_PAYMENTS
+  CALCULATE_PAYMENTS
+
+  VIEW_CHARGES
+  CREATE_CHARGES
+  EDIT_CHARGES
+  DELETE_CHARGES
+
+  VIEW_CONTRACTS
+  UPLOAD_CONTRACTS
+  DELETE_CONTRACTS
+
+  INVITE_USERS
+  ASSIGN_PERMISSIONS
+}
