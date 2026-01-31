@@ -78,10 +78,10 @@ const handleCreate = async () => {
       />
           
       <PavilionList
+        storeId={store.id}
         pavilions={store.pavilions}
         permissions={store.permissions}
-        onEdit={(p) => console.log('TODO edit', p)}
-        onDelete={handleDelete}
+        refresh={refreshStore}
       />
     </div>
   );
