@@ -12,6 +12,26 @@ export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * Get all stores which belong to a specific owner
+   */
+
+  async findUserStores(userId: number) {
+    return this.prisma.store.findMany({
+      where: {
+        storeUsers: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+  }
+
+  /**
    * Create store + make creator store admin (all permissions)
    */
   async create(data: Prisma.StoreCreateInput, userId: number) {
@@ -63,34 +83,27 @@ export class StoresService {
    * Get one store (only if user belongs to it)
    */
   async findOne(storeId: number, userId: number) {
-    const store = await this.prisma.store.findFirst({
-      where: {
-        id: storeId,
-        storeUsers: {
-          some: { userId },
-        },
-      },
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
       include: {
+        pavilions: true,
         storeUsers: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                email: true,
-                name: true,
-              },
-            },
+          where: { userId },
+          select: {
+            permissions: true,
           },
         },
-        pavilions: true,
       },
     });
 
-    if (!store) {
-      throw new NotFoundException('Store not found or access denied');
+    if (!store || store.storeUsers.length === 0) {
+      throw new ForbiddenException('No access to this store');
     }
 
-    return store;
+    return {
+      ...store,
+      permissions: store.storeUsers[0].permissions,
+    };
   }
 
   /**

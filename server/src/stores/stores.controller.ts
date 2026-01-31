@@ -19,6 +19,14 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 export class StoresController {
   constructor(private readonly service: StoresService) {}
 
+  @Get('my')
+  findMyStores(@Req() req: any) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const userId = req.user.id;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    return this.service.findUserStores(userId);
+  }
+
   @Post()
   create(@Body() data: Prisma.StoreCreateInput, @Req() req: any) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment

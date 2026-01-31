@@ -1,7 +1,5 @@
 Missing:
-Payment aggregation endpoints
 File upload handling
-Dashboard queries
 
 After MVP:
 1. Add password strength

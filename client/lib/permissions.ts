@@ -1,6 +1,8 @@
+import { Permission } from '@/types/store';
+
 export function hasPermission(
-  userPermissions: string[],
-  required: string
+  permissions: Permission[],
+  permission: Permission,
 ) {
-  return userPermissions.includes(required);
+  return permissions.includes(permission);
 }
