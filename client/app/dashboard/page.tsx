@@ -21,13 +21,23 @@ export default function DashboardPage() {
   const [editingPavilion, setEditingPavilion] = useState<any | undefined>(
     undefined
   );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [analytics, setAnalytics] = useState<any>(null);
 
+//TODO: make ID to be dynamic
   useEffect(() => {
     // Example: later you can fetch user's default store
     apiFetch<Store>('/stores/2')
       .then(setStore)
       .catch(console.error)
       .finally(() => setLoading(false));
+  }, []);
+
+  //TODO: transfer analytics to lib
+  useEffect(() => {
+    apiFetch(`/stores/2/analytics`)
+      .then(setAnalytics)
+      .catch(console.error);
   }, []);
 
   if (loading) return <div className="p-6">Loading…</div>;
@@ -59,8 +69,8 @@ export default function DashboardPage() {
         <PavilionStats pavilions={store.pavilions} />
       )}
 
-      {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-        <PaymentSummary pavilions={store.pavilions} />
+      {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
+          <PaymentSummary analytics={analytics} />
       )}
 
       {editingPavilion !== undefined && (

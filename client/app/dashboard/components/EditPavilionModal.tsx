@@ -43,7 +43,7 @@ export function EditPavilionModal({
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
- const handleSave = async () => {
+  const handleSave = async () => {
   const payload = {
     number: form.number,
     squareMeters: Number(form.squareMeters),
@@ -110,12 +110,14 @@ export function EditPavilionModal({
 
         {form.status === 'RENTED' && (
   <>
+    {form.status === 'RENTED' && (
+  <>
     <input
       name="tenantName"
       value={form.tenantName}
       onChange={handleChange}
-      className="input"
       placeholder="Tenant name"
+      className="input"
     />
 
     <input
@@ -123,8 +125,8 @@ export function EditPavilionModal({
       type="number"
       value={form.rentAmount}
       onChange={handleChange}
+      placeholder="Monthly rent"
       className="input"
-      placeholder="Rent amount"
     />
 
     <input
@@ -132,9 +134,12 @@ export function EditPavilionModal({
       type="number"
       value={form.utilitiesAmount}
       onChange={handleChange}
+      placeholder="Utilities"
       className="input"
-      placeholder="Utilities amount"
     />
+  </>
+)}
+
   </>
 )}
 

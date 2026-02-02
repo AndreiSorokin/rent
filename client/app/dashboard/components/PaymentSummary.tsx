@@ -1,20 +1,18 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function PaymentSummary({ pavilions }: { pavilions: any[] }) {
-  const expected = pavilions.reduce(
-    (sum, p) => sum + p.pricePerSqM * p.squareMeters + (p.utilitiesAmount ?? 0),
-    0
-  );
-  const paid = pavilions.reduce(
-    (sum, p) => sum + (p.payments?.[0]?.rentPaid ?? 0) + (p.payments?.[0]?.utilitiesPaid ?? 0),
-    0
-  );
-
+export function PaymentSummary({
+  analytics,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  analytics: any;
+}) {
   return (
-    <div className="p-4 bg-white shadow rounded mb-6">
-      <h2 className="text-xl font-semibold mb-2">Payment Summary</h2>
-      <div>Expected: ${expected}</div>
-      <div>Paid: ${paid}</div>
-      <div>Balance: ${expected - paid}</div>
+    <div className="border rounded p-4">
+      <h2 className="font-semibold mb-2">Payment Summary</h2>
+
+      <div>Expected: ${analytics.expected.total}</div>
+      <div>Paid: ${analytics.paid.total}</div>
+      <div className="font-medium">
+        Balance: ${analytics.debt}
+      </div>
     </div>
   );
 }
