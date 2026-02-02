@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EditPavilionModal } from './EditPavilionModal';
 import { Pavilion } from '@/types/store';
 import { hasPermission } from '@/lib/permissions';
+import { AddAdditionalChargeModal } from './AddAdditionalChargeModal';
 
 export function PavilionList({
   storeId,
@@ -17,12 +18,11 @@ export function PavilionList({
   onDelete: (id: number) => void;
 }) {
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [addingCharge, setAddingCharge] = useState<any | null>(null);
 
   const canEdit = hasPermission(permissions, 'EDIT_PAVILIONS');
   const canDelete = hasPermission(permissions, 'DELETE_PAVILIONS');
-
-  console.log('permissions:', permissions);
-console.log('canDelete:', canDelete);
 
   return (
     <div className="space-y-2">
@@ -59,17 +59,67 @@ console.log('canDelete:', canDelete);
               )}
             </div>
           )}
+          {editingPavilion !== null && (
+            <EditPavilionModal
+              storeId={storeId}
+              pavilion={editingPavilion}
+              onClose={() => setEditingPavilion(null)}
+              onSaved={refresh}
+            />
+          )}
+          <div className="mt-2 border-t pt-2">
+            <div className="font-semibold text-sm mb-1">
+              Additional charges
+            </div>
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <button
+                onClick={() => setAddingCharge(p)}
+                className="text-xs text-blue-600"
+              >
+                + Add additional charges
+              </button>
+            )}
+          {addingCharge && (
+            <AddAdditionalChargeModal
+              pavilionId={addingCharge.id}
+              onClose={() => setAddingCharge(null)}
+              onSaved={refresh}
+            />
+          )}
+{p.additionalCharges?.length === 0 && (
+  <div className="text-xs text-gray-500">
+    No additional charges
+  </div>
+)}
+
+{p.additionalCharges?.map((c: any) => (
+  <div
+    key={c.id}
+    className="flex justify-between items-center text-sm"
+  >
+    <div>
+      <span className="font-medium">{c.name}</span>
+      <span className="ml-2 text-gray-500">${c.amount}</span>
+    </div>
+
+    {hasPermission(permissions, 'DELETE_CHARGES') && (
+      <button
+        className="text-red-600 text-xs hover:underline"
+        onClick={async () => {
+          if (!confirm('Delete charge?')) return;
+          await deleteAdditionalCharge(p.id, c.id);
+          refresh();
+        }}
+      >
+        Delete
+      </button>
+    )}
+  </div>
+))}
+
+          </div>
         </div>
       ))}
-
-      {editingPavilion !== null && (
-        <EditPavilionModal
-          storeId={storeId}
-          pavilion={editingPavilion}
-          onClose={() => setEditingPavilion(null)}
-          onSaved={refresh}
-        />
-      )}
     </div>
   );
 }

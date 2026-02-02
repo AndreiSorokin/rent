@@ -109,39 +109,34 @@ export function EditPavilionModal({
         </select>
 
         {form.status === 'RENTED' && (
-  <>
-    {form.status === 'RENTED' && (
-  <>
-    <input
-      name="tenantName"
-      value={form.tenantName}
-      onChange={handleChange}
-      placeholder="Tenant name"
-      className="input"
-    />
+          <>
+            <input
+              name="tenantName"
+              value={form.tenantName}
+              onChange={handleChange}
+              className="input"
+              placeholder="Tenant name"
+            />
 
-    <input
-      name="rentAmount"
-      type="number"
-      value={form.rentAmount}
-      onChange={handleChange}
-      placeholder="Monthly rent"
-      className="input"
-    />
+            <input
+              name="rentAmount"
+              type="number"
+              value={form.rentAmount}
+              onChange={handleChange}
+              className="input"
+              placeholder="Rent amount"
+            />
 
-    <input
-      name="utilitiesAmount"
-      type="number"
-      value={form.utilitiesAmount}
-      onChange={handleChange}
-      placeholder="Utilities"
-      className="input"
-    />
-  </>
-)}
-
-  </>
-)}
+            <input
+              name="utilitiesAmount"
+              type="number"
+              value={form.utilitiesAmount}
+              onChange={handleChange}
+              className="input"
+              placeholder="Utilities amount"
+            />
+          </>
+        )}
 
 
         <div className="flex justify-end gap-2 mt-4">

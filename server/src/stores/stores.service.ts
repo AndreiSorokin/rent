@@ -86,7 +86,16 @@ export class StoresService {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: {
-        pavilions: true,
+        pavilions: {
+          include: {
+            payments: true,
+            additionalCharges: {
+              include: {
+                payments: true,
+              },
+            },
+          },
+        },
         storeUsers: {
           where: { userId },
           select: {
