@@ -1,16 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PavilionStatus, Prisma } from '@prisma/client';
+import { CreatePavilionDto } from './dto/create-pavilion.dto';
 
 @Injectable()
 export class PavilionsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(storeId: number, data: Prisma.PavilionCreateInput) {
+  async create(storeId: number, dto: CreatePavilionDto) {
     return this.prisma.pavilion.create({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: {
-        ...data,
+        ...dto,
+        status: dto.status ?? PavilionStatus.AVAILABLE,
         store: { connect: { id: storeId } },
       },
     });

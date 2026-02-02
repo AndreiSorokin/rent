@@ -1,7 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { updatePavilion } from '@/lib/pavilions';
+import { createPavilion, updatePavilion } from '@/lib/pavilions';
+import { Pavilion } from '@/types/store';
+
+interface EditPavilionModalProps {
+  storeId: number;
+  pavilion: Pavilion | null;
+  onClose: () => void;
+  onSaved: () => void;
+}
 
 export function EditPavilionModal({
   storeId,
@@ -15,37 +23,49 @@ export function EditPavilionModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({
-    number: pavilion.number,
-    squareMeters: pavilion.squareMeters,
-    pricePerSqM: pavilion.pricePerSqM,
-    status: pavilion.status,
-    tenantName: pavilion.tenantName ?? '',
-    utilitiesAmount: pavilion.utilitiesAmount ?? '',
-  });
+  const [form, setForm] = useState(() => ({
+    number: pavilion?.number ?? '',
+    squareMeters: pavilion?.squareMeters ?? '',
+    pricePerSqM: pavilion?.pricePerSqM ?? '',
+    status: pavilion?.status ?? 'AVAILABLE',
+    tenantName: pavilion?.tenantName ?? '',
+    rentAmount: pavilion?.rentAmount ?? '',
+    utilitiesAmount: pavilion?.utilitiesAmount ?? '',
+  }));
 
-   if (!storeId) {
-     console.error('EditPavilionModal: storeId is missing');
-     return null;
-   }
+  if (!storeId) {
+    console.error('EditPavilionModal: storeId is missing');
+    return null;
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSave = async () => {
-    await updatePavilion(storeId, pavilion.id, {
-      ...form,
-      squareMeters: Number(form.squareMeters),
-      pricePerSqM: Number(form.pricePerSqM),
-      utilitiesAmount:
-        form.utilitiesAmount === '' ? null : Number(form.utilitiesAmount),
-    });
-
-    onSaved();
-    onClose();
+ const handleSave = async () => {
+  const payload = {
+    number: form.number,
+    squareMeters: Number(form.squareMeters),
+    pricePerSqM: Number(form.pricePerSqM),
+    status: form.status,
+    tenantName: form.status === 'AVAILABLE' ? null : form.tenantName,
+    rentAmount: form.status === 'AVAILABLE' ? null : Number(form.rentAmount),
+    utilitiesAmount:
+      form.status === 'AVAILABLE' ? null : Number(form.utilitiesAmount),
   };
+
+  if (pavilion) {
+    await updatePavilion(storeId, pavilion.id, payload);
+  } else {
+    await createPavilion(storeId, payload);
+  }
+
+  onSaved();
+  onClose();
+};
+
+
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
@@ -89,25 +109,35 @@ export function EditPavilionModal({
         </select>
 
         {form.status === 'RENTED' && (
-          <>
-            <input
-              name="tenantName"
-              value={form.tenantName}
-              onChange={handleChange}
-              className="input"
-              placeholder="Tenant name"
-            />
+  <>
+    <input
+      name="tenantName"
+      value={form.tenantName}
+      onChange={handleChange}
+      className="input"
+      placeholder="Tenant name"
+    />
 
-            <input
-              name="utilitiesAmount"
-              type="number"
-              value={form.utilitiesAmount}
-              onChange={handleChange}
-              className="input"
-              placeholder="Utilities amount"
-            />
-          </>
-        )}
+    <input
+      name="rentAmount"
+      type="number"
+      value={form.rentAmount}
+      onChange={handleChange}
+      className="input"
+      placeholder="Rent amount"
+    />
+
+    <input
+      name="utilitiesAmount"
+      type="number"
+      value={form.utilitiesAmount}
+      onChange={handleChange}
+      className="input"
+      placeholder="Utilities amount"
+    />
+  </>
+)}
+
 
         <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="btn-secondary">

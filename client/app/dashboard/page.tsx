@@ -12,10 +12,15 @@ import {
   createPavilion,
   deletePavilion,
 } from '@/lib/pavilions';
+import { EditPavilionModal } from './components/EditPavilionModal';
 
 export default function DashboardPage() {
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editingPavilion, setEditingPavilion] = useState<any | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     // Example: later you can fetch user's default store
@@ -31,29 +36,20 @@ export default function DashboardPage() {
   const { permissions } = store;
 
   const refreshStore = async () => {
-  const updated = await apiFetch(`/stores/${store.id}`);
-  setStore(updated);
-};
+    const updated = await apiFetch(`/stores/${store.id}`);
+    setStore(updated);
+  };
 
-const handleDelete = async (id: number) => {
-  if (!confirm('Delete pavilion?')) return;
-  await deletePavilion(store.id, id);
-  refreshStore();
-};
+  const handleDelete = async (id: number) => {
+    if (!confirm('Delete pavilion?')) return;
+    await deletePavilion(store.id, id);
+    refreshStore();
+  };
 
 
-const handleCreate = async () => {
-  const number = prompt('Pavilion number');
-  if (!number) return;
-
-  await createPavilion(store.id, {
-    number,
-    squareMeters: 10,
-    pricePerSqM: 10,
-  });
-
-  refreshStore();
-};
+  const handleCreate = () => {
+    setEditingPavilion(null);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -66,6 +62,16 @@ const handleCreate = async () => {
       {hasPermission(permissions, 'VIEW_PAYMENTS') && (
         <PaymentSummary pavilions={store.pavilions} />
       )}
+
+      {editingPavilion !== undefined && (
+        <EditPavilionModal
+          storeId={store.id}
+          pavilion={editingPavilion}
+          onClose={() => setEditingPavilion(undefined)}
+          onSaved={refreshStore}
+        />
+      )}
+
 
       {!hasPermission(permissions, 'VIEW_PAVILIONS') && (
         <div className="text-gray-500">
@@ -82,6 +88,7 @@ const handleCreate = async () => {
         pavilions={store.pavilions}
         permissions={store.permissions}
         refresh={refreshStore}
+        onDelete={handleDelete}
       />
     </div>
   );

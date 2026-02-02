@@ -1,49 +1,73 @@
 import { useState } from 'react';
 import { EditPavilionModal } from './EditPavilionModal';
+import { Pavilion } from '@/types/store';
+import { hasPermission } from '@/lib/permissions';
 
 export function PavilionList({
   storeId,
   pavilions,
   permissions,
   refresh,
+  onDelete,
 }: {
   storeId: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pavilions: any[];
+  pavilions: Pavilion[];
   permissions: string[];
   refresh: () => void;
+  onDelete: (id: number) => void;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [editing, setEditing] = useState<any>(null);
+  const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
 
-  const canEdit = permissions.includes('EDIT_PAVILIONS');
+  const canEdit = hasPermission(permissions, 'EDIT_PAVILIONS');
+  const canDelete = hasPermission(permissions, 'DELETE_PAVILIONS');
+
+  console.log('permissions:', permissions);
+console.log('canDelete:', canDelete);
 
   return (
-    <div>
-      {pavilions.map((p: any) => (
-        <div key={p.id} className="border p-3 mb-2 flex justify-between">
+    <div className="space-y-2">
+      {pavilions.map((p) => (
+        <div
+          key={p.id}
+          className="border p-3 rounded flex justify-between items-center"
+        >
           <div>
-            <div>Pavilion #{p.number}</div>
-            <div>Status: {p.status}</div>
+            <div className="font-medium">Pavilion #{p.number}</div>
+            <div className="text-sm text-gray-600">
+              Status: {p.status}
+            </div>
           </div>
 
-          {canEdit && (
-            <button
-              onClick={() => setEditing(p)}
-              className="btn-secondary"
-            >
-              Edit
-            </button>
+          {(canEdit || canDelete) && (
+            <div className="flex gap-3">
+              {canEdit && (
+                <button
+                  onClick={() => setEditingPavilion(p)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+              )}
+          
+              {canDelete && (
+                <button
+                  onClick={() => onDelete(p.id)}
+                  className="text-red-600 hover:underline"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           )}
         </div>
       ))}
 
-      {editing && (
+      {editingPavilion !== null && (
         <EditPavilionModal
-            storeId={storeId}
-            pavilion={editing}
-            onClose={() => setEditing(null)}
-            onSaved={refresh}
+          storeId={storeId}
+          pavilion={editingPavilion}
+          onClose={() => setEditingPavilion(null)}
+          onSaved={refresh}
         />
       )}
     </div>

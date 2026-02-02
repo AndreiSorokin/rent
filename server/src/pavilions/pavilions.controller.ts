@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission, Prisma } from '@prisma/client';
+import { CreatePavilionDto } from './dto/create-pavilion.dto';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores/:storeId/pavilions')
@@ -25,9 +26,9 @@ export class PavilionsController {
   @Permissions(Permission.CREATE_PAVILIONS)
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body() data: Prisma.PavilionCreateInput,
+    @Body() dto: CreatePavilionDto,
   ) {
-    return this.service.create(storeId, data);
+    return this.service.create(storeId, dto);
   }
 
   @Get()
