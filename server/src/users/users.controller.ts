@@ -34,9 +34,7 @@ export class UsersController {
   async searchByEmail(@Query('email') email: string) {
     if (!email) throw new BadRequestException('Email is required');
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const user = await this.usersService.findByEmail(
-      email.trim().toLowerCase(),
-    );
+    const user = await this.service.findByEmail(email.trim().toLowerCase());
     if (!user) throw new NotFoundException('User not found');
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return user;

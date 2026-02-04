@@ -111,6 +111,30 @@ model Contract {
   uploadedAt  DateTime @default(now())
 }
 
+model Invitation {
+  id          Int                @id @default(autoincrement())
+  email       String
+  storeId     Int
+  token       String             @unique
+  invitedBy   Int                // user who sent the invite
+  expiresAt   DateTime
+  status      InvitationStatus   @default(PENDING)
+
+  store       Store              @relation(fields: [storeId], references: [id])
+  inviter     User               @relation(fields: [invitedBy], references: [id], name: "inviter")
+
+  createdAt   DateTime           @default(now())
+
+  @@unique([email, storeId]) // Prevents multiple active invites for same email+store
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 enum Role {
   ADMIN
   USER

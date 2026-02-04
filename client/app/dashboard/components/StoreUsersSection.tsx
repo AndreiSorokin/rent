@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { hasPermission } from '@/lib/permissions';
 import { getStoreUsers, updateUserPermissions, removeStoreUser } from '@/lib/storeUsers';
 import { InviteUserModal } from './InviteUserModal';
+import { ManagePermissionsModal } from './ManagePermissionsModal';
 
-// Define permissions as plain strings (runtime-safe)
 const PERMISSION_LABELS = {
   VIEW_PAVILIONS: 'View Pavilions',
   CREATE_PAVILIONS: 'Create Pavilions',
@@ -26,7 +26,6 @@ const PERMISSION_LABELS = {
   ASSIGN_PERMISSIONS: 'Manage Permissions',
 } as const;
 
-// Optional: type for better safety
 type Permission = keyof typeof PERMISSION_LABELS;
 
 type StoreUsersSectionProps = {
@@ -43,8 +42,8 @@ export function StoreUsersSection({
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<{ id: number; permissions: string[]; email: string } | null>(null);
 
-  // Use string literals directly — safe at runtime
   const canManageUsers =
     hasPermission(permissions, 'INVITE_USERS') ||
     hasPermission(permissions, 'ASSIGN_PERMISSIONS');
@@ -88,6 +87,10 @@ export function StoreUsersSection({
       console.error('Failed to remove user:', err);
       alert('Could not remove user. Please try again.');
     }
+  };
+
+  const openPermissionsModal = (userId: number, currentPermissions: string[], email: string) => {
+    setEditingUser({ id: userId, permissions: currentPermissions, email });
   };
 
   if (!canManageUsers) return null;
@@ -150,22 +153,12 @@ export function StoreUsersSection({
                     {su.user.name || '—'}
                   </td>
                   <td className="px-6 py-4">
-                    <select
-                      multiple
-                      value={su.permissions}
-                      onChange={(e) => {
-                        const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-                        handlePermissionChange(su.user.id, selected);
-                      }}
-                      className="block w-full border border-gray-300 rounded p-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[140px] max-h-[200px]"
-                      size={Math.min(10, Object.keys(PERMISSION_LABELS).length)}
+                    <button
+                      onClick={() => openPermissionsModal(su.user.id, su.permissions, su.user.email)}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {Object.entries(PERMISSION_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
+                      Manage Permissions ({su.permissions.length})
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -180,6 +173,16 @@ export function StoreUsersSection({
             </tbody>
           </table>
         </div>
+      )}
+
+      {editingUser && (
+        <ManagePermissionsModal
+          userId={editingUser.id}
+          userEmail={editingUser.email}
+          currentPermissions={editingUser.permissions}
+          onSave={handlePermissionChange}
+          onClose={() => setEditingUser(null)}
+        />
       )}
     </div>
   );

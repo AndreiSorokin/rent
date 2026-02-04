@@ -8,7 +8,7 @@ After MVP:
 4. kick from a store
 5. Paid subscribtion
 6. Add store-level analytics (totals across pavilions)
-7. Add store-level analytics (totals across pavilions)
+7. Email invitation
 
 
 
