@@ -37,4 +37,18 @@ export class UsersService {
       },
     });
   }
+
+  // Get users ny email
+  async findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+  }
+
+  //TODO: list all users (for admin) with pagination/filter later
 }

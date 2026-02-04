@@ -3,14 +3,11 @@
 import { useState } from 'react';
 import { EditPavilionModal } from './EditPavilionModal';
 import { AddAdditionalChargeModal } from './AddAdditionalChargeModal';
-import { PayAdditionalChargeModal } from './PayAdditionalChargeModal'; // ← import it
+import { PayAdditionalChargeModal } from './PayAdditionalChargeModal';
 import { CreatePavilionPaymentModal } from './CreatePavilionPaymentModal';
 import { Pavilion } from '@/types/store';
 import { hasPermission } from '@/lib/permissions';
-import {
-  deleteAdditionalCharge,
-  // payAdditionalCharge,  // ← you won't need this here anymore
-} from '@/lib/additionalCharges';
+import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 
 export function PavilionList({
   storeId,
@@ -37,28 +34,27 @@ export function PavilionList({
 
   const canEdit = hasPermission(permissions, 'EDIT_PAVILIONS');
   const canDelete = hasPermission(permissions, 'DELETE_PAVILIONS');
-  const canManageCharges = hasPermission(permissions, 'CREATE_CHARGES') || hasPermission(permissions, 'EDIT_CHARGES') || hasPermission(permissions, 'DELETE_CHARGES');
+  const canManageCharges =
+    hasPermission(permissions, 'CREATE_CHARGES') ||
+    hasPermission(permissions, 'EDIT_CHARGES') ||
+    hasPermission(permissions, 'DELETE_CHARGES');
   const canPay = hasPermission(permissions, 'CREATE_PAYMENTS');
 
   return (
     <div className="space-y-3">
       {pavilions.map((p) => (
-        <div
-          key={p.id}
-          className="border rounded-lg p-4 bg-white shadow-sm"
-        >
+        <div key={p.id} className="border rounded-lg p-4 bg-white shadow-sm">
           <div className="flex justify-between items-start mb-3">
             <div>
               <div className="font-semibold text-lg">Pavilion {p.number}</div>
               <div className="text-sm text-gray-600">
-                Status: <span className={p.status === 'RENTED' ? 'text-green-600' : 'text-amber-600'}>
+                Status:{' '}
+                <span className={p.status === 'RENTED' ? 'text-green-600' : 'text-amber-600'}>
                   {p.status}
                 </span>
               </div>
               {p.tenantName && (
-                <div className="text-sm text-gray-700 mt-1">
-                  Tenant: {p.tenantName}
-                </div>
+                <div className="text-sm text-gray-700 mt-1">Tenant: {p.tenantName}</div>
               )}
             </div>
 
@@ -82,7 +78,6 @@ export function PavilionList({
             </div>
           </div>
 
-          {/* Monthly payment button */}
           {canPay && p.status === 'RENTED' && (
             <button
               onClick={() => setPayingMonthlyPavilion(p)}
@@ -92,7 +87,6 @@ export function PavilionList({
             </button>
           )}
 
-          {/* Additional charges section */}
           <div className="mt-3 pt-3 border-t">
             <div className="flex justify-between items-center mb-2">
               <div className="font-medium text-sm">Additional charges</div>
@@ -117,9 +111,7 @@ export function PavilionList({
               >
                 <div>
                   <span className="font-medium">{charge.name}</span>
-                  <span className="ml-2 text-gray-600">
-                    ${charge.amount.toFixed(2)}
-                  </span>
+                  <span className="ml-2 text-gray-600">${charge.amount.toFixed(2)}</span>
                 </div>
 
                 <div className="flex gap-3">
@@ -142,8 +134,13 @@ export function PavilionList({
                     <button
                       onClick={async () => {
                         if (!confirm(`Delete "${charge.name}"?`)) return;
-                        await deleteAdditionalCharge(p.id, charge.id);
-                        refresh();
+                        try {
+                          await deleteAdditionalCharge(p.id, charge.id);
+                          refresh();
+                        } catch (err) {
+                          console.error('Delete failed:', err);
+                          alert('Failed to delete charge. Please try again.');
+                        }
                       }}
                       className="text-red-600 hover:underline text-xs"
                     >

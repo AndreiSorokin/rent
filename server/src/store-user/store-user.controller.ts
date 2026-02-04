@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,22 @@ import { Permission } from '@prisma/client';
 @Controller('stores/:storeId/users')
 export class StoreUserController {
   constructor(private readonly service: StoreUserService) {}
+
+  /**
+   * Invite user to store by email (no permissions by default)
+   */
+
+  @Post('invite-by-email')
+  @Permissions(Permission.INVITE_USERS || Permission.ASSIGN_PERMISSIONS)
+  async inviteByEmail(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body('email') email: string,
+  ) {
+    if (!email || typeof email !== 'string') {
+      throw new BadRequestException('Valid email is required');
+    }
+    return this.service.inviteByEmail(storeId, email);
+  }
 
   /**
    * Invite user to store (no permissions by default)

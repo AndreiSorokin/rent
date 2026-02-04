@@ -13,6 +13,7 @@ import {
   deletePavilion,
 } from '@/lib/pavilions';
 import { EditPavilionModal } from './components/EditPavilionModal';
+import { StoreUsersSection } from './components/StoreUsersSection';
 
 export default function DashboardPage() {
   const [store, setStore] = useState<Store | null>(null);
@@ -62,44 +63,47 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">{store.name} Dashboard</h1>
+  <div className="p-6 space-y-6">
+    <h1 className="text-2xl font-bold">{store.name} Dashboard</h1>
 
-      {hasPermission(permissions, 'VIEW_PAVILIONS') && (
-        <PavilionStats pavilions={store.pavilions} />
-      )}
+    {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+      <PavilionStats pavilions={store.pavilions} />
+    )}
 
-      {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-          <PaymentSummary analytics={analytics} />
-      )}
+    {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
+      <PaymentSummary analytics={analytics} />
+    )}
 
-      {editingPavilion !== undefined && (
-        <EditPavilionModal
-          storeId={store.id}
-          pavilion={editingPavilion}
-          onClose={() => setEditingPavilion(undefined)}
-          onSaved={refreshStore}
-        />
-      )}
+    <StoreUsersSection
+      storeId={store.id}
+      permissions={store.permissions}
+      onUsersChanged={refreshStore}
+    />
 
-
-      {!hasPermission(permissions, 'VIEW_PAVILIONS') && (
-        <div className="text-gray-500">
-          You have limited access to this store.
-        </div>
-      )}
-      <CreatePavilionButton
-        permissions={store.permissions}
-        onClick={handleCreate}
-      />
-          
-      <PavilionList
+    {editingPavilion !== undefined && (
+      <EditPavilionModal
         storeId={store.id}
-        pavilions={store.pavilions}
-        permissions={store.permissions}
-        refresh={refreshStore}
-        onDelete={handleDelete}
+        pavilion={editingPavilion}
+        onClose={() => setEditingPavilion(undefined)}
+        onSaved={refreshStore}
       />
-    </div>
-  );
+    )}
+
+    {!hasPermission(permissions, 'VIEW_PAVILIONS') && (
+      <div className="text-gray-500">
+        You have limited access to this store.
+      </div>
+    )}
+
+    <CreatePavilionButton permissions={store.permissions} onClick={handleCreate} />
+
+    <PavilionList
+      storeId={store.id}
+      pavilions={store.pavilions}
+      permissions={store.permissions}
+      refresh={refreshStore}
+      onDelete={handleDelete}
+    />
+  </div>
+);
 }
