@@ -56,7 +56,7 @@ model AdditionalChargePayment {
   id                 Int @id @default(autoincrement())
 
   additionalChargeId Int
-  additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id])
+  additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id], onDelete: Cascade)
 
   amountPaid         Float
   paidAt             DateTime @default(now())

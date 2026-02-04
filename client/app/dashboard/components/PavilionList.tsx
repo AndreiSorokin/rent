@@ -1,8 +1,16 @@
+'use client';
+
 import { useState } from 'react';
 import { EditPavilionModal } from './EditPavilionModal';
+import { AddAdditionalChargeModal } from './AddAdditionalChargeModal';
+import { PayAdditionalChargeModal } from './PayAdditionalChargeModal'; // ← import it
+import { CreatePavilionPaymentModal } from './CreatePavilionPaymentModal';
 import { Pavilion } from '@/types/store';
 import { hasPermission } from '@/lib/permissions';
-import { AddAdditionalChargeModal } from './AddAdditionalChargeModal';
+import {
+  deleteAdditionalCharge,
+  // payAdditionalCharge,  // ← you won't need this here anymore
+} from '@/lib/additionalCharges';
 
 export function PavilionList({
   storeId,
@@ -18,108 +26,175 @@ export function PavilionList({
   onDelete: (id: number) => void;
 }) {
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [addingCharge, setAddingCharge] = useState<any | null>(null);
+  const [addingChargeForPavilion, setAddingChargeForPavilion] = useState<Pavilion | null>(null);
+  const [payingMonthlyPavilion, setPayingMonthlyPavilion] = useState<Pavilion | null>(null);
+  const [payingCharge, setPayingCharge] = useState<{
+    pavilionId: number;
+    chargeId: number;
+    name: string;
+    amount: number;
+  } | null>(null);
 
   const canEdit = hasPermission(permissions, 'EDIT_PAVILIONS');
   const canDelete = hasPermission(permissions, 'DELETE_PAVILIONS');
+  const canManageCharges = hasPermission(permissions, 'CREATE_CHARGES') || hasPermission(permissions, 'EDIT_CHARGES') || hasPermission(permissions, 'DELETE_CHARGES');
+  const canPay = hasPermission(permissions, 'CREATE_PAYMENTS');
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {pavilions.map((p) => (
         <div
           key={p.id}
-          className="border p-3 rounded flex justify-between items-center"
+          className="border rounded-lg p-4 bg-white shadow-sm"
         >
-          <div>
-            <div className="font-medium">Pavilion #{p.number}</div>
-            <div className="text-sm text-gray-600">
-              Status: {p.status}
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <div className="font-semibold text-lg">Pavilion {p.number}</div>
+              <div className="text-sm text-gray-600">
+                Status: <span className={p.status === 'RENTED' ? 'text-green-600' : 'text-amber-600'}>
+                  {p.status}
+                </span>
+              </div>
+              {p.tenantName && (
+                <div className="text-sm text-gray-700 mt-1">
+                  Tenant: {p.tenantName}
+                </div>
+              )}
             </div>
-          </div>
 
-          {(canEdit || canDelete) && (
             <div className="flex gap-3">
               {canEdit && (
                 <button
                   onClick={() => setEditingPavilion(p)}
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 hover:underline text-sm"
                 >
                   Edit
                 </button>
               )}
-          
               {canDelete && (
                 <button
                   onClick={() => onDelete(p.id)}
-                  className="text-red-600 hover:underline"
+                  className="text-red-600 hover:underline text-sm"
                 >
                   Delete
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Monthly payment button */}
+          {canPay && p.status === 'RENTED' && (
+            <button
+              onClick={() => setPayingMonthlyPavilion(p)}
+              className="text-green-600 hover:underline text-sm mb-3 block"
+            >
+              Record monthly rent & utilities →
+            </button>
           )}
-          {editingPavilion !== null && (
-            <EditPavilionModal
-              storeId={storeId}
-              pavilion={editingPavilion}
-              onClose={() => setEditingPavilion(null)}
-              onSaved={refresh}
-            />
-          )}
-          <div className="mt-2 border-t pt-2">
-            <div className="font-semibold text-sm mb-1">
-              Additional charges
+
+          {/* Additional charges section */}
+          <div className="mt-3 pt-3 border-t">
+            <div className="flex justify-between items-center mb-2">
+              <div className="font-medium text-sm">Additional charges</div>
+              {canManageCharges && p.status === 'RENTED' && (
+                <button
+                  onClick={() => setAddingChargeForPavilion(p)}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  + Add charge
+                </button>
+              )}
             </div>
-            {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <button
-                onClick={() => setAddingCharge(p)}
-                className="text-xs text-blue-600"
-              >
-                + Add additional charges
-              </button>
+
+            {(!p.additionalCharges || p.additionalCharges.length === 0) && (
+              <div className="text-xs text-gray-500 py-1">No additional charges</div>
             )}
-          {addingCharge && (
-            <AddAdditionalChargeModal
-              pavilionId={addingCharge.id}
-              onClose={() => setAddingCharge(null)}
-              onSaved={refresh}
-            />
-          )}
-{p.additionalCharges?.length === 0 && (
-  <div className="text-xs text-gray-500">
-    No additional charges
-  </div>
-)}
 
-{p.additionalCharges?.map((c: any) => (
-  <div
-    key={c.id}
-    className="flex justify-between items-center text-sm"
-  >
-    <div>
-      <span className="font-medium">{c.name}</span>
-      <span className="ml-2 text-gray-500">${c.amount}</span>
-    </div>
+            {p.additionalCharges?.map((charge) => (
+              <div
+                key={charge.id}
+                className="flex justify-between items-center py-1.5 text-sm border-b last:border-b-0"
+              >
+                <div>
+                  <span className="font-medium">{charge.name}</span>
+                  <span className="ml-2 text-gray-600">
+                    ${charge.amount.toFixed(2)}
+                  </span>
+                </div>
 
-    {hasPermission(permissions, 'DELETE_CHARGES') && (
-      <button
-        className="text-red-600 text-xs hover:underline"
-        onClick={async () => {
-          if (!confirm('Delete charge?')) return;
-          await deleteAdditionalCharge(p.id, c.id);
-          refresh();
-        }}
-      >
-        Delete
-      </button>
-    )}
-  </div>
-))}
-
+                <div className="flex gap-3">
+                  {canPay && (
+                    <button
+                      onClick={() =>
+                        setPayingCharge({
+                          pavilionId: p.id,
+                          chargeId: charge.id,
+                          name: charge.name,
+                          amount: charge.amount,
+                        })
+                      }
+                      className="text-green-600 hover:underline text-xs"
+                    >
+                      Pay
+                    </button>
+                  )}
+                  {hasPermission(permissions, 'DELETE_CHARGES') && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete "${charge.name}"?`)) return;
+                        await deleteAdditionalCharge(p.id, charge.id);
+                        refresh();
+                      }}
+                      className="text-red-600 hover:underline text-xs"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ))}
+
+      {/* Modals */}
+      {editingPavilion && (
+        <EditPavilionModal
+          storeId={storeId}
+          pavilion={editingPavilion}
+          onClose={() => setEditingPavilion(null)}
+          onSaved={refresh}
+        />
+      )}
+
+      {addingChargeForPavilion && (
+        <AddAdditionalChargeModal
+          storeId={storeId}
+          pavilionId={addingChargeForPavilion.id}
+          onClose={() => setAddingChargeForPavilion(null)}
+          onSaved={refresh}
+        />
+      )}
+
+      {payingMonthlyPavilion && (
+        <CreatePavilionPaymentModal
+          storeId={storeId}
+          pavilionId={payingMonthlyPavilion.id}
+          onClose={() => setPayingMonthlyPavilion(null)}
+          onSaved={refresh}
+        />
+      )}
+
+      {payingCharge && (
+        <PayAdditionalChargeModal
+          pavilionId={payingCharge.pavilionId}
+          chargeId={payingCharge.chargeId}
+          chargeName={payingCharge.name}
+          expectedAmount={payingCharge.amount}
+          onClose={() => setPayingCharge(null)}
+          onSaved={refresh}
+        />
+      )}
     </div>
   );
 }

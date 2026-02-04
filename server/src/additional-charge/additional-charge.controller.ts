@@ -66,6 +66,7 @@ export class AdditionalChargeController {
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('chargeId', ParseIntPipe) chargeId: number,
   ) {
+    console.log('dfgdgdfg:', pavilionId, chargeId);
     return this.service.delete(pavilionId, chargeId);
   }
 }
