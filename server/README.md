@@ -9,6 +9,8 @@ After MVP:
 5. Paid subscribtion
 6. Add store-level analytics (totals across pavilions)
 7. Email invitation
+8. Search on a store page (user emails, )
+9. On a store page show the debt-paid difference for every pavilion
 
 
 

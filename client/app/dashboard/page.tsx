@@ -2,108 +2,86 @@
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { Store } from '@/types/store';
-import { hasPermission } from '@/lib/permissions';
-import { PavilionStats } from './components/PavilionStats';
-import { PaymentSummary } from './components/PaymentSummary';
-import { PavilionList } from './components/PavilionList';
-import { CreatePavilionButton } from './components/CreatePavilionButton';
-import {
-  createPavilion,
-  deletePavilion,
-} from '@/lib/pavilions';
-import { EditPavilionModal } from './components/EditPavilionModal';
-import { StoreUsersSection } from './components/StoreUsersSection';
+import { getCurrentUserFromToken } from '@/lib/auth';
+import Link from 'next/link';
 
-export default function DashboardPage() {
-  const [store, setStore] = useState<Store | null>(null);
+interface StoreSummary {
+  id: number;
+  name: string;
+  permissions?: string[]; // optional
+}
+
+export default function StoresPage() {
+  const [stores, setStores] = useState<StoreSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [editingPavilion, setEditingPavilion] = useState<any | undefined>(
-    undefined
-  );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-//TODO: make ID to be dynamic
+  // Synchronous user data from token (can be outside effect)
+  const currentUser = getCurrentUserFromToken();
+
   useEffect(() => {
-    // Example: later you can fetch user's default store
-    apiFetch<Store>('/stores/2')
-      .then(setStore)
-      .catch(console.error)
+    // Only async part here
+    apiFetch<StoreSummary[]>('/stores/my')
+      .then((data) => {
+        setStores(data || []);
+      })
+      .catch(() => setError('Не удалось загрузить магазины'))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // empty deps — runs once
 
-  //TODO: transfer analytics to lib
-  useEffect(() => {
-    apiFetch(`/stores/2/analytics`)
-      .then(setAnalytics)
-      .catch(console.error);
-  }, []);
-
-  if (loading) return <div className="p-6">Loading…</div>;
-  if (!store) return <div className="p-6">No access</div>;
-
-  const { permissions } = store;
-
-  const refreshStore = async () => {
-    const updated = await apiFetch(`/stores/${store.id}`);
-    setStore(updated);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Delete pavilion?')) return;
-    await deletePavilion(store.id, id);
-    refreshStore();
-  };
-
-
-  const handleCreate = () => {
-    setEditingPavilion(null);
-  };
+  if (loading) return <div className="p-8 text-center text-lg">Загрузка...</div>;
+  if (error) return <div className="p-8 text-center text-red-600 text-lg">{error}</div>;
 
   return (
-  <div className="p-6 space-y-6">
-    <h1 className="text-2xl font-bold">{store.name} Dashboard</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-4 md:p-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center md:text-left">
+          Мои магазины
+        </h1>
 
-    {hasPermission(permissions, 'VIEW_PAVILIONS') && (
-      <PavilionStats pavilions={store.pavilions} />
-    )}
+        {/* Показываем информацию о пользователе, если есть */}
+        {currentUser && (
+          <div className="bg-white rounded-xl shadow p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Добро пожаловать!</h2>
+            <p className="text-lg">
+              <strong>{currentUser.name || 'Пользователь'}</strong> ({currentUser.email})
+            </p>
+          </div>
+        )}
 
-    {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-      <PaymentSummary analytics={analytics} />
-    )}
-
-    <StoreUsersSection
-      storeId={store.id}
-      permissions={store.permissions}
-      onUsersChanged={refreshStore}
-    />
-
-    {editingPavilion !== undefined && (
-      <EditPavilionModal
-        storeId={store.id}
-        pavilion={editingPavilion}
-        onClose={() => setEditingPavilion(undefined)}
-        onSaved={refreshStore}
-      />
-    )}
-
-    {!hasPermission(permissions, 'VIEW_PAVILIONS') && (
-      <div className="text-gray-500">
-        You have limited access to this store.
+        {stores.length === 0 ? (
+          <div className="bg-white rounded-xl shadow p-8 text-center">
+            <p className="text-gray-600 text-lg mb-6">
+              У вас пока нет магазинов
+            </p>
+            {/* Кнопка создания магазина, если есть такая возможность */}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stores.map((store) => (
+              <Link
+                key={store.id}
+                href={`/stores/${store.id}`}
+                className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow overflow-hidden"
+              >
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2 truncate">
+                    {store.name}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    {/* Павильонов: {store.pavilions?.length ?? '—'} */}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
+                      {store.permissions?.join(', ') || 'Сотрудник'}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
-    )}
-
-    <CreatePavilionButton permissions={store.permissions} onClick={handleCreate} />
-
-    <PavilionList
-      storeId={store.id}
-      pavilions={store.pavilions}
-      permissions={store.permissions}
-      refresh={refreshStore}
-      onDelete={handleDelete}
-    />
-  </div>
-);
+    </div>
+  );
 }
