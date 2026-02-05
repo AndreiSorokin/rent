@@ -2,69 +2,285 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
-import { Pavilion } from '@/types/store'; // предполагаемый тип
+import { hasPermission } from '@/lib/permissions';
+import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
+import { AddAdditionalChargeModal } from '@/app/dashboard/components/AddAdditionalChargeModal';
+import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
+import { PayAdditionalChargeModal } from '@/app/dashboard/components/PayAdditionalChargeModal';
+
+interface Pavilion {
+  id: number;
+  number: string;
+  squareMeters: number;
+  pricePerSqM: number;
+  status: string;
+  tenantName?: string;
+  rentAmount?: number;
+  utilitiesAmount?: number;
+  payments: any[];
+  additionalCharges: any[];
+  // add more fields as needed
+}
 
 export default function PavilionPage() {
-  const params = useParams();
-  const storeId = Number(params.storeId);
-  const pavilionId = Number(params.pavilionId);
+  const { storeId, pavilionId } = useParams();
+  const storeIdNum = Number(storeId);
+  const pavilionIdNum = Number(pavilionId);
+
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modals state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showAddChargeModal, setShowAddChargeModal] = useState(false);
+  const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
+  const [payingCharge, setPayingCharge] = useState<{
+    pavilionId: number;
+    chargeId: number;
+    name: string;
+    amount: number;
+  } | null>(null);
+  const [addingChargeForPavilion, setAddingChargeForPavilion] = useState<Pavilion | null>(null);
+
+  // Permissions (you can fetch them from store or user context later)
+  const permissions = ['VIEW_PAVILIONS', 'EDIT_PAVILIONS', 'CREATE_PAYMENTS', 'CREATE_CHARGES', 'DELETE_CHARGES']; // example
+
+  const fetchPavilion = async () => {
+    try {
+      const data = await apiFetch<Pavilion>(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`);
+      setPavilion(data);
+    } catch (err) {
+      setError('Не удалось загрузить данные павильона');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    apiFetch<Pavilion>(`/stores/${storeId}/pavilions/${pavilionId}`)
-      .then(setPavilion)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [storeId, pavilionId]);
+    if (storeIdNum && pavilionIdNum) {
+      fetchPavilion();
+    }
+  }, [storeIdNum, pavilionIdNum]);
 
-  if (loading) return <div className="p-6 text-center">Загрузка...</div>;
+  const handleActionSuccess = () => {
+    fetchPavilion(); // refresh after add/edit/delete
+  };
+
+  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (error) return <div className="p-6 text-center text-red-600 text-lg">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-center md:text-left">Павильон {pavilion.number}</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
+        {/* Header with back link */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <Link
+              href={`/stores/${storeId}`}
+              className="text-blue-600 hover:underline mb-2 inline-block"
+            >
+              ← Назад к магазину
+            </Link>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              Павильон {pavilion.number}
+            </h1>
+          </div>
 
-      <div className="border rounded-lg p-4 bg-white shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">Информация о павильоне</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <p><strong>Площадь:</strong> {pavilion.squareMeters} м²</p>
-          <p><strong>Цена за м²:</strong> {pavilion.pricePerSqM}$</p>
-          <p><strong>Статус:</strong> {pavilion.status}</p>
-          <p><strong>Арендатор:</strong> {pavilion.tenantName || 'Нет'}</p>
-          {/* Добавьте другие поля */}
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-3">
+            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Записать платёж
+              </button>
+            )}
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <button
+                onClick={() => setShowAddChargeModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Добавить начисление
+              </button>
+            )}
+            {/* Add Edit/Delete pavilion buttons if needed */}
+          </div>
         </div>
-      </div>
 
-      <div className="border rounded-lg p-4 bg-white shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">Платежи</h2>
-        {/* Список платежей – используйте таблицу */}
-        <table className="w-full border-collapse">
-          <thead>
-            <tr><th>Период</th><th>Ожидаемо</th><th>Оплачено</th><th>Баланс</th></tr>
-          </thead>
-          <tbody>
-            {pavilion.payments.map((pay) => (
-              <tr key={pay.id}>
-                <td>{pay.period}</td>
-                <td>{pay.expectedTotal}</td>
-                <td>{pay.paidTotal}</td>
-                <td>{pay.balance}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        {/* Main info */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Основная информация</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div>
+              <p className="text-gray-600">Площадь</p>
+              <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Цена за м²</p>
+              <p className="text-lg font-medium">{pavilion.pricePerSqM}$</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Статус</p>
+              <p className="text-lg font-medium">{pavilion.status}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Арендатор</p>
+              <p className="text-lg font-medium">{pavilion.tenantName || 'Свободен'}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Арендная плата</p>
+              <p className="text-lg font-medium">{pavilion.rentAmount || '—'}$</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Коммунальные услуги</p>
+              <p className="text-lg font-medium">{pavilion.utilitiesAmount || '—'}$</p>
+            </div>
+          </div>
+        </div>
 
-      <div className="border rounded-lg p-4 bg-white shadow-sm">
-        <h2 className="text-xl font-semibold mb-4">Дополнительные начисления</h2>
-        {/* Список начислений */}
-        <ul className="list-disc pl-5">
-          {pavilion.additionalCharges.map((charge) => (
-            <li key={charge.id}>{charge.name}: {charge.amount}$</li>
-          ))}
-        </ul>
+        {/* Payments */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Платежи</h2>
+            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              >
+                + Новый платёж
+              </button>
+            )}
+          </div>
+
+          {pavilion.payments.length === 0 ? (
+            <p className="text-gray-500">Платежей пока нет</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Период</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ожидаемо</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Оплачено</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Баланс</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.payments.map((pay: any) => {
+                    const expected = (pay.expectedRent || 0) + (pay.expectedUtilities || 0);
+                    const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
+                    const balance = paid - expected;
+                    return (
+                      <tr key={pay.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{pay.period}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{expected.toFixed(2)}$</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">{paid.toFixed(2)}$</td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                          balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                          {`${balance > 0 ? '+' : ''}${balance.toFixed(2)}$`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Additional Charges */}
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <button
+                onClick={() => setShowAddChargeModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+              >
+                + Новое начисление
+              </button>
+            )}
+          </div>
+
+          {pavilion.additionalCharges.length === 0 ? (
+            <p className="text-gray-500">Нет дополнительных начислений</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.additionalCharges.map((charge: any) => (
+                    <tr key={charge.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{charge.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">{charge.amount.toFixed(2)}$</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        {hasPermission(permissions, 'EDIT_CHARGES') && (
+                          <button className="text-blue-600 hover:underline mr-3">Изменить</button>
+                        )}
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <button className="text-red-600 hover:underline">Удалить</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Modals */}
+        {showPaymentModal && (
+          <CreatePavilionPaymentModal
+            storeId={storeIdNum}
+            pavilionId={pavilionIdNum}
+            onClose={() => setShowPaymentModal(false)}
+            onSaved={handleActionSuccess}
+          />
+        )}
+
+        {showAddChargeModal && (
+          <AddAdditionalChargeModal
+                    storeId={storeId}
+                    pavilionId={addingChargeForPavilion.id}
+                    onClose={() => setAddingChargeForPavilion(null)}
+                    onSaved={refresh}
+                  />
+        )}
+
+        {editingPavilion && (
+                <EditPavilionModal
+                  storeId={storeId}
+                  pavilion={editingPavilion}
+                  onClose={() => setEditingPavilion(null)}
+                  onSaved={refresh}
+                />
+              )}
+
+              {payingCharge && (
+                      <PayAdditionalChargeModal
+                        pavilionId={payingCharge.pavilionId}
+                        chargeId={payingCharge.chargeId}
+                        chargeName={payingCharge.name}
+                        expectedAmount={payingCharge.amount}
+                        onClose={() => setPayingCharge(null)}
+                        onSaved={refresh}
+                      />
+                    )}
+
       </div>
     </div>
   );
