@@ -8,22 +8,23 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  password  String
-  name      String?
-  stores    StoreUser[]
-  createdAt DateTime  @default(now())
+  id              Int          @id @default(autoincrement())
+  email           String       @unique
+  password        String
+  name            String?
+  stores          StoreUser[]
+  createdAt       DateTime     @default(now())
+  sentInvitations Invitation[] @relation("inviter")
 }
 
 model StoreUser {
-  id        Int  @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  userId    Int
-  user      User @relation(fields: [userId], references: [id])
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
 
-  storeId   Int
-  store     Store @relation(fields: [storeId], references: [id])
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id])
 
   permissions Permission[]
 
@@ -32,56 +33,54 @@ model StoreUser {
   @@unique([userId, storeId])
 }
 
-
 model Store {
-  id         Int      @id @default(autoincrement())
-  name       String
-  storeUsers StoreUser[]
-  pavilions  Pavilion[]
+  id          Int          @id @default(autoincrement())
+  name        String
+  storeUsers  StoreUser[]
+  pavilions   Pavilion[]
+  invitations Invitation[]
 }
 
 model AdditionalCharge {
-  id          Int      @id @default(autoincrement())
-  name        String
-  amount      Float
+  id     Int    @id @default(autoincrement())
+  name   String
+  amount Float
 
-  pavilionId  Int
-  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id])
 
-  payments AdditionalChargePayment[]
-  createdAt   DateTime @default(now())
+  payments  AdditionalChargePayment[]
+  createdAt DateTime                  @default(now())
 }
 
 model AdditionalChargePayment {
-  id                 Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   additionalChargeId Int
   additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id], onDelete: Cascade)
 
-  amountPaid         Float
-  paidAt             DateTime @default(now())
+  amountPaid Float
+  paidAt     DateTime @default(now())
 }
-
 
 model Pavilion {
-  id               Int       @id @default(autoincrement())
-  number           String
-  squareMeters     Float
-  pricePerSqM      Float
-  status           PavilionStatus @default(AVAILABLE)
+  id           Int            @id @default(autoincrement())
+  number       String
+  squareMeters Float
+  pricePerSqM  Float
+  status       PavilionStatus @default(AVAILABLE)
 
-  tenantName       String?
-  rentAmount       Float?
-  utilitiesAmount  Float?
+  tenantName      String?
+  rentAmount      Float?
+  utilitiesAmount Float?
 
   additionalCharges AdditionalCharge[]
-  payments Payment[]
-  contracts Contract[]
+  payments          Payment[]
+  contracts         Contract[]
 
-  storeId          Int
-  store            Store @relation(fields: [storeId], references: [id])
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id])
 }
-
 
 enum PavilionStatus {
   AVAILABLE
@@ -89,41 +88,42 @@ enum PavilionStatus {
 }
 
 model Payment {
-  id          Int       @id @default(autoincrement())
-  pavilionId  Int
-  pavilion    Pavilion  @relation(fields: [pavilionId], references: [id])
+  id            Int      @id @default(autoincrement())
+  pavilionId    Int
+  pavilion      Pavilion @relation(fields: [pavilionId], references: [id])
   period        DateTime
-  rentPaid      Float?    // actual amount paid for rent
-  utilitiesPaid Float?    // actual amount paid for utilities
+  rentPaid      Float? // actual amount paid for rent
+  utilitiesPaid Float? // actual amount paid for utilities
   createdAt     DateTime @default(now())
+
   @@unique([pavilionId, period])
 }
 
 model Contract {
-  id          Int      @id @default(autoincrement())
-  fileName    String
-  filePath    String
-  fileType    String  
+  id       Int    @id @default(autoincrement())
+  fileName String
+  filePath String
+  fileType String
 
-  pavilionId  Int
-  pavilion    Pavilion @relation(fields: [pavilionId], references: [id])
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id])
 
-  uploadedAt  DateTime @default(now())
+  uploadedAt DateTime @default(now())
 }
 
 model Invitation {
-  id          Int                @id @default(autoincrement())
-  email       String
-  storeId     Int
-  token       String             @unique
-  invitedBy   Int                // user who sent the invite
-  expiresAt   DateTime
-  status      InvitationStatus   @default(PENDING)
+  id        Int              @id @default(autoincrement())
+  email     String
+  storeId   Int
+  token     String           @unique
+  invitedBy Int // user who sent the invite
+  expiresAt DateTime
+  status    InvitationStatus @default(PENDING)
 
-  store       Store              @relation(fields: [storeId], references: [id])
-  inviter     User               @relation(fields: [invitedBy], references: [id], name: "inviter")
+  store   Store @relation(fields: [storeId], references: [id])
+  inviter User  @relation(fields: [invitedBy], references: [id], name: "inviter")
 
-  createdAt   DateTime           @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([email, storeId]) // Prevents multiple active invites for same email+store
 }

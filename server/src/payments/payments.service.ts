@@ -96,38 +96,38 @@ export class PaymentsService {
   }
 
   //Create/Update payment record for a month
-  async addPayment(
-    pavilionId: number,
-    period: Date,
-    data: { rentPaid?: number; utilitiesPaid?: number },
-  ) {
-    const normalizedPeriod = startOfMonth(period);
+async addPayment(
+  pavilionId: number,
+  period: Date,
+  data: { rentPaid?: number; utilitiesPaid?: number },
+) {
+  const normalizedPeriod = startOfMonth(period);
 
-    const pavilion = await this.prisma.pavilion.findUnique({
-      where: { id: pavilionId },
-    });
+  const existing = await this.prisma.payment.findUnique({
+    where: {
+      pavilionId_period: { pavilionId, period: normalizedPeriod },
+    },
+  });
 
-    if (!pavilion) {
-      throw new NotFoundException('Pavilion not found');
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    return this.prisma.payment.upsert({
-      where: {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        pavilionId_period: { pavilionId, period: normalizedPeriod },
-      },
-      update: {
-        rentPaid: data.rentPaid,
-        utilitiesPaid: data.utilitiesPaid,
-      },
-      create: {
-        pavilionId,
-        period: normalizedPeriod,
-        rentPaid: data.rentPaid,
-        utilitiesPaid: data.utilitiesPaid,
+  if (existing) {
+    return this.prisma.payment.update({
+      where: { id: existing.id },
+      data: {
+        rentPaid: { increment: data.rentPaid || 0 },
+        utilitiesPaid: { increment: data.utilitiesPaid || 0 },
       },
     });
   }
+
+  return this.prisma.payment.create({
+    data: {
+      pavilionId,
+      period: normalizedPeriod,
+      rentPaid: data.rentPaid || 0,
+      utilitiesPaid: data.utilitiesPaid || 0,
+    },
+  });
+}
 
   list(pavilionId: number) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access

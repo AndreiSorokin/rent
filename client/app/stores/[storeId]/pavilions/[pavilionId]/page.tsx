@@ -101,14 +101,6 @@ export default function PavilionPage() {
                 Записать платёж
               </button>
             )}
-            {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <button
-                onClick={() => setShowAddChargeModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Добавить начисление
-              </button>
-            )}
             {/* Add Edit/Delete pavilion buttons if needed */}
           </div>
         </div>

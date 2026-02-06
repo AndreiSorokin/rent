@@ -1,5 +1,5 @@
 export function getCurrentUserFromToken() {
-  const token = localStorage.getItem('token'); // adjust to your storage
+  const token = localStorage.getItem('token');
   if (!token) return null;
 
   try {
