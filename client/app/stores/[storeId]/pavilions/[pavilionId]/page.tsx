@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
@@ -28,6 +28,7 @@ export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
   const storeIdNum = Number(storeId);
   const pavilionIdNum = Number(pavilionId);
+  const router = useRouter();
 
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,14 @@ export default function PavilionPage() {
   const [addingChargeForPavilion, setAddingChargeForPavilion] = useState<Pavilion | null>(null);
 
   // Permissions (you can fetch them from store or user context later)
-  const permissions = ['VIEW_PAVILIONS', 'EDIT_PAVILIONS', 'CREATE_PAYMENTS', 'CREATE_CHARGES', 'DELETE_CHARGES']; // example
+  const permissions = [
+  'VIEW_PAVILIONS',
+  'EDIT_PAVILIONS',
+  'CREATE_PAYMENTS',
+  'CREATE_CHARGES',
+  'DELETE_CHARGES',
+  'DELETE_PAVILIONS'
+];
 
   const fetchPavilion = async () => {
     try {
@@ -68,6 +76,22 @@ export default function PavilionPage() {
 
   const handleActionSuccess = () => {
     fetchPavilion(); // refresh after add/edit/delete
+  };
+
+  const handleDeletePavilion = async () => {
+    if (!confirm('Вы уверены, что хотите удалить павильон? Это действие нельзя отменить.')) {
+      return;
+    }
+
+    try {
+      await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`, {
+        method: 'DELETE',
+      });
+      // Redirect to store page after deletion
+      router.push(`/stores/${storeIdNum}`);
+    } catch (err: any) {
+      setError(err.message || 'Ошибка удаления павильона');
+    }
   };
 
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
@@ -101,7 +125,15 @@ export default function PavilionPage() {
                 Записать платёж
               </button>
             )}
-            {/* Add Edit/Delete pavilion buttons if needed */}
+            {/* NEW: Delete button */}
+            {hasPermission(permissions, 'DELETE_PAVILIONS') && (
+              <button
+                onClick={handleDeletePavilion}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Удалить павильон
+              </button>
+            )}
           </div>
         </div>
 
