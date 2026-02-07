@@ -69,4 +69,14 @@ export class AdditionalChargeController {
     console.log('dfgdgdfg:', pavilionId, chargeId);
     return this.service.delete(pavilionId, chargeId);
   }
+
+  @Delete(':chargeId/payments/:paymentId')
+  @Permissions(Permission.DELETE_CHARGES)
+  deletePayment(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('chargeId', ParseIntPipe) chargeId: number,
+    @Param('paymentId', ParseIntPipe) paymentId: number,
+  ) {
+    return this.service.deletePayment(pavilionId, chargeId, paymentId);
+  }
 }

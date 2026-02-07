@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -22,7 +23,6 @@ interface Pavilion {
   utilitiesAmount?: number;
   payments: any[];
   additionalCharges: any[];
-  // add more fields as needed
 }
 
 export default function PavilionPage() {
@@ -34,6 +34,7 @@ export default function PavilionPage() {
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCharges, setExpandedCharges] = useState<Set<number>>(new Set());
 
   // Modals state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -104,6 +105,32 @@ export default function PavilionPage() {
     alert('Ошибка удаления начисления');
   }
 };
+
+const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
+  if (!confirm('Удалить этот платёж?')) return;
+
+  //TODO: to lib
+  await apiFetch(
+  `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
+  { method: 'DELETE' }
+);
+
+  handleActionSuccess();
+};
+
+const toggleCharge = (chargeId: number) => {
+  setExpandedCharges(prev => {
+    const next = new Set(prev);
+    if (next.has(chargeId)) {
+      next.delete(chargeId);
+    } else {
+      next.add(chargeId);
+    }
+    return next;
+  });
+};
+
+
 
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600 text-lg">{error}</div>;
@@ -223,69 +250,153 @@ export default function PavilionPage() {
         </div>
 
         {/* Additional Charges */}
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
-            {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <button
-                onClick={() => setShowAddChargeModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-              >
-                + Новое начисление
-              </button>
-            )}
-          </div>
+<div className="bg-white rounded-xl shadow p-6">
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
+    {hasPermission(permissions, 'CREATE_CHARGES') && (
+      <button
+        onClick={() => setShowAddChargeModal(true)}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+      >
+        + Новое начисление
+      </button>
+    )}
+  </div>
 
-          {pavilion.additionalCharges.length === 0 ? (
-            <p className="text-gray-500">Нет дополнительных начислений</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
+  {pavilion.additionalCharges.length === 0 ? (
+    <p className="text-gray-500">Нет дополнительных начислений</p>
+  ) : (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Оплачено</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Схождение</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-gray-200">
+          {pavilion.additionalCharges.map((charge: any) => {
+            const totalPaid =
+              charge.payments?.reduce((sum: number, p: any) => sum + (p.amountPaid ?? 0), 0) ?? 0;
+
+            const balance = totalPaid - charge.amount;
+            const isPaid = balance >= 0;
+            const isExpanded = expandedCharges.has(charge.id);
+            const hasPayments = (charge.payments?.length ?? 0) > 0;
+
+            return (
+              <React.Fragment key={charge.id}>
+                <tr>
+                  {/* Arrow */}
+                  <td className="px-4 py-4">
+                    {hasPayments ? (
+                      <button
+                        onClick={() => toggleCharge(charge.id)}
+                        className="text-gray-600 hover:text-gray-900 transition"
+                        title={isExpanded ? 'Скрыть историю оплат' : 'Показать историю оплат'}
+                      >
+                        {isExpanded ? '▼' : '▶'}
+                      </button>
+                    ) : (
+                      <span className="text-gray-300">•</span>
+                    )}
+                  </td>
+
+                  <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
+
+                  <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)}$</td>
+
+                  <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)}$</td>
+
+                  <td
+                    className={`px-6 py-4 text-sm font-medium ${
+                      balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-gray-600'
+                    }`}
+                  >
+                    {balance > 0 ? '+' : ''}
+                    {balance.toFixed(2)}$
+                  </td>
+
+                  <td className="px-6 py-4 text-sm">
+                    {isPaid ? (
+                      <span className="text-green-700 font-semibold">Оплачено</span>
+                    ) : (
+                      <span className="text-amber-600 font-semibold">Не оплачено</span>
+                    )}
+                  </td>
+
+                  <td className="px-6 py-4 text-right text-sm space-x-3">
+                    {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
+                      <button
+                        onClick={() =>
+                          setPayingCharge({
+                            pavilionId: pavilionIdNum,
+                            chargeId: charge.id,
+                            name: charge.name,
+                            amount: charge.amount - totalPaid,
+                          })
+                        }
+                        className="text-green-600 hover:underline"
+                      >
+                        Оплатить
+                      </button>
+                    )}
+
+                    {hasPermission(permissions, 'DELETE_CHARGES') && (
+                      <button
+                        onClick={() => handleDeleteCharge(charge.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </td>
+                </tr>
+
+                {/* Payment history (collapsed by default) */}
+                {isExpanded && (
+                  <tr className="bg-gray-50">
+                    <td colSpan={7} className="px-6 py-3 text-sm text-gray-700">
+                      {charge.payments?.length ? (
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold text-gray-500">История оплат</div>
+
+                          {charge.payments.map((p: any) => (
+                            <div key={p.id} className="flex items-center justify-between gap-3">
+                              <span>{new Date(p.paidAt).toLocaleDateString()}</span>
+
+                              <span className="font-medium">{Number(p.amountPaid).toFixed(2)}$</span>
+
+                              <button
+                                onClick={() => handleDeleteChargePayment(charge.id, p.id)}
+                                className="text-red-600 hover:underline text-xs"
+                              >
+                                Удалить
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">Оплат пока нет</div>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pavilion.additionalCharges.map((charge: any) => (
-                    <tr key={charge.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{charge.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">{charge.amount.toFixed(2)}$</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-  {hasPermission(permissions, 'CREATE_PAYMENTS') && (
-    <button
-      onClick={() =>
-        setPayingCharge({
-          pavilionId: pavilionIdNum,
-          chargeId: charge.id,
-          name: charge.name,
-          amount: charge.amount,
-        })
-      }
-      className="text-green-600 hover:underline mr-3"
-    >
-      Оплатить
-    </button>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   )}
+</div>
 
-  {hasPermission(permissions, 'DELETE_CHARGES') && (
-    <button
-  onClick={() => handleDeleteCharge(charge.id)}
-  className="text-red-600 hover:underline"
->
-  Удалить
-</button>
-  )}
-</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
 
         {/* Modals */}
         {showPaymentModal && (

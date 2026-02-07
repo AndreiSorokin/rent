@@ -5,6 +5,30 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class AdditionalChargeService {
   constructor(private prisma: PrismaService) {}
 
+  async deletePayment(
+    pavilionId: number,
+    additionalChargeId: number,
+    paymentId: number,
+  ) {
+  // Ensure payment belongs to the charge, and charge belongs to the pavilion
+  const payment = await this.prisma.additionalChargePayment.findFirst({
+    where: {
+      id: paymentId,
+      additionalChargeId,
+      additionalCharge: { pavilionId },
+    },
+  });
+
+  if (!payment) {
+    throw new NotFoundException('Payment not found');
+  }
+
+  return this.prisma.additionalChargePayment.delete({
+    where: { id: paymentId },
+  });
+}
+
+
   async payCharge(additionalChargeId: number, amountPaid: number) {
     const charge = await this.prisma.additionalCharge.findUnique({
       where: { id: additionalChargeId },

@@ -29,22 +29,20 @@ export class PavilionsService {
     });
   }
 
-  async findOne(storeId: number, id: number) {
-    const pavilion = await this.prisma.pavilion.findFirst({
-      where: { id, storeId },
-      include: {
-        additionalCharges: true,
-        payments: true,
-        contracts: true,
+async findOne(storeId: number, id: number) {
+  return this.prisma.pavilion.findFirst({
+    where: { id, storeId },
+    include: {
+      additionalCharges: {
+        orderBy: { createdAt: 'asc' },
+        include: {
+          payments: { orderBy: { paidAt: 'asc' } },
+        },
       },
-    });
-
-    if (!pavilion) {
-      throw new NotFoundException('Pavilion not found');
-    }
-
-    return pavilion;
-  }
+      payments: { orderBy: { period: 'asc' } },
+    },
+  });
+}
 
   async update(
     storeId: number,
