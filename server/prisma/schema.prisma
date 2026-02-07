@@ -90,7 +90,7 @@ enum PavilionStatus {
 model Payment {
   id            Int      @id @default(autoincrement())
   pavilionId    Int
-  pavilion      Pavilion @relation(fields: [pavilionId], references: [id])
+  pavilion      Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
   period        DateTime
   rentPaid      Float? // actual amount paid for rent
   utilitiesPaid Float? // actual amount paid for utilities

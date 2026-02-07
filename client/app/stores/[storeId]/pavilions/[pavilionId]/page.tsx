@@ -9,6 +9,7 @@ import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePav
 import { AddAdditionalChargeModal } from '@/app/dashboard/components/AddAdditionalChargeModal';
 import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
 import { PayAdditionalChargeModal } from '@/app/dashboard/components/PayAdditionalChargeModal';
+import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 
 interface Pavilion {
   id: number;
@@ -44,9 +45,7 @@ export default function PavilionPage() {
     name: string;
     amount: number;
   } | null>(null);
-  const [addingChargeForPavilion, setAddingChargeForPavilion] = useState<Pavilion | null>(null);
 
-  // Permissions (you can fetch them from store or user context later)
   const permissions = [
   'VIEW_PAVILIONS',
   'EDIT_PAVILIONS',
@@ -94,6 +93,18 @@ export default function PavilionPage() {
     }
   };
 
+  const handleDeleteCharge = async (chargeId: number) => {
+  if (!confirm('Удалить это начисление?')) return;
+
+  try {
+    await deleteAdditionalCharge(pavilionIdNum, chargeId);
+    handleActionSuccess(); // refresh pavilion data
+  } catch (err: any) {
+    console.error(err);
+    alert('Ошибка удаления начисления');
+  }
+};
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600 text-lg">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
@@ -117,15 +128,6 @@ export default function PavilionPage() {
 
           {/* Action buttons */}
           <div className="flex flex-wrap gap-3">
-            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-              >
-                Записать платёж
-              </button>
-            )}
-            {/* NEW: Delete button */}
             {hasPermission(permissions, 'DELETE_PAVILIONS') && (
               <button
                 onClick={handleDeletePavilion}
@@ -172,10 +174,11 @@ export default function PavilionPage() {
         <div className="bg-white rounded-xl shadow p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Платежи</h2>
-            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
+            {hasPermission(permissions, 'CREATE_PAYMENTS') &&
+             pavilion.status === 'RENTED' && (
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                className="px-4 py-2 bg-green-600 text-white rounded"
               >
                 + Новый платёж
               </button>
@@ -251,13 +254,31 @@ export default function PavilionPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{charge.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">{charge.amount.toFixed(2)}$</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        {hasPermission(permissions, 'EDIT_CHARGES') && (
-                          <button className="text-blue-600 hover:underline mr-3">Изменить</button>
-                        )}
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button className="text-red-600 hover:underline">Удалить</button>
-                        )}
-                      </td>
+  {hasPermission(permissions, 'CREATE_PAYMENTS') && (
+    <button
+      onClick={() =>
+        setPayingCharge({
+          pavilionId: pavilionIdNum,
+          chargeId: charge.id,
+          name: charge.name,
+          amount: charge.amount,
+        })
+      }
+      className="text-green-600 hover:underline mr-3"
+    >
+      Оплатить
+    </button>
+  )}
+
+  {hasPermission(permissions, 'DELETE_CHARGES') && (
+    <button
+  onClick={() => handleDeleteCharge(charge.id)}
+  className="text-red-600 hover:underline"
+>
+  Удалить
+</button>
+  )}
+</td>
                     </tr>
                   ))}
                 </tbody>
@@ -278,19 +299,18 @@ export default function PavilionPage() {
 
         {showAddChargeModal && (
           <AddAdditionalChargeModal
-                    storeId={storeId}
-                    pavilionId={addingChargeForPavilion.id}
-                    onClose={() => setAddingChargeForPavilion(null)}
-                    onSaved={refresh}
-                  />
+            storeId={storeIdNum}
+            pavilionId={pavilionIdNum}
+            onClose={() => setShowAddChargeModal(false)}
+            onSaved={handleActionSuccess}
+          />
         )}
-
         {editingPavilion && (
                 <EditPavilionModal
                   storeId={storeId}
                   pavilion={editingPavilion}
                   onClose={() => setEditingPavilion(null)}
-                  onSaved={refresh}
+                  onSaved={handleActionSuccess}
                 />
               )}
 
@@ -301,9 +321,18 @@ export default function PavilionPage() {
                         chargeName={payingCharge.name}
                         expectedAmount={payingCharge.amount}
                         onClose={() => setPayingCharge(null)}
-                        onSaved={refresh}
+                        onSaved={handleActionSuccess}
                       />
                     )}
+
+                    {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+  <button
+    onClick={() => setEditingPavilion(pavilion)}
+    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+  >
+    Редактировать
+  </button>
+)}
 
       </div>
     </div>

@@ -18,23 +18,6 @@ export class PavilionsService {
     });
   }
 
-  // async create(
-  //   storeId: number,
-  //   data: {
-  //     number: string;
-  //     squareMeters: number;
-  //     pricePerSqM: number;
-  //     status?: PavilionStatus;
-  //   },
-  // ) {
-  //   return this.prisma.pavilion.create({
-  //     data: {
-  //       ...data,
-  //       storeId,
-  //     },
-  //   });
-  // }
-
   async findAll(storeId: number) {
     return this.prisma.pavilion.findMany({
       where: { storeId },
