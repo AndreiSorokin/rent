@@ -101,6 +101,36 @@ export default function StorePage() {
     };
   };
 
+  const getChargesStatus = (pavilion: any) => {
+  const charges = pavilion.additionalCharges ?? [];
+  if (charges.length === 0) {
+    return { text: 'Доп. начисления: нет', colorClass: 'text-gray-500' };
+  }
+
+  const expected = charges.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+
+  const paid = charges.reduce((sum: number, c: any) => {
+    const paidForCharge =
+      c.payments?.reduce((s: number, p: any) => s + (p.amountPaid || 0), 0) ?? 0;
+    return sum + paidForCharge;
+  }, 0);
+
+  const balance = paid - expected;
+
+  if (balance > 0) {
+    return { text: `Доп. начисления: переплата ${balance.toFixed(2)}$`, colorClass: 'text-green-600' };
+  }
+
+  if (balance == 0) {
+    return { text: 'Доп. начисления: оплачено', colorClass: 'text-green-600' };
+  }
+
+  return {
+    text: `Доп. начисления: долг ${Math.abs(balance).toFixed(2)}$`,
+    colorClass: 'text-red-600',
+  };
+};
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6 md:space-y-8">
@@ -163,6 +193,7 @@ export default function StorePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {store.pavilions.map((p: any) => {
                 const summary = getPaymentSummary(p);
+                const chargesStatus = getChargesStatus(p);
                 return (
                   <Link
                     key={p.id}
@@ -180,6 +211,9 @@ export default function StorePage() {
                     </p>
                     <p className={`text-base font-medium ${summary.colorClass}`}>
                       {summary.text}
+                    </p>
+                    <p className={`text-sm mt-1 ${chargesStatus.colorClass}`}>
+                      {chargesStatus.text}
                     </p>
                   </Link>
                 );
