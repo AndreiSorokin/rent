@@ -103,8 +103,8 @@ export function CreatePavilionPaymentModal({
         ) : (
           <p className="text-sm text-gray-600 mb-4">
             Текущая оплаченная сумма за месяц: 
-            <strong> {currentRentPaid.toFixed(2)}$</strong> (аренда) + 
-            <strong> {currentUtilitiesPaid.toFixed(2)}$</strong> (коммунальные)
+            <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) + 
+            <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные)
           </p>
         )}
 

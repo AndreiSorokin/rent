@@ -49,6 +49,7 @@ export class PaymentsService {
     const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
     const monthlyDiscount = this.getMonthlyDiscountTotal(
       pavilion.discounts,
+      pavilion.squareMeters,
       normalizedPeriod,
     );
     const expectedRent = Math.max(baseRent - monthlyDiscount, 0);
@@ -105,6 +106,7 @@ export class PaymentsService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
+    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -116,7 +118,7 @@ export class PaymentsService {
         discount.endsAt === null || discount.endsAt >= monthStart;
 
       if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-        return sum + discount.amount;
+        return sum + discount.amount * squareMeters;
       }
 
       return sum;

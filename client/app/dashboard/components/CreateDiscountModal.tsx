@@ -37,22 +37,22 @@ export function CreateDiscountModal({
   const handleSave = async () => {
     const amountNumber = Number(amount);
     if (!amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
-      setError('Enter a valid discount amount');
+      setError('Введите корректную сумму скидки за кв. метр');
       return;
     }
 
     if (!startsAtMonth) {
-      setError('Select a start month');
+      setError('Выберите начальный месяц');
       return;
     }
 
     if (hasEndDate && !endsAtMonth) {
-      setError('Select an end month or choose infinite duration');
+      setError('Выберите конечный месяц или установите бесконечную длительность');
       return;
     }
 
     if (hasEndDate && endsAtMonth < startsAtMonth) {
-      setError('End month must not be before start month');
+      setError('Конечный месяц не может быть раньше начального месяца');
       return;
     }
 
@@ -79,13 +79,13 @@ export function CreateDiscountModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-6">
-        <h2 className="mb-4 text-xl font-bold">Add Discount</h2>
+        <h2 className="mb-4 text-xl font-bold">Добавить скидку</h2>
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Amount ($)</label>
+            <label className="mb-1 block text-sm font-medium">Скидка за кв. метер (Рублей)</label>
             <input
               type="number"
               step="0.01"
@@ -93,12 +93,15 @@ export function CreateDiscountModal({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className="w-full rounded border px-3 py-2"
-              placeholder="100"
+              placeholder="1"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Пример: для 100 м2 павильона и скидки 1Р/м2, ежемесячная скидка составляет 100Р.
+            </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Start month</label>
+            <label className="mb-1 block text-sm font-medium">Начало месяца</label>
             <input
               type="month"
               value={startsAtMonth}
@@ -113,12 +116,12 @@ export function CreateDiscountModal({
               checked={hasEndDate}
               onChange={(e) => setHasEndDate(e.target.checked)}
             />
-            Set an end month
+            Установить конечный месяц
           </label>
 
           {hasEndDate && (
             <div>
-              <label className="mb-1 block text-sm font-medium">End month</label>
+              <label className="mb-1 block text-sm font-medium">Конечный месяц</label>
               <input
                 type="month"
                 value={endsAtMonth}
@@ -129,13 +132,12 @@ export function CreateDiscountModal({
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Note (optional)</label>
+            <label className="mb-1 block text-sm font-medium">Примечание (опционально)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full rounded border px-3 py-2"
-              placeholder="Loyal customer discount"
             />
           </div>
         </div>
@@ -146,7 +148,7 @@ export function CreateDiscountModal({
             disabled={saving}
             className="rounded border px-4 py-2 hover:bg-gray-100 disabled:opacity-50"
           >
-            Cancel
+            Отмена
           </button>
           <button
             onClick={handleSave}

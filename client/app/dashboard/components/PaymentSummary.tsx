@@ -6,15 +6,15 @@ export function PaymentSummary({
 }) {
   return (
     <div className="border rounded p-4">
-      <h2 className="font-semibold mb-2">Payment Summary</h2>
+      <h2 className="font-semibold mb-2">Баланс</h2>
 
-      <div>Expected: ${analytics.expected.total}</div>
+      <div>Ожидается: {analytics.expected.total} рублей</div>
       {'discount' in analytics.expected && (
-        <div>Discounts: -${analytics.expected.discount}</div>
+        <div>Скидки: {analytics.expected.discount} рублей</div>
       )}
-      <div>Paid: ${analytics.paid.total}</div>
+      <div>Оплачено: {analytics.paid.total} рублей</div>
       <div className="font-medium">
-        Balance: ${analytics.debt}
+        Схождение: {analytics.debt * -1} рублей
       </div>
     </div>
   );

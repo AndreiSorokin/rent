@@ -47,7 +47,7 @@ model AdditionalCharge {
   amount Float
 
   pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id])
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
 
   payments  AdditionalChargePayment[]
   createdAt DateTime                  @default(now())

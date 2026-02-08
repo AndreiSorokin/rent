@@ -50,7 +50,7 @@ export class AnalyticsService {
           discount.endsAt === null || discount.endsAt >= periodStart;
 
         if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-          return sum + discount.amount;
+          return sum + discount.amount * p.squareMeters;
         }
 
         return sum;

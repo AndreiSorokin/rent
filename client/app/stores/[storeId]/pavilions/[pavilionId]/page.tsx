@@ -174,7 +174,7 @@ export default function PavilionPage() {
       const startsBeforeMonthEnds = startsAt <= monthEnd;
       const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
       return startsBeforeMonthEnds && endsAfterMonthStarts
-        ? sum + discount.amount
+        ? sum + discount.amount * pavilion.squareMeters
         : sum;
     }, 0);
   };
@@ -268,7 +268,8 @@ export default function PavilionPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Per m2</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Monthly total</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Start</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">End</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
@@ -279,7 +280,10 @@ export default function PavilionPage() {
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
-                      <td className="px-6 py-4 text-sm font-medium">${discount.amount.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm font-medium">${discount.amount.toFixed(2)}/m2</td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        ${(discount.amount * pavilion.squareMeters).toFixed(2)}
+                      </td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
                       <td className="px-6 py-4 text-sm">

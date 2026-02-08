@@ -98,13 +98,12 @@ export function StoreUsersSection({
   return (
     <div className="border rounded-lg p-6 bg-white shadow-sm">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Store Users & Permissions</h2>
         {hasPermission(permissions, 'INVITE_USERS') && (
           <button
             onClick={() => setShowInviteModal(true)}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
           >
-            + Invite User
+            + Пригласить пользователя
           </button>
         )}
       </div>
@@ -121,9 +120,9 @@ export function StoreUsersSection({
       )}
 
       {loading ? (
-        <p className="text-gray-500">Loading users...</p>
+        <p className="text-gray-500">Загрузка пользователей...</p>
       ) : users.length === 0 ? (
-        <p className="text-gray-500 italic">No users in this store yet.</p>
+        <p className="text-gray-500 italic">В этом магазине пока нет пользователей.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -133,13 +132,13 @@ export function StoreUsersSection({
                   Email
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
+                  Имя
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Permissions
+                  Права доступа
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -157,7 +156,7 @@ export function StoreUsersSection({
                       onClick={() => openPermissionsModal(su.user.id, su.permissions, su.user.email)}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      Manage Permissions ({su.permissions.length})
+                      Управление правами доступа ({su.permissions.length})
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -165,7 +164,7 @@ export function StoreUsersSection({
                       onClick={() => handleRemove(su.user.id, su.user.email)}
                       className="text-red-600 hover:text-red-800 transition-colors"
                     >
-                      Remove
+                      Удалить
                     </button>
                   </td>
                 </tr>

@@ -66,7 +66,20 @@ export default function StorePage() {
   const permissions = store.permissions || [];
 
   const getPaymentSummary = (pavilion: any) => {
-    const monthlyExpected = (pavilion.squareMeters || 0) * (pavilion.pricePerSqM || 0);
+    const baseExpected = (pavilion.squareMeters || 0) * (pavilion.pricePerSqM || 0);
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthlyDiscount = (pavilion.discounts || []).reduce((sum: number, d: any) => {
+      const startsAt = new Date(d.startsAt);
+      const endsAt = d.endsAt ? new Date(d.endsAt) : null;
+      const startsBeforeMonthEnds = startsAt <= monthEnd;
+      const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
+      return startsBeforeMonthEnds && endsAfterMonthStarts
+        ? sum + (d.amount || 0) * (pavilion.squareMeters || 0)
+        : sum;
+    }, 0);
+    const monthlyExpected = Math.max(baseExpected - monthlyDiscount, 0);
 
     if (!pavilion.payments || pavilion.payments.length === 0) {
       return {
