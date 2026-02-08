@@ -23,6 +23,7 @@ export class PavilionsService {
       where: { storeId },
       include: {
         additionalCharges: true,
+        discounts: true,
         payments: true,
         contracts: true,
       },
@@ -39,6 +40,7 @@ async findOne(storeId: number, id: number) {
           payments: { orderBy: { paidAt: 'asc' } },
         },
       },
+      discounts: { orderBy: { createdAt: 'desc' } },
       payments: { orderBy: { period: 'asc' } },
     },
   });

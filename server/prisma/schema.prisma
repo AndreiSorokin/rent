@@ -75,11 +75,28 @@ model Pavilion {
   utilitiesAmount Float?
 
   additionalCharges AdditionalCharge[]
+  discounts         PavilionDiscount[]
   payments          Payment[]
   contracts         Contract[]
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id])
+}
+
+model PavilionDiscount {
+  id Int @id @default(autoincrement())
+
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  amount   Float
+  startsAt DateTime
+  endsAt   DateTime?
+  note     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([pavilionId, startsAt, endsAt])
 }
 
 enum PavilionStatus {

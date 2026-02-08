@@ -94,6 +94,7 @@ export class StoresService {
                 payments: true,
               },
             },
+            discounts: true,
           },
         },
         storeUsers: {
@@ -111,6 +112,7 @@ export class StoresService {
 
     return {
       ...store,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
     };
   }

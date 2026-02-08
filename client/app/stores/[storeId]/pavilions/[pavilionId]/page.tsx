@@ -1,18 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/api';
-import { hasPermission } from '@/lib/permissions';
-import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
+import { useParams, useRouter } from 'next/navigation';
 import { AddAdditionalChargeModal } from '@/app/dashboard/components/AddAdditionalChargeModal';
+import { CreateDiscountModal } from '@/app/dashboard/components/CreateDiscountModal';
+import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
 import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
 import { PayAdditionalChargeModal } from '@/app/dashboard/components/PayAdditionalChargeModal';
+import { apiFetch } from '@/lib/api';
 import { deleteAdditionalCharge } from '@/lib/additionalCharges';
+import { deletePavilionDiscount } from '@/lib/discounts';
+import { hasPermission } from '@/lib/permissions';
 
-interface Pavilion {
+type Discount = {
+  id: number;
+  amount: number;
+  startsAt: string;
+  endsAt: string | null;
+  note?: string | null;
+};
+
+type Pavilion = {
   id: number;
   number: string;
   squareMeters: number;
@@ -23,7 +32,8 @@ interface Pavilion {
   utilitiesAmount?: number;
   payments: any[];
   additionalCharges: any[];
-}
+  discounts: Discount[];
+};
 
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
@@ -36,9 +46,9 @@ export default function PavilionPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedCharges, setExpandedCharges] = useState<Set<number>>(new Set());
 
-  // Modals state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
   const [payingCharge, setPayingCharge] = useState<{
     pavilionId: number;
@@ -48,20 +58,22 @@ export default function PavilionPage() {
   } | null>(null);
 
   const permissions = [
-  'VIEW_PAVILIONS',
-  'EDIT_PAVILIONS',
-  'CREATE_PAYMENTS',
-  'CREATE_CHARGES',
-  'DELETE_CHARGES',
-  'DELETE_PAVILIONS'
-];
+    'VIEW_PAVILIONS',
+    'EDIT_PAVILIONS',
+    'CREATE_PAYMENTS',
+    'CREATE_CHARGES',
+    'DELETE_CHARGES',
+    'DELETE_PAVILIONS',
+  ];
 
   const fetchPavilion = async () => {
     try {
-      const data = await apiFetch<Pavilion>(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`);
+      const data = await apiFetch<Pavilion>(
+        `/stores/${storeIdNum}/pavilions/${pavilionIdNum}`,
+      );
       setPavilion(data);
     } catch (err) {
-      setError('Не удалось загрузить данные павильона');
+      setError('Failed to load pavilion');
       console.error(err);
     } finally {
       setLoading(false);
@@ -75,169 +87,279 @@ export default function PavilionPage() {
   }, [storeIdNum, pavilionIdNum]);
 
   const handleActionSuccess = () => {
-    fetchPavilion(); // refresh after add/edit/delete
+    fetchPavilion();
   };
 
   const handleDeletePavilion = async () => {
-    if (!confirm('Вы уверены, что хотите удалить павильон? Это действие нельзя отменить.')) {
-      return;
-    }
+    if (!confirm('Delete this pavilion?')) return;
 
     try {
       await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`, {
         method: 'DELETE',
       });
-      // Redirect to store page after deletion
       router.push(`/stores/${storeIdNum}`);
     } catch (err: any) {
-      setError(err.message || 'Ошибка удаления павильона');
+      setError(err.message || 'Failed to delete pavilion');
     }
   };
 
   const handleDeleteCharge = async (chargeId: number) => {
-  if (!confirm('Удалить это начисление?')) return;
+    if (!confirm('Delete this additional charge?')) return;
 
-  try {
-    await deleteAdditionalCharge(pavilionIdNum, chargeId);
-    handleActionSuccess(); // refresh pavilion data
-  } catch (err: any) {
-    console.error(err);
-    alert('Ошибка удаления начисления');
-  }
-};
-
-const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
-  if (!confirm('Удалить этот платёж?')) return;
-
-  //TODO: to lib
-  await apiFetch(
-  `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
-  { method: 'DELETE' }
-);
-
-  handleActionSuccess();
-};
-
-const toggleCharge = (chargeId: number) => {
-  setExpandedCharges(prev => {
-    const next = new Set(prev);
-    if (next.has(chargeId)) {
-      next.delete(chargeId);
-    } else {
-      next.add(chargeId);
+    try {
+      await deleteAdditionalCharge(pavilionIdNum, chargeId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete additional charge');
     }
-    return next;
-  });
-};
+  };
 
+  const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
+    if (!confirm('Delete this charge payment?')) return;
 
+    await apiFetch(
+      `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
+      { method: 'DELETE' },
+    );
+    handleActionSuccess();
+  };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
-  if (error) return <div className="p-6 text-center text-red-600 text-lg">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
+  const handleDeleteDiscount = async (discountId: number) => {
+    if (!confirm('Delete this discount?')) return;
+
+    try {
+      await deletePavilionDiscount(storeIdNum, pavilionIdNum, discountId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete discount');
+    }
+  };
+
+  const toggleCharge = (chargeId: number) => {
+    setExpandedCharges((prev) => {
+      const next = new Set(prev);
+      if (next.has(chargeId)) next.delete(chargeId);
+      else next.add(chargeId);
+      return next;
+    });
+  };
+
+  const getDiscountForPeriod = (period: Date) => {
+    if (!pavilion) return 0;
+
+    const monthStart = new Date(
+      period.getFullYear(),
+      period.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+    const monthEnd = new Date(
+      period.getFullYear(),
+      period.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    return pavilion.discounts.reduce((sum, discount) => {
+      const startsAt = new Date(discount.startsAt);
+      const endsAt = discount.endsAt ? new Date(discount.endsAt) : null;
+      const startsBeforeMonthEnds = startsAt <= monthEnd;
+      const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
+      return startsBeforeMonthEnds && endsAfterMonthStarts
+        ? sum + discount.amount
+        : sum;
+    }, 0);
+  };
+
+  const isDiscountActiveNow = (discount: Discount) => {
+    const now = new Date();
+    const startsAt = new Date(discount.startsAt);
+    const endsAt = discount.endsAt ? new Date(discount.endsAt) : null;
+    return startsAt <= now && (endsAt === null || endsAt >= now);
+  };
+
+  const formatDate = (value: string | null) =>
+    value ? new Date(value).toLocaleDateString() : 'Infinite';
+
+  if (loading) return <div className="p-6 text-center text-lg">Loading...</div>;
+  if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600">Pavilion not found</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Header with back link */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <Link
               href={`/stores/${storeId}`}
-              className="text-blue-600 hover:underline mb-2 inline-block"
+              className="mb-2 inline-block text-blue-600 hover:underline"
             >
-              ← Назад к магазину
+              Back to store
             </Link>
-            <h1 className="text-2xl md:text-3xl font-bold">
-              Павильон {pavilion.number}
-            </h1>
+            <h1 className="text-2xl font-bold md:text-3xl">Pavilion {pavilion.number}</h1>
           </div>
-
-          {/* Action buttons */}
           <div className="flex flex-wrap gap-3">
             {hasPermission(permissions, 'DELETE_PAVILIONS') && (
               <button
                 onClick={handleDeletePavilion}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
               >
-                Удалить павильон
+                Delete pavilion
               </button>
             )}
           </div>
         </div>
 
-        {/* Main info */}
-        <div className="bg-white rounded-xl shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Основная информация</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">Main information</h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <p className="text-gray-600">Площадь</p>
-              <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
+              <p className="text-gray-600">Area</p>
+              <p className="text-lg font-medium">{pavilion.squareMeters} m2</p>
             </div>
             <div>
-              <p className="text-gray-600">Цена за м²</p>
-              <p className="text-lg font-medium">{pavilion.pricePerSqM}$</p>
+              <p className="text-gray-600">Price per m2</p>
+              <p className="text-lg font-medium">${pavilion.pricePerSqM}</p>
             </div>
             <div>
-              <p className="text-gray-600">Статус</p>
+              <p className="text-gray-600">Status</p>
               <p className="text-lg font-medium">{pavilion.status}</p>
             </div>
             <div>
-              <p className="text-gray-600">Арендатор</p>
-              <p className="text-lg font-medium">{pavilion.tenantName || 'Свободен'}</p>
+              <p className="text-gray-600">Tenant</p>
+              <p className="text-lg font-medium">{pavilion.tenantName || 'None'}</p>
             </div>
             <div>
-              <p className="text-gray-600">Арендная плата</p>
-              <p className="text-lg font-medium">{pavilion.rentAmount || '—'}$</p>
+              <p className="text-gray-600">Rent</p>
+              <p className="text-lg font-medium">{pavilion.rentAmount || '-'}$</p>
             </div>
             <div>
-              <p className="text-gray-600">Коммунальные услуги</p>
-              <p className="text-lg font-medium">{pavilion.utilitiesAmount || '—'}$</p>
+              <p className="text-gray-600">Utilities</p>
+              <p className="text-lg font-medium">{pavilion.utilitiesAmount || '-'}$</p>
             </div>
           </div>
         </div>
 
-        {/* Payments */}
-        <div className="bg-white rounded-xl shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Платежи</h2>
-            {hasPermission(permissions, 'CREATE_PAYMENTS') &&
-             pavilion.status === 'RENTED' && (
+        <div className="rounded-xl bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Discounts</h2>
+            {hasPermission(permissions, 'EDIT_PAVILIONS') && (
               <button
-                onClick={() => setShowPaymentModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded"
+                onClick={() => setShowDiscountModal(true)}
+                className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
               >
-                + Новый платёж
+                + Add discount
               </button>
             )}
           </div>
 
-          {pavilion.payments.length === 0 ? (
-            <p className="text-gray-500">Платежей пока нет</p>
+          {pavilion.discounts.length === 0 ? (
+            <p className="text-gray-500">No discounts</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Период</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ожидаемо</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Оплачено</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Баланс</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Start</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">End</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Note</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.discounts.map((discount) => (
+                    <tr key={discount.id}>
+                      <td className="px-6 py-4 text-sm font-medium">${discount.amount.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
+                      <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {isDiscountActiveNow(discount) ? (
+                          <span className="font-semibold text-green-700">Active</span>
+                        ) : (
+                          <span className="font-semibold text-gray-600">Inactive</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+                          <button
+                            onClick={() => handleDeleteDiscount(discount.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Payments</h2>
+            {hasPermission(permissions, 'CREATE_PAYMENTS') && pavilion.status === 'RENTED' && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="rounded bg-green-600 px-4 py-2 text-white"
+              >
+                + New payment
+              </button>
+            )}
+          </div>
+
+          {pavilion.payments.length === 0 ? (
+            <p className="text-gray-500">No payments yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Period</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Expected</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Paid</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Balance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.payments.map((pay: any) => {
-                    const expected = (pay.expectedRent || 0) + (pay.expectedUtilities || 0);
+                    const periodDate = new Date(pay.period);
+                    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+                    const periodDiscount = getDiscountForPeriod(periodDate);
+                    const expected =
+                      Math.max(baseRent - periodDiscount, 0) + (pavilion.utilitiesAmount || 0);
                     const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
                     const balance = paid - expected;
+
                     return (
                       <tr key={pay.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{pay.period}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{expected.toFixed(2)}$</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">{paid.toFixed(2)}$</td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                          balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-gray-600'
-                        }`}>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">{pay.period}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                          ${expected.toFixed(2)}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">${paid.toFixed(2)}</td>
+                        <td
+                          className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
+                            balance > 0
+                              ? 'text-green-600'
+                              : balance < 0
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                          }`}
+                        >
                           {`${balance > 0 ? '+' : ''}${balance.toFixed(2)}$`}
                         </td>
                       </tr>
@@ -249,156 +371,163 @@ const toggleCharge = (chargeId: number) => {
           )}
         </div>
 
-        {/* Additional Charges */}
-<div className="bg-white rounded-xl shadow p-6">
-  <div className="flex justify-between items-center mb-4">
-    <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
-    {hasPermission(permissions, 'CREATE_CHARGES') && (
-      <button
-        onClick={() => setShowAddChargeModal(true)}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-      >
-        + Новое начисление
-      </button>
-    )}
-  </div>
+        <div className="rounded-xl bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Additional charges</h2>
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <button
+                onClick={() => setShowAddChargeModal(true)}
+                className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                + New charge
+              </button>
+            )}
+          </div>
 
-  {pavilion.additionalCharges.length === 0 ? (
-    <p className="text-gray-500">Нет дополнительных начислений</p>
-  ) : (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"></th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Оплачено</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Схождение</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Действия</th>
-          </tr>
-        </thead>
-
-        <tbody className="divide-y divide-gray-200">
-          {pavilion.additionalCharges.map((charge: any) => {
-            const totalPaid =
-              charge.payments?.reduce((sum: number, p: any) => sum + (p.amountPaid ?? 0), 0) ?? 0;
-
-            const balance = totalPaid - charge.amount;
-            const isPaid = balance >= 0;
-            const isExpanded = expandedCharges.has(charge.id);
-            const hasPayments = (charge.payments?.length ?? 0) > 0;
-
-            return (
-              <React.Fragment key={charge.id}>
-                <tr>
-                  {/* Arrow */}
-                  <td className="px-4 py-4">
-                    {hasPayments ? (
-                      <button
-                        onClick={() => toggleCharge(charge.id)}
-                        className="text-gray-600 hover:text-gray-900 transition"
-                        title={isExpanded ? 'Скрыть историю оплат' : 'Показать историю оплат'}
-                      >
-                        {isExpanded ? '▼' : '▶'}
-                      </button>
-                    ) : (
-                      <span className="text-gray-300">•</span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
-
-                  <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)}$</td>
-
-                  <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)}$</td>
-
-                  <td
-                    className={`px-6 py-4 text-sm font-medium ${
-                      balance > 0 ? 'text-green-600' : balance < 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}
-                  >
-                    {balance > 0 ? '+' : ''}
-                    {balance.toFixed(2)}$
-                  </td>
-
-                  <td className="px-6 py-4 text-sm">
-                    {isPaid ? (
-                      <span className="text-green-700 font-semibold">Оплачено</span>
-                    ) : (
-                      <span className="text-amber-600 font-semibold">Не оплачено</span>
-                    )}
-                  </td>
-
-                  <td className="px-6 py-4 text-right text-sm space-x-3">
-                    {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
-                      <button
-                        onClick={() =>
-                          setPayingCharge({
-                            pavilionId: pavilionIdNum,
-                            chargeId: charge.id,
-                            name: charge.name,
-                            amount: charge.amount - totalPaid,
-                          })
-                        }
-                        className="text-green-600 hover:underline"
-                      >
-                        Оплатить
-                      </button>
-                    )}
-
-                    {hasPermission(permissions, 'DELETE_CHARGES') && (
-                      <button
-                        onClick={() => handleDeleteCharge(charge.id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Удалить
-                      </button>
-                    )}
-                  </td>
-                </tr>
-
-                {/* Payment history (collapsed by default) */}
-                {isExpanded && (
-                  <tr className="bg-gray-50">
-                    <td colSpan={7} className="px-6 py-3 text-sm text-gray-700">
-                      {charge.payments?.length ? (
-                        <div className="space-y-2">
-                          <div className="text-xs font-semibold text-gray-500">История оплат</div>
-
-                          {charge.payments.map((p: any) => (
-                            <div key={p.id} className="flex items-center justify-between gap-3">
-                              <span>{new Date(p.paidAt).toLocaleDateString()}</span>
-
-                              <span className="font-medium">{Number(p.amountPaid).toFixed(2)}$</span>
-
-                              <button
-                                onClick={() => handleDeleteChargePayment(charge.id, p.id)}
-                                className="text-red-600 hover:underline text-xs"
-                              >
-                                Удалить
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500">Оплат пока нет</div>
-                      )}
-                    </td>
+          {pavilion.additionalCharges.length === 0 ? (
+            <p className="text-gray-500">No additional charges</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Paid</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Difference</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
                   </tr>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  )}
-</div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.additionalCharges.map((charge: any) => {
+                    const totalPaid =
+                      charge.payments?.reduce(
+                        (sum: number, p: any) => sum + (p.amountPaid ?? 0),
+                        0,
+                      ) ?? 0;
+                    const balance = totalPaid - charge.amount;
+                    const isPaid = balance >= 0;
+                    const isExpanded = expandedCharges.has(charge.id);
+                    const hasPayments = (charge.payments?.length ?? 0) > 0;
 
+                    return (
+                      <React.Fragment key={charge.id}>
+                        <tr>
+                          <td className="px-4 py-4">
+                            {hasPayments ? (
+                              <button
+                                onClick={() => toggleCharge(charge.id)}
+                                className="text-gray-600 transition hover:text-gray-900"
+                              >
+                                {isExpanded ? 'v' : '>'}
+                              </button>
+                            ) : (
+                              <span className="text-gray-300">.</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
+                          <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)}$</td>
+                          <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)}$</td>
+                          <td
+                            className={`px-6 py-4 text-sm font-medium ${
+                              balance > 0
+                                ? 'text-green-600'
+                                : balance < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-600'
+                            }`}
+                          >
+                            {balance > 0 ? '+' : ''}
+                            {balance.toFixed(2)}$
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            {isPaid ? (
+                              <span className="font-semibold text-green-700">Paid</span>
+                            ) : (
+                              <span className="font-semibold text-amber-600">Not paid</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right text-sm">
+                            {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
+                              <button
+                                onClick={() =>
+                                  setPayingCharge({
+                                    pavilionId: pavilionIdNum,
+                                    chargeId: charge.id,
+                                    name: charge.name,
+                                    amount: charge.amount - totalPaid,
+                                  })
+                                }
+                                className="mr-3 text-green-600 hover:underline"
+                              >
+                                Pay
+                              </button>
+                            )}
+                            {hasPermission(permissions, 'DELETE_CHARGES') && (
+                              <button
+                                onClick={() => handleDeleteCharge(charge.id)}
+                                className="text-red-600 hover:underline"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
 
-        {/* Modals */}
+                        {isExpanded && (
+                          <tr className="bg-gray-50">
+                            <td colSpan={7} className="px-6 py-3 text-sm text-gray-700">
+                              {charge.payments?.length ? (
+                                <div className="space-y-2">
+                                  <div className="text-xs font-semibold text-gray-500">
+                                    Payment history
+                                  </div>
+                                  {charge.payments.map((p: any) => (
+                                    <div
+                                      key={p.id}
+                                      className="flex items-center justify-between gap-3"
+                                    >
+                                      <span>{new Date(p.paidAt).toLocaleDateString()}</span>
+                                      <span className="font-medium">
+                                        {Number(p.amountPaid).toFixed(2)}$
+                                      </span>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteChargePayment(charge.id, p.id)
+                                        }
+                                        className="text-xs text-red-600 hover:underline"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500">No payments</div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+          <button
+            onClick={() => setEditingPavilion(pavilion)}
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            Edit pavilion
+          </button>
+        )}
+
         {showPaymentModal && (
           <CreatePavilionPaymentModal
             storeId={storeIdNum}
@@ -410,41 +539,40 @@ const toggleCharge = (chargeId: number) => {
 
         {showAddChargeModal && (
           <AddAdditionalChargeModal
-            storeId={storeIdNum}
             pavilionId={pavilionIdNum}
             onClose={() => setShowAddChargeModal(false)}
             onSaved={handleActionSuccess}
           />
         )}
+
+        {showDiscountModal && (
+          <CreateDiscountModal
+            storeId={storeIdNum}
+            pavilionId={pavilionIdNum}
+            onClose={() => setShowDiscountModal(false)}
+            onSaved={handleActionSuccess}
+          />
+        )}
+
         {editingPavilion && (
-                <EditPavilionModal
-                  storeId={storeId}
-                  pavilion={editingPavilion}
-                  onClose={() => setEditingPavilion(null)}
-                  onSaved={handleActionSuccess}
-                />
-              )}
+          <EditPavilionModal
+            storeId={storeIdNum}
+            pavilion={editingPavilion}
+            onClose={() => setEditingPavilion(null)}
+            onSaved={handleActionSuccess}
+          />
+        )}
 
-              {payingCharge && (
-                      <PayAdditionalChargeModal
-                        pavilionId={payingCharge.pavilionId}
-                        chargeId={payingCharge.chargeId}
-                        chargeName={payingCharge.name}
-                        expectedAmount={payingCharge.amount}
-                        onClose={() => setPayingCharge(null)}
-                        onSaved={handleActionSuccess}
-                      />
-                    )}
-
-                    {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-  <button
-    onClick={() => setEditingPavilion(pavilion)}
-    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-  >
-    Редактировать
-  </button>
-)}
-
+        {payingCharge && (
+          <PayAdditionalChargeModal
+            pavilionId={payingCharge.pavilionId}
+            chargeId={payingCharge.chargeId}
+            chargeName={payingCharge.name}
+            expectedAmount={payingCharge.amount}
+            onClose={() => setPayingCharge(null)}
+            onSaved={handleActionSuccess}
+          />
+        )}
       </div>
     </div>
   );

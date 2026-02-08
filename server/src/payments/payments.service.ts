@@ -26,6 +26,7 @@ export class PaymentsService {
             },
           },
         },
+        discounts: true,
         payments: {
           where: {
             period: normalizedPeriod,
@@ -45,7 +46,12 @@ export class PaymentsService {
       EXPECTED AMOUNTS
     ====================== */
 
-    const expectedRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const monthlyDiscount = this.getMonthlyDiscountTotal(
+      pavilion.discounts,
+      normalizedPeriod,
+    );
+    const expectedRent = Math.max(baseRent - monthlyDiscount, 0);
     const expectedUtilities = pavilion.utilitiesAmount ?? 0;
 
     const expectedAdditional = pavilion.additionalCharges.reduce(
@@ -80,6 +86,8 @@ export class PaymentsService {
     return {
       period: normalizedPeriod,
       expected: {
+        baseRent,
+        discount: monthlyDiscount,
         rent: expectedRent,
         utilities: expectedUtilities,
         additional: expectedAdditional,
@@ -93,6 +101,26 @@ export class PaymentsService {
       },
       balance: expectedTotal - paidTotal,
     };
+  }
+
+  private getMonthlyDiscountTotal(
+    discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
+    period: Date,
+  ) {
+    const monthStart = startOfMonth(period);
+    const monthEnd = endOfMonth(period);
+
+    return discounts.reduce((sum, discount) => {
+      const startsBeforeMonthEnds = discount.startsAt <= monthEnd;
+      const endsAfterMonthStarts =
+        discount.endsAt === null || discount.endsAt >= monthStart;
+
+      if (startsBeforeMonthEnds && endsAfterMonthStarts) {
+        return sum + discount.amount;
+      }
+
+      return sum;
+    }, 0);
   }
 
   //Create/Update payment record for a month

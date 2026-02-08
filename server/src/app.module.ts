@@ -10,6 +10,7 @@ import { StoreUserModule } from './store-user/store-user.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AdditionalChargeModule } from './additional-charge/additional-charge.module';
+import { DiscountsModule } from './discounts/discounts.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AdditionalChargeModule } from './additional-charge/additional-charge.mo
     PaymentsModule,
     AnalyticsModule,
     AdditionalChargeModule,
+    DiscountsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
