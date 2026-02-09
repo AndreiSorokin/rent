@@ -239,11 +239,11 @@ export default function PavilionPage() {
             </div>
             <div>
               <p className="text-gray-600">Rent</p>
-              <p className="text-lg font-medium">{pavilion.rentAmount || '-'}$</p>
+              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'}$</p>
             </div>
             <div>
               <p className="text-gray-600">Utilities</p>
-              <p className="text-lg font-medium">{pavilion.utilitiesAmount || '-'}$</p>
+              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'}$</p>
             </div>
           </div>
         </div>

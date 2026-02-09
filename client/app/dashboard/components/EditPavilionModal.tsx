@@ -40,7 +40,26 @@ export function EditPavilionModal({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (e: any) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+
+      if (name === 'squareMeters' || name === 'pricePerSqM') {
+        const squareMeters = Number(
+          name === 'squareMeters' ? value : next.squareMeters,
+        );
+        const pricePerSqM = Number(
+          name === 'pricePerSqM' ? value : next.pricePerSqM,
+        );
+
+        if (!Number.isNaN(squareMeters) && !Number.isNaN(pricePerSqM)) {
+          next.rentAmount = String(squareMeters * pricePerSqM);
+        }
+      }
+
+      return next;
+    });
   };
 
   const handleSave = async () => {

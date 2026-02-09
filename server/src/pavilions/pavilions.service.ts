@@ -8,10 +8,13 @@ export class PavilionsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(storeId: number, dto: CreatePavilionDto) {
+    const calculatedRent = dto.squareMeters * dto.pricePerSqM;
+
     return this.prisma.pavilion.create({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: {
         ...dto,
+        rentAmount: dto.rentAmount ?? calculatedRent,
         status: dto.status ?? PavilionStatus.AVAILABLE,
         store: { connect: { id: storeId } },
       },
@@ -57,6 +60,29 @@ async findOne(storeId: number, id: number) {
 
     if (!pavilion) {
       throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    const extractNumber = (value: unknown): number | undefined => {
+      if (typeof value === 'number') return value;
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        'set' in (value as Record<string, unknown>) &&
+        typeof (value as { set?: unknown }).set === 'number'
+      ) {
+        return (value as { set: number }).set;
+      }
+      return undefined;
+    };
+
+    const nextSquareMeters = extractNumber(data.squareMeters);
+    const nextPricePerSqM = extractNumber(data.pricePerSqM);
+
+    if (nextSquareMeters !== undefined || nextPricePerSqM !== undefined) {
+      const effectiveSquareMeters = nextSquareMeters ?? pavilion.squareMeters;
+      const effectivePricePerSqM = nextPricePerSqM ?? pavilion.pricePerSqM;
+
+      data.rentAmount = effectiveSquareMeters * effectivePricePerSqM;
     }
 
     return this.prisma.pavilion.update({

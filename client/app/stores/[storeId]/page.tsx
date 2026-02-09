@@ -65,84 +65,84 @@ export default function StorePage() {
 
   const permissions = store.permissions || [];
 
-  const getPaymentSummary = (pavilion: any) => {
-    const baseExpected = (pavilion.squareMeters || 0) * (pavilion.pricePerSqM || 0);
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    const monthlyDiscount = (pavilion.discounts || []).reduce((sum: number, d: any) => {
-      const startsAt = new Date(d.startsAt);
-      const endsAt = d.endsAt ? new Date(d.endsAt) : null;
-      const startsBeforeMonthEnds = startsAt <= monthEnd;
-      const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
-      return startsBeforeMonthEnds && endsAfterMonthStarts
-        ? sum + (d.amount || 0) * (pavilion.squareMeters || 0)
-        : sum;
-    }, 0);
-    const monthlyExpected = Math.max(baseExpected - monthlyDiscount, 0);
+  // const getPaymentSummary = (pavilion: any) => {
+  //   const baseExpected = (pavilion.squareMeters || 0) * (pavilion.pricePerSqM || 0);
+  //   const now = new Date();
+  //   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  //   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  //   const monthlyDiscount = (pavilion.discounts || []).reduce((sum: number, d: any) => {
+  //     const startsAt = new Date(d.startsAt);
+  //     const endsAt = d.endsAt ? new Date(d.endsAt) : null;
+  //     const startsBeforeMonthEnds = startsAt <= monthEnd;
+  //     const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
+  //     return startsBeforeMonthEnds && endsAfterMonthStarts
+  //       ? sum + (d.amount || 0) * (pavilion.squareMeters || 0)
+  //       : sum;
+  //   }, 0);
+  //   const monthlyExpected = Math.max(baseExpected - monthlyDiscount, 0);
 
-    if (!pavilion.payments || pavilion.payments.length === 0) {
-      return {
-        text: `Нет платежей (ожидается ${monthlyExpected.toFixed(2)}$/мес)`,
-        colorClass: 'text-amber-600',
-      };
-    }
+  //   if (!pavilion.payments || pavilion.payments.length === 0) {
+  //     return {
+  //       text: `Нет платежей (ожидается ${monthlyExpected.toFixed(2)}$/мес)`,
+  //       colorClass: 'text-amber-600',
+  //     };
+  //   }
 
-    const totalPaid = pavilion.payments.reduce((sum: number, pay: any) => {
-      return sum + (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
-    }, 0);
+  //   const totalPaid = pavilion.payments.reduce((sum: number, pay: any) => {
+  //     return sum + (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
+  //   }, 0);
 
-    const difference = totalPaid - monthlyExpected;
+  //   const difference = totalPaid - monthlyExpected;
 
-    if (difference > 0) {
-      return {
-        text: `Переплата ${difference.toFixed(2)}$`,
-        colorClass: 'text-green-600',
-      };
-    }
+  //   if (difference > 0) {
+  //     return {
+  //       text: `Переплата ${difference.toFixed(2)}$`,
+  //       colorClass: 'text-green-600',
+  //     };
+  //   }
 
-    if (difference < 0) {
-      return {
-        text: `Долг ${Math.abs(difference).toFixed(2)}$`,
-        colorClass: 'text-red-600',
-      };
-    }
+  //   if (difference < 0) {
+  //     return {
+  //       text: `Долг ${Math.abs(difference).toFixed(2)}$`,
+  //       colorClass: 'text-red-600',
+  //     };
+  //   }
 
-    return {
-      text: 'Оплачено полностью',
-      colorClass: 'text-gray-600',
-    };
-  };
+  //   return {
+  //     text: 'Оплачено полностью',
+  //     colorClass: 'text-gray-600',
+  //   };
+  // };
 
-  const getChargesStatus = (pavilion: any) => {
-  const charges = pavilion.additionalCharges ?? [];
-  if (charges.length === 0) {
-    return { text: 'Доп. начисления: нет', colorClass: 'text-gray-500' };
-  }
+//   const getChargesStatus = (pavilion: any) => {
+//   const charges = pavilion.additionalCharges ?? [];
+//   if (charges.length === 0) {
+//     return { text: 'Доп. начисления: нет', colorClass: 'text-gray-500' };
+//   }
 
-  const expected = charges.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+//   const expected = charges.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
 
-  const paid = charges.reduce((sum: number, c: any) => {
-    const paidForCharge =
-      c.payments?.reduce((s: number, p: any) => s + (p.amountPaid || 0), 0) ?? 0;
-    return sum + paidForCharge;
-  }, 0);
+//   const paid = charges.reduce((sum: number, c: any) => {
+//     const paidForCharge =
+//       c.payments?.reduce((s: number, p: any) => s + (p.amountPaid || 0), 0) ?? 0;
+//     return sum + paidForCharge;
+//   }, 0);
 
-  const balance = paid - expected;
+//   const balance = paid - expected;
 
-  if (balance > 0) {
-    return { text: `Доп. начисления: переплата ${balance.toFixed(2)}$`, colorClass: 'text-green-600' };
-  }
+//   if (balance > 0) {
+//     return { text: `Доп. начисления: переплата ${balance.toFixed(2)}$`, colorClass: 'text-green-600' };
+//   }
 
-  if (balance == 0) {
-    return { text: 'Доп. начисления: оплачено', colorClass: 'text-green-600' };
-  }
+//   if (balance == 0) {
+//     return { text: 'Доп. начисления: оплачено', colorClass: 'text-green-600' };
+//   }
 
-  return {
-    text: `Доп. начисления: долг ${Math.abs(balance).toFixed(2)}$`,
-    colorClass: 'text-red-600',
-  };
-};
+//   return {
+//     text: `Доп. начисления: долг ${Math.abs(balance).toFixed(2)}$`,
+//     colorClass: 'text-red-600',
+//   };
+// };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -205,8 +205,8 @@ export default function StorePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {store.pavilions.map((p: any) => {
-                const summary = getPaymentSummary(p);
-                const chargesStatus = getChargesStatus(p);
+                // const summary = getPaymentSummary(p);
+                // const chargesStatus = getChargesStatus(p);
                 return (
                   <Link
                     key={p.id}
@@ -222,12 +222,12 @@ export default function StorePage() {
                     <p className="text-sm text-gray-600 mb-3">
                       Арендатор: {p.tenantName || 'Свободен'}
                     </p>
-                    <p className={`text-base font-medium ${summary.colorClass}`}>
+                    {/* <p className={`text-base font-medium ${summary.colorClass}`}>
                       {summary.text}
-                    </p>
-                    <p className={`text-sm mt-1 ${chargesStatus.colorClass}`}>
+                    </p> */}
+                    {/* <p className={`text-sm mt-1 ${chargesStatus.colorClass}`}>
                       {chargesStatus.text}
-                    </p>
+                    </p> */}
                   </Link>
                 );
               })}
