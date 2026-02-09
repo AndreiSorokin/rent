@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { createPavilionPayment } from '@/lib/payments';
 
 type CreatePavilionModalProps = {
   storeId: number;
@@ -14,6 +15,10 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
   const [squareMeters, setSquareMeters] = useState('');
   const [pricePerSqM, setPricePerSqM] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
+  const [prepaymentMonth, setPrepaymentMonth] = useState(
+    new Date().toISOString().slice(0, 7),
+  );
+  const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,17 +32,31 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
     setError(null);
 
     try {
-      await apiFetch(`/stores/${storeId}/pavilions`, {
+      const square = Number(squareMeters);
+      const price = Number(pricePerSqM);
+      const autoRent = square * price;
+      const prepaidPeriodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+
+      const pavilion = await apiFetch<{ id: number }>(`/stores/${storeId}/pavilions`, {
         method: 'POST',
         body: JSON.stringify({
           number,
-          squareMeters: Number(squareMeters),
-          pricePerSqM: Number(pricePerSqM),
+          squareMeters: square,
+          pricePerSqM: price,
           status,
+          prepaidUntil: status === 'PREPAID' ? prepaidPeriodIso : undefined,
         }),
       });
 
-      onSaved(); // refresh list
+      if (status === 'PREPAID') {
+        await createPavilionPayment(storeId, pavilion.id, {
+          period: prepaidPeriodIso,
+          rentPaid: prepaymentAmount ? Number(prepaymentAmount) : autoRent,
+          utilitiesPaid: 0,
+        });
+      }
+
+      onSaved();
     } catch (err: any) {
       setError(err.message || 'Ошибка создания павильона');
     } finally {
@@ -46,81 +65,103 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-6">Создать новый павильон</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6">
+        <h2 className="mb-6 text-xl font-bold">Создать новый павильон</h2>
 
-        {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
         <div className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Номер павильона
-            </label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Номер павильона</label>
             <input
               type="text"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Например: A-12"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Площадь (м²)
-            </label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Площадь (м2)</label>
             <input
               type="number"
               step="0.01"
               value={squareMeters}
               onChange={(e) => setSquareMeters(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="25.5"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Цена за м² ($)
-            </label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Цена за м2</label>
             <input
               type="number"
               step="0.01"
               value={pricePerSqM}
               onChange={(e) => setPricePerSqM(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="120.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Статус
-            </label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Статус</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="AVAILABLE">Свободен</option>
-              <option value="RENTED">Арендован</option>
+              <option value="AVAILABLE">СВОБОДЕН</option>
+              <option value="RENTED">ЗАНЯТ</option>
+              <option value="PREPAID">ПРЕДОПЛАТА</option>
             </select>
           </div>
+
+          {status === 'PREPAID' && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Месяц предоплаты
+                </label>
+                <input
+                  type="month"
+                  value={prepaymentMonth}
+                  onChange={(e) => setPrepaymentMonth(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Сумма предоплаты (если пусто - полная аренда)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={prepaymentAmount}
+                  onChange={(e) => setPrepaymentAmount(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Например: 1200"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mt-8 flex justify-end gap-3">
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-5 py-2.5 border rounded-lg hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-lg border px-5 py-2.5 hover:bg-gray-100 disabled:opacity-50"
           >
             Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? 'Создание...' : 'Создать павильон'}
           </button>
@@ -129,3 +170,4 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
     </div>
   );
 }
+

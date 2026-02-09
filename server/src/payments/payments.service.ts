@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { PavilionStatus } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -39,6 +40,8 @@ export class PaymentsService {
       throw new NotFoundException('Pavilion not found');
     }
 
+    const pavilionStatus = await this.normalizePrepaidStatus(pavilion);
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const payment = pavilion.payments[0]; // one payment per month
 
@@ -52,13 +55,19 @@ export class PaymentsService {
       pavilion.squareMeters,
       normalizedPeriod,
     );
-    const expectedRent = Math.max(baseRent - monthlyDiscount, 0);
-    const expectedUtilities = pavilion.utilitiesAmount ?? 0;
+    const expectedRent =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? baseRent
+        : Math.max(baseRent - monthlyDiscount, 0);
+    const expectedUtilities =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : (pavilion.utilitiesAmount ?? 0);
 
-    const expectedAdditional = pavilion.additionalCharges.reduce(
-      (sum, charge) => sum + charge.amount,
-      0,
-    );
+    const expectedAdditional =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : pavilion.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
 
     const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
 
@@ -69,14 +78,18 @@ export class PaymentsService {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const paidRent = payment?.rentPaid ?? 0;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const paidUtilities = payment?.utilitiesPaid ?? 0;
+    const paidUtilities =
+      pavilionStatus === PavilionStatus.PREPAID ? 0 : (payment?.utilitiesPaid ?? 0);
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-    const paidAdditional = pavilion.additionalCharges.reduce(
-      (sum, charge) =>
-        sum + charge.payments.reduce((pSum, p) => pSum + p.amountPaid, 0),
-      0,
-    );
+    const paidAdditional =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : pavilion.additionalCharges.reduce(
+            (sum, charge) =>
+              sum + charge.payments.reduce((pSum, p) => pSum + p.amountPaid, 0),
+            0,
+          );
 
     const paidTotal = paidRent + paidUtilities + paidAdditional;
 
@@ -88,7 +101,7 @@ export class PaymentsService {
       period: normalizedPeriod,
       expected: {
         baseRent,
-        discount: monthlyDiscount,
+        discount: pavilionStatus === PavilionStatus.PREPAID ? 0 : monthlyDiscount,
         rent: expectedRent,
         utilities: expectedUtilities,
         additional: expectedAdditional,
@@ -133,6 +146,37 @@ async addPayment(
 ) {
   const normalizedPeriod = startOfMonth(period);
 
+  const pavilion = await this.prisma.pavilion.findUnique({
+    where: { id: pavilionId },
+    select: {
+      id: true,
+      status: true,
+      prepaidUntil: true,
+    },
+  });
+
+  if (!pavilion) {
+    throw new NotFoundException('Pavilion not found');
+  }
+
+  const normalizedStatus = await this.normalizePrepaidStatus(pavilion);
+
+  if (normalizedStatus === PavilionStatus.PREPAID) {
+    const prepaidMonth = startOfMonth(pavilion.prepaidUntil ?? new Date());
+
+    if (normalizedPeriod.getTime() !== prepaidMonth.getTime()) {
+      throw new BadRequestException(
+        'For PREPAID pavilion, payment is allowed only for the first prepaid month',
+      );
+    }
+
+    if ((data.utilitiesPaid ?? 0) > 0) {
+      throw new BadRequestException(
+        'Utilities cannot be paid while pavilion status is PREPAID',
+      );
+    }
+  }
+
   const existing = await this.prisma.payment.findUnique({
     where: {
       pavilionId_period: { pavilionId, period: normalizedPeriod },
@@ -144,7 +188,12 @@ async addPayment(
       where: { id: existing.id },
       data: {
         rentPaid: { increment: data.rentPaid || 0 },
-        utilitiesPaid: { increment: data.utilitiesPaid || 0 },
+        utilitiesPaid: {
+          increment:
+            normalizedStatus === PavilionStatus.PREPAID
+              ? 0
+              : (data.utilitiesPaid || 0),
+        },
       },
     });
   }
@@ -154,7 +203,10 @@ async addPayment(
       pavilionId,
       period: normalizedPeriod,
       rentPaid: data.rentPaid || 0,
-      utilitiesPaid: data.utilitiesPaid || 0,
+      utilitiesPaid:
+        normalizedStatus === PavilionStatus.PREPAID
+          ? 0
+          : (data.utilitiesPaid || 0),
     },
   });
 }
@@ -165,5 +217,29 @@ async addPayment(
       where: { pavilionId },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  private async normalizePrepaidStatus(pavilion: {
+    id: number;
+    status: PavilionStatus;
+    prepaidUntil?: Date | null;
+  }) {
+    if (
+      pavilion.status === PavilionStatus.PREPAID &&
+      pavilion.prepaidUntil &&
+      pavilion.prepaidUntil < startOfMonth(new Date())
+    ) {
+      await this.prisma.pavilion.update({
+        where: { id: pavilion.id },
+        data: {
+          status: PavilionStatus.RENTED,
+          prepaidUntil: null,
+        },
+      });
+
+      return PavilionStatus.RENTED;
+    }
+
+    return pavilion.status;
   }
 }

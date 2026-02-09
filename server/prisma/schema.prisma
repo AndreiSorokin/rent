@@ -69,6 +69,7 @@ model Pavilion {
   squareMeters Float
   pricePerSqM  Float
   status       PavilionStatus @default(AVAILABLE)
+  prepaidUntil DateTime?
 
   tenantName      String?
   rentAmount      Float?
@@ -102,6 +103,7 @@ model PavilionDiscount {
 enum PavilionStatus {
   AVAILABLE
   RENTED
+  PREPAID
 }
 
 model Payment {

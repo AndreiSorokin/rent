@@ -4,6 +4,7 @@ export function createPavilionPayment(
   storeId: number,
   pavilionId: number,
   data: {
+    period: string;
     rentPaid?: number;
     utilitiesPaid?: number;
   },

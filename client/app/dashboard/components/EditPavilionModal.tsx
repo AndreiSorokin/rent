@@ -1,15 +1,7 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { createPavilion, updatePavilion } from '@/lib/pavilions';
-import { Pavilion } from '@/types/store';
-
-interface EditPavilionModalProps {
-  storeId: number;
-  pavilion: Pavilion | null;
-  onClose: () => void;
-  onSaved: () => void;
-}
 
 export function EditPavilionModal({
   storeId,
@@ -18,7 +10,6 @@ export function EditPavilionModal({
   onSaved,
 }: {
   storeId: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   pavilion: any;
   onClose: () => void;
   onSaved: () => void;
@@ -38,7 +29,6 @@ export function EditPavilionModal({
     return null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (e: any) => {
     const { name, value } = e.target;
 
@@ -46,16 +36,21 @@ export function EditPavilionModal({
       const next = { ...prev, [name]: value };
 
       if (name === 'squareMeters' || name === 'pricePerSqM') {
-        const squareMeters = Number(
-          name === 'squareMeters' ? value : next.squareMeters,
-        );
-        const pricePerSqM = Number(
-          name === 'pricePerSqM' ? value : next.pricePerSqM,
-        );
+        const squareMeters = Number(name === 'squareMeters' ? value : next.squareMeters);
+        const pricePerSqM = Number(name === 'pricePerSqM' ? value : next.pricePerSqM);
 
         if (!Number.isNaN(squareMeters) && !Number.isNaN(pricePerSqM)) {
           next.rentAmount = String(squareMeters * pricePerSqM);
         }
+      }
+
+      if (name === 'status' && value === 'AVAILABLE') {
+        next.tenantName = '';
+        next.utilitiesAmount = '';
+      }
+
+      if (name === 'status' && value === 'PREPAID') {
+        next.utilitiesAmount = '0';
       }
 
       return next;
@@ -63,40 +58,37 @@ export function EditPavilionModal({
   };
 
   const handleSave = async () => {
-  const payload = {
-    number: form.number,
-    squareMeters: Number(form.squareMeters),
-    pricePerSqM: Number(form.pricePerSqM),
-    status: form.status,
-    tenantName: form.status === 'AVAILABLE' ? null : form.tenantName,
-    rentAmount: form.status === 'AVAILABLE' ? null : Number(form.rentAmount),
-    utilitiesAmount:
-      form.status === 'AVAILABLE' ? null : Number(form.utilitiesAmount),
+    const payload = {
+      number: form.number,
+      squareMeters: Number(form.squareMeters),
+      pricePerSqM: Number(form.pricePerSqM),
+      status: form.status,
+      tenantName: form.status === 'AVAILABLE' ? null : form.tenantName,
+      rentAmount: form.status === 'AVAILABLE' ? null : Number(form.rentAmount),
+      utilitiesAmount: form.status === 'AVAILABLE' ? null : Number(form.utilitiesAmount),
+    };
+
+    if (pavilion) {
+      await updatePavilion(storeId, pavilion.id, payload);
+    } else {
+      await createPavilion(storeId, payload);
+    }
+
+    onSaved();
+    onClose();
   };
 
-  if (pavilion) {
-    await updatePavilion(storeId, pavilion.id, payload);
-  } else {
-    await createPavilion(storeId, payload);
-  }
-
-  onSaved();
-  onClose();
-};
-
-
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded p-6 w-[400px]">
-        <h2 className="text-lg font-bold mb-4">Edit Pavilion</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-[400px] rounded bg-white p-6">
+        <h2 className="mb-4 text-lg font-bold">Редактировать павильон</h2>
 
         <input
           name="number"
           value={form.number}
           onChange={handleChange}
           className="input"
-          placeholder="Number"
+          placeholder="Номер"
         />
 
         <input
@@ -105,7 +97,7 @@ export function EditPavilionModal({
           value={form.squareMeters}
           onChange={handleChange}
           className="input"
-          placeholder="Square meters"
+          placeholder="Площадь"
         />
 
         <input
@@ -114,27 +106,23 @@ export function EditPavilionModal({
           value={form.pricePerSqM}
           onChange={handleChange}
           className="input"
-          placeholder="Price per m²"
+          placeholder="Цена за м2"
         />
 
-        <select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-          className="input"
-        >
-          <option value="AVAILABLE">Available</option>
-          <option value="RENTED">Rented</option>
+        <select name="status" value={form.status} onChange={handleChange} className="input">
+          <option value="AVAILABLE">СВОБОДЕН</option>
+          <option value="RENTED">ЗАНЯТ</option>
+          <option value="PREPAID">ПРЕДОПЛАТА</option>
         </select>
 
-        {form.status === 'RENTED' && (
+        {form.status !== 'AVAILABLE' && (
           <>
             <input
               name="tenantName"
               value={form.tenantName}
               onChange={handleChange}
               className="input"
-              placeholder="Tenant name"
+              placeholder="Арендатор"
             />
 
             <input
@@ -143,30 +131,32 @@ export function EditPavilionModal({
               value={form.rentAmount}
               onChange={handleChange}
               className="input"
-              placeholder="Rent amount"
+              placeholder="Аренда"
             />
 
-            <input
-              name="utilitiesAmount"
-              type="number"
-              value={form.utilitiesAmount}
-              onChange={handleChange}
-              className="input"
-              placeholder="Utilities amount"
-            />
+            {form.status !== 'PREPAID' && (
+              <input
+                name="utilitiesAmount"
+                type="number"
+                value={form.utilitiesAmount}
+                onChange={handleChange}
+                className="input"
+                placeholder="Коммунальные"
+              />
+            )}
           </>
         )}
 
-
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="btn-secondary">
-            Cancel
+            Отмена
           </button>
           <button onClick={handleSave} className="btn-primary">
-            Save
+            Сохранить
           </button>
         </div>
       </div>
     </div>
   );
 }
+

@@ -15,7 +15,7 @@ export type Permission =
 export interface Pavilion {
   id: number;
   number: string;
-  status: 'AVAILABLE' | 'RENTED';
+  status: 'AVAILABLE' | 'RENTED' | 'PREPAID';
 }
 
 export interface Store {

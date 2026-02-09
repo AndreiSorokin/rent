@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Permission, Prisma } from '@prisma/client';
+import { Permission, PavilionStatus, Prisma } from '@prisma/client';
+import { startOfMonth } from 'date-fns';
 
 @Injectable()
 export class StoresService {
@@ -56,6 +57,24 @@ export class StoresService {
    * Get all stores current user belongs to
    */
   async findAll(userId: number) {
+    await this.prisma.pavilion.updateMany({
+      where: {
+        store: {
+          storeUsers: {
+            some: { userId },
+          },
+        },
+        status: PavilionStatus.PREPAID,
+        prepaidUntil: {
+          lt: startOfMonth(new Date()),
+        },
+      },
+      data: {
+        status: PavilionStatus.RENTED,
+        prepaidUntil: null,
+      },
+    });
+
     return this.prisma.store.findMany({
       where: {
         storeUsers: {
@@ -83,6 +102,20 @@ export class StoresService {
    * Get one store (only if user belongs to it)
    */
   async findOne(storeId: number, userId: number) {
+    await this.prisma.pavilion.updateMany({
+      where: {
+        storeId,
+        status: PavilionStatus.PREPAID,
+        prepaidUntil: {
+          lt: startOfMonth(new Date()),
+        },
+      },
+      data: {
+        status: PavilionStatus.RENTED,
+        prepaidUntil: null,
+      },
+    });
+
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
       include: {

@@ -49,8 +49,20 @@ export function PavilionList({
               <div className="font-semibold text-lg">Pavilion {p.number}</div>
               <div className="text-sm text-gray-600">
                 Status:{' '}
-                <span className={p.status === 'RENTED' ? 'text-green-600' : 'text-amber-600'}>
-                  {p.status}
+                <span
+                  className={
+                    p.status === 'RENTED'
+                      ? 'text-green-600'
+                      : p.status === 'PREPAID'
+                        ? 'text-blue-600'
+                        : 'text-amber-600'
+                  }
+                >
+                  {p.status === 'RENTED'
+                    ? 'ЗАНЯТ'
+                    : p.status === 'AVAILABLE'
+                      ? 'СВОБОДЕН'
+                      : 'ПРЕДОПЛАТА'}
                 </span>
               </div>
               {p.tenantName && (
@@ -78,7 +90,7 @@ export function PavilionList({
             </div>
           </div>
 
-          {canPay && p.status === 'RENTED' && (
+          {canPay && (p.status === 'RENTED' || p.status === 'PREPAID') && (
             <button
               onClick={() => setPayingMonthlyPavilion(p)}
               className="text-green-600 hover:underline text-sm mb-3 block"
@@ -177,6 +189,7 @@ export function PavilionList({
         <CreatePavilionPaymentModal
           storeId={storeId}
           pavilionId={payingMonthlyPavilion.id}
+          pavilionStatus={payingMonthlyPavilion.status}
           onClose={() => setPayingMonthlyPavilion(null)}
           onSaved={refresh}
         />

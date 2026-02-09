@@ -1,12 +1,27 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { endOfMonth, startOfMonth } from 'date-fns';
+import { PavilionStatus } from '@prisma/client';
 
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
   async getStoreAnalytics(storeId: number) {
+    await this.prisma.pavilion.updateMany({
+      where: {
+        storeId,
+        status: PavilionStatus.PREPAID,
+        prepaidUntil: {
+          lt: startOfMonth(new Date()),
+        },
+      },
+      data: {
+        status: PavilionStatus.RENTED,
+        prepaidUntil: null,
+      },
+    });
+
     const period = startOfMonth(new Date());
     const periodStart = startOfMonth(period);
     const periodEnd = endOfMonth(period);
@@ -44,6 +59,7 @@ export class AnalyticsService {
 
     for (const p of pavilions) {
       const baseRent = p.squareMeters * p.pricePerSqM;
+      const isPrepaid = p.status === PavilionStatus.PREPAID;
       const pavilionDiscount = p.discounts.reduce((sum, discount) => {
         const startsBeforeMonthEnds = discount.startsAt <= periodEnd;
         const endsAfterMonthStarts =
@@ -56,19 +72,28 @@ export class AnalyticsService {
         return sum;
       }, 0);
 
-      expectedDiscount += pavilionDiscount;
-      expectedRent += Math.max(baseRent - pavilionDiscount, 0);
-      expectedUtilities += p.utilitiesAmount ?? 0;
+      if (isPrepaid) {
+        expectedRent += baseRent;
+      } else {
+        expectedDiscount += pavilionDiscount;
+        expectedRent += Math.max(baseRent - pavilionDiscount, 0);
+      }
+
+      if (!isPrepaid) {
+        expectedUtilities += p.utilitiesAmount ?? 0;
+      }
 
       for (const pay of p.payments) {
         paidRent += pay.rentPaid ?? 0;
         paidUtilities += pay.utilitiesPaid ?? 0;
       }
 
-      for (const charge of p.additionalCharges) {
-        expectedAdditional += charge.amount;
-        for (const cp of charge.payments) {
-          paidAdditional += cp.amountPaid;
+      if (!isPrepaid) {
+        for (const charge of p.additionalCharges) {
+          expectedAdditional += charge.amount;
+          for (const cp of charge.payments) {
+            paidAdditional += cp.amountPaid;
+          }
         }
       }
     }
@@ -78,6 +103,7 @@ export class AnalyticsService {
         total: pavilions.length,
         rented: pavilions.filter((p) => p.status === 'RENTED').length,
         free: pavilions.filter((p) => p.status === 'AVAILABLE').length,
+        prepaid: pavilions.filter((p) => p.status === 'PREPAID').length,
       },
       expected: {
         discount: expectedDiscount,

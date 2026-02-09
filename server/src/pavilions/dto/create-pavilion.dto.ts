@@ -1,4 +1,11 @@
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { PavilionStatus } from '@prisma/client';
 
 export class CreatePavilionDto {
@@ -28,4 +35,8 @@ export class CreatePavilionDto {
   @IsNumber()
   @IsOptional()
   utilitiesAmount?: number;
+
+  @IsDateString()
+  @IsOptional()
+  prepaidUntil?: string;
 }

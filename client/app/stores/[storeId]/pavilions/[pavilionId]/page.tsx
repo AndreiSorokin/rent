@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -12,6 +12,8 @@ import { apiFetch } from '@/lib/api';
 import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { deletePavilionDiscount } from '@/lib/discounts';
 import { hasPermission } from '@/lib/permissions';
+import { updatePavilion } from '@/lib/pavilions';
+import { createPavilionPayment } from '@/lib/payments';
 
 type Discount = {
   id: number;
@@ -30,6 +32,7 @@ type Pavilion = {
   tenantName?: string;
   rentAmount?: number;
   utilitiesAmount?: number;
+  prepaidUntil?: string | null;
   payments: any[];
   additionalCharges: any[];
   discounts: Discount[];
@@ -49,6 +52,7 @@ export default function PavilionPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
   const [payingCharge, setPayingCharge] = useState<{
     pavilionId: number;
@@ -56,6 +60,10 @@ export default function PavilionPage() {
     name: string;
     amount: number;
   } | null>(null);
+  const [prepaymentMonth, setPrepaymentMonth] = useState(
+    new Date().toISOString().slice(0, 7),
+  );
+  const [prepaymentAmount, setPrepaymentAmount] = useState('');
 
   const permissions = [
     'VIEW_PAVILIONS',
@@ -66,14 +74,18 @@ export default function PavilionPage() {
     'DELETE_PAVILIONS',
   ];
 
+  const statusLabel: Record<string, string> = {
+    AVAILABLE: 'СВОБОДЕН',
+    RENTED: 'ЗАНЯТ',
+    PREPAID: 'ПРЕДОПЛАТА',
+  };
+
   const fetchPavilion = async () => {
     try {
-      const data = await apiFetch<Pavilion>(
-        `/stores/${storeIdNum}/pavilions/${pavilionIdNum}`,
-      );
+      const data = await apiFetch<Pavilion>(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`);
       setPavilion(data);
     } catch (err) {
-      setError('Failed to load pavilion');
+      setError('Не удалось загрузить павильон');
       console.error(err);
     } finally {
       setLoading(false);
@@ -91,7 +103,7 @@ export default function PavilionPage() {
   };
 
   const handleDeletePavilion = async () => {
-    if (!confirm('Delete this pavilion?')) return;
+    if (!confirm('Удалить этот павильон?')) return;
 
     try {
       await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`, {
@@ -99,24 +111,24 @@ export default function PavilionPage() {
       });
       router.push(`/stores/${storeIdNum}`);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete pavilion');
+      setError(err.message || 'Не удалось удалить павильон');
     }
   };
 
   const handleDeleteCharge = async (chargeId: number) => {
-    if (!confirm('Delete this additional charge?')) return;
+    if (!confirm('Удалить это начисление?')) return;
 
     try {
       await deleteAdditionalCharge(pavilionIdNum, chargeId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Failed to delete additional charge');
+      alert('Не удалось удалить начисление');
     }
   };
 
   const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
-    if (!confirm('Delete this charge payment?')) return;
+    if (!confirm('Удалить этот платеж начисления?')) return;
 
     await apiFetch(
       `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
@@ -126,14 +138,99 @@ export default function PavilionPage() {
   };
 
   const handleDeleteDiscount = async (discountId: number) => {
-    if (!confirm('Delete this discount?')) return;
+    if (!confirm('Удалить эту скидку?')) return;
 
     try {
       await deletePavilionDiscount(storeIdNum, pavilionIdNum, discountId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Failed to delete discount');
+      alert('Не удалось удалить скидку');
+    }
+  };
+
+  const handleSetPrepayment = async () => {
+    const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+    const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
+    const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
+
+    try {
+      const payments = await apiFetch<any[]>(
+        `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments`,
+      );
+      const periodDate = new Date(periodIso);
+      const existingForPeriod = payments.find((p: any) => {
+        const pDate = new Date(p.period);
+        return (
+          pDate.getFullYear() === periodDate.getFullYear() &&
+          pDate.getMonth() === periodDate.getMonth()
+        );
+      });
+
+      const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
+      const rentDelta = targetRentPaid - currentRentPaid;
+
+      await updatePavilion(storeIdNum, pavilionIdNum, {
+        status: 'PREPAID',
+        prepaidUntil: periodIso,
+      });
+
+      if (rentDelta !== 0) {
+        await createPavilionPayment(storeIdNum, pavilionIdNum, {
+          period: periodIso,
+          rentPaid: rentDelta,
+          utilitiesPaid: 0,
+        });
+      }
+
+      setShowPrepaymentModal(false);
+      setPrepaymentAmount('');
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось установить предоплату');
+    }
+  };
+
+  const handleDeletePrepayment = async () => {
+    if (!confirm('Удалить предоплату? Статус будет изменен на ЗАНЯТ.')) return;
+
+    try {
+      if (pavilion.prepaidUntil) {
+        const payments = await apiFetch<any[]>(
+          `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments`,
+        );
+        const prepaidPeriod = new Date(pavilion.prepaidUntil);
+        const existingForPeriod = payments.find((p: any) => {
+          const pDate = new Date(p.period);
+          return (
+            pDate.getFullYear() === prepaidPeriod.getFullYear() &&
+            pDate.getMonth() === prepaidPeriod.getMonth()
+          );
+        });
+
+        const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
+        if (currentRentPaid > 0) {
+          await createPavilionPayment(storeIdNum, pavilionIdNum, {
+            period: new Date(
+              prepaidPeriod.getFullYear(),
+              prepaidPeriod.getMonth(),
+              1,
+            ).toISOString(),
+            rentPaid: -currentRentPaid,
+            utilitiesPaid: 0,
+          });
+        }
+      }
+
+      await updatePavilion(storeIdNum, pavilionIdNum, {
+        status: 'RENTED',
+        prepaidUntil: null,
+      });
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить предоплату');
     }
   };
 
@@ -149,24 +246,8 @@ export default function PavilionPage() {
   const getDiscountForPeriod = (period: Date) => {
     if (!pavilion) return 0;
 
-    const monthStart = new Date(
-      period.getFullYear(),
-      period.getMonth(),
-      1,
-      0,
-      0,
-      0,
-      0,
-    );
-    const monthEnd = new Date(
-      period.getFullYear(),
-      period.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
+    const monthStart = new Date(period.getFullYear(), period.getMonth(), 1, 0, 0, 0, 0);
+    const monthEnd = new Date(period.getFullYear(), period.getMonth() + 1, 0, 23, 59, 59, 999);
 
     return pavilion.discounts.reduce((sum, discount) => {
       const startsAt = new Date(discount.startsAt);
@@ -187,7 +268,7 @@ export default function PavilionPage() {
   };
 
   const formatDate = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString() : 'Не определено';
+    value ? new Date(value).toLocaleDateString() : 'Бессрочно';
 
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
@@ -198,10 +279,7 @@ export default function PavilionPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <Link
-              href={`/stores/${storeId}`}
-              className="mb-2 inline-block text-blue-600 hover:underline"
-            >
+            <Link href={`/stores/${storeId}`} className="mb-2 inline-block text-blue-600 hover:underline">
               Назад к магазину
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
@@ -223,29 +301,55 @@ export default function PavilionPage() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="text-gray-600">Площадь</p>
-              <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
+              <p className="text-lg font-medium">{pavilion.squareMeters} м2</p>
             </div>
             <div>
-              <p className="text-gray-600">Цена за м²</p>
-              <p className="text-lg font-medium">{pavilion.pricePerSqM}р</p>
+              <p className="text-gray-600">Цена за м2</p>
+              <p className="text-lg font-medium">{pavilion.pricePerSqM} ?</p>
             </div>
             <div>
               <p className="text-gray-600">Статус</p>
-              <p className="text-lg font-medium">{pavilion.status}</p>
+              <p className="text-lg font-medium">{statusLabel[pavilion.status] ?? pavilion.status}</p>
             </div>
             <div>
-              <p className="text-gray-600">Съёмщик</p>
-              <p className="text-lg font-medium">{pavilion.tenantName || 'None'}</p>
+              <p className="text-gray-600">Арендатор</p>
+              <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
             </div>
             <div>
               <p className="text-gray-600">Аренда</p>
-              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'}р</p>
+              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'} ?</p>
             </div>
             <div>
-              <p className="text-gray-600">Коммуналка</p>
-              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'}р</p>
+              <p className="text-gray-600">Коммунальные</p>
+              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'} ?</p>
             </div>
           </div>
+
+          {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowPrepaymentModal(true)}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700"
+              >
+                {pavilion.status === 'PREPAID'
+                  ? 'Изменить предоплату'
+                  : 'Установить предоплату'}
+              </button>
+              {pavilion.status === 'PREPAID' && (
+                <button
+                  onClick={handleDeletePrepayment}
+                  className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+                >
+                  Удалить предоплату
+                </button>
+              )}
+              {pavilion.status === 'PREPAID' && pavilion.prepaidUntil && (
+                <span className="inline-flex items-center rounded bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                  Оплаченный месяц: {new Date(pavilion.prepaidUntil).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
@@ -262,27 +366,27 @@ export default function PavilionPage() {
           </div>
 
           {pavilion.discounts.length === 0 ? (
-            <p className="text-gray-500">Нет скидок</p>
+            <p className="text-gray-500">Скидок нет</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м²</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ежемесячно</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м2</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Примечание</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Комментарий</th>
                     <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
-                      <td className="px-6 py-4 text-sm font-medium">{discount.amount.toFixed(2)}р/м²</td>
+                      <td className="px-6 py-4 text-sm font-medium">{discount.amount.toFixed(2)} ?/м2</td>
                       <td className="px-6 py-4 text-sm font-medium">
-                        ${(discount.amount * pavilion.squareMeters).toFixed(2)}
+                        {(discount.amount * pavilion.squareMeters).toFixed(2)} ?
                       </td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
@@ -290,7 +394,7 @@ export default function PavilionPage() {
                         {isDiscountActiveNow(discount) ? (
                           <span className="font-semibold text-green-700">Активна</span>
                         ) : (
-                          <span className="font-semibold text-gray-600">Неактивна</span>
+                          <span className="font-semibold text-gray-600">Не активна</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
@@ -314,28 +418,29 @@ export default function PavilionPage() {
 
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Payments</h2>
-            {hasPermission(permissions, 'CREATE_PAYMENTS') && pavilion.status === 'RENTED' && (
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="rounded bg-green-600 px-4 py-2 text-white"
-              >
-                + New payment
-              </button>
-            )}
+            <h2 className="text-xl font-semibold">Платежи</h2>
+            {hasPermission(permissions, 'CREATE_PAYMENTS') &&
+              (pavilion.status === 'RENTED' || pavilion.status === 'PREPAID') && (
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="rounded bg-green-600 px-4 py-2 text-white"
+                >
+                  + Новый платеж
+                </button>
+              )}
           </div>
 
           {pavilion.payments.length === 0 ? (
-            <p className="text-gray-500">No payments yet</p>
+            <p className="text-gray-500">Платежей пока нет</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Period</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Expected</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Paid</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Balance</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -343,18 +448,20 @@ export default function PavilionPage() {
                     const periodDate = new Date(pay.period);
                     const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                     const periodDiscount = getDiscountForPeriod(periodDate);
-                    const expected =
-                      Math.max(baseRent - periodDiscount, 0) + (pavilion.utilitiesAmount || 0);
+                    const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
+                    const expectedRent =
+                      pavilion.status === 'PREPAID'
+                        ? baseRent
+                        : Math.max(baseRent - periodDiscount, 0);
+                    const expected = expectedRent + expectedUtilities;
                     const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
                     const balance = paid - expected;
 
                     return (
                       <tr key={pay.id}>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">{pay.period}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                          ${expected.toFixed(2)}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">${paid.toFixed(2)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">{expected.toFixed(2)} ?</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">{paid.toFixed(2)} ?</td>
                         <td
                           className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
                             balance > 0
@@ -364,7 +471,7 @@ export default function PavilionPage() {
                                 : 'text-gray-600'
                           }`}
                         >
-                          {`${balance > 0 ? '+' : ''}${balance.toFixed(2)}$`}
+                          {`${balance > 0 ? '+' : ''}${balance.toFixed(2)} ?`}
                         </td>
                       </tr>
                     );
@@ -377,40 +484,37 @@ export default function PavilionPage() {
 
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Additional charges</h2>
+            <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <button
                 onClick={() => setShowAddChargeModal(true)}
                 className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
               >
-                + New charge
+                + Новое начисление
               </button>
             )}
           </div>
 
           {pavilion.additionalCharges.length === 0 ? (
-            <p className="text-gray-500">No additional charges</p>
+            <p className="text-gray-500">Начислений нет</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Paid</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Difference</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.additionalCharges.map((charge: any) => {
                     const totalPaid =
-                      charge.payments?.reduce(
-                        (sum: number, p: any) => sum + (p.amountPaid ?? 0),
-                        0,
-                      ) ?? 0;
+                      charge.payments?.reduce((sum: number, p: any) => sum + (p.amountPaid ?? 0), 0) ?? 0;
                     const balance = totalPaid - charge.amount;
                     const isPaid = balance >= 0;
                     const isExpanded = expandedCharges.has(charge.id);
@@ -432,8 +536,8 @@ export default function PavilionPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
-                          <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)}$</td>
-                          <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)}$</td>
+                          <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)} ?</td>
+                          <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)} ?</td>
                           <td
                             className={`px-6 py-4 text-sm font-medium ${
                               balance > 0
@@ -444,13 +548,13 @@ export default function PavilionPage() {
                             }`}
                           >
                             {balance > 0 ? '+' : ''}
-                            {balance.toFixed(2)}$
+                            {balance.toFixed(2)} ?
                           </td>
                           <td className="px-6 py-4 text-sm">
                             {isPaid ? (
-                              <span className="font-semibold text-green-700">Paid</span>
+                              <span className="font-semibold text-green-700">Оплачено</span>
                             ) : (
-                              <span className="font-semibold text-amber-600">Not paid</span>
+                              <span className="font-semibold text-amber-600">Не оплачено</span>
                             )}
                           </td>
                           <td className="px-6 py-4 text-right text-sm">
@@ -466,7 +570,7 @@ export default function PavilionPage() {
                                 }
                                 className="mr-3 text-green-600 hover:underline"
                               >
-                                Pay
+                                Оплатить
                               </button>
                             )}
                             {hasPermission(permissions, 'DELETE_CHARGES') && (
@@ -474,7 +578,7 @@ export default function PavilionPage() {
                                 onClick={() => handleDeleteCharge(charge.id)}
                                 className="text-red-600 hover:underline"
                               >
-                                Delete
+                                Удалить
                               </button>
                             )}
                           </td>
@@ -485,31 +589,22 @@ export default function PavilionPage() {
                             <td colSpan={7} className="px-6 py-3 text-sm text-gray-700">
                               {charge.payments?.length ? (
                                 <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-gray-500">
-                                    Payment history
-                                  </div>
+                                  <div className="text-xs font-semibold text-gray-500">История оплат</div>
                                   {charge.payments.map((p: any) => (
-                                    <div
-                                      key={p.id}
-                                      className="flex items-center justify-between gap-3"
-                                    >
+                                    <div key={p.id} className="flex items-center justify-between gap-3">
                                       <span>{new Date(p.paidAt).toLocaleDateString()}</span>
-                                      <span className="font-medium">
-                                        {Number(p.amountPaid).toFixed(2)}$
-                                      </span>
+                                      <span className="font-medium">{Number(p.amountPaid).toFixed(2)} ?</span>
                                       <button
-                                        onClick={() =>
-                                          handleDeleteChargePayment(charge.id, p.id)
-                                        }
+                                        onClick={() => handleDeleteChargePayment(charge.id, p.id)}
                                         className="text-xs text-red-600 hover:underline"
                                       >
-                                        Delete
+                                        Удалить
                                       </button>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-xs text-gray-500">No payments</div>
+                                <div className="text-xs text-gray-500">Оплат пока нет</div>
                               )}
                             </td>
                           </tr>
@@ -528,7 +623,7 @@ export default function PavilionPage() {
             onClick={() => setEditingPavilion(pavilion)}
             className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
           >
-            Edit pavilion
+            Редактировать
           </button>
         )}
 
@@ -536,6 +631,7 @@ export default function PavilionPage() {
           <CreatePavilionPaymentModal
             storeId={storeIdNum}
             pavilionId={pavilionIdNum}
+            pavilionStatus={pavilion.status}
             onClose={() => setShowPaymentModal(false)}
             onSaved={handleActionSuccess}
           />
@@ -556,6 +652,52 @@ export default function PavilionPage() {
             onClose={() => setShowDiscountModal(false)}
             onSaved={handleActionSuccess}
           />
+        )}
+
+        {showPrepaymentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-6">
+              <h2 className="mb-4 text-xl font-bold">Установить предоплату</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Месяц предоплаты</label>
+                  <input
+                    type="month"
+                    value={prepaymentMonth}
+                    onChange={(e) => setPrepaymentMonth(e.target.value)}
+                    className="w-full rounded border px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    Сумма предоплаты (если пусто - полная аренда)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={prepaymentAmount}
+                    onChange={(e) => setPrepaymentAmount(e.target.value)}
+                    className="w-full rounded border px-3 py-2"
+                    placeholder={(pavilion.squareMeters * pavilion.pricePerSqM).toFixed(2)}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowPrepaymentModal(false)}
+                  className="rounded border px-4 py-2 hover:bg-gray-100"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleSetPrepayment}
+                  className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {editingPavilion && (
@@ -581,3 +723,4 @@ export default function PavilionPage() {
     </div>
   );
 }
+
