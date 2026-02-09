@@ -6,7 +6,7 @@ export function PaymentSummary({
 }) {
   return (
     <div className="border rounded p-4">
-      <h2 className="font-semibold mb-2">Баланс</h2>
+      <h2 className="font-semibold mb-2">Сводка</h2>
 
       <div>Ожидается: {analytics.expected.total} рублей</div>
       {'discount' in analytics.expected && (

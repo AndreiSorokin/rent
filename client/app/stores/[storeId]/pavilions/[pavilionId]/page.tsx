@@ -187,11 +187,11 @@ export default function PavilionPage() {
   };
 
   const formatDate = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString() : 'Infinite';
+    value ? new Date(value).toLocaleDateString() : 'Не определено';
 
-  if (loading) return <div className="p-6 text-center text-lg">Loading...</div>;
+  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600">Pavilion not found</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,9 +202,9 @@ export default function PavilionPage() {
               href={`/stores/${storeId}`}
               className="mb-2 inline-block text-blue-600 hover:underline"
             >
-              Back to store
+              Назад к магазину
             </Link>
-            <h1 className="text-2xl font-bold md:text-3xl">Pavilion {pavilion.number}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
           </div>
           <div className="flex flex-wrap gap-3">
             {hasPermission(permissions, 'DELETE_PAVILIONS') && (
@@ -212,75 +212,75 @@ export default function PavilionPage() {
                 onClick={handleDeletePavilion}
                 className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
               >
-                Delete pavilion
+                Удалить павильон
               </button>
             )}
           </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">Main information</h2>
+          <h2 className="mb-4 text-xl font-semibold">Основная информация</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <p className="text-gray-600">Area</p>
-              <p className="text-lg font-medium">{pavilion.squareMeters} m2</p>
+              <p className="text-gray-600">Площадь</p>
+              <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
             </div>
             <div>
-              <p className="text-gray-600">Price per m2</p>
-              <p className="text-lg font-medium">${pavilion.pricePerSqM}</p>
+              <p className="text-gray-600">Цена за м²</p>
+              <p className="text-lg font-medium">{pavilion.pricePerSqM}р</p>
             </div>
             <div>
-              <p className="text-gray-600">Status</p>
+              <p className="text-gray-600">Статус</p>
               <p className="text-lg font-medium">{pavilion.status}</p>
             </div>
             <div>
-              <p className="text-gray-600">Tenant</p>
+              <p className="text-gray-600">Съёмщик</p>
               <p className="text-lg font-medium">{pavilion.tenantName || 'None'}</p>
             </div>
             <div>
-              <p className="text-gray-600">Rent</p>
-              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'}$</p>
+              <p className="text-gray-600">Аренда</p>
+              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'}р</p>
             </div>
             <div>
-              <p className="text-gray-600">Utilities</p>
-              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'}$</p>
+              <p className="text-gray-600">Коммуналка</p>
+              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'}р</p>
             </div>
           </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Discounts</h2>
+            <h2 className="text-xl font-semibold">Скидки</h2>
             {hasPermission(permissions, 'EDIT_PAVILIONS') && (
               <button
                 onClick={() => setShowDiscountModal(true)}
                 className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
               >
-                + Add discount
+                + Добавить скидку
               </button>
             )}
           </div>
 
           {pavilion.discounts.length === 0 ? (
-            <p className="text-gray-500">No discounts</p>
+            <p className="text-gray-500">Нет скидок</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Per m2</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Monthly total</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Start</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">End</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Note</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м²</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ежемесячно</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Примечание</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
-                      <td className="px-6 py-4 text-sm font-medium">${discount.amount.toFixed(2)}/m2</td>
+                      <td className="px-6 py-4 text-sm font-medium">{discount.amount.toFixed(2)}р/м²</td>
                       <td className="px-6 py-4 text-sm font-medium">
                         ${(discount.amount * pavilion.squareMeters).toFixed(2)}
                       </td>
@@ -288,9 +288,9 @@ export default function PavilionPage() {
                       <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
                       <td className="px-6 py-4 text-sm">
                         {isDiscountActiveNow(discount) ? (
-                          <span className="font-semibold text-green-700">Active</span>
+                          <span className="font-semibold text-green-700">Активна</span>
                         ) : (
-                          <span className="font-semibold text-gray-600">Inactive</span>
+                          <span className="font-semibold text-gray-600">Неактивна</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
@@ -300,7 +300,7 @@ export default function PavilionPage() {
                             onClick={() => handleDeleteDiscount(discount.id)}
                             className="text-red-600 hover:underline"
                           >
-                            Delete
+                            Удалить
                           </button>
                         )}
                       </td>
