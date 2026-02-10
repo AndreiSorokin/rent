@@ -48,55 +48,41 @@ export class AnalyticsService {
       },
     });
 
-    let expectedDiscount = 0;
-    let expectedRent = 0;
-    let expectedUtilities = 0;
-    let expectedAdditional = 0;
+    const incomePavilions = pavilions.filter(
+      (p) => p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
+    );
 
-    let paidRent = 0;
-    let paidUtilities = 0;
-    let paidAdditional = 0;
+    let forecastRent = 0;
+    let forecastUtilities = 0;
+    let forecastAdditional = 0;
 
-    for (const p of pavilions) {
-      const baseRent = p.squareMeters * p.pricePerSqM;
-      const isPrepaid = p.status === PavilionStatus.PREPAID;
-      const pavilionDiscount = p.discounts.reduce((sum, discount) => {
-        const startsBeforeMonthEnds = discount.startsAt <= periodEnd;
-        const endsAfterMonthStarts =
-          discount.endsAt === null || discount.endsAt >= periodStart;
+    let actualRent = 0;
+    let actualUtilities = 0;
+    let actualAdditional = 0;
 
-        if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-          return sum + discount.amount * p.squareMeters;
-        }
-
-        return sum;
-      }, 0);
-
-      if (isPrepaid) {
-        expectedRent += baseRent;
-      } else {
-        expectedDiscount += pavilionDiscount;
-        expectedRent += Math.max(baseRent - pavilionDiscount, 0);
-      }
-
-      if (!isPrepaid) {
-        expectedUtilities += p.utilitiesAmount ?? 0;
-      }
+    for (const p of incomePavilions) {
+      forecastRent += p.squareMeters * p.pricePerSqM;
+      forecastUtilities += p.utilitiesAmount ?? 0;
+      forecastAdditional += p.additionalCharges.reduce(
+        (sum, charge) => sum + charge.amount,
+        0,
+      );
 
       for (const pay of p.payments) {
-        paidRent += pay.rentPaid ?? 0;
-        paidUtilities += pay.utilitiesPaid ?? 0;
+        actualRent += pay.rentPaid ?? 0;
+        actualUtilities += pay.utilitiesPaid ?? 0;
       }
 
-      if (!isPrepaid) {
-        for (const charge of p.additionalCharges) {
-          expectedAdditional += charge.amount;
-          for (const cp of charge.payments) {
-            paidAdditional += cp.amountPaid;
-          }
-        }
+      for (const charge of p.additionalCharges) {
+        actualAdditional += charge.payments.reduce(
+          (sum, cp) => sum + cp.amountPaid,
+          0,
+        );
       }
     }
+
+    const forecastTotal = forecastRent + forecastUtilities + forecastAdditional;
+    const actualTotal = actualRent + actualUtilities + actualAdditional;
 
     return {
       pavilions: {
@@ -105,24 +91,31 @@ export class AnalyticsService {
         free: pavilions.filter((p) => p.status === 'AVAILABLE').length,
         prepaid: pavilions.filter((p) => p.status === 'PREPAID').length,
       },
+      forecastIncome: {
+        rent: forecastRent,
+        utilities: forecastUtilities,
+        additional: forecastAdditional,
+        total: forecastTotal,
+      },
+      actualIncome: {
+        rent: actualRent,
+        utilities: actualUtilities,
+        additional: actualAdditional,
+        total: actualTotal,
+      },
       expected: {
-        discount: expectedDiscount,
-        rent: expectedRent,
-        utilities: expectedUtilities,
-        additional: expectedAdditional,
-        total: expectedRent + expectedUtilities + expectedAdditional,
+        rent: forecastRent,
+        utilities: forecastUtilities,
+        additional: forecastAdditional,
+        total: forecastTotal,
       },
       paid: {
-        rent: paidRent,
-        utilities: paidUtilities,
-        additional: paidAdditional,
-        total: paidRent + paidUtilities + paidAdditional,
+        rent: actualRent,
+        utilities: actualUtilities,
+        additional: actualAdditional,
+        total: actualTotal,
       },
-      debt:
-        expectedRent +
-        expectedUtilities +
-        expectedAdditional -
-        (paidRent + paidUtilities + paidAdditional),
+      debt: forecastTotal - actualTotal,
       period,
     };
   }
