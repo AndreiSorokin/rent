@@ -54,7 +54,28 @@ export class StoreUserService {
     storeId: number,
     userId: number,
     permissions: Permission[],
+    actorUserId: number,
   ) {
+    const actorStoreUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId: actorUserId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!actorStoreUser) {
+      throw new NotFoundException('Current user not part of this store');
+    }
+
+    if (
+      actorUserId === userId &&
+      actorStoreUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new BadRequestException(
+        'Store owner/admin cannot change own permissions',
+      );
+    }
+
     const storeUser = await this.prisma.storeUser.findUnique({
       where: {
         userId_storeId: { userId, storeId },
@@ -86,7 +107,27 @@ export class StoreUserService {
   }
 
   // Remove a user from a store
-  async removeUser(storeId: number, userId: number) {
+  async removeUser(storeId: number, userId: number, actorUserId: number) {
+    const actorStoreUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId: actorUserId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!actorStoreUser) {
+      throw new NotFoundException('Current user not part of this store');
+    }
+
+    if (
+      actorUserId === userId &&
+      actorStoreUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new BadRequestException(
+        'Store owner/admin cannot remove themselves from store',
+      );
+    }
+
     return this.prisma.storeUser.delete({
       where: {
         userId_storeId: { userId, storeId },

@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { StoreUserService } from './store-user.service';
@@ -56,8 +57,11 @@ export class StoreUserController {
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
     @Body('permissions') permissions: Permission[],
+    @Req() req: any,
   ) {
-    return this.service.setPermissions(storeId, userId, permissions);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const actorUserId = req.user.id;
+    return this.service.setPermissions(storeId, userId, permissions, actorUserId);
   }
 
   @Get()
@@ -73,7 +77,10 @@ export class StoreUserController {
   removeUser(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
+    @Req() req: any,
   ) {
-    return this.service.removeUser(storeId, userId);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const actorUserId = req.user.id;
+    return this.service.removeUser(storeId, userId, actorUserId);
   }
 }

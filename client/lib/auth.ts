@@ -5,7 +5,7 @@ export function getCurrentUserFromToken() {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     return {
-      id: payload.id,
+      id: payload.sub ?? payload.id,
       email: payload.email,
       name: payload.name || null,
     };

@@ -67,7 +67,7 @@ export default function StorePage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <Link href="/stores" className="text-sm text-blue-600 hover:underline md:text-base">
+            <Link href="/dashboard" className="text-sm text-blue-600 hover:underline md:text-base">
               Назад к магазинам
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">{store.name}</h1>
