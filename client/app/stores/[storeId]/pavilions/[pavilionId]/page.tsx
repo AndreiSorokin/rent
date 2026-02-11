@@ -622,7 +622,7 @@ export default function PavilionPage() {
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {MANUAL_EXPENSE_CATEGORIES.map((category) => {
               const categoryItems = groupedManualExpenses[category.type] ?? [];
               const categoryTotal = categoryItems.reduce(
@@ -631,13 +631,14 @@ export default function PavilionPage() {
               );
 
               return (
-                <div key={category.type} className="rounded-lg border p-4">
-                  <div className="mb-3 text-sm font-semibold">
-                    {category.label}: {categoryTotal.toFixed(2)} ?
+                <div key={category.type} className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold">{category.label}</div>
+                    <div className="text-sm font-semibold">{categoryTotal.toFixed(2)} ?</div>
                   </div>
 
                   {hasPermission(permissions, 'CREATE_CHARGES') && (
-                    <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+                    <div className="mb-2 flex gap-2">
                       <input
                         type="number"
                         step="0.01"
@@ -648,24 +649,24 @@ export default function PavilionPage() {
                             [category.type]: e.target.value,
                           }))
                         }
-                        className="w-full rounded border px-3 py-2 text-sm"
+                        className="w-full rounded border px-2 py-1 text-sm"
                         placeholder="Сумма"
                       />
                       <button
                         onClick={() => handleCreateManualExpense(category.type)}
-                        className="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700"
+                        className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
                       >
-                        Добавить
+                        +
                       </button>
                     </div>
                   )}
 
                   {categoryItems.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="max-h-24 space-y-1 overflow-auto">
                       {categoryItems.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm"
+                          className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
                         >
                           <span>
                             {Number(item.amount).toFixed(2)} ?{' '}
@@ -678,41 +679,41 @@ export default function PavilionPage() {
                               onClick={() => handleDeleteManualExpense(item.id)}
                               className="text-red-600 hover:underline"
                             >
-                              Удалить
+                              x
                             </button>
                           )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">Записей нет</p>
+                    <p className="text-xs text-gray-500">Записей нет</p>
                   )}
                 </div>
               );
             })}
 
-            <div className="rounded-lg border p-4">
-              <div className="font-semibold">Коммуналка</div>
-              <div className="text-sm text-gray-700">
+            <div className="rounded-md border p-3">
+              <div className="text-sm font-semibold">Коммуналка</div>
+              <div className="text-xs text-gray-700">
                 Прогноз: {utilitiesExpenseForecast.toFixed(2)} ?
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-xs text-gray-700">
                 Факт: {utilitiesExpenseActual.toFixed(2)} ?
               </div>
             </div>
 
-            <div className="rounded-lg border p-4">
-              <div className="font-semibold">Хозяйственные расходы</div>
-              <div className="text-sm text-gray-700">
+            <div className="rounded-md border p-3">
+              <div className="text-sm font-semibold">Хозяйственные расходы</div>
+              <div className="text-xs text-gray-700">
                 Итого: {householdExpensesTotal.toFixed(2)} ?
               </div>
             </div>
 
-            <div className="rounded-lg border bg-gray-50 p-4">
-              <div className="font-semibold">
+            <div className="rounded-md border bg-gray-50 p-3 md:col-span-2 xl:col-span-1">
+              <div className="text-sm font-semibold">
                 Итого прогноз: {pavilionExpenseForecastTotal.toFixed(2)} ?
               </div>
-              <div className="font-semibold">
+              <div className="text-sm font-semibold">
                 Итого факт: {pavilionExpenseActualTotal.toFixed(2)} ?
               </div>
             </div>
