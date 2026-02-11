@@ -124,10 +124,16 @@ export class AnalyticsService {
     let expensesTotalActual = 0;
 
     for (const pavilion of pavilions) {
-      const manualExpensesTotal = pavilion.pavilionExpenses.reduce(
+      const manualExpensesForecast = pavilion.pavilionExpenses.reduce(
         (sum, expense) => sum + expense.amount,
         0,
       );
+      const manualExpensesActual = pavilion.pavilionExpenses
+        .filter((expense) => expense.status === 'PAID')
+        .reduce(
+          (sum, expense) => sum + expense.amount,
+          0,
+        );
       const householdExpensesTotal = pavilion.householdExpenses.reduce(
         (sum, expense) => sum + expense.amount,
         0,
@@ -143,9 +149,9 @@ export class AnalyticsService {
       );
 
       expensesTotalForecast +=
-        manualExpensesTotal + householdExpensesTotal + utilitiesForecast;
+        manualExpensesForecast + householdExpensesTotal + utilitiesForecast;
       expensesTotalActual +=
-        manualExpensesTotal + householdExpensesTotal + utilitiesActual;
+        manualExpensesActual + householdExpensesTotal + utilitiesActual;
     }
 
     return {

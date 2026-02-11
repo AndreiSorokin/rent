@@ -122,11 +122,18 @@ enum PavilionExpenseType {
   BANK_SERVICES
   VAT
   LAND_RENT
+  OTHER
+}
+
+enum PavilionExpenseStatus {
+  UNPAID
+  PAID
 }
 
 model PavilionExpense {
   id     Int                @id @default(autoincrement())
   type   PavilionExpenseType
+  status PavilionExpenseStatus @default(UNPAID)
   amount Float
   note   String?
 

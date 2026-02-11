@@ -23,6 +23,7 @@ import {
 import {
   createPavilionExpense,
   deletePavilionExpense,
+  updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
 
 type Discount = {
@@ -40,7 +41,10 @@ type PavilionExpenseType =
   | 'DIVIDENDS'
   | 'BANK_SERVICES'
   | 'VAT'
-  | 'LAND_RENT';
+  | 'LAND_RENT'
+  | 'OTHER';
+
+type PavilionExpenseStatus = 'UNPAID' | 'PAID';
 
 const MANUAL_EXPENSE_CATEGORIES: Array<{
   type: PavilionExpenseType;
@@ -53,6 +57,7 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   { type: 'BANK_SERVICES', label: 'Услуги банка' },
   { type: 'VAT', label: 'НДС' },
   { type: 'LAND_RENT', label: 'Аренда земли' },
+  { type: 'OTHER', label: 'Прочие расходы' },
 ];
 
 type Pavilion = {
@@ -84,6 +89,7 @@ type Pavilion = {
   pavilionExpenses?: Array<{
     id: number;
     type: PavilionExpenseType;
+    status: PavilionExpenseStatus;
     amount: number;
     note?: string | null;
     createdAt: string;
@@ -139,6 +145,7 @@ export default function PavilionPage() {
     'EDIT_PAVILIONS',
     'CREATE_PAYMENTS',
     'CREATE_CHARGES',
+    'EDIT_CHARGES',
     'DELETE_CHARGES',
     'DELETE_PAVILIONS',
     'VIEW_CONTRACTS',
@@ -319,6 +326,19 @@ export default function PavilionPage() {
     }
   };
 
+  const handleManualExpenseStatusChange = async (
+    expenseId: number,
+    status: PavilionExpenseStatus,
+  ) => {
+    try {
+      await updatePavilionExpenseStatus(pavilionIdNum, expenseId, status);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось изменить статус расхода');
+    }
+  };
+
   const handleSetPrepayment = async () => {
     const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
@@ -453,18 +473,25 @@ export default function PavilionPage() {
     {} as Record<PavilionExpenseType, Array<{
       id: number;
       type: PavilionExpenseType;
+      status: PavilionExpenseStatus;
       amount: number;
       note?: string | null;
       createdAt: string;
     }>>,
   );
 
-  const manualExpensesTotal = pavilionExpenses.reduce(
+  const manualExpensesForecastTotal = pavilionExpenses.reduce(
     (sum, item) => sum + Number(item.amount ?? 0),
     0,
   );
+  const manualExpensesActualTotal = pavilionExpenses
+    .filter((item) => item.status === 'PAID')
+    .reduce(
+      (sum, item) => sum + Number(item.amount ?? 0),
+      0,
+    );
   const householdExpensesTotal = (pavilion.householdExpenses ?? []).reduce(
-    (sum, expense) => sum + Number(expense.amount ?? 0),
+    (sum, item) => sum + Number(item.amount ?? 0),
     0,
   );
   const utilitiesExpenseForecast =
@@ -476,9 +503,9 @@ export default function PavilionPage() {
     0,
   );
   const pavilionExpenseForecastTotal =
-    manualExpensesTotal + utilitiesExpenseForecast + householdExpensesTotal;
+    manualExpensesForecastTotal + utilitiesExpenseForecast + householdExpensesTotal;
   const pavilionExpenseActualTotal =
-    manualExpensesTotal + utilitiesExpenseActual + householdExpensesTotal;
+    manualExpensesActualTotal + utilitiesExpenseActual + householdExpensesTotal;
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
 
@@ -759,14 +786,31 @@ export default function PavilionPage() {
                               ({new Date(item.createdAt).toLocaleDateString()})
                             </span>
                           </span>
-                          {hasPermission(permissions, 'DELETE_CHARGES') && (
-                            <button
-                              onClick={() => handleDeleteManualExpense(item.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              x
-                            </button>
-                          )}
+                          <div className="ml-2 flex items-center gap-2">
+                            {hasPermission(permissions, 'EDIT_CHARGES') && (
+                              <select
+                                value={item.status}
+                                onChange={(e) =>
+                                  handleManualExpenseStatusChange(
+                                    item.id,
+                                    e.target.value as PavilionExpenseStatus,
+                                  )
+                                }
+                                className="rounded border px-1 py-0.5 text-[10px]"
+                              >
+                                <option value="UNPAID">Не оплачено</option>
+                                <option value="PAID">Оплачено</option>
+                              </select>
+                            )}
+                            {hasPermission(permissions, 'DELETE_CHARGES') && (
+                              <button
+                                onClick={() => handleDeleteManualExpense(item.id)}
+                                className="text-red-600 hover:underline"
+                              >
+                                x
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

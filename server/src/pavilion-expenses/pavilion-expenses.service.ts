@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PavilionExpenseType } from '@prisma/client';
+import { PavilionExpenseStatus, PavilionExpenseType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -15,7 +15,12 @@ export class PavilionExpensesService {
 
   create(
     pavilionId: number,
-    data: { type: PavilionExpenseType; amount: number; note?: string | null },
+    data: {
+      type: PavilionExpenseType;
+      amount: number;
+      note?: string | null;
+      status?: PavilionExpenseStatus;
+    },
   ) {
     return this.prisma.pavilionExpense.create({
       data: {
@@ -23,7 +28,28 @@ export class PavilionExpensesService {
         type: data.type,
         amount: data.amount,
         note: data.note ?? null,
+        status: data.status ?? PavilionExpenseStatus.UNPAID,
       },
+    });
+  }
+
+  async updateStatus(
+    pavilionId: number,
+    expenseId: number,
+    status: PavilionExpenseStatus,
+  ) {
+    const expense = await this.prisma.pavilionExpense.findFirst({
+      where: { id: expenseId, pavilionId },
+      select: { id: true },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Pavilion expense not found');
+    }
+
+    return this.prisma.pavilionExpense.update({
+      where: { id: expenseId },
+      data: { status },
     });
   }
 
