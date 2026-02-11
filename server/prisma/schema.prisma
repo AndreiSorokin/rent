@@ -177,7 +177,7 @@ model Contract {
   fileType String
 
   pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id])
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
 
   uploadedAt DateTime @default(now())
 }

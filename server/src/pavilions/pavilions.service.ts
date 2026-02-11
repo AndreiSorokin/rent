@@ -170,6 +170,21 @@ async findOne(storeId: number, id: number) {
   async delete(storeId: number, id: number) {
     await this.ensureExists(storeId, id);
 
+    const contracts = await this.prisma.contract.findMany({
+      where: { pavilionId: id },
+      select: { filePath: true },
+    });
+
+    for (const contract of contracts) {
+      const absolutePath = join(
+        process.cwd(),
+        contract.filePath.replace(/^\/+/, ''),
+      );
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    }
+
     return this.prisma.pavilion.delete({
       where: { id },
     });

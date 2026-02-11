@@ -8,6 +8,10 @@ export function createPavilion(storeId: number, data: any) {
   });
 }
 
+export function getPavilion<T = any>(storeId: number, pavilionId: number) {
+  return apiFetch<T>(`/stores/${storeId}/pavilions/${pavilionId}`);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function updatePavilion(storeId: number, pavilionId: number,data: any) {
   return apiFetch(`/stores/${storeId}/pavilions/${pavilionId}`, {

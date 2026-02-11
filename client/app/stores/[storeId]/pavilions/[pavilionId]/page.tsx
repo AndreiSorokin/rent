@@ -12,7 +12,7 @@ import { apiFetch } from '@/lib/api';
 import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { deletePavilionDiscount } from '@/lib/discounts';
 import { hasPermission } from '@/lib/permissions';
-import { updatePavilion } from '@/lib/pavilions';
+import { getPavilion, updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
@@ -25,79 +25,9 @@ import {
   deletePavilionExpense,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
-
-type Discount = {
-  id: number;
-  amount: number;
-  startsAt: string;
-  endsAt: string | null;
-  note?: string | null;
-};
-
-type PavilionExpenseType =
-  | 'SALARIES'
-  | 'PAYROLL_TAX'
-  | 'PROFIT_TAX'
-  | 'DIVIDENDS'
-  | 'BANK_SERVICES'
-  | 'VAT'
-  | 'LAND_RENT'
-  | 'OTHER';
-
-type PavilionExpenseStatus = 'UNPAID' | 'PAID';
-
-const MANUAL_EXPENSE_CATEGORIES: Array<{
-  type: PavilionExpenseType;
-  label: string;
-}> = [
-  { type: 'SALARIES', label: 'Зарплаты' },
-  { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
-  { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
-  { type: 'DIVIDENDS', label: 'Дивиденды' },
-  { type: 'BANK_SERVICES', label: 'Услуги банка' },
-  { type: 'VAT', label: 'НДС' },
-  { type: 'LAND_RENT', label: 'Аренда земли' },
-  { type: 'OTHER', label: 'Прочие расходы' },
-];
-
-type Pavilion = {
-  id: number;
-  number: string;
-  squareMeters: number;
-  pricePerSqM: number;
-  status: string;
-  tenantName?: string;
-  rentAmount?: number;
-  utilitiesAmount?: number;
-  prepaidUntil?: string | null;
-  payments: any[];
-  additionalCharges: any[];
-  discounts: Discount[];
-  contracts?: Array<{
-    id: number;
-    fileName: string;
-    filePath: string;
-    fileType: string;
-    uploadedAt: string;
-  }>;
-  householdExpenses?: Array<{
-    id: number;
-    name: string;
-    amount: number;
-    createdAt: string;
-  }>;
-  pavilionExpenses?: Array<{
-    id: number;
-    type: PavilionExpenseType;
-    status: PavilionExpenseStatus;
-    amount: number;
-    note?: string | null;
-    createdAt: string;
-  }>;
-  store?: {
-    currency?: 'RUB' | 'KZT';
-  };
-};
+import { Pavilion, PavilionExpenseStatus, PavilionExpenseType } from './pavilion.types';
+import { PavilionExpensesSection } from './components/PavilionExpensesSection';
+import { PavilionHouseholdExpensesSection } from './components/PavilionHouseholdExpensesSection';
 
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
@@ -138,6 +68,7 @@ export default function PavilionPage() {
     BANK_SERVICES: '',
     VAT: '',
     LAND_RENT: '',
+    OTHER: '',
   });
 
   const permissions = [
@@ -161,7 +92,7 @@ export default function PavilionPage() {
 
   const fetchPavilion = async () => {
     try {
-      const data = await apiFetch<Pavilion>(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`);
+      const data = await getPavilion<Pavilion>(storeIdNum, pavilionIdNum);
       setPavilion(data);
     } catch (err) {
       setError('Не удалось загрузить павильон');
@@ -464,48 +395,6 @@ export default function PavilionPage() {
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
 
-  const pavilionExpenses = pavilion.pavilionExpenses ?? [];
-  const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
-    (acc, category) => {
-      acc[category.type] = pavilionExpenses.filter((item) => item.type === category.type);
-      return acc;
-    },
-    {} as Record<PavilionExpenseType, Array<{
-      id: number;
-      type: PavilionExpenseType;
-      status: PavilionExpenseStatus;
-      amount: number;
-      note?: string | null;
-      createdAt: string;
-    }>>,
-  );
-
-  const manualExpensesForecastTotal = pavilionExpenses.reduce(
-    (sum, item) => sum + Number(item.amount ?? 0),
-    0,
-  );
-  const manualExpensesActualTotal = pavilionExpenses
-    .filter((item) => item.status === 'PAID')
-    .reduce(
-      (sum, item) => sum + Number(item.amount ?? 0),
-      0,
-    );
-  const householdExpensesTotal = (pavilion.householdExpenses ?? []).reduce(
-    (sum, item) => sum + Number(item.amount ?? 0),
-    0,
-  );
-  const utilitiesExpenseForecast =
-    pavilion.status === 'RENTED' || pavilion.status === 'PREPAID'
-      ? Number(pavilion.utilitiesAmount ?? 0)
-      : 0;
-  const utilitiesExpenseActual = (pavilion.payments ?? []).reduce(
-    (sum, payment: any) => sum + Number(payment.utilitiesPaid ?? 0),
-    0,
-  );
-  const pavilionExpenseForecastTotal =
-    manualExpensesForecastTotal + utilitiesExpenseForecast + householdExpensesTotal;
-  const pavilionExpenseActualTotal =
-    manualExpensesActualTotal + utilitiesExpenseActual + householdExpensesTotal;
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
 
@@ -658,196 +547,28 @@ export default function PavilionPage() {
           )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">Расходы на хоз. часть</h2>
+        <PavilionHouseholdExpensesSection
+          pavilion={pavilion}
+          currency={currency}
+          permissions={permissions}
+          expenseName={expenseName}
+          setExpenseName={setExpenseName}
+          expenseAmount={expenseAmount}
+          setExpenseAmount={setExpenseAmount}
+          onCreateHouseholdExpense={handleCreateHouseholdExpense}
+          onDeleteHouseholdExpense={handleDeleteHouseholdExpense}
+        />
 
-          {hasPermission(permissions, 'CREATE_CHARGES') && (
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <input
-                type="text"
-                value={expenseName}
-                onChange={(e) => setExpenseName(e.target.value)}
-                className="rounded border px-3 py-2"
-                placeholder="Название расхода"
-              />
-              <input
-                type="number"
-                step="0.01"
-                value={expenseAmount}
-                onChange={(e) => setExpenseAmount(e.target.value)}
-                className="rounded border px-3 py-2"
-                placeholder="Сумма"
-              />
-              <button
-                onClick={handleCreateHouseholdExpense}
-                className="rounded bg-amber-600 px-4 py-2 text-white hover:bg-amber-700"
-              >
-                + Добавить расход
-              </button>
-            </div>
-          )}
-
-          {!pavilion.householdExpenses || pavilion.householdExpenses.length === 0 ? (
-            <p className="text-gray-500">Расходов пока нет</p>
-          ) : (
-            <div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {pavilion.householdExpenses.map((expense) => (
-                      <tr key={expense.id}>
-                        <td className="px-6 py-4 text-sm">{expense.name}</td>
-                        <td className="px-6 py-4 text-sm">{formatMoney(expense.amount, currency)}</td>
-                        <td className="px-6 py-4 text-sm">
-                          {new Date(expense.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 text-right text-sm">
-                          {hasPermission(permissions, 'DELETE_CHARGES') && (
-                            <button
-                              onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-3 text-right text-sm font-semibold">
-                Итого: {formatMoney(householdExpensesTotal, currency)}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {MANUAL_EXPENSE_CATEGORIES.map((category) => {
-              const categoryItems = groupedManualExpenses[category.type] ?? [];
-              const categoryTotal = categoryItems.reduce(
-                (sum, item) => sum + Number(item.amount ?? 0),
-                0,
-              );
-
-              return (
-                <div key={category.type} className="rounded-md border p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold">{category.label}</div>
-                    <div className="text-sm font-semibold">{formatMoney(categoryTotal, currency)}</div>
-                  </div>
-
-                  {hasPermission(permissions, 'CREATE_CHARGES') && (
-                    <div className="mb-2 flex gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={manualExpenseAmountByType[category.type]}
-                        onChange={(e) =>
-                          setManualExpenseAmountByType((prev) => ({
-                            ...prev,
-                            [category.type]: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded border px-2 py-1 text-sm"
-                        placeholder="Сумма"
-                      />
-                      <button
-                        onClick={() => handleCreateManualExpense(category.type)}
-                        className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-
-                  {categoryItems.length > 0 ? (
-                    <div className="max-h-24 space-y-1 overflow-auto">
-                      {categoryItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
-                        >
-                          <span>
-                            {formatMoney(item.amount, currency)}{' '}
-                            <span className="text-gray-500">
-                              ({new Date(item.createdAt).toLocaleDateString()})
-                            </span>
-                          </span>
-                          <div className="ml-2 flex items-center gap-2">
-                            {hasPermission(permissions, 'EDIT_CHARGES') && (
-                              <select
-                                value={item.status}
-                                onChange={(e) =>
-                                  handleManualExpenseStatusChange(
-                                    item.id,
-                                    e.target.value as PavilionExpenseStatus,
-                                  )
-                                }
-                                className="rounded border px-1 py-0.5 text-[10px]"
-                              >
-                                <option value="UNPAID">Не оплачено</option>
-                                <option value="PAID">Оплачено</option>
-                              </select>
-                            )}
-                            {hasPermission(permissions, 'DELETE_CHARGES') && (
-                              <button
-                                onClick={() => handleDeleteManualExpense(item.id)}
-                                className="text-red-600 hover:underline"
-                              >
-                                x
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500">Записей нет</p>
-                  )}
-                </div>
-              );
-            })}
-
-            <div className="rounded-md border p-3">
-              <div className="text-sm font-semibold">Коммуналка</div>
-              <div className="text-xs text-gray-700">
-                Прогноз: {formatMoney(utilitiesExpenseForecast, currency)}
-              </div>
-              <div className="text-xs text-gray-700">
-                Факт: {formatMoney(utilitiesExpenseActual, currency)}
-              </div>
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="text-sm font-semibold">Хозяйственные расходы</div>
-              <div className="text-xs text-gray-700">
-                Итого: {formatMoney(householdExpensesTotal, currency)}
-              </div>
-            </div>
-
-            <div className="rounded-md border bg-gray-50 p-3 md:col-span-2 xl:col-span-1">
-              <div className="text-sm font-semibold">
-                Итого прогноз: {formatMoney(pavilionExpenseForecastTotal, currency)}
-              </div>
-              <div className="text-sm font-semibold">
-                Итого факт: {formatMoney(pavilionExpenseActualTotal, currency)}
-              </div>
-            </div>
-          </div>
-        </div>
+        <PavilionExpensesSection
+          pavilion={pavilion}
+          currency={currency}
+          permissions={permissions}
+          manualExpenseAmountByType={manualExpenseAmountByType}
+          setManualExpenseAmountByType={setManualExpenseAmountByType}
+          onCreateManualExpense={handleCreateManualExpense}
+          onDeleteManualExpense={handleDeleteManualExpense}
+          onManualExpenseStatusChange={handleManualExpenseStatusChange}
+        />
 
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
