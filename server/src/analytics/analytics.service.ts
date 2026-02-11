@@ -33,6 +33,8 @@ export class AnalyticsService {
           where: { period },
         },
         discounts: true,
+        householdExpenses: true,
+        pavilionExpenses: true,
         additionalCharges: {
           include: {
             payments: {
@@ -118,6 +120,34 @@ export class AnalyticsService {
     const incomeActualTotal =
       incomeActualRent + incomeActualUtilities + incomeActualAdditional;
 
+    let expensesTotalForecast = 0;
+    let expensesTotalActual = 0;
+
+    for (const pavilion of pavilions) {
+      const manualExpensesTotal = pavilion.pavilionExpenses.reduce(
+        (sum, expense) => sum + expense.amount,
+        0,
+      );
+      const householdExpensesTotal = pavilion.householdExpenses.reduce(
+        (sum, expense) => sum + expense.amount,
+        0,
+      );
+      const utilitiesForecast =
+        pavilion.status === PavilionStatus.RENTED ||
+        pavilion.status === PavilionStatus.PREPAID
+          ? (pavilion.utilitiesAmount ?? 0)
+          : 0;
+      const utilitiesActual = pavilion.payments.reduce(
+        (sum, payment) => sum + (payment.utilitiesPaid ?? 0),
+        0,
+      );
+
+      expensesTotalForecast +=
+        manualExpensesTotal + householdExpensesTotal + utilitiesForecast;
+      expensesTotalActual +=
+        manualExpensesTotal + householdExpensesTotal + utilitiesActual;
+    }
+
     return {
       pavilions: {
         total: pavilions.length,
@@ -162,6 +192,12 @@ export class AnalyticsService {
           utilities: incomeActualUtilities,
           additional: incomeActualAdditional,
           total: incomeActualTotal,
+        },
+      },
+      expenses: {
+        total: {
+          forecast: expensesTotalForecast,
+          actual: expensesTotalActual,
         },
       },
       period,

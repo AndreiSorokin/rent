@@ -19,6 +19,10 @@ import {
   createHouseholdExpense,
   deleteHouseholdExpense,
 } from '@/lib/householdExpenses';
+import {
+  createPavilionExpense,
+  deletePavilionExpense,
+} from '@/lib/pavilionExpenses';
 
 type Discount = {
   id: number;
@@ -27,6 +31,28 @@ type Discount = {
   endsAt: string | null;
   note?: string | null;
 };
+
+type PavilionExpenseType =
+  | 'SALARIES'
+  | 'PAYROLL_TAX'
+  | 'PROFIT_TAX'
+  | 'DIVIDENDS'
+  | 'BANK_SERVICES'
+  | 'VAT'
+  | 'LAND_RENT';
+
+const MANUAL_EXPENSE_CATEGORIES: Array<{
+  type: PavilionExpenseType;
+  label: string;
+}> = [
+  { type: 'SALARIES', label: 'Зарплаты' },
+  { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
+  { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
+  { type: 'DIVIDENDS', label: 'Дивиденды' },
+  { type: 'BANK_SERVICES', label: 'Услуги банка' },
+  { type: 'VAT', label: 'НДС' },
+  { type: 'LAND_RENT', label: 'Аренда земли' },
+];
 
 type Pavilion = {
   id: number;
@@ -52,6 +78,13 @@ type Pavilion = {
     id: number;
     name: string;
     amount: number;
+    createdAt: string;
+  }>;
+  pavilionExpenses?: Array<{
+    id: number;
+    type: PavilionExpenseType;
+    amount: number;
+    note?: string | null;
     createdAt: string;
   }>;
 };
@@ -85,6 +118,17 @@ export default function PavilionPage() {
   const [uploadingContract, setUploadingContract] = useState(false);
   const [expenseName, setExpenseName] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
+  const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
+    Record<PavilionExpenseType, string>
+  >({
+    SALARIES: '',
+    PAYROLL_TAX: '',
+    PROFIT_TAX: '',
+    DIVIDENDS: '',
+    BANK_SERVICES: '',
+    VAT: '',
+    LAND_RENT: '',
+  });
 
   const permissions = [
     'VIEW_PAVILIONS',
@@ -236,6 +280,41 @@ export default function PavilionPage() {
     }
   };
 
+  const handleCreateManualExpense = async (type: PavilionExpenseType) => {
+    const raw = manualExpenseAmountByType[type];
+    if (!raw) {
+      alert('Введите сумму');
+      return;
+    }
+
+    const amount = Number(raw);
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Некорректная сумма');
+      return;
+    }
+
+    try {
+      await createPavilionExpense(pavilionIdNum, { type, amount });
+      setManualExpenseAmountByType((prev) => ({ ...prev, [type]: '' }));
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    }
+  };
+
+  const handleDeleteManualExpense = async (expenseId: number) => {
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      await deletePavilionExpense(pavilionIdNum, expenseId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    }
+  };
+
   const handleSetPrepayment = async () => {
     const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
@@ -360,6 +439,42 @@ export default function PavilionPage() {
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
+
+  const pavilionExpenses = pavilion.pavilionExpenses ?? [];
+  const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
+    (acc, category) => {
+      acc[category.type] = pavilionExpenses.filter((item) => item.type === category.type);
+      return acc;
+    },
+    {} as Record<PavilionExpenseType, Array<{
+      id: number;
+      type: PavilionExpenseType;
+      amount: number;
+      note?: string | null;
+      createdAt: string;
+    }>>,
+  );
+
+  const manualExpensesTotal = pavilionExpenses.reduce(
+    (sum, item) => sum + Number(item.amount ?? 0),
+    0,
+  );
+  const householdExpensesTotal = (pavilion.householdExpenses ?? []).reduce(
+    (sum, expense) => sum + Number(expense.amount ?? 0),
+    0,
+  );
+  const utilitiesExpenseForecast =
+    pavilion.status === 'RENTED' || pavilion.status === 'PREPAID'
+      ? Number(pavilion.utilitiesAmount ?? 0)
+      : 0;
+  const utilitiesExpenseActual = (pavilion.payments ?? []).reduce(
+    (sum, payment: any) => sum + Number(payment.utilitiesPaid ?? 0),
+    0,
+  );
+  const pavilionExpenseForecastTotal =
+    manualExpensesTotal + utilitiesExpenseForecast + householdExpensesTotal;
+  const pavilionExpenseActualTotal =
+    manualExpensesTotal + utilitiesExpenseActual + householdExpensesTotal;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -505,6 +620,106 @@ export default function PavilionPage() {
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
+
+          <div className="space-y-4">
+            {MANUAL_EXPENSE_CATEGORIES.map((category) => {
+              const categoryItems = groupedManualExpenses[category.type] ?? [];
+              const categoryTotal = categoryItems.reduce(
+                (sum, item) => sum + Number(item.amount ?? 0),
+                0,
+              );
+
+              return (
+                <div key={category.type} className="rounded-lg border p-4">
+                  <div className="mb-3 text-sm font-semibold">
+                    {category.label}: {categoryTotal.toFixed(2)} ?
+                  </div>
+
+                  {hasPermission(permissions, 'CREATE_CHARGES') && (
+                    <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={manualExpenseAmountByType[category.type]}
+                        onChange={(e) =>
+                          setManualExpenseAmountByType((prev) => ({
+                            ...prev,
+                            [category.type]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded border px-3 py-2 text-sm"
+                        placeholder="Сумма"
+                      />
+                      <button
+                        onClick={() => handleCreateManualExpense(category.type)}
+                        className="rounded bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700"
+                      >
+                        Добавить
+                      </button>
+                    </div>
+                  )}
+
+                  {categoryItems.length > 0 ? (
+                    <div className="space-y-2">
+                      {categoryItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded bg-gray-50 px-3 py-2 text-sm"
+                        >
+                          <span>
+                            {Number(item.amount).toFixed(2)} ?{' '}
+                            <span className="text-gray-500">
+                              ({new Date(item.createdAt).toLocaleDateString()})
+                            </span>
+                          </span>
+                          {hasPermission(permissions, 'DELETE_CHARGES') && (
+                            <button
+                              onClick={() => handleDeleteManualExpense(item.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">Записей нет</p>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="rounded-lg border p-4">
+              <div className="font-semibold">Коммуналка</div>
+              <div className="text-sm text-gray-700">
+                Прогноз: {utilitiesExpenseForecast.toFixed(2)} ?
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт: {utilitiesExpenseActual.toFixed(2)} ?
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-4">
+              <div className="font-semibold">Хозяйственные расходы</div>
+              <div className="text-sm text-gray-700">
+                Итого: {householdExpensesTotal.toFixed(2)} ?
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-gray-50 p-4">
+              <div className="font-semibold">
+                Итого прогноз: {pavilionExpenseForecastTotal.toFixed(2)} ?
+              </div>
+              <div className="font-semibold">
+                Итого факт: {pavilionExpenseActualTotal.toFixed(2)} ?
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Расходы на хоз. часть</h2>
 
           {hasPermission(permissions, 'CREATE_CHARGES') && (
@@ -536,38 +751,43 @@ export default function PavilionPage() {
           {!pavilion.householdExpenses || pavilion.householdExpenses.length === 0 ? (
             <p className="text-gray-500">Расходов пока нет</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pavilion.householdExpenses.map((expense) => (
-                    <tr key={expense.id}>
-                      <td className="px-6 py-4 text-sm">{expense.name}</td>
-                      <td className="px-6 py-4 text-sm">{Number(expense.amount).toFixed(2)} ?</td>
-                      <td className="px-6 py-4 text-sm">
-                        {new Date(expense.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-right text-sm">
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button
-                            onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Удалить
-                          </button>
-                        )}
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pavilion.householdExpenses.map((expense) => (
+                      <tr key={expense.id}>
+                        <td className="px-6 py-4 text-sm">{expense.name}</td>
+                        <td className="px-6 py-4 text-sm">{Number(expense.amount).toFixed(2)} ?</td>
+                        <td className="px-6 py-4 text-sm">
+                          {new Date(expense.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm">
+                          {hasPermission(permissions, 'DELETE_CHARGES') && (
+                            <button
+                              onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3 text-right text-sm font-semibold">
+                Итого: {householdExpensesTotal.toFixed(2)} ?
+              </div>
             </div>
           )}
         </div>

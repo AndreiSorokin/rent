@@ -37,6 +37,7 @@ export class PavilionsService {
       include: {
         additionalCharges: true,
         householdExpenses: true,
+        pavilionExpenses: true,
         discounts: true,
         payments: true,
         contracts: true,
@@ -58,6 +59,7 @@ async findOne(storeId: number, id: number) {
         },
       },
       householdExpenses: { orderBy: { createdAt: 'desc' } },
+      pavilionExpenses: { orderBy: { createdAt: 'desc' } },
       discounts: { orderBy: { createdAt: 'desc' } },
       payments: { orderBy: { period: 'asc' } },
     },

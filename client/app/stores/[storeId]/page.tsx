@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
 import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
 import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
+import { ExpensesSummary } from '@/app/dashboard/components/ExpensesSummary';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { InviteUserModal } from '@/app/dashboard/components/InviteUserModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
@@ -100,9 +101,10 @@ export default function StorePage() {
         {hasPermission(permissions, 'VIEW_PAYMENTS') ? (
           <>
             {analytics && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                 <PaymentSummary analytics={analytics} />
                 <IncomeSummary analytics={analytics} />
+                <ExpensesSummary analytics={analytics} />
               </div>
             )}
           </>
