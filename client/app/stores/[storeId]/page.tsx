@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
@@ -15,6 +15,7 @@ import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection'
 
 export default function StorePage() {
   const params = useParams();
+  const router = useRouter();
   const storeId = Number(params.storeId);
 
   const [store, setStore] = useState<any>(null);
@@ -162,17 +163,6 @@ export default function StorePage() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow md:p-8">
-          <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
-          <StoreUsersSection
-            storeId={storeId}
-            permissions={permissions}
-            onUsersChanged={() => {
-              // no-op
-            }}
-          />
-        </div>
-
         {hasPermission(permissions, 'VIEW_PAYMENTS') ? (
           <>
             {analytics && (
@@ -195,20 +185,41 @@ export default function StorePage() {
           {store.pavilions?.length === 0 ? (
             <p className="py-8 text-center text-gray-600">В магазине пока нет павильонов</p>
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
-              {store.pavilions.map((p: any) => (
-                <Link
-                  key={p.id}
-                  href={`/stores/${storeId}/pavilions/${p.id}`}
-                  className="rounded-lg border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md md:p-6"
-                >
-                  <h3 className="mb-3 text-lg font-semibold md:text-xl">Павильон {p.number}</h3>
-                  <p className="mb-2 text-sm text-gray-600">
-                    Статус: <span className="font-medium">{statusLabel[p.status] ?? p.status}</span>
-                  </p>
-                  <p className="mb-3 text-sm text-gray-600">Арендатор: {p.tenantName || 'Свободен'}</p>
-                </Link>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Павильон
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Статус
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Арендатор
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {store.pavilions.map((p: any) => (
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer transition-colors hover:bg-gray-50"
+                      onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        Павильон {p.number}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {statusLabel[p.status] ?? p.status}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {p.tenantName || 'Свободен'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -285,6 +296,17 @@ export default function StorePage() {
               </table>
             </div>
           )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
+          <StoreUsersSection
+            storeId={storeId}
+            permissions={permissions}
+            onUsersChanged={() => {
+              // no-op
+            }}
+          />
         </div>
       </div>
 
