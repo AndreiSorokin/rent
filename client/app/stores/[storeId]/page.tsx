@@ -10,7 +10,6 @@ import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
 import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
 import { ExpensesSummary } from '@/app/dashboard/components/ExpensesSummary';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
-import { InviteUserModal } from '@/app/dashboard/components/InviteUserModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 
 export default function StorePage() {
@@ -23,7 +22,6 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
@@ -163,73 +161,67 @@ export default function StorePage() {
           </div>
         </div>
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') ? (
-          <>
-            {analytics && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <PaymentSummary analytics={analytics} currency={store.currency} />
-                <IncomeSummary analytics={analytics} currency={store.currency} />
-                <ExpensesSummary analytics={analytics} currency={store.currency} />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="rounded-xl bg-white p-6 text-center text-gray-600 shadow">
-            Здесь вы можете найти все павильоны, принадлежащие этому магазину
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <PaymentSummary analytics={analytics} currency={store.currency} />
+            <IncomeSummary analytics={analytics} currency={store.currency} />
+            <ExpensesSummary analytics={analytics} currency={store.currency} />
           </div>
         )}
 
-        <div className="rounded-xl bg-white p-6 shadow md:p-8">
-          <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
+        {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
 
-          {store.pavilions?.length === 0 ? (
-            <p className="py-8 text-center text-gray-600">В магазине пока нет павильонов</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Павильон
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Статус
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Арендатор
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {store.pavilions.map((p: any) => (
-                    <tr
-                      key={p.id}
-                      className="cursor-pointer transition-colors hover:bg-gray-50"
-                      onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        Павильон {p.number}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {statusLabel[p.status] ?? p.status}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {p.tenantName || 'Свободен'}
-                      </td>
+            {store.pavilions?.length === 0 ? (
+              <p className="py-8 text-center text-gray-600">В магазине пока нет павильонов</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Павильон
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Статус
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Арендатор
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl bg-white p-6 shadow md:p-8">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold md:text-2xl">Сотрудники</h2>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {store.pavilions.map((p: any) => (
+                      <tr
+                        key={p.id}
+                        className="cursor-pointer transition-colors hover:bg-gray-50"
+                        onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          Павильон {p.number}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {statusLabel[p.status] ?? p.status}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {p.tenantName || 'Свободен'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
+        )}
 
-          {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+        {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Сотрудники</h2>
+            </div>
+
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
               <input
                 type="text"
@@ -253,34 +245,30 @@ export default function StorePage() {
                 Добавить
               </button>
             </div>
-          )}
 
-          {!store.staff || store.staff.length === 0 ? (
-            <p className="text-gray-600">Список сотрудников пуст</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Должность
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Имя фамилия
-                    </th>
-                    {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+            {!store.staff || store.staff.length === 0 ? (
+              <p className="text-gray-600">Список сотрудников пуст</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Должность
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Имя фамилия
+                      </th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                         Действия
                       </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {store.staff.map((staff: any) => (
-                    <tr key={staff.id}>
-                      <td className="px-4 py-3 text-sm">{staff.position}</td>
-                      <td className="px-4 py-3 text-sm">{staff.fullName}</td>
-                      {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {store.staff.map((staff: any) => (
+                      <tr key={staff.id}>
+                        <td className="px-4 py-3 text-sm">{staff.position}</td>
+                        <td className="px-4 py-3 text-sm">{staff.fullName}</td>
                         <td className="px-4 py-3 text-right text-sm">
                           <button
                             onClick={() => handleDeleteStaff(staff.id)}
@@ -289,25 +277,28 @@ export default function StorePage() {
                             Удалить
                           </button>
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="rounded-xl bg-white p-6 shadow md:p-8">
-          <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
-          <StoreUsersSection
-            storeId={storeId}
-            permissions={permissions}
-            onUsersChanged={() => {
-              // no-op
-            }}
-          />
-        </div>
+        {(hasPermission(permissions, 'INVITE_USERS') ||
+          hasPermission(permissions, 'ASSIGN_PERMISSIONS')) && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
+            <StoreUsersSection
+              storeId={storeId}
+              permissions={permissions}
+              onUsersChanged={() => {
+                // no-op
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {showCreatePavilionModal && (
@@ -315,14 +306,6 @@ export default function StorePage() {
           storeId={storeId}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
-        />
-      )}
-
-      {showInviteModal && (
-        <InviteUserModal
-          storeId={storeId}
-          onClose={() => setShowInviteModal(false)}
-          onSuccess={() => fetchData()}
         />
       )}
     </div>
