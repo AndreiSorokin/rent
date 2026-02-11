@@ -11,6 +11,17 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const mapLoginError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes('invalid credentials') ||
+      normalized.includes('unauthorized')
+    ) {
+      return 'Неверный логин или пароль';
+    }
+    return 'Не удалось выполнить вход. Попробуйте снова.';
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -26,7 +37,7 @@ export default function LoginPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Login failed:', err);
-      setError(err.message);
+      setError(mapLoginError(String(err?.message || '')));
     }
   }
 

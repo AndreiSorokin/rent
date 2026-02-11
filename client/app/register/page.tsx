@@ -12,6 +12,18 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  const mapRegisterError = (message: string) => {
+    const normalized = message.toLowerCase();
+    if (
+      normalized.includes('email already registered') ||
+      normalized.includes('already registered') ||
+      normalized.includes('bad request')
+    ) {
+      return 'Пользователь с таким электронным адресом уже зарегистрирован';
+    }
+    return 'Не удалось выполнить регистрацию. Попробуйте снова.';
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -29,7 +41,7 @@ export default function RegisterPage() {
       router.push('/login');
     } catch (err: any) {
       console.error('Registration failed:', err);
-      setError(err.message || 'Ошибка регистрации');
+      setError(mapRegisterError(String(err?.message || '')));
     }
   }
 
