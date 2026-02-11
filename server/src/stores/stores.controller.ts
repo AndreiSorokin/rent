@@ -66,4 +66,24 @@ export class StoresController {
   ) {
     return this.service.updateCurrency(storeId, req.user.id, data.currency);
   }
+
+  @Post(':storeId/staff')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  createStaff(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { fullName: string; position: string },
+    @Req() req: any,
+  ) {
+    return this.service.createStaff(storeId, req.user.id, data);
+  }
+
+  @Delete(':storeId/staff/:staffId')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  deleteStaff(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('staffId', ParseIntPipe) staffId: number,
+    @Req() req: any,
+  ) {
+    return this.service.deleteStaff(storeId, staffId, req.user.id);
+  }
 }

@@ -24,6 +24,9 @@ export default function StorePage() {
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
+  const [staffFullName, setStaffFullName] = useState('');
+  const [staffPosition, setStaffPosition] = useState('');
+  const [staffSaving, setStaffSaving] = useState(false);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -73,6 +76,46 @@ export default function StorePage() {
       alert('Не удалось изменить валюту');
     } finally {
       setCurrencyUpdating(false);
+    }
+  };
+
+  const handleAddStaff = async () => {
+    if (!staffFullName.trim() || !staffPosition.trim()) {
+      alert('Заполните поля "Имя фамилия" и "Должность"');
+      return;
+    }
+
+    try {
+      setStaffSaving(true);
+      await apiFetch(`/stores/${storeId}/staff`, {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: staffFullName.trim(),
+          position: staffPosition.trim(),
+        }),
+      });
+      setStaffFullName('');
+      setStaffPosition('');
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить сотрудника');
+    } finally {
+      setStaffSaving(false);
+    }
+  };
+
+  const handleDeleteStaff = async (staffId: number) => {
+    if (!confirm('Удалить сотрудника из таблицы?')) return;
+
+    try {
+      await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
+        method: 'DELETE',
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить сотрудника');
     }
   };
 
@@ -166,6 +209,80 @@ export default function StorePage() {
                   <p className="mb-3 text-sm text-gray-600">Арендатор: {p.tenantName || 'Свободен'}</p>
                 </Link>
               ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold md:text-2xl">Сотрудники</h2>
+          </div>
+
+          {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
+              <input
+                type="text"
+                value={staffPosition}
+                onChange={(e) => setStaffPosition(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Должность"
+              />
+              <input
+                type="text"
+                value={staffFullName}
+                onChange={(e) => setStaffFullName(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Имя фамилия"
+              />
+              <button
+                onClick={handleAddStaff}
+                disabled={staffSaving}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Добавить
+              </button>
+            </div>
+          )}
+
+          {!store.staff || store.staff.length === 0 ? (
+            <p className="text-gray-600">Список сотрудников пуст</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Должность
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Имя фамилия
+                    </th>
+                    {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                        Действия
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {store.staff.map((staff: any) => (
+                    <tr key={staff.id}>
+                      <td className="px-4 py-3 text-sm">{staff.position}</td>
+                      <td className="px-4 py-3 text-sm">{staff.fullName}</td>
+                      {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+                        <td className="px-4 py-3 text-right text-sm">
+                          <button
+                            onClick={() => handleDeleteStaff(staff.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Удалить
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

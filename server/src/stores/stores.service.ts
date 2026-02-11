@@ -137,6 +137,9 @@ export class StoresService {
             permissions: true,
           },
         },
+        staff: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -211,6 +214,72 @@ export class StoresService {
       where: { id: storeId },
       data: { currency },
       select: { id: true, currency: true },
+    });
+  }
+
+  async createStaff(
+    storeId: number,
+    userId: number,
+    data: { fullName: string; position: string },
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store owner can manage staff');
+    }
+
+    const fullName = data.fullName.trim();
+    const position = data.position.trim();
+
+    if (!fullName || !position) {
+      throw new BadRequestException('fullName and position are required');
+    }
+
+    return this.prisma.storeStaff.create({
+      data: {
+        storeId,
+        fullName,
+        position,
+      },
+    });
+  }
+
+  async deleteStaff(storeId: number, staffId: number, userId: number) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store owner can manage staff');
+    }
+
+    const staff = await this.prisma.storeStaff.findFirst({
+      where: { id: staffId, storeId },
+      select: { id: true },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff record not found');
+    }
+
+    return this.prisma.storeStaff.delete({
+      where: { id: staffId },
     });
   }
 }

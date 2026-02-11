@@ -40,6 +40,20 @@ model Store {
   storeUsers  StoreUser[]
   pavilions   Pavilion[]
   invitations Invitation[]
+  staff       StoreStaff[]
+}
+
+model StoreStaff {
+  id       Int    @id @default(autoincrement())
+  fullName String
+  position String
+
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([storeId, createdAt])
 }
 
 enum Currency {
