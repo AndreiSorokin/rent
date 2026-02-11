@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
 import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
@@ -22,6 +23,7 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [currencyUpdating, setCurrencyUpdating] = useState(false);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -58,6 +60,22 @@ export default function StorePage() {
     setShowCreatePavilionModal(false);
   };
 
+  const handleCurrencyChange = async (currency: 'RUB' | 'KZT') => {
+    try {
+      setCurrencyUpdating(true);
+      await apiFetch(`/stores/${storeId}/currency`, {
+        method: 'PATCH',
+        body: JSON.stringify({ currency }),
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось изменить валюту');
+    } finally {
+      setCurrencyUpdating(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -73,9 +91,23 @@ export default function StorePage() {
               Назад к магазинам
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">{store.name}</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Валюта магазина: {store.currency} ({getCurrencySymbol(store.currency)})
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
+            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+              <select
+                value={store.currency ?? 'RUB'}
+                onChange={(e) => handleCurrencyChange(e.target.value as 'RUB' | 'KZT')}
+                disabled={currencyUpdating}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="RUB">Российский рубль (₽)</option>
+                <option value="KZT">Казахстанский тенге (₸)</option>
+              </select>
+            )}
             {hasPermission(permissions, 'CREATE_PAVILIONS') && (
               <button
                 onClick={() => setShowCreatePavilionModal(true)}
@@ -102,9 +134,9 @@ export default function StorePage() {
           <>
             {analytics && (
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                <PaymentSummary analytics={analytics} />
-                <IncomeSummary analytics={analytics} />
-                <ExpensesSummary analytics={analytics} />
+                <PaymentSummary analytics={analytics} currency={store.currency} />
+                <IncomeSummary analytics={analytics} currency={store.currency} />
+                <ExpensesSummary analytics={analytics} currency={store.currency} />
               </div>
             )}
           </>

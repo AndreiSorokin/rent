@@ -1,7 +1,11 @@
+import { formatMoney } from '@/lib/currency';
+
 export function IncomeSummary({
   analytics,
+  currency,
 }: {
   analytics: any;
+  currency?: 'RUB' | 'KZT';
 }) {
   const forecast = analytics.income?.forecast;
   const actual = analytics.income?.actual;
@@ -16,8 +20,8 @@ export function IncomeSummary({
       <div className="mb-2 text-sm text-gray-700">
         Формула: аренда + коммуналка + доп. начисления (по всем павильонам)
       </div>
-      <div>Прогнозные доходы: {forecastTotal} рублей</div>
-      <div>Фактические доходы: {actualTotal} рублей</div>
+      <div>Прогнозные доходы: {formatMoney(forecastTotal, currency)}</div>
+      <div>Фактические доходы: {formatMoney(actualTotal, currency)}</div>
     </div>
   );
 }

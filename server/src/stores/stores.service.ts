@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Permission, PavilionStatus, Prisma } from '@prisma/client';
+import { Currency, Permission, PavilionStatus, Prisma } from '@prisma/client';
 import { startOfMonth } from 'date-fns';
 
 @Injectable()
@@ -189,5 +189,28 @@ export class StoresService {
         where: { id: storeId },
       }),
     ]);
+  }
+
+  async updateCurrency(storeId: number, userId: number, currency: Currency) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store owner can change currency');
+    }
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { currency },
+      select: { id: true, currency: true },
+    });
   }
 }

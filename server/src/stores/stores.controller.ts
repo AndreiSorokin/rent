@@ -6,13 +6,15 @@ import {
   Param,
   ParseIntPipe,
   Delete,
+  Patch,
   UseGuards,
   Req,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
-import { Prisma } from '@prisma/client';
+import { Currency, Permission, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import { Permissions } from 'src/auth/decorators/permissions.decorator';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores')
@@ -53,5 +55,15 @@ export class StoresController {
     const userId = req.user.id;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     return this.service.delete(storeId, userId);
+  }
+
+  @Patch(':storeId/currency')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateCurrency(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { currency: Currency },
+    @Req() req: any,
+  ) {
+    return this.service.updateCurrency(storeId, req.user.id, data.currency);
   }
 }

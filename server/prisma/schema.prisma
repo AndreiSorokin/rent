@@ -36,9 +36,15 @@ model StoreUser {
 model Store {
   id          Int          @id @default(autoincrement())
   name        String
+  currency    Currency     @default(RUB)
   storeUsers  StoreUser[]
   pavilions   Pavilion[]
   invitations Invitation[]
+}
+
+enum Currency {
+  RUB
+  KZT
 }
 
 model AdditionalCharge {

@@ -1,7 +1,11 @@
+import { formatMoney } from '@/lib/currency';
+
 export function PaymentSummary({
   analytics,
+  currency,
 }: {
   analytics: any;
+  currency?: 'RUB' | 'KZT';
 }) {
   const expectedTotal = analytics.expected?.total ?? 0;
   const paidTotal = analytics.paid?.total ?? 0;
@@ -16,10 +20,10 @@ export function PaymentSummary({
         предоплата {analytics.pavilions.prepaid ?? 0}, свободно {analytics.pavilions.free}
       </div>
 
-      <div>Ожидается: {expectedTotal} рублей</div>
-      <div>Оплачено: {paidTotal} рублей</div>
-      <div className="font-medium">Схождение: {paidTotal - expectedTotal} рублей</div>
-      <div className="text-sm text-gray-600">Долг: {debt} рублей</div>
+      <div>Ожидается: {formatMoney(expectedTotal, currency)}</div>
+      <div>Оплачено: {formatMoney(paidTotal, currency)}</div>
+      <div className="font-medium">Схождение: {formatMoney(paidTotal - expectedTotal, currency)}</div>
+      <div className="text-sm text-gray-600">Долг: {formatMoney(debt, currency)}</div>
     </div>
   );
 }

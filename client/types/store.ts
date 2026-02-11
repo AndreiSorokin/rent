@@ -10,7 +10,14 @@ export type Permission =
   | 'VIEW_CHARGES'
   | 'CREATE_CHARGES'
   | 'EDIT_CHARGES'
-  | 'DELETE_CHARGES';
+  | 'DELETE_CHARGES'
+  | 'VIEW_CONTRACTS'
+  | 'UPLOAD_CONTRACTS'
+  | 'DELETE_CONTRACTS'
+  | 'INVITE_USERS'
+  | 'ASSIGN_PERMISSIONS';
+
+export type Currency = 'RUB' | 'KZT';
 
 export interface Pavilion {
   id: number;
@@ -21,6 +28,7 @@ export interface Pavilion {
 export interface Store {
   id: number;
   name: string;
+  currency: Currency;
   pavilions: Pavilion[];
   permissions: Permission[];
 }

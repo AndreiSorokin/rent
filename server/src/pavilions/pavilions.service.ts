@@ -51,6 +51,11 @@ async findOne(storeId: number, id: number) {
   return this.prisma.pavilion.findFirst({
     where: { id, storeId },
     include: {
+      store: {
+        select: {
+          currency: true,
+        },
+      },
       contracts: { orderBy: { uploadedAt: 'desc' } },
       additionalCharges: {
         orderBy: { createdAt: 'asc' },

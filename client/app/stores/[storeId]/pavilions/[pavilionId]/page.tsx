@@ -14,6 +14,7 @@ import { deletePavilionDiscount } from '@/lib/discounts';
 import { hasPermission } from '@/lib/permissions';
 import { updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment } from '@/lib/payments';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
 import {
   createHouseholdExpense,
@@ -87,6 +88,9 @@ type Pavilion = {
     note?: string | null;
     createdAt: string;
   }>;
+  store?: {
+    currency?: 'RUB' | 'KZT';
+  };
 };
 
 export default function PavilionPage() {
@@ -475,6 +479,8 @@ export default function PavilionPage() {
     manualExpensesTotal + utilitiesExpenseForecast + householdExpensesTotal;
   const pavilionExpenseActualTotal =
     manualExpensesTotal + utilitiesExpenseActual + householdExpensesTotal;
+  const currency = pavilion.store?.currency ?? 'RUB';
+  const currencySymbol = getCurrencySymbol(currency);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -507,7 +513,7 @@ export default function PavilionPage() {
             </div>
             <div>
               <p className="text-gray-600">Цена за м2</p>
-              <p className="text-lg font-medium">{pavilion.pricePerSqM} ?</p>
+              <p className="text-lg font-medium">{formatMoney(pavilion.pricePerSqM, currency)}</p>
             </div>
             <div>
               <p className="text-gray-600">Статус</p>
@@ -519,11 +525,17 @@ export default function PavilionPage() {
             </div>
             <div>
               <p className="text-gray-600">Аренда</p>
-              <p className="text-lg font-medium">{pavilion.rentAmount ?? '-'} ?</p>
+              <p className="text-lg font-medium">
+                {pavilion.rentAmount == null ? '-' : formatMoney(pavilion.rentAmount, currency)}
+              </p>
             </div>
             <div>
               <p className="text-gray-600">Коммунальные</p>
-              <p className="text-lg font-medium">{pavilion.utilitiesAmount ?? '-'} ?</p>
+              <p className="text-lg font-medium">
+                {pavilion.utilitiesAmount == null
+                  ? '-'
+                  : formatMoney(pavilion.utilitiesAmount, currency)}
+              </p>
             </div>
           </div>
 
@@ -620,107 +632,6 @@ export default function PavilionPage() {
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {MANUAL_EXPENSE_CATEGORIES.map((category) => {
-              const categoryItems = groupedManualExpenses[category.type] ?? [];
-              const categoryTotal = categoryItems.reduce(
-                (sum, item) => sum + Number(item.amount ?? 0),
-                0,
-              );
-
-              return (
-                <div key={category.type} className="rounded-md border p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold">{category.label}</div>
-                    <div className="text-sm font-semibold">{categoryTotal.toFixed(2)} ?</div>
-                  </div>
-
-                  {hasPermission(permissions, 'CREATE_CHARGES') && (
-                    <div className="mb-2 flex gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={manualExpenseAmountByType[category.type]}
-                        onChange={(e) =>
-                          setManualExpenseAmountByType((prev) => ({
-                            ...prev,
-                            [category.type]: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded border px-2 py-1 text-sm"
-                        placeholder="Сумма"
-                      />
-                      <button
-                        onClick={() => handleCreateManualExpense(category.type)}
-                        className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
-
-                  {categoryItems.length > 0 ? (
-                    <div className="max-h-24 space-y-1 overflow-auto">
-                      {categoryItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
-                        >
-                          <span>
-                            {Number(item.amount).toFixed(2)} ?{' '}
-                            <span className="text-gray-500">
-                              ({new Date(item.createdAt).toLocaleDateString()})
-                            </span>
-                          </span>
-                          {hasPermission(permissions, 'DELETE_CHARGES') && (
-                            <button
-                              onClick={() => handleDeleteManualExpense(item.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              x
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500">Записей нет</p>
-                  )}
-                </div>
-              );
-            })}
-
-            <div className="rounded-md border p-3">
-              <div className="text-sm font-semibold">Коммуналка</div>
-              <div className="text-xs text-gray-700">
-                Прогноз: {utilitiesExpenseForecast.toFixed(2)} ?
-              </div>
-              <div className="text-xs text-gray-700">
-                Факт: {utilitiesExpenseActual.toFixed(2)} ?
-              </div>
-            </div>
-
-            <div className="rounded-md border p-3">
-              <div className="text-sm font-semibold">Хозяйственные расходы</div>
-              <div className="text-xs text-gray-700">
-                Итого: {householdExpensesTotal.toFixed(2)} ?
-              </div>
-            </div>
-
-            <div className="rounded-md border bg-gray-50 p-3 md:col-span-2 xl:col-span-1">
-              <div className="text-sm font-semibold">
-                Итого прогноз: {pavilionExpenseForecastTotal.toFixed(2)} ?
-              </div>
-              <div className="text-sm font-semibold">
-                Итого факт: {pavilionExpenseActualTotal.toFixed(2)} ?
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Расходы на хоз. часть</h2>
 
           {hasPermission(permissions, 'CREATE_CHARGES') && (
@@ -767,7 +678,7 @@ export default function PavilionPage() {
                     {pavilion.householdExpenses.map((expense) => (
                       <tr key={expense.id}>
                         <td className="px-6 py-4 text-sm">{expense.name}</td>
-                        <td className="px-6 py-4 text-sm">{Number(expense.amount).toFixed(2)} ?</td>
+                        <td className="px-6 py-4 text-sm">{formatMoney(expense.amount, currency)}</td>
                         <td className="px-6 py-4 text-sm">
                           {new Date(expense.createdAt).toLocaleDateString()}
                         </td>
@@ -787,10 +698,111 @@ export default function PavilionPage() {
                 </table>
               </div>
               <div className="mt-3 text-right text-sm font-semibold">
-                Итого: {householdExpensesTotal.toFixed(2)} ?
+                Итого: {formatMoney(householdExpensesTotal, currency)}
               </div>
             </div>
           )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {MANUAL_EXPENSE_CATEGORIES.map((category) => {
+              const categoryItems = groupedManualExpenses[category.type] ?? [];
+              const categoryTotal = categoryItems.reduce(
+                (sum, item) => sum + Number(item.amount ?? 0),
+                0,
+              );
+
+              return (
+                <div key={category.type} className="rounded-md border p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold">{category.label}</div>
+                    <div className="text-sm font-semibold">{formatMoney(categoryTotal, currency)}</div>
+                  </div>
+
+                  {hasPermission(permissions, 'CREATE_CHARGES') && (
+                    <div className="mb-2 flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={manualExpenseAmountByType[category.type]}
+                        onChange={(e) =>
+                          setManualExpenseAmountByType((prev) => ({
+                            ...prev,
+                            [category.type]: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded border px-2 py-1 text-sm"
+                        placeholder="Сумма"
+                      />
+                      <button
+                        onClick={() => handleCreateManualExpense(category.type)}
+                        className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
+                      >
+                        +
+                      </button>
+                    </div>
+                  )}
+
+                  {categoryItems.length > 0 ? (
+                    <div className="max-h-24 space-y-1 overflow-auto">
+                      {categoryItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                        >
+                          <span>
+                            {formatMoney(item.amount, currency)}{' '}
+                            <span className="text-gray-500">
+                              ({new Date(item.createdAt).toLocaleDateString()})
+                            </span>
+                          </span>
+                          {hasPermission(permissions, 'DELETE_CHARGES') && (
+                            <button
+                              onClick={() => handleDeleteManualExpense(item.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              x
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500">Записей нет</p>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="rounded-md border p-3">
+              <div className="text-sm font-semibold">Коммуналка</div>
+              <div className="text-xs text-gray-700">
+                Прогноз: {formatMoney(utilitiesExpenseForecast, currency)}
+              </div>
+              <div className="text-xs text-gray-700">
+                Факт: {formatMoney(utilitiesExpenseActual, currency)}
+              </div>
+            </div>
+
+            <div className="rounded-md border p-3">
+              <div className="text-sm font-semibold">Хозяйственные расходы</div>
+              <div className="text-xs text-gray-700">
+                Итого: {formatMoney(householdExpensesTotal, currency)}
+              </div>
+            </div>
+
+            <div className="rounded-md border bg-gray-50 p-3 md:col-span-2 xl:col-span-1">
+              <div className="text-sm font-semibold">
+                Итого прогноз: {formatMoney(pavilionExpenseForecastTotal, currency)}
+              </div>
+              <div className="text-sm font-semibold">
+                Итого факт: {formatMoney(pavilionExpenseActualTotal, currency)}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
@@ -825,9 +837,11 @@ export default function PavilionPage() {
                 <tbody className="divide-y divide-gray-200">
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
-                      <td className="px-6 py-4 text-sm font-medium">{discount.amount.toFixed(2)} ?/м2</td>
                       <td className="px-6 py-4 text-sm font-medium">
-                        {(discount.amount * pavilion.squareMeters).toFixed(2)} ?
+                        {discount.amount.toFixed(2)} {currencySymbol}/м2
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        {formatMoney(discount.amount * pavilion.squareMeters, currency)}
                       </td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
                       <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
@@ -901,8 +915,8 @@ export default function PavilionPage() {
                     return (
                       <tr key={pay.id}>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">{pay.period}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">{expected.toFixed(2)} ?</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">{paid.toFixed(2)} ?</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(expected, currency)}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(paid, currency)}</td>
                         <td
                           className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
                             balance > 0
@@ -912,7 +926,7 @@ export default function PavilionPage() {
                                 : 'text-gray-600'
                           }`}
                         >
-                          {`${balance > 0 ? '+' : ''}${balance.toFixed(2)} ?`}
+                          {`${balance > 0 ? '+' : balance < 0 ? '-' : ''}${formatMoney(Math.abs(balance), currency)}`}
                         </td>
                       </tr>
                     );
@@ -977,8 +991,8 @@ export default function PavilionPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
-                          <td className="px-6 py-4 text-sm">{charge.amount.toFixed(2)} ?</td>
-                          <td className="px-6 py-4 text-sm">{totalPaid.toFixed(2)} ?</td>
+                          <td className="px-6 py-4 text-sm">{formatMoney(charge.amount, currency)}</td>
+                          <td className="px-6 py-4 text-sm">{formatMoney(totalPaid, currency)}</td>
                           <td
                             className={`px-6 py-4 text-sm font-medium ${
                               balance > 0
@@ -988,8 +1002,8 @@ export default function PavilionPage() {
                                   : 'text-gray-600'
                             }`}
                           >
-                            {balance > 0 ? '+' : ''}
-                            {balance.toFixed(2)} ?
+                            {balance > 0 ? '+' : balance < 0 ? '-' : ''}
+                            {formatMoney(Math.abs(balance), currency)}
                           </td>
                           <td className="px-6 py-4 text-sm">
                             {isPaid ? (
@@ -1034,7 +1048,7 @@ export default function PavilionPage() {
                                   {charge.payments.map((p: any) => (
                                     <div key={p.id} className="flex items-center justify-between gap-3">
                                       <span>{new Date(p.paidAt).toLocaleDateString()}</span>
-                                      <span className="font-medium">{Number(p.amountPaid).toFixed(2)} ?</span>
+                                      <span className="font-medium">{formatMoney(p.amountPaid, currency)}</span>
                                       <button
                                         onClick={() => handleDeleteChargePayment(charge.id, p.id)}
                                         className="text-xs text-red-600 hover:underline"
