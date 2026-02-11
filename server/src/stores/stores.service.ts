@@ -127,6 +127,7 @@ export class StoresService {
                 payments: true,
               },
             },
+            householdExpenses: true,
             discounts: true,
           },
         },

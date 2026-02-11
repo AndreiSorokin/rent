@@ -11,6 +11,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AdditionalChargeModule } from './additional-charge/additional-charge.module';
 import { DiscountsModule } from './discounts/discounts.module';
+import { HouseholdExpenseModule } from './household-expense/household-expense.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DiscountsModule } from './discounts/discounts.module';
     AnalyticsModule,
     AdditionalChargeModule,
     DiscountsModule,
+    HouseholdExpenseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

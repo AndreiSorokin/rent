@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PavilionStatus, Prisma } from '@prisma/client';
 import { CreatePavilionDto } from './dto/create-pavilion.dto';
 import { endOfMonth, startOfMonth } from 'date-fns';
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class PavilionsService {
@@ -34,6 +36,7 @@ export class PavilionsService {
       where: { storeId },
       include: {
         additionalCharges: true,
+        householdExpenses: true,
         discounts: true,
         payments: true,
         contracts: true,
@@ -47,12 +50,14 @@ async findOne(storeId: number, id: number) {
   return this.prisma.pavilion.findFirst({
     where: { id, storeId },
     include: {
+      contracts: { orderBy: { uploadedAt: 'desc' } },
       additionalCharges: {
         orderBy: { createdAt: 'asc' },
         include: {
           payments: { orderBy: { paidAt: 'asc' } },
         },
       },
+      householdExpenses: { orderBy: { createdAt: 'desc' } },
       discounts: { orderBy: { createdAt: 'desc' } },
       payments: { orderBy: { period: 'asc' } },
     },
@@ -172,6 +177,59 @@ async findOne(storeId: number, id: number) {
     if (!exists) {
       throw new NotFoundException('Pavilion not found');
     }
+  }
+
+  async listContracts(storeId: number, pavilionId: number) {
+    await this.ensureExists(storeId, pavilionId);
+
+    return this.prisma.contract.findMany({
+      where: { pavilionId },
+      orderBy: { uploadedAt: 'desc' },
+    });
+  }
+
+  async createContract(
+    storeId: number,
+    pavilionId: number,
+    data: { fileName: string; filePath: string; fileType: string },
+  ) {
+    await this.ensureExists(storeId, pavilionId);
+
+    return this.prisma.contract.create({
+      data: {
+        pavilionId,
+        fileName: data.fileName,
+        filePath: data.filePath,
+        fileType: data.fileType,
+      },
+    });
+  }
+
+  async deleteContract(storeId: number, pavilionId: number, contractId: number) {
+    await this.ensureExists(storeId, pavilionId);
+
+    const contract = await this.prisma.contract.findFirst({
+      where: {
+        id: contractId,
+        pavilionId,
+      },
+    });
+
+    if (!contract) {
+      throw new NotFoundException('Contract not found');
+    }
+
+    const absolutePath = join(
+      process.cwd(),
+      contract.filePath.replace(/^\/+/, ''),
+    );
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+
+    return this.prisma.contract.delete({
+      where: { id: contractId },
+    });
   }
 
   private async syncExpiredPrepayments(storeId: number) {

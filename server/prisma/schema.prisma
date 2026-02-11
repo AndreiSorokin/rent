@@ -76,6 +76,7 @@ model Pavilion {
   utilitiesAmount Float?
 
   additionalCharges AdditionalCharge[]
+  householdExpenses HouseholdExpense[]
   discounts         PavilionDiscount[]
   payments          Payment[]
   contracts         Contract[]
@@ -104,6 +105,19 @@ enum PavilionStatus {
   AVAILABLE
   RENTED
   PREPAID
+}
+
+model HouseholdExpense {
+  id       Int    @id @default(autoincrement())
+  name     String
+  amount   Float
+
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([pavilionId, createdAt])
 }
 
 model Payment {

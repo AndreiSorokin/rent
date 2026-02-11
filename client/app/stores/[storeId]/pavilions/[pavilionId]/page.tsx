@@ -14,6 +14,11 @@ import { deletePavilionDiscount } from '@/lib/discounts';
 import { hasPermission } from '@/lib/permissions';
 import { updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment } from '@/lib/payments';
+import { deleteContract, uploadContract } from '@/lib/contracts';
+import {
+  createHouseholdExpense,
+  deleteHouseholdExpense,
+} from '@/lib/householdExpenses';
 
 type Discount = {
   id: number;
@@ -36,6 +41,19 @@ type Pavilion = {
   payments: any[];
   additionalCharges: any[];
   discounts: Discount[];
+  contracts?: Array<{
+    id: number;
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    uploadedAt: string;
+  }>;
+  householdExpenses?: Array<{
+    id: number;
+    name: string;
+    amount: number;
+    createdAt: string;
+  }>;
 };
 
 export default function PavilionPage() {
@@ -64,6 +82,9 @@ export default function PavilionPage() {
     new Date().toISOString().slice(0, 7),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
+  const [uploadingContract, setUploadingContract] = useState(false);
+  const [expenseName, setExpenseName] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
 
   const permissions = [
     'VIEW_PAVILIONS',
@@ -72,6 +93,9 @@ export default function PavilionPage() {
     'CREATE_CHARGES',
     'DELETE_CHARGES',
     'DELETE_PAVILIONS',
+    'VIEW_CONTRACTS',
+    'UPLOAD_CONTRACTS',
+    'DELETE_CONTRACTS',
   ];
 
   const statusLabel: Record<string, string> = {
@@ -146,6 +170,69 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить скидку');
+    }
+  };
+
+  const handleContractUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingContract(true);
+      await uploadContract(storeIdNum, pavilionIdNum, file);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось загрузить документ');
+    } finally {
+      setUploadingContract(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteContract = async (contractId: number) => {
+    if (!confirm('Удалить этот документ?')) return;
+
+    try {
+      await deleteContract(storeIdNum, pavilionIdNum, contractId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить документ');
+    }
+  };
+
+  const handleCreateHouseholdExpense = async () => {
+    if (!expenseName.trim() || !expenseAmount) {
+      alert('Введите название и сумму расхода');
+      return;
+    }
+
+    try {
+      await createHouseholdExpense(pavilionIdNum, {
+        name: expenseName.trim(),
+        amount: Number(expenseAmount),
+      });
+      setExpenseName('');
+      setExpenseAmount('');
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    }
+  };
+
+  const handleDeleteHouseholdExpense = async (expenseId: number) => {
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      await deleteHouseholdExpense(pavilionIdNum, expenseId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
     }
   };
 
@@ -348,6 +435,139 @@ export default function PavilionPage() {
                   Оплаченный месяц: {new Date(pavilion.prepaidUntil).toLocaleDateString()}
                 </span>
               )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Договоры</h2>
+            {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
+              <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
+                {uploadingContract ? 'Загрузка...' : '+ Загрузить документ'}
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleContractUpload}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                  disabled={uploadingContract}
+                />
+              </label>
+            )}
+          </div>
+
+          {!pavilion.contracts || pavilion.contracts.length === 0 ? (
+            <p className="text-gray-500">Документы не загружены</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.contracts.map((contract) => (
+                    <tr key={contract.id}>
+                      <td className="px-6 py-4 text-sm">
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {contract.fileName}
+                        </a>
+                      </td>
+                      <td className="px-6 py-4 text-sm">{contract.fileType}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {new Date(contract.uploadedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        {hasPermission(permissions, 'DELETE_CONTRACTS') && (
+                          <button
+                            onClick={() => handleDeleteContract(contract.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">Расходы на хоз. часть</h2>
+
+          {hasPermission(permissions, 'CREATE_CHARGES') && (
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <input
+                type="text"
+                value={expenseName}
+                onChange={(e) => setExpenseName(e.target.value)}
+                className="rounded border px-3 py-2"
+                placeholder="Название расхода"
+              />
+              <input
+                type="number"
+                step="0.01"
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                className="rounded border px-3 py-2"
+                placeholder="Сумма"
+              />
+              <button
+                onClick={handleCreateHouseholdExpense}
+                className="rounded bg-amber-600 px-4 py-2 text-white hover:bg-amber-700"
+              >
+                + Добавить расход
+              </button>
+            </div>
+          )}
+
+          {!pavilion.householdExpenses || pavilion.householdExpenses.length === 0 ? (
+            <p className="text-gray-500">Расходов пока нет</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.householdExpenses.map((expense) => (
+                    <tr key={expense.id}>
+                      <td className="px-6 py-4 text-sm">{expense.name}</td>
+                      <td className="px-6 py-4 text-sm">{Number(expense.amount).toFixed(2)} ?</td>
+                      <td className="px-6 py-4 text-sm">
+                        {new Date(expense.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <button
+                            onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -723,4 +943,3 @@ export default function PavilionPage() {
     </div>
   );
 }
-
