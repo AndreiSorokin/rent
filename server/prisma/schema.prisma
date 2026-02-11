@@ -86,6 +86,7 @@ model Pavilion {
   pavilionExpenses  PavilionExpense[]
   discounts         PavilionDiscount[]
   payments          Payment[]
+  paymentTransactions PaymentTransaction[]
   contracts         Contract[]
 
   storeId Int
@@ -165,6 +166,10 @@ model Payment {
   period        DateTime
   rentPaid      Float? // actual amount paid for rent
   utilitiesPaid Float? // actual amount paid for utilities
+  bankTransferPaid Float @default(0)
+  cashbox1Paid  Float @default(0)
+  cashbox2Paid  Float @default(0)
+  transactions  PaymentTransaction[]
   createdAt     DateTime @default(now())
 
   @@unique([pavilionId, period])
@@ -180,6 +185,23 @@ model Contract {
   pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
 
   uploadedAt DateTime @default(now())
+}
+
+model PaymentTransaction {
+  id               Int      @id @default(autoincrement())
+  pavilionId       Int
+  pavilion         Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  paymentId        Int?
+  payment          Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  period           DateTime
+  rentPaid         Float @default(0)
+  utilitiesPaid    Float @default(0)
+  bankTransferPaid Float @default(0)
+  cashbox1Paid     Float @default(0)
+  cashbox2Paid     Float @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([pavilionId, period, createdAt])
 }
 
 model Invitation {

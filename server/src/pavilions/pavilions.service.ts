@@ -67,6 +67,7 @@ async findOne(storeId: number, id: number) {
       pavilionExpenses: { orderBy: { createdAt: 'desc' } },
       discounts: { orderBy: { createdAt: 'desc' } },
       payments: { orderBy: { period: 'asc' } },
+      paymentTransactions: { orderBy: { createdAt: 'desc' } },
     },
   });
 }

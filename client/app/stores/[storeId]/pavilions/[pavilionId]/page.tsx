@@ -13,7 +13,7 @@ import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { deletePavilionDiscount } from '@/lib/discounts';
 import { hasPermission } from '@/lib/permissions';
 import { getPavilion, updatePavilion } from '@/lib/pavilions';
-import { createPavilionPayment } from '@/lib/payments';
+import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
 import {
@@ -25,7 +25,7 @@ import {
   deletePavilionExpense,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
-import { Pavilion, PavilionExpenseStatus, PavilionExpenseType } from './pavilion.types';
+import { Discount, Pavilion, PavilionExpenseStatus, PavilionExpenseType } from './pavilion.types';
 import { PavilionExpensesSection } from './components/PavilionExpensesSection';
 import { PavilionHouseholdExpensesSection } from './components/PavilionHouseholdExpensesSection';
 
@@ -75,6 +75,7 @@ export default function PavilionPage() {
     'VIEW_PAVILIONS',
     'EDIT_PAVILIONS',
     'CREATE_PAYMENTS',
+    'EDIT_PAYMENTS',
     'CREATE_CHARGES',
     'EDIT_CHARGES',
     'DELETE_CHARGES',
@@ -254,6 +255,18 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить расход');
+    }
+  };
+
+  const handleDeletePaymentEntry = async (entryId: number) => {
+    if (!confirm('Удалить этот платеж?')) return;
+
+    try {
+      await deletePavilionPaymentEntry(storeIdNum, pavilionIdNum, entryId);
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить платеж');
     }
   };
 
@@ -650,54 +663,120 @@ export default function PavilionPage() {
               )}
           </div>
 
-          {pavilion.payments.length === 0 ? (
+          {pavilion.payments.length === 0 &&
+          (pavilion.paymentTransactions?.length ?? 0) === 0 ? (
             <p className="text-gray-500">Платежей пока нет</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pavilion.payments.map((pay: any) => {
-                    const periodDate = new Date(pay.period);
-                    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
-                    const periodDiscount = getDiscountForPeriod(periodDate);
-                    const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
-                    const expectedRent =
-                      pavilion.status === 'PREPAID'
-                        ? baseRent
-                        : Math.max(baseRent - periodDiscount, 0);
-                    const expected = expectedRent + expectedUtilities;
-                    const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
-                    const balance = paid - expected;
+            <div className="space-y-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pavilion.payments.map((pay: any) => {
+                      const periodDate = new Date(pay.period);
+                      const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+                      const periodDiscount = getDiscountForPeriod(periodDate);
+                      const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
+                      const expectedRent =
+                        pavilion.status === 'PREPAID'
+                          ? baseRent
+                          : Math.max(baseRent - periodDiscount, 0);
+                      const expected = expectedRent + expectedUtilities;
+                      const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
+                      const balance = paid - expected;
 
-                    return (
-                      <tr key={pay.id}>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">{pay.period}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(expected, currency)}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(paid, currency)}</td>
-                        <td
-                          className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
-                            balance > 0
-                              ? 'text-green-600'
-                              : balance < 0
-                                ? 'text-red-600'
-                                : 'text-gray-600'
-                          }`}
-                        >
-                          {`${balance > 0 ? '+' : balance < 0 ? '-' : ''}${formatMoney(Math.abs(balance), currency)}`}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      return (
+                        <tr key={pay.id}>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">
+                            {new Date(pay.period).toLocaleDateString()}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(expected, currency)}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(paid, currency)}</td>
+                          <td
+                            className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
+                              balance > 0
+                                ? 'text-green-600'
+                                : balance < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-600'
+                            }`}
+                          >
+                            {`${balance > 0 ? '+' : balance < 0 ? '-' : ''}${formatMoney(Math.abs(balance), currency)}`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-sm font-semibold uppercase text-gray-600">История платежей</h3>
+                {(pavilion.paymentTransactions?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-gray-500">Записей платежей пока нет</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Коммунальные</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичный</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {(pavilion.paymentTransactions ?? []).map((entry) => (
+                          <tr key={entry.id}>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {new Date(entry.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {new Date(entry.period).toLocaleDateString()}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.rentPaid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.utilitiesPaid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.bankTransferPaid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.cashbox1Paid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.cashbox2Paid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                              {hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                                <button
+                                  onClick={() => handleDeletePaymentEntry(entry.id)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Удалить
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

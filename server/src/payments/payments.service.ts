@@ -142,9 +142,46 @@ export class PaymentsService {
 async addPayment(
   pavilionId: number,
   period: Date,
-  data: { rentPaid?: number; utilitiesPaid?: number },
+  data: {
+    rentPaid?: number;
+    utilitiesPaid?: number;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  },
 ) {
   const normalizedPeriod = startOfMonth(period);
+  const channelBank = data.bankTransferPaid ?? 0;
+  const channelCashbox1 = data.cashbox1Paid ?? 0;
+  const channelCashbox2 = data.cashbox2Paid ?? 0;
+  const hasChannelInput =
+    data.bankTransferPaid !== undefined ||
+    data.cashbox1Paid !== undefined ||
+    data.cashbox2Paid !== undefined;
+  const channelRentTotal = channelBank + channelCashbox1 + channelCashbox2;
+  const rentIncrement = hasChannelInput
+    ? channelRentTotal
+    : (data.rentPaid ?? 0);
+  const utilitiesIncrement = data.utilitiesPaid ?? 0;
+
+  if (hasChannelInput && data.rentPaid !== undefined) {
+    const diff = Math.abs(data.rentPaid - channelRentTotal);
+    if (diff > 0.01) {
+      throw new BadRequestException(
+        'Rent amount must equal selected payment channels total',
+      );
+    }
+  }
+
+  if (
+    rentIncrement < 0 ||
+    utilitiesIncrement < 0 ||
+    channelBank < 0 ||
+    channelCashbox1 < 0 ||
+    channelCashbox2 < 0
+  ) {
+    throw new BadRequestException('Payment amounts must be non-negative');
+  }
 
   const pavilion = await this.prisma.pavilion.findUnique({
     where: { id: pavilionId },
@@ -170,44 +207,60 @@ async addPayment(
       );
     }
 
-    if ((data.utilitiesPaid ?? 0) > 0) {
+    if (utilitiesIncrement > 0) {
       throw new BadRequestException(
         'Utilities cannot be paid while pavilion status is PREPAID',
       );
     }
   }
 
-  const existing = await this.prisma.payment.findUnique({
-    where: {
-      pavilionId_period: { pavilionId, period: normalizedPeriod },
-    },
-  });
+  const safeUtilitiesIncrement =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesIncrement;
 
-  if (existing) {
-    return this.prisma.payment.update({
-      where: { id: existing.id },
-      data: {
-        rentPaid: { increment: data.rentPaid || 0 },
-        utilitiesPaid: {
-          increment:
-            normalizedStatus === PavilionStatus.PREPAID
-              ? 0
-              : (data.utilitiesPaid || 0),
-        },
+  return this.prisma.$transaction(async (tx) => {
+    const existing = await tx.payment.findUnique({
+      where: {
+        pavilionId_period: { pavilionId, period: normalizedPeriod },
       },
     });
-  }
 
-  return this.prisma.payment.create({
-    data: {
-      pavilionId,
-      period: normalizedPeriod,
-      rentPaid: data.rentPaid || 0,
-      utilitiesPaid:
-        normalizedStatus === PavilionStatus.PREPAID
-          ? 0
-          : (data.utilitiesPaid || 0),
-    },
+    const payment = existing
+      ? await tx.payment.update({
+          where: { id: existing.id },
+          data: {
+            rentPaid: { increment: rentIncrement },
+            utilitiesPaid: { increment: safeUtilitiesIncrement },
+            bankTransferPaid: { increment: channelBank },
+            cashbox1Paid: { increment: channelCashbox1 },
+            cashbox2Paid: { increment: channelCashbox2 },
+          },
+        })
+      : await tx.payment.create({
+          data: {
+            pavilionId,
+            period: normalizedPeriod,
+            rentPaid: rentIncrement,
+            utilitiesPaid: safeUtilitiesIncrement,
+            bankTransferPaid: channelBank,
+            cashbox1Paid: channelCashbox1,
+            cashbox2Paid: channelCashbox2,
+          },
+        });
+
+    await tx.paymentTransaction.create({
+      data: {
+        pavilionId,
+        paymentId: payment.id,
+        period: normalizedPeriod,
+        rentPaid: rentIncrement,
+        utilitiesPaid: safeUtilitiesIncrement,
+        bankTransferPaid: channelBank,
+        cashbox1Paid: channelCashbox1,
+        cashbox2Paid: channelCashbox2,
+      },
+    });
+
+    return payment;
   });
 }
 
@@ -216,6 +269,58 @@ async addPayment(
     return this.prisma.payment.findMany({
       where: { pavilionId },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async deleteEntry(pavilionId: number, entryId: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const entry = await tx.paymentTransaction.findFirst({
+        where: { id: entryId, pavilionId },
+      });
+
+      if (!entry) {
+        throw new NotFoundException('Payment entry not found');
+      }
+
+      const payment = await tx.payment.findUnique({
+        where: {
+          pavilionId_period: { pavilionId, period: entry.period },
+        },
+      });
+
+      if (payment) {
+        const nextRent = (payment.rentPaid ?? 0) - entry.rentPaid;
+        const nextUtilities = (payment.utilitiesPaid ?? 0) - entry.utilitiesPaid;
+        const nextBank = (payment.bankTransferPaid ?? 0) - entry.bankTransferPaid;
+        const nextCashbox1 = (payment.cashbox1Paid ?? 0) - entry.cashbox1Paid;
+        const nextCashbox2 = (payment.cashbox2Paid ?? 0) - entry.cashbox2Paid;
+
+        const shouldDeleteAggregate =
+          Math.abs(nextRent) < 0.01 &&
+          Math.abs(nextUtilities) < 0.01 &&
+          Math.abs(nextBank) < 0.01 &&
+          Math.abs(nextCashbox1) < 0.01 &&
+          Math.abs(nextCashbox2) < 0.01;
+
+        if (shouldDeleteAggregate) {
+          await tx.payment.delete({ where: { id: payment.id } });
+        } else {
+          await tx.payment.update({
+            where: { id: payment.id },
+            data: {
+              rentPaid: nextRent,
+              utilitiesPaid: nextUtilities,
+              bankTransferPaid: nextBank,
+              cashbox1Paid: nextCashbox1,
+              cashbox2Paid: nextCashbox2,
+            },
+          });
+        }
+      }
+
+      return tx.paymentTransaction.delete({
+        where: { id: entryId },
+      });
     });
   }
 

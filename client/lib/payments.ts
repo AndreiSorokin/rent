@@ -7,6 +7,9 @@ export function createPavilionPayment(
     period: string;
     rentPaid?: number;
     utilitiesPaid?: number;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
   },
 ) {
   return apiFetch(
@@ -14,6 +17,19 @@ export function createPavilionPayment(
     {
       method: 'POST',
       body: JSON.stringify(data),
+    },
+  );
+}
+
+export function deletePavilionPaymentEntry(
+  storeId: number,
+  pavilionId: number,
+  entryId: number,
+) {
+  return apiFetch(
+    `/stores/${storeId}/pavilions/${pavilionId}/payments/entries/${entryId}`,
+    {
+      method: 'DELETE',
     },
   );
 }

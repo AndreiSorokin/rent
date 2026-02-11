@@ -19,7 +19,9 @@ export function CreatePavilionPaymentModal({
 }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [period, setPeriod] = useState(currentMonth);
-  const [rentPaid, setRentPaid] = useState('');
+  const [bankTransferPaid, setBankTransferPaid] = useState('');
+  const [cashbox1Paid, setCashbox1Paid] = useState('');
+  const [cashbox2Paid, setCashbox2Paid] = useState('');
   const [utilitiesPaid, setUtilitiesPaid] = useState('');
   const [currentRentPaid, setCurrentRentPaid] = useState(0);
   const [currentUtilitiesPaid, setCurrentUtilitiesPaid] = useState(0);
@@ -65,15 +67,28 @@ export function CreatePavilionPaymentModal({
     }
 
     const periodDate = new Date(`${period}-01`);
+    const bank = bankTransferPaid ? Number(bankTransferPaid) : 0;
+    const cash1 = cashbox1Paid ? Number(cashbox1Paid) : 0;
+    const cash2 = cashbox2Paid ? Number(cashbox2Paid) : 0;
+    const rentPaidTotal = bank + cash1 + cash2;
+    const utilitiesValue = utilitiesPaid ? Number(utilitiesPaid) : 0;
+
+    if (rentPaidTotal <= 0 && utilitiesValue <= 0) {
+      alert('Введите сумму хотя бы в один канал оплаты или в коммунальные');
+      return;
+    }
 
     try {
       await createPavilionPayment(storeId, pavilionId, {
         period: periodDate.toISOString(),
-        rentPaid: rentPaid ? Number(rentPaid) : undefined,
+        rentPaid: rentPaidTotal > 0 ? rentPaidTotal : undefined,
+        bankTransferPaid: bank > 0 ? bank : undefined,
+        cashbox1Paid: cash1 > 0 ? cash1 : undefined,
+        cashbox2Paid: cash2 > 0 ? cash2 : undefined,
         utilitiesPaid:
           pavilionStatus === 'PREPAID'
             ? 0
-            : (utilitiesPaid ? Number(utilitiesPaid) : undefined),
+            : (utilitiesValue > 0 ? utilitiesValue : undefined),
       });
       onSaved();
       onClose();
@@ -102,19 +117,46 @@ export function CreatePavilionPaymentModal({
         ) : (
           <p className="mb-4 text-sm text-gray-600">
             Текущая оплаченная сумма за месяц:
-            <strong> {currentRentPaid.toFixed(2)} ?</strong> (аренда) +
-            <strong> {currentUtilitiesPaid.toFixed(2)} ?</strong> (коммунальные)
+            <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) +
+            <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные)
           </p>
         )}
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Аренда (добавить)</label>
+            <label className="mb-1 block text-sm font-medium">Безналичный</label>
             <input
               type="number"
               step="0.01"
-              value={rentPaid}
-              onChange={(e) => setRentPaid(e.target.value)}
+              min="0"
+              value={bankTransferPaid}
+              onChange={(e) => setBankTransferPaid(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Наличные - касса 1</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={cashbox1Paid}
+              onChange={(e) => setCashbox1Paid(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">Наличные - касса 2</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={cashbox2Paid}
+              onChange={(e) => setCashbox2Paid(e.target.value)}
               className="w-full rounded-lg border px-3 py-2"
               placeholder="0.00"
             />

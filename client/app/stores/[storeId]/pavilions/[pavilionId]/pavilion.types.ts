@@ -42,7 +42,26 @@ export type Pavilion = {
   rentAmount?: number;
   utilitiesAmount?: number;
   prepaidUntil?: string | null;
-  payments: any[];
+  payments: Array<{
+    id: number;
+    period: string;
+    rentPaid?: number | null;
+    utilitiesPaid?: number | null;
+    bankTransferPaid?: number | null;
+    cashbox1Paid?: number | null;
+    cashbox2Paid?: number | null;
+    createdAt: string;
+  }>;
+  paymentTransactions?: Array<{
+    id: number;
+    period: string;
+    rentPaid: number;
+    utilitiesPaid: number;
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+    createdAt: string;
+  }>;
   additionalCharges: any[];
   discounts: Discount[];
   contracts?: Array<{

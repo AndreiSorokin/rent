@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   Get,
+  Delete,
   Param,
   ParseIntPipe,
   UseGuards,
@@ -28,12 +29,18 @@ export class PaymentsController {
       period: string;
       rentPaid?: number;
       utilitiesPaid?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
     },
   ) {
     const period = new Date(body.period);
     return this.service.addPayment(pavilionId, period, {
       rentPaid: body.rentPaid,
       utilitiesPaid: body.utilitiesPaid,
+      bankTransferPaid: body.bankTransferPaid,
+      cashbox1Paid: body.cashbox1Paid,
+      cashbox2Paid: body.cashbox2Paid,
     });
   }
 
@@ -51,5 +58,14 @@ export class PaymentsController {
     @Query('period') period: string,
   ) {
     return this.service.getMonthlySummary(pavilionId, new Date(period));
+  }
+
+  @Delete('entries/:entryId')
+  @Permissions(Permission.EDIT_PAYMENTS)
+  deleteEntry(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('entryId', ParseIntPipe) entryId: number,
+  ) {
+    return this.service.deleteEntry(pavilionId, entryId);
   }
 }
