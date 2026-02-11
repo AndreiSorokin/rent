@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -57,6 +58,13 @@ export default function LoginPage() {
         <button className="w-full bg-black p-2 text-white">
           Login
         </button>
+
+        <p className="text-center text-sm text-gray-600">
+          Нет аккаунта?{' '}
+          <Link href="/register" className="text-blue-600 hover:underline">
+            Зарегестироваться
+          </Link>
+        </p>
       </form>
     </div>
   );
