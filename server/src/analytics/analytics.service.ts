@@ -84,6 +84,40 @@ export class AnalyticsService {
     const forecastTotal = forecastRent + forecastUtilities + forecastAdditional;
     const actualTotal = actualRent + actualUtilities + actualAdditional;
 
+    let incomeForecastRent = 0;
+    let incomeForecastUtilities = 0;
+    let incomeForecastAdditional = 0;
+
+    let incomeActualRent = 0;
+    let incomeActualUtilities = 0;
+    let incomeActualAdditional = 0;
+
+    for (const p of pavilions) {
+      incomeForecastRent += p.squareMeters * p.pricePerSqM;
+      incomeForecastUtilities += p.utilitiesAmount ?? 0;
+      incomeForecastAdditional += p.additionalCharges.reduce(
+        (sum, charge) => sum + charge.amount,
+        0,
+      );
+
+      for (const pay of p.payments) {
+        incomeActualRent += pay.rentPaid ?? 0;
+        incomeActualUtilities += pay.utilitiesPaid ?? 0;
+      }
+
+      for (const charge of p.additionalCharges) {
+        incomeActualAdditional += charge.payments.reduce(
+          (sum, cp) => sum + cp.amountPaid,
+          0,
+        );
+      }
+    }
+
+    const incomeForecastTotal =
+      incomeForecastRent + incomeForecastUtilities + incomeForecastAdditional;
+    const incomeActualTotal =
+      incomeActualRent + incomeActualUtilities + incomeActualAdditional;
+
     return {
       pavilions: {
         total: pavilions.length,
@@ -116,6 +150,20 @@ export class AnalyticsService {
         total: actualTotal,
       },
       debt: forecastTotal - actualTotal,
+      income: {
+        forecast: {
+          rent: incomeForecastRent,
+          utilities: incomeForecastUtilities,
+          additional: incomeForecastAdditional,
+          total: incomeForecastTotal,
+        },
+        actual: {
+          rent: incomeActualRent,
+          utilities: incomeActualUtilities,
+          additional: incomeActualAdditional,
+          total: incomeActualTotal,
+        },
+      },
       period,
     };
   }

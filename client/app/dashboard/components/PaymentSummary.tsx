@@ -3,8 +3,9 @@ export function PaymentSummary({
 }: {
   analytics: any;
 }) {
-  const forecastTotal = analytics.forecastIncome?.total ?? analytics.expected?.total ?? 0;
-  const actualTotal = analytics.actualIncome?.total ?? analytics.paid?.total ?? 0;
+  const expectedTotal = analytics.expected?.total ?? 0;
+  const paidTotal = analytics.paid?.total ?? 0;
+  const debt = analytics.debt ?? expectedTotal - paidTotal;
 
   return (
     <div className="rounded border p-4">
@@ -15,9 +16,10 @@ export function PaymentSummary({
         предоплата {analytics.pavilions.prepaid ?? 0}, свободно {analytics.pavilions.free}
       </div>
 
-      <div>Прогнозные доходы: {forecastTotal} рублей</div>
-      <div>Фактические доходы: {actualTotal} рублей</div>
-      <div className="font-medium">Разница: {actualTotal - forecastTotal} рублей</div>
+      <div>Ожидается: {expectedTotal} рублей</div>
+      <div>Оплачено: {paidTotal} рублей</div>
+      <div className="font-medium">Схождение: {paidTotal - expectedTotal} рублей</div>
+      <div className="text-sm text-gray-600">Долг: {debt} рублей</div>
     </div>
   );
 }

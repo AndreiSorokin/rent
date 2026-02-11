@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
 import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
+import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { InviteUserModal } from '@/app/dashboard/components/InviteUserModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
@@ -97,7 +98,14 @@ export default function StorePage() {
         </div>
 
         {hasPermission(permissions, 'VIEW_PAYMENTS') ? (
-          <>{analytics && <PaymentSummary analytics={analytics} />}</>
+          <>
+            {analytics && (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <PaymentSummary analytics={analytics} />
+                <IncomeSummary analytics={analytics} />
+              </div>
+            )}
+          </>
         ) : (
           <div className="rounded-xl bg-white p-6 text-center text-gray-600 shadow">
             Здесь вы можете найти все павильоны, принадлежащие этому магазину
@@ -147,4 +155,3 @@ export default function StorePage() {
     </div>
   );
 }
-
