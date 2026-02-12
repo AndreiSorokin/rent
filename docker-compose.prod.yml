@@ -1,0 +1,53 @@
+services:
+  server:
+    image: ${SERVER_IMAGE:-ghcr.io/your-org/rent-server:latest}
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports: []
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      CORS_ORIGIN: https://${APP_DOMAIN}
+
+  client:
+    image: ${CLIENT_IMAGE:-ghcr.io/your-org/rent-client:latest}
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+    ports: []
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+
+  proxy:
+    image: caddy:2.8-alpine
+    container_name: rent-proxy
+    restart: unless-stopped
+    depends_on:
+      - client
+      - server
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

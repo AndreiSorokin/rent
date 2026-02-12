@@ -1,0 +1,13 @@
+{
+	email {$LETSENCRYPT_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy client:3001
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy server:3000
+}
