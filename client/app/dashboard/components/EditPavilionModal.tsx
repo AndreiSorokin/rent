@@ -93,106 +93,128 @@ export function EditPavilionModal({
       <div className="w-[400px] rounded bg-white p-6">
         <h2 className="mb-4 text-lg font-bold">Редактировать павильон</h2>
 
-        <input
-          name="number"
-          value={form.number}
-          onChange={handleChange}
-          className="input"
-          placeholder="Номер"
-        />
+        <div className="mb-3">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Номер павильона</label>
+          <input
+            name="number"
+            value={form.number}
+            onChange={handleChange}
+            className="input"
+          />
+        </div>
 
-        <input
-          name="category"
-          value={resolvedCategory}
-          readOnly
-          className="input bg-gray-50"
-          placeholder="Категория"
-        />
+        <div className="mb-3">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Категория</label>
+          <input
+            name="category"
+            value={resolvedCategory}
+            readOnly
+            className="input bg-gray-50"
+          />
+        </div>
 
         {!newCategory.trim() ? (
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="input"
-          >
-            <option value="">Выберите категорию</option>
-            {(existingCategories || []).map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          <div className="mb-3">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Выбор из существующих категорий</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="input"
+            >
+              <option value="">Выберите категорию</option>
+              {(existingCategories || []).map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
         ) : (
-          <p className="text-xs text-gray-500">
+          <p className="mb-3 text-xs text-gray-500">
             Введите новую категорию: выбор из существующих скрыт.
           </p>
         )}
 
         {!selectedCategory ? (
-          <input
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            className="input"
-            placeholder="Или введите новую категорию"
-          />
+          <div className="mb-3">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Новая категория</label>
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              className="input"
+            />
+          </div>
         ) : (
-          <p className="text-xs text-gray-500">
+          <p className="mb-3 text-xs text-gray-500">
             Выбрана существующая категория: поле новой категории скрыто.
           </p>
         )}
 
-        <input
-          name="squareMeters"
-          type="number"
-          value={form.squareMeters}
-          onChange={handleChange}
-          className="input"
-          placeholder="Площадь"
-        />
+        <div className="mb-3">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Площадь (м2)</label>
+          <input
+            name="squareMeters"
+            type="number"
+            value={form.squareMeters}
+            onChange={handleChange}
+            className="input"
+          />
+        </div>
 
-        <input
-          name="pricePerSqM"
-          type="number"
-          value={form.pricePerSqM}
-          onChange={handleChange}
-          className="input"
-          placeholder="Цена за м2"
-        />
+        <div className="mb-3">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Цена за м2</label>
+          <input
+            name="pricePerSqM"
+            type="number"
+            value={form.pricePerSqM}
+            onChange={handleChange}
+            className="input"
+          />
+        </div>
 
-        <select name="status" value={form.status} onChange={handleChange} className="input">
-          <option value="AVAILABLE">СВОБОДЕН</option>
-          <option value="RENTED">ЗАНЯТ</option>
-          <option value="PREPAID">ПРЕДОПЛАТА</option>
-        </select>
+        <div className="mb-3">
+          <label className="mb-1 block text-sm font-medium text-gray-700">Статус</label>
+          <select name="status" value={form.status} onChange={handleChange} className="input">
+            <option value="AVAILABLE">СВОБОДЕН</option>
+            <option value="RENTED">ЗАНЯТ</option>
+            <option value="PREPAID">ПРЕДОПЛАТА</option>
+          </select>
+        </div>
 
         {form.status !== 'AVAILABLE' && (
           <>
-            <input
-              name="tenantName"
-              value={form.tenantName}
-              onChange={handleChange}
-              className="input"
-              placeholder="Арендатор"
-            />
-
-            <input
-              name="rentAmount"
-              type="number"
-              value={form.rentAmount}
-              onChange={handleChange}
-              className="input"
-              placeholder="Аренда"
-            />
-
-            {form.status !== 'PREPAID' && (
+            <div className="mb-3">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Арендатор</label>
               <input
-                name="utilitiesAmount"
-                type="number"
-                value={form.utilitiesAmount}
+                name="tenantName"
+                value={form.tenantName}
                 onChange={handleChange}
                 className="input"
-                placeholder="Коммунальные"
               />
+            </div>
+
+            <div className="mb-3">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Аренда</label>
+              <input
+                name="rentAmount"
+                type="number"
+                value={form.rentAmount}
+                onChange={handleChange}
+                className="input"
+              />
+            </div>
+
+            {form.status !== 'PREPAID' && (
+              <div className="mb-3">
+                <label className="mb-1 block text-sm font-medium text-gray-700">Коммунальные</label>
+                <input
+                  name="utilitiesAmount"
+                  type="number"
+                  value={form.utilitiesAmount}
+                  onChange={handleChange}
+                  className="input"
+                />
+              </div>
             )}
           </>
         )}

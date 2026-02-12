@@ -143,6 +143,34 @@ export class AnalyticsService {
     let expensesTotalForecast = 0;
     let expensesTotalActual = 0;
 
+    const expenseByTypeForecast: Record<string, number> = {
+      SALARIES: 0,
+      PAYROLL_TAX: 0,
+      PROFIT_TAX: 0,
+      DIVIDENDS: 0,
+      BANK_SERVICES: 0,
+      VAT: 0,
+      LAND_RENT: 0,
+      OTHER: 0,
+    };
+    const expenseByTypeActual: Record<string, number> = {
+      SALARIES: 0,
+      PAYROLL_TAX: 0,
+      PROFIT_TAX: 0,
+      DIVIDENDS: 0,
+      BANK_SERVICES: 0,
+      VAT: 0,
+      LAND_RENT: 0,
+      OTHER: 0,
+    };
+    let expenseUtilitiesForecast = 0;
+    let expenseUtilitiesActual = 0;
+    let expenseHouseholdTotal = 0;
+
+    let channelsBankTransfer = 0;
+    let channelsCashbox1 = 0;
+    let channelsCashbox2 = 0;
+
     for (const pavilion of pavilions) {
       const manualExpensesForecast = pavilion.pavilionExpenses.reduce(
         (sum, expense) => sum + expense.amount,
@@ -168,11 +196,45 @@ export class AnalyticsService {
         0,
       );
 
+      for (const expense of pavilion.pavilionExpenses) {
+        expenseByTypeForecast[expense.type] =
+          (expenseByTypeForecast[expense.type] ?? 0) + expense.amount;
+
+        if (expense.status === 'PAID') {
+          expenseByTypeActual[expense.type] =
+            (expenseByTypeActual[expense.type] ?? 0) + expense.amount;
+        }
+      }
+
+      expenseUtilitiesForecast += utilitiesForecast;
+      expenseUtilitiesActual += utilitiesActual;
+      expenseHouseholdTotal += householdExpensesTotal;
+
       expensesTotalForecast +=
         manualExpensesForecast + householdExpensesTotal + utilitiesForecast;
       expensesTotalActual +=
         manualExpensesActual + householdExpensesTotal + utilitiesActual;
     }
+
+    for (const pavilion of incomePavilions) {
+      for (const pay of pavilion.payments) {
+        channelsBankTransfer += pay.bankTransferPaid ?? 0;
+        channelsCashbox1 += pay.cashbox1Paid ?? 0;
+        channelsCashbox2 += pay.cashbox2Paid ?? 0;
+      }
+    }
+
+    const areaTotal = pavilions.reduce((sum, p) => sum + p.squareMeters, 0);
+    const areaRented = pavilions
+      .filter((p) => p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID)
+      .reduce((sum, p) => sum + p.squareMeters, 0);
+    const areaAvailable = pavilions
+      .filter((p) => p.status === PavilionStatus.AVAILABLE)
+      .reduce((sum, p) => sum + p.squareMeters, 0);
+
+    const overallIncomeTotal = actualTotal;
+    const overallExpenseTotal = expensesTotalForecast;
+    const saldo = overallIncomeTotal - overallExpenseTotal;
 
     return {
       pavilions: {
@@ -224,6 +286,47 @@ export class AnalyticsService {
         total: {
           forecast: expensesTotalForecast,
           actual: expensesTotalActual,
+        },
+      },
+      summaryPage: {
+        income: {
+          rent: actualRent,
+          facilities: actualUtilities,
+          additional: actualAdditional,
+          total: overallIncomeTotal,
+          channels: {
+            bankTransfer: channelsBankTransfer,
+            cashbox1: channelsCashbox1,
+            cashbox2: channelsCashbox2,
+            total: channelsBankTransfer + channelsCashbox1 + channelsCashbox2,
+          },
+        },
+        expenses: {
+          byType: {
+            salaries: expenseByTypeForecast.SALARIES ?? 0,
+            payrollTax: expenseByTypeForecast.PAYROLL_TAX ?? 0,
+            profitTax: expenseByTypeForecast.PROFIT_TAX ?? 0,
+            dividends: expenseByTypeForecast.DIVIDENDS ?? 0,
+            bankServices: expenseByTypeForecast.BANK_SERVICES ?? 0,
+            vat: expenseByTypeForecast.VAT ?? 0,
+            landRent: expenseByTypeForecast.LAND_RENT ?? 0,
+            other: expenseByTypeForecast.OTHER ?? 0,
+            facilities: expenseUtilitiesForecast,
+            household: expenseHouseholdTotal,
+          },
+          totals: {
+            forecast: expensesTotalForecast,
+            actual: expensesTotalActual,
+          },
+        },
+        saldo,
+        tradeArea: {
+          pavilionsTotal: pavilions.length,
+          pavilionsRented: pavilions.filter((p) => p.status === PavilionStatus.RENTED).length,
+          pavilionsAvailable: pavilions.filter((p) => p.status === PavilionStatus.AVAILABLE).length,
+          squareTotal: areaTotal,
+          squareRented: areaRented,
+          squareAvailable: areaAvailable,
         },
       },
       period,

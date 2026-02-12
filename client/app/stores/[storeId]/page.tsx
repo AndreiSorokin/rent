@@ -6,9 +6,6 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
-import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
-import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
-import { ExpensesSummary } from '@/app/dashboard/components/ExpensesSummary';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 
@@ -18,7 +15,6 @@ export default function StorePage() {
   const storeId = Number(params.storeId);
 
   const [store, setStore] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
@@ -48,9 +44,7 @@ export default function StorePage() {
     try {
       const storeData = await apiFetch(`/stores/${storeId}`);
 
-      let analyticsData = null;
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
-        analyticsData = await apiFetch(`/stores/${storeId}/analytics`);
         const accountingData = await apiFetch<any[]>(
           `/stores/${storeId}/accounting-table`,
         );
@@ -60,7 +54,6 @@ export default function StorePage() {
       }
 
       setStore(storeData);
-      setAnalytics(analyticsData);
     } catch (err) {
       setError('Не удалось загрузить данные магазина');
       console.error(err);
@@ -241,11 +234,18 @@ export default function StorePage() {
           </div>
         </div>
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <PaymentSummary analytics={analytics} currency={store.currency} />
-            <IncomeSummary analytics={analytics} currency={store.currency} />
-            <ExpensesSummary analytics={analytics} currency={store.currency} />
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
+            <p className="mb-4 text-gray-600">
+              Основные финансовые показатели магазина на отдельной странице.
+            </p>
+            <Link
+              href={`/stores/${storeId}/summary`}
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+            >
+              Открыть СВОДКУ
+            </Link>
           </div>
         )}
 
