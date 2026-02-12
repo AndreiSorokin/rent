@@ -15,6 +15,7 @@ export default function StorePage() {
   const storeId = Number(params.storeId);
 
   const [store, setStore] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
@@ -45,11 +46,14 @@ export default function StorePage() {
       const storeData = await apiFetch(`/stores/${storeId}`);
 
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
+        const analyticsData = await apiFetch<any>(`/stores/${storeId}/analytics`);
         const accountingData = await apiFetch<any[]>(
           `/stores/${storeId}/accounting-table`,
         );
+        setAnalytics(analyticsData);
         setAccountingRows(accountingData || []);
       } else {
+        setAnalytics(null);
         setAccountingRows([]);
       }
 
@@ -246,6 +250,48 @@ export default function StorePage() {
             >
               Открыть СВОДКУ
             </Link>
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Расходы</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз: {formatMoney(analytics?.expenses?.total?.forecast ?? 0, store.currency)}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт: {formatMoney(analytics?.expenses?.total?.actual ?? 0, store.currency)}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Прибыль</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз:{' '}
+                {formatMoney(
+                  (analytics?.income?.forecast?.total ?? 0) -
+                    (analytics?.expenses?.total?.forecast ?? 0),
+                  store.currency,
+                )}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт:{' '}
+                {formatMoney(
+                  (analytics?.income?.actual?.total ?? 0) -
+                    (analytics?.expenses?.total?.actual ?? 0),
+                  store.currency,
+                )}
+              </div>
+            </div>
           </div>
         )}
 
