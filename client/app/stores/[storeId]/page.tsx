@@ -301,6 +301,18 @@ export default function StorePage() {
               <h2 className="text-xl font-semibold md:text-2xl">Бух. таблица</h2>
             </div>
 
+            {analytics && (
+              <div className="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Остаток с предыдущего месяца:{' '}
+                <span className="font-semibold">
+                  {formatMoney(
+                    analytics?.summaryPage?.income?.previousMonthBalance ?? 0,
+                    store.currency,
+                  )}
+                </span>
+              </div>
+            )}
+
             {hasPermission(permissions, 'CREATE_PAYMENTS') && (
               <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
                 <input

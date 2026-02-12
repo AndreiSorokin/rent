@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { endOfMonth, startOfMonth } from 'date-fns';
+import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { PavilionStatus } from '@prisma/client';
 
 @Injectable()
@@ -25,6 +25,9 @@ export class AnalyticsService {
     const period = startOfMonth(new Date());
     const periodStart = startOfMonth(period);
     const periodEnd = endOfMonth(period);
+    const prevPeriod = startOfMonth(subMonths(period, 1));
+    const prevPeriodStart = startOfMonth(prevPeriod);
+    const prevPeriodEnd = endOfMonth(prevPeriod);
 
     const pavilions = await this.prisma.pavilion.findMany({
       where: { storeId },
@@ -62,6 +65,49 @@ export class AnalyticsService {
                 paidAt: {
                   gte: periodStart,
                   lte: periodEnd,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const previousMonthPavilions = await this.prisma.pavilion.findMany({
+      where: { storeId },
+      include: {
+        payments: {
+          where: { period: prevPeriod },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: prevPeriodStart,
+              lte: prevPeriodEnd,
+            },
+          },
+        },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: prevPeriodStart,
+              lte: prevPeriodEnd,
+            },
+          },
+        },
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: prevPeriodStart,
+              lte: prevPeriodEnd,
+            },
+          },
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: prevPeriodStart,
+                  lte: prevPeriodEnd,
                 },
               },
             },
@@ -236,6 +282,45 @@ export class AnalyticsService {
     const overallExpenseTotal = expensesTotalForecast;
     const saldo = overallIncomeTotal - overallExpenseTotal;
 
+    const previousIncomePavilions = previousMonthPavilions.filter(
+      (p) => p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
+    );
+
+    let previousIncomeTotal = 0;
+    for (const p of previousIncomePavilions) {
+      for (const pay of p.payments) {
+        previousIncomeTotal += (pay.rentPaid ?? 0) + (pay.utilitiesPaid ?? 0);
+      }
+      for (const charge of p.additionalCharges) {
+        previousIncomeTotal += charge.payments.reduce(
+          (sum, cp) => sum + cp.amountPaid,
+          0,
+        );
+      }
+    }
+
+    let previousExpenseTotal = 0;
+    for (const pavilion of previousMonthPavilions) {
+      const manualExpensesForecast = pavilion.pavilionExpenses.reduce(
+        (sum, expense) => sum + expense.amount,
+        0,
+      );
+      const householdExpensesTotal = pavilion.householdExpenses.reduce(
+        (sum, expense) => sum + expense.amount,
+        0,
+      );
+      const utilitiesForecast =
+        pavilion.status === PavilionStatus.RENTED ||
+        pavilion.status === PavilionStatus.PREPAID
+          ? (pavilion.utilitiesAmount ?? 0)
+          : 0;
+
+      previousExpenseTotal +=
+        manualExpensesForecast + householdExpensesTotal + utilitiesForecast;
+    }
+
+    const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
+
     return {
       pavilions: {
         total: pavilions.length,
@@ -294,6 +379,7 @@ export class AnalyticsService {
           facilities: actualUtilities,
           additional: actualAdditional,
           total: overallIncomeTotal,
+          previousMonthBalance,
           channels: {
             bankTransfer: channelsBankTransfer,
             cashbox1: channelsCashbox1,
