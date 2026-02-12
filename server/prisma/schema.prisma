@@ -41,6 +41,22 @@ model Store {
   pavilions   Pavilion[]
   invitations Invitation[]
   staff       StoreStaff[]
+  accountingRecords StoreAccountingRecord[]
+}
+
+model StoreAccountingRecord {
+  id Int @id @default(autoincrement())
+
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  recordDate        DateTime
+  bankTransferPaid  Float @default(0)
+  cashbox1Paid      Float @default(0)
+  cashbox2Paid      Float @default(0)
+  createdAt         DateTime @default(now())
+
+  @@index([storeId, recordDate, createdAt])
 }
 
 model StoreStaff {

@@ -86,4 +86,34 @@ export class StoresController {
   ) {
     return this.service.deleteStaff(storeId, staffId, req.user.id);
   }
+
+  @Get(':storeId/accounting-table')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  listAccountingTable(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.listAccountingTable(storeId);
+  }
+
+  @Post(':storeId/accounting-table')
+  @Permissions(Permission.CREATE_PAYMENTS)
+  createAccountingRecord(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      recordDate: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
+    return this.service.createAccountingRecord(storeId, data);
+  }
+
+  @Delete(':storeId/accounting-table/:recordId')
+  @Permissions(Permission.EDIT_PAYMENTS)
+  deleteAccountingRecord(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('recordId', ParseIntPipe) recordId: number,
+  ) {
+    return this.service.deleteAccountingRecord(storeId, recordId);
+  }
 }

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Currency, Permission, PavilionStatus, Prisma } from '@prisma/client';
-import { startOfMonth } from 'date-fns';
+import { endOfDay, startOfDay, startOfMonth, subMonths } from 'date-fns';
 
 @Injectable()
 export class StoresService {
@@ -280,6 +280,119 @@ export class StoresService {
 
     return this.prisma.storeStaff.delete({
       where: { id: staffId },
+    });
+  }
+
+  async listAccountingTable(storeId: number) {
+    await this.cleanupOldAccountingRecords(storeId);
+
+    const records = await this.prisma.storeAccountingRecord.findMany({
+      where: { storeId },
+      orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    return Promise.all(
+      records.map(async (record) => {
+        const dayStart = startOfDay(record.recordDate);
+        const dayEnd = endOfDay(record.recordDate);
+
+        const actual = await this.prisma.paymentTransaction.aggregate({
+          where: {
+            pavilion: { storeId },
+            createdAt: {
+              gte: dayStart,
+              lte: dayEnd,
+            },
+          },
+          _sum: {
+            bankTransferPaid: true,
+            cashbox1Paid: true,
+            cashbox2Paid: true,
+          },
+        });
+
+        const actualBank = actual._sum.bankTransferPaid ?? 0;
+        const actualCashbox1 = actual._sum.cashbox1Paid ?? 0;
+        const actualCashbox2 = actual._sum.cashbox2Paid ?? 0;
+        const actualTotal = actualBank + actualCashbox1 + actualCashbox2;
+        const manualTotal =
+          record.bankTransferPaid + record.cashbox1Paid + record.cashbox2Paid;
+
+        return {
+          ...record,
+          manualTotal,
+          actual: {
+            bankTransferPaid: actualBank,
+            cashbox1Paid: actualCashbox1,
+            cashbox2Paid: actualCashbox2,
+            total: actualTotal,
+          },
+          difference: manualTotal - actualTotal,
+        };
+      }),
+    );
+  }
+
+  async createAccountingRecord(
+    storeId: number,
+    data: {
+      recordDate: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
+    const parsedDate = new Date(data.recordDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new BadRequestException('Invalid recordDate');
+    }
+
+    const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
+
+    if (bankTransferPaid < 0 || cashbox1Paid < 0 || cashbox2Paid < 0) {
+      throw new BadRequestException('Amounts must be non-negative');
+    }
+
+    await this.cleanupOldAccountingRecords(storeId);
+
+    return this.prisma.storeAccountingRecord.create({
+      data: {
+        storeId,
+        recordDate: startOfDay(parsedDate),
+        bankTransferPaid,
+        cashbox1Paid,
+        cashbox2Paid,
+      },
+    });
+  }
+
+  async deleteAccountingRecord(storeId: number, recordId: number) {
+    const record = await this.prisma.storeAccountingRecord.findFirst({
+      where: { id: recordId, storeId },
+      select: { id: true },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Accounting record not found');
+    }
+
+    return this.prisma.storeAccountingRecord.delete({
+      where: { id: recordId },
+    });
+  }
+
+  private async cleanupOldAccountingRecords(storeId: number) {
+    const cutoff = startOfDay(subMonths(new Date(), 1));
+
+    await this.prisma.storeAccountingRecord.deleteMany({
+      where: {
+        storeId,
+        recordDate: {
+          lt: cutoff,
+        },
+      },
     });
   }
 }

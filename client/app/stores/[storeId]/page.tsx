@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
-import { getCurrencySymbol } from '@/lib/currency';
+import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { PaymentSummary } from '@/app/dashboard/components/PaymentSummary';
 import { IncomeSummary } from '@/app/dashboard/components/IncomeSummary';
@@ -26,6 +26,14 @@ export default function StorePage() {
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
   const [staffSaving, setStaffSaving] = useState(false);
+  const [accountingRows, setAccountingRows] = useState<any[]>([]);
+  const [accountingDate, setAccountingDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [accountingBank, setAccountingBank] = useState('');
+  const [accountingCash1, setAccountingCash1] = useState('');
+  const [accountingCash2, setAccountingCash2] = useState('');
+  const [accountingSaving, setAccountingSaving] = useState(false);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -41,6 +49,12 @@ export default function StorePage() {
       let analyticsData = null;
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
         analyticsData = await apiFetch(`/stores/${storeId}/analytics`);
+        const accountingData = await apiFetch<any[]>(
+          `/stores/${storeId}/accounting-table`,
+        );
+        setAccountingRows(accountingData || []);
+      } else {
+        setAccountingRows([]);
       }
 
       setStore(storeData);
@@ -118,6 +132,53 @@ export default function StorePage() {
     }
   };
 
+  const handleCreateAccountingRecord = async () => {
+    const bank = accountingBank ? Number(accountingBank) : 0;
+    const cash1 = accountingCash1 ? Number(accountingCash1) : 0;
+    const cash2 = accountingCash2 ? Number(accountingCash2) : 0;
+
+    if (bank < 0 || cash1 < 0 || cash2 < 0) {
+      alert('Суммы не могут быть отрицательными');
+      return;
+    }
+
+    try {
+      setAccountingSaving(true);
+      await apiFetch(`/stores/${storeId}/accounting-table`, {
+        method: 'POST',
+        body: JSON.stringify({
+          recordDate: accountingDate,
+          bankTransferPaid: bank,
+          cashbox1Paid: cash1,
+          cashbox2Paid: cash2,
+        }),
+      });
+      setAccountingBank('');
+      setAccountingCash1('');
+      setAccountingCash2('');
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить запись в бух. таблицу');
+    } finally {
+      setAccountingSaving(false);
+    }
+  };
+
+  const handleDeleteAccountingRecord = async (recordId: number) => {
+    if (!confirm('Удалить эту запись из бух. таблицы?')) return;
+
+    try {
+      await apiFetch(`/stores/${storeId}/accounting-table/${recordId}`, {
+        method: 'DELETE',
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить запись');
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -166,6 +227,116 @@ export default function StorePage() {
             <PaymentSummary analytics={analytics} currency={store.currency} />
             <IncomeSummary analytics={analytics} currency={store.currency} />
             <ExpensesSummary analytics={analytics} currency={store.currency} />
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Бух. таблица</h2>
+            </div>
+
+            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
+              <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
+                <input
+                  type="date"
+                  value={accountingDate}
+                  onChange={(e) => setAccountingDate(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={accountingBank}
+                  onChange={(e) => setAccountingBank(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Безналичные"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={accountingCash1}
+                  onChange={(e) => setAccountingCash1(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Наличные касса 1"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={accountingCash2}
+                  onChange={(e) => setAccountingCash2(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Наличные касса 2"
+                />
+                <button
+                  onClick={handleCreateAccountingRecord}
+                  disabled={accountingSaving}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Добавить
+                </button>
+              </div>
+            )}
+
+            {accountingRows.length === 0 ? (
+              <p className="text-gray-600">Записей пока нет</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ручной ввод (итого)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено по павильонам (итого)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                      {hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {accountingRows.map((row: any) => (
+                      <tr key={row.id}>
+                        <td className="px-4 py-3 text-sm">
+                          {new Date(row.recordDate).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatMoney(row.manualTotal, store.currency)}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {formatMoney(row.actual?.total ?? 0, store.currency)}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-sm font-medium ${
+                            row.difference > 0
+                              ? 'text-green-600'
+                              : row.difference < 0
+                                ? 'text-red-600'
+                                : 'text-gray-700'
+                          }`}
+                        >
+                          {row.difference > 0 ? '+' : ''}
+                          {formatMoney(row.difference, store.currency)}
+                        </td>
+                        {hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                          <td className="px-4 py-3 text-right text-sm">
+                            <button
+                              onClick={() => handleDeleteAccountingRecord(row.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
