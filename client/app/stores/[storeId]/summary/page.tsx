@@ -62,7 +62,7 @@ export default function StoreSummaryPage() {
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">СВОДКА</h1>
           <p className="text-sm text-gray-600">
-            Общая сумма денег: {formatMoney((income.total ?? 0) - (expenses.totals?.forecast ?? 0), currency)}
+            Общая сумма денег: {formatMoney((income.total ?? 0) - (expenses.totals?.actual ?? 0), currency)}
           </p>
         </div>
 
@@ -98,7 +98,7 @@ export default function StoreSummaryPage() {
             <div>Прочие расходы: {formatMoney(expenseByType.other ?? 0, currency)}</div>
           </div>
           <div className="mt-4 border-t pt-4 font-semibold">
-            Итого расход (прогноз): {formatMoney(expenses.totals?.forecast ?? 0, currency)}
+            Итого расход (факт): {formatMoney(expenses.totals?.actual ?? 0, currency)}
           </div>
         </div>
 

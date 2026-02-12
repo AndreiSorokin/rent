@@ -279,7 +279,7 @@ export class AnalyticsService {
       .reduce((sum, p) => sum + p.squareMeters, 0);
 
     const overallIncomeTotal = actualTotal;
-    const overallExpenseTotal = expensesTotalForecast;
+    const overallExpenseTotal = expensesTotalActual;
     const saldo = overallIncomeTotal - overallExpenseTotal;
 
     const previousIncomePavilions = previousMonthPavilions.filter(
@@ -301,7 +301,9 @@ export class AnalyticsService {
 
     let previousExpenseTotal = 0;
     for (const pavilion of previousMonthPavilions) {
-      const manualExpensesForecast = pavilion.pavilionExpenses.reduce(
+      const manualExpensesActual = pavilion.pavilionExpenses
+        .filter((expense) => expense.status === 'PAID')
+        .reduce(
         (sum, expense) => sum + expense.amount,
         0,
       );
@@ -309,14 +311,13 @@ export class AnalyticsService {
         (sum, expense) => sum + expense.amount,
         0,
       );
-      const utilitiesForecast =
-        pavilion.status === PavilionStatus.RENTED ||
-        pavilion.status === PavilionStatus.PREPAID
-          ? (pavilion.utilitiesAmount ?? 0)
-          : 0;
+      const utilitiesActual = pavilion.payments.reduce(
+        (sum, payment) => sum + (payment.utilitiesPaid ?? 0),
+        0,
+      );
 
       previousExpenseTotal +=
-        manualExpensesForecast + householdExpensesTotal + utilitiesForecast;
+        manualExpensesActual + householdExpensesTotal + utilitiesActual;
     }
 
     const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
@@ -389,15 +390,15 @@ export class AnalyticsService {
         },
         expenses: {
           byType: {
-            salaries: expenseByTypeForecast.SALARIES ?? 0,
-            payrollTax: expenseByTypeForecast.PAYROLL_TAX ?? 0,
-            profitTax: expenseByTypeForecast.PROFIT_TAX ?? 0,
-            dividends: expenseByTypeForecast.DIVIDENDS ?? 0,
-            bankServices: expenseByTypeForecast.BANK_SERVICES ?? 0,
-            vat: expenseByTypeForecast.VAT ?? 0,
-            landRent: expenseByTypeForecast.LAND_RENT ?? 0,
-            other: expenseByTypeForecast.OTHER ?? 0,
-            facilities: expenseUtilitiesForecast,
+            salaries: expenseByTypeActual.SALARIES ?? 0,
+            payrollTax: expenseByTypeActual.PAYROLL_TAX ?? 0,
+            profitTax: expenseByTypeActual.PROFIT_TAX ?? 0,
+            dividends: expenseByTypeActual.DIVIDENDS ?? 0,
+            bankServices: expenseByTypeActual.BANK_SERVICES ?? 0,
+            vat: expenseByTypeActual.VAT ?? 0,
+            landRent: expenseByTypeActual.LAND_RENT ?? 0,
+            other: expenseByTypeActual.OTHER ?? 0,
+            facilities: expenseUtilitiesActual,
             household: expenseHouseholdTotal,
           },
           totals: {
