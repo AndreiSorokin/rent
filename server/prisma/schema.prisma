@@ -102,6 +102,7 @@ model AdditionalChargePayment {
 model Pavilion {
   id           Int            @id @default(autoincrement())
   number       String
+  category     String?
   squareMeters Float
   pricePerSqM  Float
   status       PavilionStatus @default(AVAILABLE)

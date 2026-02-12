@@ -6,12 +6,20 @@ import { createPavilionPayment } from '@/lib/payments';
 
 type CreatePavilionModalProps = {
   storeId: number;
+  existingCategories: string[];
   onClose: () => void;
   onSaved: () => void;
 };
 
-export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilionModalProps) {
+export function CreatePavilionModal({
+  storeId,
+  existingCategories,
+  onClose,
+  onSaved,
+}: CreatePavilionModalProps) {
   const [number, setNumber] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [newCategory, setNewCategory] = useState('');
   const [squareMeters, setSquareMeters] = useState('');
   const [pricePerSqM, setPricePerSqM] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
@@ -23,8 +31,10 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!number || !squareMeters || !pricePerSqM) {
-      setError('Заполните все обязательные поля');
+    const category = newCategory.trim() || selectedCategory.trim();
+
+    if (!number || !squareMeters || !pricePerSqM || !category) {
+      setError('Заполните все обязательные поля, включая категорию');
       return;
     }
 
@@ -41,6 +51,7 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
         method: 'POST',
         body: JSON.stringify({
           number,
+          category,
           squareMeters: square,
           pricePerSqM: price,
           status,
@@ -80,6 +91,37 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
               onChange={(e) => setNumber(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Например: A-12"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Категория (из существующих)
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Не выбрано</option>
+              {existingCategories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Или введите новую категорию
+            </label>
+            <input
+              type="text"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Например: Одежда"
             />
           </div>
 
@@ -170,4 +212,3 @@ export function CreatePavilionModal({ storeId, onClose, onSaved }: CreatePavilio
     </div>
   );
 }
-

@@ -33,9 +33,29 @@ export class AnalyticsService {
           where: { period },
         },
         discounts: true,
-        householdExpenses: true,
-        pavilionExpenses: true,
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+        },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+        },
         additionalCharges: {
+          where: {
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
           include: {
             payments: {
               where: {

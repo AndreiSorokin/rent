@@ -34,6 +34,8 @@ export default function StorePage() {
   const [accountingCash1, setAccountingCash1] = useState('');
   const [accountingCash2, setAccountingCash2] = useState('');
   const [accountingSaving, setAccountingSaving] = useState(false);
+  const [pavilionSearch, setPavilionSearch] = useState('');
+  const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -184,6 +186,23 @@ export default function StorePage() {
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
   const permissions = store.permissions || [];
+  const allCategories = Array.from(
+    new Set(
+      (store.pavilions || [])
+        .map((p: any) => (p.category || '').trim())
+        .filter((category: string) => category.length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+  const filteredPavilions = (store.pavilions || []).filter((p: any) => {
+    const byName = p.number
+      ?.toString()
+      .toLowerCase()
+      .includes(pavilionSearch.toLowerCase());
+    const byCategory = pavilionCategoryFilter
+      ? (p.category || '') === pavilionCategoryFilter
+      : true;
+    return byName && byCategory;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -344,8 +363,34 @@ export default function StorePage() {
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
 
-            {store.pavilions?.length === 0 ? (
-              <p className="py-8 text-center text-gray-600">В магазине пока нет павильонов</p>
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
+              <input
+                type="text"
+                value={pavilionSearch}
+                onChange={(e) => setPavilionSearch(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Поиск по имени павильона"
+              />
+              <select
+                value={pavilionCategoryFilter}
+                onChange={(e) => setPavilionCategoryFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">Все категории</option>
+                {allCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {filteredPavilions.length === 0 ? (
+              <p className="py-8 text-center text-gray-600">
+                {store.pavilions?.length === 0
+                  ? 'В магазине пока нет павильонов'
+                  : 'По текущим фильтрам павильоны не найдены'}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -358,12 +403,15 @@ export default function StorePage() {
                         Статус
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Категория
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Арендатор
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {store.pavilions.map((p: any) => (
+                    {filteredPavilions.map((p: any) => (
                       <tr
                         key={p.id}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -374,6 +422,9 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {statusLabel[p.status] ?? p.status}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {p.category || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {p.tenantName || 'Свободен'}
@@ -475,6 +526,7 @@ export default function StorePage() {
       {showCreatePavilionModal && (
         <CreatePavilionModal
           storeId={storeId}
+          existingCategories={allCategories}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
         />

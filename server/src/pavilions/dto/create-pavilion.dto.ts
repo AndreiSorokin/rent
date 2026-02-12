@@ -12,6 +12,10 @@ export class CreatePavilionDto {
   @IsString()
   number: string;
 
+  @IsString()
+  @IsOptional()
+  category?: string;
+
   @IsNumber()
   @Min(0)
   squareMeters: number;

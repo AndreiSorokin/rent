@@ -22,6 +22,8 @@ export type Currency = 'RUB' | 'KZT';
 export interface Pavilion {
   id: number;
   number: string;
+  category?: string | null;
+  tenantName?: string | null;
   status: 'AVAILABLE' | 'RENTED' | 'PREPAID';
 }
 

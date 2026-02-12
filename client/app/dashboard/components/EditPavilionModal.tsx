@@ -16,6 +16,7 @@ export function EditPavilionModal({
 }) {
   const [form, setForm] = useState(() => ({
     number: pavilion?.number ?? '',
+    category: pavilion?.category ?? '',
     squareMeters: pavilion?.squareMeters ?? '',
     pricePerSqM: pavilion?.pricePerSqM ?? '',
     status: pavilion?.status ?? 'AVAILABLE',
@@ -60,6 +61,7 @@ export function EditPavilionModal({
   const handleSave = async () => {
     const payload = {
       number: form.number,
+      category: form.category || null,
       squareMeters: Number(form.squareMeters),
       pricePerSqM: Number(form.pricePerSqM),
       status: form.status,
@@ -89,6 +91,14 @@ export function EditPavilionModal({
           onChange={handleChange}
           className="input"
           placeholder="Номер"
+        />
+
+        <input
+          name="category"
+          value={form.category}
+          onChange={handleChange}
+          className="input"
+          placeholder="Категория"
         />
 
         <input
