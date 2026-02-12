@@ -412,6 +412,21 @@ export default function PavilionPage() {
 
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
+  const currentMonthDiscount = getDiscountForPeriod(new Date());
+  const prepaidAmount = (() => {
+    if (!pavilion.prepaidUntil) return null;
+
+    const prepaidPeriod = new Date(pavilion.prepaidUntil);
+    const paymentForPrepaidMonth = (pavilion.payments || []).find((pay) => {
+      const payPeriod = new Date(pay.period);
+      return (
+        payPeriod.getFullYear() === prepaidPeriod.getFullYear() &&
+        payPeriod.getMonth() === prepaidPeriod.getMonth()
+      );
+    });
+
+    return Number(paymentForPrepaidMonth?.rentPaid ?? 0);
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -466,6 +481,16 @@ export default function PavilionPage() {
                 {pavilion.utilitiesAmount == null
                   ? '-'
                   : formatMoney(pavilion.utilitiesAmount, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-600">Скидка (текущий месяц)</p>
+              <p className="text-lg font-medium">{formatMoney(currentMonthDiscount, currency)}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Сумма предоплаты</p>
+              <p className="text-lg font-medium">
+                {prepaidAmount == null ? '-' : formatMoney(prepaidAmount, currency)}
               </p>
             </div>
           </div>
