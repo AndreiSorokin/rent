@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/types/store";
 import { useEffect, useState } from "react";
 import { InviteUserModal } from "./InviteUserModal";
@@ -12,7 +11,7 @@ export function StoreUsersPage({ storeId }: { storeId: number }) {
   const [showInvite, setShowInvite] = useState(false);
 
   const fetchUsers = async () => {
-    const data = await apiFetch(`/stores/${storeId}/users`);
+    const data = await apiFetch<any[]>(`/stores/${storeId}/users`);
     setUsers(data);
     setLoading(false);
   };
@@ -37,18 +36,16 @@ export function StoreUsersPage({ storeId }: { storeId: number }) {
     <div>
       <div className="flex justify-between mb-4">
         <h2>Store Users</h2>
-        {hasPermission(permissions, Permission.INVITE_USERS) && (
-          <button onClick={() => setShowInvite(true)} className="btn-primary">
-            + Invite User
-          </button>
-        )}
+        <button onClick={() => setShowInvite(true)} className="btn-primary">
+          + Invite User
+        </button>
       </div>
 
       {showInvite && (
         <InviteUserModal
           storeId={storeId}
           onClose={() => setShowInvite(false)}
-          onInvited={fetchUsers}
+          onSuccess={fetchUsers}
         />
       )}
 

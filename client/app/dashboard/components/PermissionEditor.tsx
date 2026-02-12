@@ -1,6 +1,24 @@
-import { Permission } from '@prisma/client';
+import { Permission } from '@/types/store';
 
-const ALL_PERMISSIONS = Object.values(Permission);
+const ALL_PERMISSIONS: Permission[] = [
+  'VIEW_PAVILIONS',
+  'CREATE_PAVILIONS',
+  'EDIT_PAVILIONS',
+  'DELETE_PAVILIONS',
+  'VIEW_PAYMENTS',
+  'CREATE_PAYMENTS',
+  'EDIT_PAYMENTS',
+  'CALCULATE_PAYMENTS',
+  'VIEW_CHARGES',
+  'CREATE_CHARGES',
+  'EDIT_CHARGES',
+  'DELETE_CHARGES',
+  'VIEW_CONTRACTS',
+  'UPLOAD_CONTRACTS',
+  'DELETE_CONTRACTS',
+  'INVITE_USERS',
+  'ASSIGN_PERMISSIONS',
+];
 
 export function PermissionEditor({
   current,

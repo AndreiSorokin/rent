@@ -25,6 +25,11 @@ export interface Pavilion {
   category?: string | null;
   tenantName?: string | null;
   status: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+  additionalCharges?: Array<{
+    id: number;
+    name: string;
+    amount: number;
+  }>;
 }
 
 export interface Store {

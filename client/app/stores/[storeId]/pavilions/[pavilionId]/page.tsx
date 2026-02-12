@@ -286,6 +286,8 @@ export default function PavilionPage() {
   };
 
   const handleSetPrepayment = async () => {
+    if (!pavilion) return;
+
     const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
     const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
@@ -329,6 +331,8 @@ export default function PavilionPage() {
   };
 
   const handleDeletePrepayment = async () => {
+    if (!pavilion) return;
+
     if (!confirm('Удалить предоплату? Статус будет изменен на ЗАНЯТ.')) return;
 
     try {

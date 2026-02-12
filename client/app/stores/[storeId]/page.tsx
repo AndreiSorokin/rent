@@ -183,13 +183,13 @@ export default function StorePage() {
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
   const permissions = store.permissions || [];
-  const allCategories = Array.from(
-    new Set(
+  const allCategories: string[] = Array.from(
+    new Set<string>(
       (store.pavilions || [])
         .map((p: any) => (p.category || '').trim())
         .filter((category: string) => category.length > 0),
     ),
-  ).sort((a, b) => a.localeCompare(b));
+  ).sort((a: string, b: string) => a.localeCompare(b));
   const filteredPavilions = (store.pavilions || []).filter((p: any) => {
     const byName = p.number
       ?.toString()

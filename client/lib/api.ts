@@ -1,4 +1,4 @@
-export async function apiFetch<T>(
+export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {

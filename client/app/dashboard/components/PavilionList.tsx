@@ -178,7 +178,6 @@ export function PavilionList({
 
       {addingChargeForPavilion && (
         <AddAdditionalChargeModal
-          storeId={storeId}
           pavilionId={addingChargeForPavilion.id}
           onClose={() => setAddingChargeForPavilion(null)}
           onSaved={refresh}

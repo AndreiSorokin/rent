@@ -1,5 +1,15 @@
-import { Permission } from '@prisma/client';
+import { Permission } from '@/types/store';
 import { apiFetch } from './api';
+
+type StoreUserRecord = {
+  id: number;
+  permissions: Permission[];
+  user: {
+    id: number;
+    email: string;
+    name?: string | null;
+  };
+};
 
 export async function inviteUserByEmail(storeId: number, email: string) {
   return apiFetch(`/stores/${storeId}/users/invite-by-email`, {
@@ -9,13 +19,13 @@ export async function inviteUserByEmail(storeId: number, email: string) {
 }
 
 export async function getStoreUsers(storeId: number) {
-  return apiFetch(`/stores/${storeId}/users`);
+  return apiFetch<StoreUserRecord[]>(`/stores/${storeId}/users`);
 }
 
 export async function updateUserPermissions(
   storeId: number,
   userId: number,
-  permissions: Permission[]
+  permissions: string[]
 ) {
   return apiFetch(`/stores/${storeId}/users/${userId}/permissions`, {
     method: 'PUT',
