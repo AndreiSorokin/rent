@@ -38,6 +38,7 @@ export default function PavilionPage() {
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [expandedCharges, setExpandedCharges] = useState<Set<number>>(new Set());
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -82,10 +83,20 @@ export default function PavilionPage() {
     try {
       const [data, storeData] = await Promise.all([
         getPavilion<Pavilion>(storeIdNum, pavilionIdNum),
-        apiFetch<{ permissions?: string[] }>(`/stores/${storeIdNum}`),
+        apiFetch<{ permissions?: string[]; pavilions?: Array<{ category?: string | null }> }>(
+          `/stores/${storeIdNum}`,
+        ),
       ]);
       setPavilion(data);
       setPermissions(storeData.permissions || []);
+      const categories = Array.from(
+        new Set(
+          (storeData.pavilions || [])
+            .map((p) => (p.category || '').trim())
+            .filter((c) => c.length > 0),
+        ),
+      ).sort((a, b) => a.localeCompare(b));
+      setExistingCategories(categories);
     } catch (err) {
       setError('Не удалось загрузить павильон');
       console.error(err);
@@ -1004,6 +1015,7 @@ export default function PavilionPage() {
           <EditPavilionModal
             storeId={storeIdNum}
             pavilion={editingPavilion}
+            existingCategories={existingCategories}
             onClose={() => setEditingPavilion(null)}
             onSaved={handleActionSuccess}
           />

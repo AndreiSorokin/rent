@@ -6,17 +6,20 @@ import { createPavilion, updatePavilion } from '@/lib/pavilions';
 export function EditPavilionModal({
   storeId,
   pavilion,
+  existingCategories,
   onClose,
   onSaved,
 }: {
   storeId: number;
   pavilion: any;
+  existingCategories?: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const normalizedCurrentCategory = pavilion?.category ?? '';
   const [form, setForm] = useState(() => ({
     number: pavilion?.number ?? '',
-    category: pavilion?.category ?? '',
+    category: normalizedCurrentCategory,
     squareMeters: pavilion?.squareMeters ?? '',
     pricePerSqM: pavilion?.pricePerSqM ?? '',
     status: pavilion?.status ?? 'AVAILABLE',
@@ -24,6 +27,11 @@ export function EditPavilionModal({
     rentAmount: pavilion?.rentAmount ?? '',
     utilitiesAmount: pavilion?.utilitiesAmount ?? '',
   }));
+  const [selectedCategory, setSelectedCategory] = useState(
+    normalizedCurrentCategory,
+  );
+  const [newCategory, setNewCategory] = useState('');
+  const resolvedCategory = (newCategory.trim() || selectedCategory || '').trim();
 
   if (!storeId) {
     console.error('EditPavilionModal: storeId is missing');
@@ -61,7 +69,7 @@ export function EditPavilionModal({
   const handleSave = async () => {
     const payload = {
       number: form.number,
-      category: form.category || null,
+      category: resolvedCategory || null,
       squareMeters: Number(form.squareMeters),
       pricePerSqM: Number(form.pricePerSqM),
       status: form.status,
@@ -95,11 +103,43 @@ export function EditPavilionModal({
 
         <input
           name="category"
-          value={form.category}
-          onChange={handleChange}
-          className="input"
+          value={resolvedCategory}
+          readOnly
+          className="input bg-gray-50"
           placeholder="Категория"
         />
+
+        {!newCategory.trim() ? (
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="input"
+          >
+            <option value="">Выберите категорию</option>
+            {(existingCategories || []).map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Введите новую категорию: выбор из существующих скрыт.
+          </p>
+        )}
+
+        {!selectedCategory ? (
+          <input
+            value={newCategory}
+            onChange={(e) => setNewCategory(e.target.value)}
+            className="input"
+            placeholder="Или введите новую категорию"
+          />
+        ) : (
+          <p className="text-xs text-gray-500">
+            Выбрана существующая категория: поле новой категории скрыто.
+          </p>
+        )}
 
         <input
           name="squareMeters"
