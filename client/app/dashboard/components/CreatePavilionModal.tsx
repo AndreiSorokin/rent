@@ -23,6 +23,7 @@ export function CreatePavilionModal({
   const [squareMeters, setSquareMeters] = useState('');
   const [pricePerSqM, setPricePerSqM] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
+  const [tenantName, setTenantName] = useState('');
   const [prepaymentMonth, setPrepaymentMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
@@ -33,8 +34,15 @@ export function CreatePavilionModal({
   const handleSubmit = async () => {
     const category = newCategory.trim() || selectedCategory.trim();
 
+    const needsTenant = status === 'RENTED' || status === 'PREPAID';
+
     if (!number || !squareMeters || !pricePerSqM || !category) {
       setError('Заполните все обязательные поля, включая категорию');
+      return;
+    }
+
+    if (needsTenant && !tenantName.trim()) {
+      setError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите имя арендатора');
       return;
     }
 
@@ -55,6 +63,7 @@ export function CreatePavilionModal({
           squareMeters: square,
           pricePerSqM: price,
           status,
+          tenantName: needsTenant ? tenantName.trim() : undefined,
           prepaidUntil: status === 'PREPAID' ? prepaidPeriodIso : undefined,
         }),
       });
@@ -98,31 +107,43 @@ export function CreatePavilionModal({
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Категория (из существующих)
             </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Не выбрано</option>
-              {existingCategories.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+            {!newCategory.trim() ? (
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Не выбрано</option>
+                {existingCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Введите новую категорию: выбор из существующих скрыт.
+              </p>
+            )}
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Или введите новую категорию
             </label>
-            <input
-              type="text"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Например: Одежда"
-            />
+            {!selectedCategory ? (
+              <input
+                type="text"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Например: Одежда"
+              />
+            ) : (
+              <p className="text-sm text-gray-500">
+                Выбрана существующая категория: поле новой категории скрыто.
+              </p>
+            )}
           </div>
 
           <div>
@@ -161,6 +182,21 @@ export function CreatePavilionModal({
               <option value="PREPAID">ПРЕДОПЛАТА</option>
             </select>
           </div>
+
+          {(status === 'RENTED' || status === 'PREPAID') && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Имя арендатора
+              </label>
+              <input
+                type="text"
+                value={tenantName}
+                onChange={(e) => setTenantName(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Например: Иван Петров"
+              />
+            </div>
+          )}
 
           {status === 'PREPAID' && (
             <>

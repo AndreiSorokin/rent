@@ -114,7 +114,7 @@ export class AnalyticsService {
     let incomeActualUtilities = 0;
     let incomeActualAdditional = 0;
 
-    for (const p of pavilions) {
+    for (const p of incomePavilions) {
       incomeForecastRent += p.squareMeters * p.pricePerSqM;
       incomeForecastUtilities += p.utilitiesAmount ?? 0;
       incomeForecastAdditional += p.additionalCharges.reduce(
