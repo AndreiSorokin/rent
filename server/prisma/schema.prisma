@@ -37,6 +37,8 @@ model Store {
   id          Int          @id @default(autoincrement())
   name        String
   currency    Currency     @default(RUB)
+  utilitiesExpenseStatus PavilionExpenseStatus @default(UNPAID)
+  householdExpenseStatus PavilionExpenseStatus @default(UNPAID)
   storeUsers  StoreUser[]
   pavilions   Pavilion[]
   invitations Invitation[]
@@ -65,6 +67,8 @@ model StoreStaff {
   id       Int    @id @default(autoincrement())
   fullName String
   position String
+  salary   Float  @default(0)
+  salaryStatus PavilionExpenseStatus @default(UNPAID)
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -186,6 +190,7 @@ model HouseholdExpense {
   id       Int    @id @default(autoincrement())
   name     String
   amount   Float
+  status   PavilionExpenseStatus @default(UNPAID)
 
   storeId Int?
   store   Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)

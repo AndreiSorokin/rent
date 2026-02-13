@@ -4,6 +4,7 @@ export type HouseholdExpense = {
   id: number;
   name: string;
   amount: number;
+  status: 'UNPAID' | 'PAID';
   storeId?: number | null;
   pavilionId?: number | null;
   createdAt: string;
@@ -27,4 +28,18 @@ export function deleteHouseholdExpense(storeId: number, expenseId: number) {
   return apiFetch(`/stores/${storeId}/household-expenses/${expenseId}`, {
     method: 'DELETE',
   });
+}
+
+export function updateHouseholdExpenseStatus(
+  storeId: number,
+  expenseId: number,
+  status: 'UNPAID' | 'PAID',
+) {
+  return apiFetch<HouseholdExpense>(
+    `/stores/${storeId}/household-expenses/${expenseId}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    },
+  );
 }

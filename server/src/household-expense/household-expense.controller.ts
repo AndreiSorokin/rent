@@ -3,12 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  Patch,
   Param,
   ParseIntPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { Permission } from '@prisma/client';
+import { PavilionExpenseStatus, Permission } from '@prisma/client';
 import { Permissions } from 'src/auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
@@ -41,5 +42,15 @@ export class HouseholdExpenseController {
     @Param('expenseId', ParseIntPipe) expenseId: number,
   ) {
     return this.service.delete(storeId, expenseId);
+  }
+
+  @Patch(':expenseId/status')
+  @Permissions(Permission.EDIT_CHARGES)
+  updateStatus(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('expenseId', ParseIntPipe) expenseId: number,
+    @Body() data: { status: PavilionExpenseStatus },
+  ) {
+    return this.service.updateStatus(storeId, expenseId, data.status);
   }
 }

@@ -219,7 +219,52 @@ export class StoresService {
   async createStaff(
     storeId: number,
     userId: number,
-    data: { fullName: string; position: string },
+    data: { fullName: string; position: string; salary?: number },
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (
+      !storeUser.permissions.includes(Permission.EDIT_CHARGES) &&
+      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new ForbiddenException('No permission to update salary status');
+    }
+
+    const fullName = data.fullName.trim();
+    const position = data.position.trim();
+    const salary = Number(data.salary ?? 0);
+
+    if (!fullName || !position) {
+      throw new BadRequestException('fullName and position are required');
+    }
+    if (Number.isNaN(salary) || salary < 0) {
+      throw new BadRequestException('salary must be non-negative');
+    }
+
+    return this.prisma.storeStaff.create({
+      data: {
+        storeId,
+        fullName,
+        position,
+        salary,
+      },
+    });
+  }
+
+  async updateStaff(
+    storeId: number,
+    staffId: number,
+    userId: number,
+    data: { salary?: number; salaryStatus?: 'UNPAID' | 'PAID' },
   ) {
     const storeUser = await this.prisma.storeUser.findUnique({
       where: {
@@ -236,19 +281,29 @@ export class StoresService {
       throw new ForbiddenException('Only store owner can manage staff');
     }
 
-    const fullName = data.fullName.trim();
-    const position = data.position.trim();
-
-    if (!fullName || !position) {
-      throw new BadRequestException('fullName and position are required');
+    const staff = await this.prisma.storeStaff.findFirst({
+      where: { id: staffId, storeId },
+      select: { id: true },
+    });
+    if (!staff) {
+      throw new NotFoundException('Staff record not found');
     }
 
-    return this.prisma.storeStaff.create({
-      data: {
-        storeId,
-        fullName,
-        position,
-      },
+    const updateData: Prisma.StoreStaffUpdateInput = {};
+    if (data.salary !== undefined) {
+      const salary = Number(data.salary);
+      if (Number.isNaN(salary) || salary < 0) {
+        throw new BadRequestException('salary must be non-negative');
+      }
+      updateData.salary = salary;
+    }
+    if (data.salaryStatus !== undefined) {
+      updateData.salaryStatus = data.salaryStatus;
+    }
+
+    return this.prisma.storeStaff.update({
+      where: { id: staffId },
+      data: updateData,
     });
   }
 
@@ -279,6 +334,46 @@ export class StoresService {
 
     return this.prisma.storeStaff.delete({
       where: { id: staffId },
+    });
+  }
+
+  async updateExpenseStatuses(
+    storeId: number,
+    userId: number,
+    data: {
+      utilitiesExpenseStatus?: 'UNPAID' | 'PAID';
+      householdExpenseStatus?: 'UNPAID' | 'PAID';
+    },
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    if (
+      !storeUser.permissions.includes(Permission.EDIT_CHARGES) &&
+      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new ForbiddenException('No permission to manage expense statuses');
+    }
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        utilitiesExpenseStatus: data.utilitiesExpenseStatus,
+        householdExpenseStatus: data.householdExpenseStatus,
+      },
+      select: {
+        id: true,
+        utilitiesExpenseStatus: true,
+        householdExpenseStatus: true,
+      },
     });
   }
 

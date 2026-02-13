@@ -8,6 +8,20 @@ export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
   async getStoreAnalytics(storeId: number) {
+    const storeMeta = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        utilitiesExpenseStatus: true,
+        householdExpenseStatus: true,
+        staff: {
+          select: {
+            salary: true,
+            salaryStatus: true,
+          },
+        },
+      },
+    });
+
     await this.prisma.pavilion.updateMany({
       where: {
         storeId,
@@ -79,6 +93,20 @@ export class AnalyticsService {
                 },
               },
             },
+          },
+        },
+      },
+    });
+
+    const previousStoreMeta = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        utilitiesExpenseStatus: true,
+        householdExpenseStatus: true,
+        staff: {
+          select: {
+            salary: true,
+            salaryStatus: true,
           },
         },
       },
@@ -217,18 +245,31 @@ export class AnalyticsService {
       OTHER: 0,
     };
     let expenseUtilitiesForecast = 0;
-    let expenseUtilitiesActual = 0;
     let expenseHouseholdTotal = 0;
 
     let channelsBankTransfer = 0;
     let channelsCashbox1 = 0;
     let channelsCashbox2 = 0;
 
-    const manualExpensesForecast = manualExpenses.reduce(
+    const nonSalaryManualExpenses = manualExpenses.filter(
+      (expense) => expense.type !== 'SALARIES',
+    );
+    const nonSalaryPreviousManualExpenses = previousManualExpenses.filter(
+      (expense) => expense.type !== 'SALARIES',
+    );
+    const staffSalariesForecast = (storeMeta?.staff ?? []).reduce(
+      (sum, member) => sum + Number(member.salary ?? 0),
+      0,
+    );
+    const staffSalariesActual = (storeMeta?.staff ?? [])
+      .filter((member) => member.salaryStatus === 'PAID')
+      .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
+
+    const manualExpensesForecast = nonSalaryManualExpenses.reduce(
       (sum, expense) => sum + expense.amount,
       0,
     );
-    const manualExpensesActual = manualExpenses
+    const manualExpensesActual = nonSalaryManualExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + expense.amount, 0);
     expenseHouseholdTotal = householdExpenses.reduce(
@@ -236,7 +277,7 @@ export class AnalyticsService {
       0,
     );
 
-    for (const expense of manualExpenses) {
+    for (const expense of nonSalaryManualExpenses) {
       expenseByTypeForecast[expense.type] =
         (expenseByTypeForecast[expense.type] ?? 0) + expense.amount;
       if (expense.status === 'PAID') {
@@ -244,6 +285,8 @@ export class AnalyticsService {
           (expenseByTypeActual[expense.type] ?? 0) + expense.amount;
       }
     }
+    expenseByTypeForecast.SALARIES = staffSalariesForecast;
+    expenseByTypeActual.SALARIES = staffSalariesActual;
 
     for (const pavilion of pavilions) {
       const utilitiesForecast =
@@ -251,18 +294,24 @@ export class AnalyticsService {
         pavilion.status === PavilionStatus.PREPAID
           ? (pavilion.utilitiesAmount ?? 0)
           : 0;
-      const utilitiesActual = pavilion.payments.reduce(
-        (sum, payment) => sum + (payment.utilitiesPaid ?? 0),
-        0,
-      );
       expenseUtilitiesForecast += utilitiesForecast;
-      expenseUtilitiesActual += utilitiesActual;
     }
 
+    const householdActual =
+      storeMeta?.householdExpenseStatus === 'PAID' ? expenseHouseholdTotal : 0;
+    const utilitiesActualByStatus =
+      storeMeta?.utilitiesExpenseStatus === 'PAID' ? expenseUtilitiesForecast : 0;
+
     expensesTotalForecast =
-      manualExpensesForecast + expenseHouseholdTotal + expenseUtilitiesForecast;
+      manualExpensesForecast +
+      staffSalariesForecast +
+      expenseHouseholdTotal +
+      expenseUtilitiesForecast;
     expensesTotalActual =
-      manualExpensesActual + expenseHouseholdTotal + expenseUtilitiesActual;
+      manualExpensesActual +
+      staffSalariesActual +
+      householdActual +
+      utilitiesActualByStatus;
 
     for (const pavilion of incomePavilions) {
       for (const pay of pavilion.payments) {
@@ -301,26 +350,36 @@ export class AnalyticsService {
       }
     }
 
-    const previousManualExpensesActual = previousManualExpenses
+    const previousManualExpensesActual = nonSalaryPreviousManualExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + expense.amount, 0);
     const previousHouseholdExpensesTotal = previousHouseholdExpenses.reduce(
       (sum, expense) => sum + expense.amount,
       0,
     );
-    const previousUtilitiesActual = previousMonthPavilions.reduce(
-      (sum, pavilion) =>
-        sum +
-        pavilion.payments.reduce(
-          (paymentSum, payment) => paymentSum + (payment.utilitiesPaid ?? 0),
-          0,
-        ),
-      0,
-    );
+    const previousSalariesActual = (previousStoreMeta?.staff ?? [])
+      .filter((member) => member.salaryStatus === 'PAID')
+      .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
+    const previousHouseholdActual =
+      previousStoreMeta?.householdExpenseStatus === 'PAID'
+        ? previousHouseholdExpensesTotal
+        : 0;
+    const previousUtilitiesActualByStatus =
+      previousStoreMeta?.utilitiesExpenseStatus === 'PAID'
+        ? previousMonthPavilions.reduce((sum, pavilion) => {
+            const utilitiesForecast =
+              pavilion.status === PavilionStatus.RENTED ||
+              pavilion.status === PavilionStatus.PREPAID
+                ? (pavilion.utilitiesAmount ?? 0)
+                : 0;
+            return sum + utilitiesForecast;
+          }, 0)
+        : 0;
     const previousExpenseTotal =
       previousManualExpensesActual +
-      previousHouseholdExpensesTotal +
-      previousUtilitiesActual;
+      previousSalariesActual +
+      previousHouseholdActual +
+      previousUtilitiesActualByStatus;
 
     const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
 
@@ -400,8 +459,8 @@ export class AnalyticsService {
             vat: expenseByTypeActual.VAT ?? 0,
             landRent: expenseByTypeActual.LAND_RENT ?? 0,
             other: expenseByTypeActual.OTHER ?? 0,
-            facilities: expenseUtilitiesActual,
-            household: expenseHouseholdTotal,
+            facilities: utilitiesActualByStatus,
+            household: householdActual,
           },
           byTypeForecast: {
             salaries: expenseByTypeForecast.SALARIES ?? 0,
@@ -420,7 +479,20 @@ export class AnalyticsService {
               forecast: manualExpensesForecast,
               actual: manualExpensesActual,
             },
-            household: expenseHouseholdTotal,
+            salaries: {
+              forecast: staffSalariesForecast,
+              actual: staffSalariesActual,
+            },
+            household: {
+              forecast: expenseHouseholdTotal,
+              actual: householdActual,
+              status: storeMeta?.householdExpenseStatus ?? 'UNPAID',
+            },
+            utilities: {
+              forecast: expenseUtilitiesForecast,
+              actual: utilitiesActualByStatus,
+              status: storeMeta?.utilitiesExpenseStatus ?? 'UNPAID',
+            },
           },
           totals: {
             forecast: expensesTotalForecast,

@@ -71,10 +71,21 @@ export class StoresController {
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   createStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body() data: { fullName: string; position: string },
+    @Body() data: { fullName: string; position: string; salary?: number },
     @Req() req: any,
   ) {
     return this.service.createStaff(storeId, req.user.id, data);
+  }
+
+  @Patch(':storeId/staff/:staffId')
+  @Permissions(Permission.EDIT_CHARGES)
+  updateStaff(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('staffId', ParseIntPipe) staffId: number,
+    @Body() data: { salary?: number; salaryStatus?: 'UNPAID' | 'PAID' },
+    @Req() req: any,
+  ) {
+    return this.service.updateStaff(storeId, staffId, req.user.id, data);
   }
 
   @Delete(':storeId/staff/:staffId')
@@ -85,6 +96,20 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.service.deleteStaff(storeId, staffId, req.user.id);
+  }
+
+  @Patch(':storeId/expenses/statuses')
+  @Permissions(Permission.EDIT_CHARGES)
+  updateExpenseStatuses(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      utilitiesExpenseStatus?: 'UNPAID' | 'PAID';
+      householdExpenseStatus?: 'UNPAID' | 'PAID';
+    },
+    @Req() req: any,
+  ) {
+    return this.service.updateExpenseStatuses(storeId, req.user.id, data);
   }
 
   @Get(':storeId/accounting-table')

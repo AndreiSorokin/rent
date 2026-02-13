@@ -12,6 +12,7 @@ import {
   createHouseholdExpense,
   deleteHouseholdExpense,
   getHouseholdExpenses,
+  updateHouseholdExpenseStatus,
 } from '@/lib/householdExpenses';
 import {
   createPavilionExpense,
@@ -26,7 +27,6 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   type: PavilionExpenseType;
   label: string;
 }> = [
-  { type: 'SALARIES', label: 'Зарплаты' },
   { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
   { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
   { type: 'DIVIDENDS', label: 'Дивиденды' },
@@ -49,6 +49,7 @@ export default function StorePage() {
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
+  const [staffSalary, setStaffSalary] = useState('');
   const [staffSaving, setStaffSaving] = useState(false);
   const [accountingRows, setAccountingRows] = useState<any[]>([]);
   const [accountingDate, setAccountingDate] = useState(
@@ -148,8 +149,14 @@ export default function StorePage() {
   };
 
   const handleAddStaff = async () => {
-    if (!staffFullName.trim() || !staffPosition.trim()) {
-      alert('Заполните поля "Имя фамилия" и "Должность"');
+    if (!staffFullName.trim() || !staffPosition.trim() || !staffSalary) {
+      alert('Заполните поля "Имя фамилия", "Должность" и "Зарплата"');
+      return;
+    }
+
+    const salary = Number(staffSalary);
+    if (Number.isNaN(salary) || salary < 0) {
+      alert('Зарплата должна быть неотрицательной');
       return;
     }
 
@@ -160,10 +167,12 @@ export default function StorePage() {
         body: JSON.stringify({
           fullName: staffFullName.trim(),
           position: staffPosition.trim(),
+          salary,
         }),
       });
       setStaffFullName('');
       setStaffPosition('');
+      setStaffSalary('');
       await fetchData();
     } catch (err) {
       console.error(err);
@@ -184,6 +193,38 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить сотрудника');
+    }
+  };
+
+  const handleUpdateStaffSalaryStatus = async (
+    staffId: number,
+    salaryStatus: 'UNPAID' | 'PAID',
+  ) => {
+    try {
+      await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ salaryStatus }),
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить статус зарплаты');
+    }
+  };
+
+  const handleUpdateStoreExpenseStatuses = async (data: {
+    utilitiesExpenseStatus?: 'UNPAID' | 'PAID';
+    householdExpenseStatus?: 'UNPAID' | 'PAID';
+  }) => {
+    try {
+      await apiFetch(`/stores/${storeId}/expenses/statuses`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить статус расхода');
     }
   };
 
@@ -275,6 +316,19 @@ export default function StorePage() {
     }
   };
 
+  const handleUpdateHouseholdExpenseStatus = async (
+    expenseId: number,
+    status: 'UNPAID' | 'PAID',
+  ) => {
+    try {
+      await updateHouseholdExpenseStatus(storeId, expenseId, status);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить статус хоз. расхода');
+    }
+  };
+
   const handleCreateManualExpense = async (type: PavilionExpenseType) => {
     const raw = manualExpenseAmountByType[type];
     if (!raw) {
@@ -357,31 +411,39 @@ export default function StorePage() {
     0,
   );
   const manualExpensesForecastTotal = storeExpenses.reduce(
-    (sum, item) => sum + Number(item.amount ?? 0),
+    (sum, item) =>
+      item.type === 'SALARIES' ? sum : sum + Number(item.amount ?? 0),
     0,
   );
   const manualExpensesActualTotal = storeExpenses
-    .filter((item) => item.status === 'PAID')
+    .filter((item) => item.type !== 'SALARIES' && item.status === 'PAID')
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
+  const staffSalariesForecastTotal = (store.staff || []).reduce(
+    (sum: number, staff: any) => sum + Number(staff.salary ?? 0),
+    0,
+  );
+  const staffSalariesActualTotal = (store.staff || [])
+    .filter((staff: any) => staff.salaryStatus === 'PAID')
+    .reduce((sum: number, staff: any) => sum + Number(staff.salary ?? 0), 0);
   const utilitiesExpenseForecast = (store.pavilions || []).reduce((sum: number, pavilion: any) => {
     const shouldCount =
       pavilion.status === 'RENTED' || pavilion.status === 'PREPAID';
     return sum + (shouldCount ? Number(pavilion.utilitiesAmount ?? 0) : 0);
   }, 0);
-  const utilitiesExpenseActual = (store.pavilions || []).reduce(
-    (sum: number, pavilion: any) =>
-      sum +
-      (pavilion.payments || []).reduce(
-        (paymentSum: number, payment: any) =>
-          paymentSum + Number(payment.utilitiesPaid ?? 0),
-        0,
-      ),
-    0,
-  );
+  const utilitiesExpenseActual =
+    store.utilitiesExpenseStatus === 'PAID' ? utilitiesExpenseForecast : 0;
+  const householdExpensesActual =
+    store.householdExpenseStatus === 'PAID' ? householdExpensesTotal : 0;
   const expensesForecastTotal =
-    manualExpensesForecastTotal + householdExpensesTotal + utilitiesExpenseForecast;
+    manualExpensesForecastTotal +
+    staffSalariesForecastTotal +
+    householdExpensesTotal +
+    utilitiesExpenseForecast;
   const expensesActualTotal =
-    manualExpensesActualTotal + householdExpensesTotal + utilitiesExpenseActual;
+    manualExpensesActualTotal +
+    staffSalariesActualTotal +
+    householdExpensesActual +
+    utilitiesExpenseActual;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -587,6 +649,7 @@ export default function StorePage() {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
                       {hasPermission(permissions, 'DELETE_CHARGES') && (
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
@@ -598,6 +661,27 @@ export default function StorePage() {
                       <tr key={expense.id}>
                         <td className="px-4 py-3 text-sm">{expense.name}</td>
                         <td className="px-4 py-3 text-sm">{formatMoney(expense.amount, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                            <select
+                              value={expense.status ?? 'UNPAID'}
+                              onChange={(e) =>
+                                handleUpdateHouseholdExpenseStatus(
+                                  expense.id,
+                                  e.target.value as 'UNPAID' | 'PAID',
+                                )
+                              }
+                              className="rounded border px-2 py-1 text-xs"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                          ) : expense.status === 'PAID' ? (
+                            'Оплачено'
+                          ) : (
+                            'Не оплачено'
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
                           <td className="px-4 py-3 text-right text-sm">
@@ -629,6 +713,50 @@ export default function StorePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-md border p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold">Зарплаты</div>
+                  <div className="text-sm font-semibold">
+                    {formatMoney(staffSalariesForecastTotal, store.currency)}
+                  </div>
+                </div>
+
+                {!store.staff || store.staff.length === 0 ? (
+                  <p className="text-xs text-gray-500">Сотрудников нет</p>
+                ) : (
+                  <div className="max-h-28 space-y-1 overflow-auto">
+                    {store.staff.map((staff: any) => (
+                      <div
+                        key={staff.id}
+                        className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                      >
+                        <span>
+                          {staff.fullName}: {formatMoney(staff.salary ?? 0, store.currency)}
+                        </span>
+                        {hasPermission(permissions, 'EDIT_CHARGES') && (
+                          <select
+                            value={staff.salaryStatus ?? 'UNPAID'}
+                            onChange={(e) =>
+                              handleUpdateStaffSalaryStatus(
+                                staff.id,
+                                e.target.value as 'UNPAID' | 'PAID',
+                              )
+                            }
+                            className="rounded border px-1 py-0.5 text-[10px]"
+                          >
+                            <option value="UNPAID">Не оплачено</option>
+                            <option value="PAID">Оплачено</option>
+                          </select>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-700">
+                  Факт: {formatMoney(staffSalariesActualTotal, store.currency)}
+                </div>
+              </div>
+
               {MANUAL_EXPENSE_CATEGORIES.map((category) => {
                 const categoryItems = groupedManualExpenses[category.type] ?? [];
                 const categoryTotal = categoryItems.reduce(
@@ -719,7 +847,21 @@ export default function StorePage() {
               })}
 
               <div className="rounded-md border p-3">
-                <div className="text-sm font-semibold">Коммуналка</div>
+                <div className="mb-2 text-sm font-semibold">Коммуналка</div>
+                {hasPermission(permissions, 'EDIT_CHARGES') && (
+                  <select
+                    value={store.utilitiesExpenseStatus ?? 'UNPAID'}
+                    onChange={(e) =>
+                      handleUpdateStoreExpenseStatuses({
+                        utilitiesExpenseStatus: e.target.value as 'UNPAID' | 'PAID',
+                      })
+                    }
+                    className="mb-2 w-full rounded border px-2 py-1 text-xs"
+                  >
+                    <option value="UNPAID">Не оплачено</option>
+                    <option value="PAID">Оплачено</option>
+                  </select>
+                )}
                 <div className="text-xs text-gray-700">
                   Прогноз: {formatMoney(utilitiesExpenseForecast, store.currency)}
                 </div>
@@ -729,9 +871,26 @@ export default function StorePage() {
               </div>
 
               <div className="rounded-md border p-3">
-                <div className="text-sm font-semibold">Хозяйственные расходы</div>
+                <div className="mb-2 text-sm font-semibold">Хозяйственные расходы</div>
+                {hasPermission(permissions, 'EDIT_CHARGES') && (
+                  <select
+                    value={store.householdExpenseStatus ?? 'UNPAID'}
+                    onChange={(e) =>
+                      handleUpdateStoreExpenseStatuses({
+                        householdExpenseStatus: e.target.value as 'UNPAID' | 'PAID',
+                      })
+                    }
+                    className="mb-2 w-full rounded border px-2 py-1 text-xs"
+                  >
+                    <option value="UNPAID">Не оплачено</option>
+                    <option value="PAID">Оплачено</option>
+                  </select>
+                )}
                 <div className="text-xs text-gray-700">
-                  Итого: {formatMoney(householdExpensesTotal, store.currency)}
+                  Прогноз: {formatMoney(householdExpensesTotal, store.currency)}
+                </div>
+                <div className="text-xs text-gray-700">
+                  Факт: {formatMoney(householdExpensesActual, store.currency)}
                 </div>
               </div>
             </div>
@@ -866,7 +1025,7 @@ export default function StorePage() {
               <h2 className="text-xl font-semibold md:text-2xl">Сотрудники</h2>
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]">
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
               <input
                 type="text"
                 value={staffPosition}
@@ -880,6 +1039,15 @@ export default function StorePage() {
                 onChange={(e) => setStaffFullName(e.target.value)}
                 className="rounded-lg border border-gray-300 px-3 py-2"
                 placeholder="Имя фамилия"
+              />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={staffSalary}
+                onChange={(e) => setStaffSalary(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Зарплата"
               />
               <button
                 onClick={handleAddStaff}
@@ -903,6 +1071,9 @@ export default function StorePage() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Имя фамилия
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Зарплата
+                      </th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                         Действия
                       </th>
@@ -913,6 +1084,7 @@ export default function StorePage() {
                       <tr key={staff.id}>
                         <td className="px-4 py-3 text-sm">{staff.position}</td>
                         <td className="px-4 py-3 text-sm">{staff.fullName}</td>
+                        <td className="px-4 py-3 text-sm">{formatMoney(staff.salary ?? 0, store.currency)}</td>
                         <td className="px-4 py-3 text-right text-sm">
                           <button
                             onClick={() => handleDeleteStaff(staff.id)}

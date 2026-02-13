@@ -56,9 +56,13 @@ export default function StoreSummaryPage() {
   const tradeArea = summary.tradeArea || {};
 
   const storeLevelForecast =
-    (storeLevelExpenses.manual?.forecast ?? 0) + (storeLevelExpenses.household ?? 0);
+    (storeLevelExpenses.manual?.forecast ?? 0) +
+    (storeLevelExpenses.salaries?.forecast ?? 0) +
+    (storeLevelExpenses.household?.forecast ?? 0);
   const storeLevelActual =
-    (storeLevelExpenses.manual?.actual ?? 0) + (storeLevelExpenses.household ?? 0);
+    (storeLevelExpenses.manual?.actual ?? 0) +
+    (storeLevelExpenses.salaries?.actual ?? 0) +
+    (storeLevelExpenses.household?.actual ?? 0);
 
   return (
     <div className="min-h-screen bg-gray-50">

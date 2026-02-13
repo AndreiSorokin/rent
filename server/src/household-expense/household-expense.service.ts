@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { PavilionExpenseStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -39,6 +40,29 @@ export class HouseholdExpenseService {
 
     return this.prisma.householdExpense.delete({
       where: { id: expenseId },
+    });
+  }
+
+  async updateStatus(
+    storeId: number,
+    expenseId: number,
+    status: PavilionExpenseStatus,
+  ) {
+    const expense = await this.prisma.householdExpense.findFirst({
+      where: {
+        id: expenseId,
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
+      select: { id: true },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    return this.prisma.householdExpense.update({
+      where: { id: expenseId },
+      data: { status },
     });
   }
 }
