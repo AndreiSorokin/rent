@@ -471,6 +471,15 @@ export default function StorePage() {
                 <option value="KZT">Казахстанский тенге (₸)</option>
               </select>
             )}
+            {hasPermission(permissions, 'VIEW_PAYMENTS') &&
+              hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                <Link
+                  href={`/stores/${storeId}/utilities`}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
+                >
+                  Коммунальные счета
+                </Link>
+              )}
             {hasPermission(permissions, 'CREATE_PAVILIONS') && (
               <button
                 onClick={() => setShowCreatePavilionModal(true)}
@@ -523,6 +532,9 @@ export default function StorePage() {
                         Павильон
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Площадь (м2)
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Статус
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -542,6 +554,9 @@ export default function StorePage() {
                       >
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           Павильон {p.number}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {p.squareMeters ?? 0}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {statusLabel[p.status] ?? p.status}
