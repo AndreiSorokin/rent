@@ -6,15 +6,17 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class PavilionExpensesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(pavilionId: number) {
+  list(storeId: number) {
     return this.prisma.pavilionExpense.findMany({
-      where: { pavilionId },
+      where: {
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   create(
-    pavilionId: number,
+    storeId: number,
     data: {
       type: PavilionExpenseType;
       amount: number;
@@ -24,7 +26,7 @@ export class PavilionExpensesService {
   ) {
     return this.prisma.pavilionExpense.create({
       data: {
-        pavilionId,
+        storeId,
         type: data.type,
         amount: data.amount,
         note: data.note ?? null,
@@ -34,12 +36,15 @@ export class PavilionExpensesService {
   }
 
   async updateStatus(
-    pavilionId: number,
+    storeId: number,
     expenseId: number,
     status: PavilionExpenseStatus,
   ) {
     const expense = await this.prisma.pavilionExpense.findFirst({
-      where: { id: expenseId, pavilionId },
+      where: {
+        id: expenseId,
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
       select: { id: true },
     });
 
@@ -53,9 +58,12 @@ export class PavilionExpensesService {
     });
   }
 
-  async delete(pavilionId: number, expenseId: number) {
+  async delete(storeId: number, expenseId: number) {
     const expense = await this.prisma.pavilionExpense.findFirst({
-      where: { id: expenseId, pavilionId },
+      where: {
+        id: expenseId,
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
       select: { id: true },
     });
 

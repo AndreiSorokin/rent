@@ -18,16 +18,17 @@ export type PavilionExpense = {
   status: PavilionExpenseStatus;
   amount: number;
   note?: string | null;
-  pavilionId: number;
+  storeId?: number | null;
+  pavilionId?: number | null;
   createdAt: string;
 };
 
-export function listPavilionExpenses(pavilionId: number) {
-  return apiFetch<PavilionExpense[]>(`/pavilions/${pavilionId}/expenses`);
+export function listPavilionExpenses(storeId: number) {
+  return apiFetch<PavilionExpense[]>(`/stores/${storeId}/expenses`);
 }
 
 export function createPavilionExpense(
-  pavilionId: number,
+  storeId: number,
   data: {
     type: PavilionExpenseType;
     amount: number;
@@ -35,25 +36,25 @@ export function createPavilionExpense(
     status?: PavilionExpenseStatus;
   },
 ) {
-  return apiFetch<PavilionExpense>(`/pavilions/${pavilionId}/expenses`, {
+  return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export function updatePavilionExpenseStatus(
-  pavilionId: number,
+  storeId: number,
   expenseId: number,
   status: PavilionExpenseStatus,
 ) {
-  return apiFetch<PavilionExpense>(`/pavilions/${pavilionId}/expenses/${expenseId}/status`, {
+  return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses/${expenseId}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   });
 }
 
-export function deletePavilionExpense(pavilionId: number, expenseId: number) {
-  return apiFetch(`/pavilions/${pavilionId}/expenses/${expenseId}`, {
+export function deletePavilionExpense(storeId: number, expenseId: number) {
+  return apiFetch(`/stores/${storeId}/expenses/${expenseId}`, {
     method: 'DELETE',
   });
 }

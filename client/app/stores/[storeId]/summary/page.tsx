@@ -51,7 +51,14 @@ export default function StoreSummaryPage() {
   const income = summary.income || {};
   const expenses = summary.expenses || {};
   const expenseByType = expenses.byType || {};
+  const expenseByTypeForecast = expenses.byTypeForecast || {};
+  const storeLevelExpenses = expenses.storeLevel || {};
   const tradeArea = summary.tradeArea || {};
+
+  const storeLevelForecast =
+    (storeLevelExpenses.manual?.forecast ?? 0) + (storeLevelExpenses.household ?? 0);
+  const storeLevelActual =
+    (storeLevelExpenses.manual?.actual ?? 0) + (storeLevelExpenses.household ?? 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,6 +92,11 @@ export default function StoreSummaryPage() {
 
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">2. Общий расход</h2>
+          <div className="mb-4 rounded-lg bg-gray-50 p-3 text-sm">
+            <div>Расходы уровня магазина (ручные + хоз. часть):</div>
+            <div>Прогноз: {formatMoney(storeLevelForecast, currency)}</div>
+            <div>Факт: {formatMoney(storeLevelActual, currency)}</div>
+          </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>Зарплаты: {formatMoney(expenseByType.salaries ?? 0, currency)}</div>
             <div>Налоги с зарплаты: {formatMoney(expenseByType.payrollTax ?? 0, currency)}</div>
@@ -97,16 +109,23 @@ export default function StoreSummaryPage() {
             <div>Аренда земли: {formatMoney(expenseByType.landRent ?? 0, currency)}</div>
             <div>Прочие расходы: {formatMoney(expenseByType.other ?? 0, currency)}</div>
           </div>
-          <div className="mt-4 border-t pt-4 font-semibold">
-            Итого расход (факт): {formatMoney(expenses.totals?.actual ?? 0, currency)}
+          <div className="mt-4 grid grid-cols-1 gap-2 border-t pt-4 md:grid-cols-2">
+            <div className="font-semibold">
+              Итого расход (прогноз): {formatMoney(expenses.totals?.forecast ?? 0, currency)}
+            </div>
+            <div className="font-semibold">
+              Итого расход (факт): {formatMoney(expenses.totals?.actual ?? 0, currency)}
+            </div>
+          </div>
+          <div className="mt-3 text-sm text-gray-600">
+            Коммуналка по прогнозу: {formatMoney(expenseByTypeForecast.facilities ?? 0, currency)}; факт:{' '}
+            {formatMoney(expenseByType.facilities ?? 0, currency)}
           </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-2 text-xl font-semibold">3. Сальдо</h2>
-          <div className="text-lg font-semibold">
-            {formatMoney(summary.saldo ?? 0, currency)}
-          </div>
+          <div className="text-lg font-semibold">{formatMoney(summary.saldo ?? 0, currency)}</div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">

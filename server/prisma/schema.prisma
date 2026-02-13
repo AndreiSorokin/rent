@@ -42,6 +42,8 @@ model Store {
   invitations Invitation[]
   staff       StoreStaff[]
   accountingRecords StoreAccountingRecord[]
+  householdExpenses HouseholdExpense[]
+  pavilionExpenses PavilionExpense[]
 }
 
 model StoreAccountingRecord {
@@ -169,11 +171,14 @@ model PavilionExpense {
   amount Float
   note   String?
 
-  pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  storeId Int?
+  store   Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pavilionId Int?
+  pavilion   Pavilion? @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
+  @@index([storeId, type, createdAt])
   @@index([pavilionId, type, createdAt])
 }
 
@@ -182,11 +187,14 @@ model HouseholdExpense {
   name     String
   amount   Float
 
-  pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  storeId Int?
+  store   Store? @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  pavilionId Int?
+  pavilion   Pavilion? @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
+  @@index([storeId, createdAt])
   @@index([pavilionId, createdAt])
 }
 

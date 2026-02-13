@@ -4,26 +4,27 @@ export type HouseholdExpense = {
   id: number;
   name: string;
   amount: number;
-  pavilionId: number;
+  storeId?: number | null;
+  pavilionId?: number | null;
   createdAt: string;
 };
 
-export function getHouseholdExpenses(pavilionId: number) {
-  return apiFetch<HouseholdExpense[]>(`/pavilions/${pavilionId}/household-expenses`);
+export function getHouseholdExpenses(storeId: number) {
+  return apiFetch<HouseholdExpense[]>(`/stores/${storeId}/household-expenses`);
 }
 
 export function createHouseholdExpense(
-  pavilionId: number,
+  storeId: number,
   data: { name: string; amount: number },
 ) {
-  return apiFetch<HouseholdExpense>(`/pavilions/${pavilionId}/household-expenses`, {
+  return apiFetch<HouseholdExpense>(`/stores/${storeId}/household-expenses`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export function deleteHouseholdExpense(pavilionId: number, expenseId: number) {
-  return apiFetch(`/pavilions/${pavilionId}/household-expenses/${expenseId}`, {
+export function deleteHouseholdExpense(storeId: number, expenseId: number) {
+  return apiFetch(`/stores/${storeId}/household-expenses/${expenseId}`, {
     method: 'DELETE',
   });
 }

@@ -16,18 +16,7 @@ import { getPavilion, updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
-import {
-  createHouseholdExpense,
-  deleteHouseholdExpense,
-} from '@/lib/householdExpenses';
-import {
-  createPavilionExpense,
-  deletePavilionExpense,
-  updatePavilionExpenseStatus,
-} from '@/lib/pavilionExpenses';
-import { Discount, Pavilion, PavilionExpenseStatus, PavilionExpenseType } from './pavilion.types';
-import { PavilionExpensesSection } from './components/PavilionExpensesSection';
-import { PavilionHouseholdExpensesSection } from './components/PavilionHouseholdExpensesSection';
+import { Discount, Pavilion } from './pavilion.types';
 
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
@@ -57,20 +46,6 @@ export default function PavilionPage() {
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [uploadingContract, setUploadingContract] = useState(false);
-  const [expenseName, setExpenseName] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
-    Record<PavilionExpenseType, string>
-  >({
-    SALARIES: '',
-    PAYROLL_TAX: '',
-    PROFIT_TAX: '',
-    DIVIDENDS: '',
-    BANK_SERVICES: '',
-    VAT: '',
-    LAND_RENT: '',
-    OTHER: '',
-  });
   const [permissions, setPermissions] = useState<string[]>([]);
 
   const statusLabel: Record<string, string> = {
@@ -193,72 +168,6 @@ export default function PavilionPage() {
     }
   };
 
-  const handleCreateHouseholdExpense = async () => {
-    if (!expenseName.trim() || !expenseAmount) {
-      alert('Введите название и сумму расхода');
-      return;
-    }
-
-    try {
-      await createHouseholdExpense(pavilionIdNum, {
-        name: expenseName.trim(),
-        amount: Number(expenseAmount),
-      });
-      setExpenseName('');
-      setExpenseAmount('');
-      handleActionSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить расход');
-    }
-  };
-
-  const handleDeleteHouseholdExpense = async (expenseId: number) => {
-    if (!confirm('Удалить этот расход?')) return;
-
-    try {
-      await deleteHouseholdExpense(pavilionIdNum, expenseId);
-      handleActionSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить расход');
-    }
-  };
-
-  const handleCreateManualExpense = async (type: PavilionExpenseType) => {
-    const raw = manualExpenseAmountByType[type];
-    if (!raw) {
-      alert('Введите сумму');
-      return;
-    }
-
-    const amount = Number(raw);
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Некорректная сумма');
-      return;
-    }
-
-    try {
-      await createPavilionExpense(pavilionIdNum, { type, amount });
-      setManualExpenseAmountByType((prev) => ({ ...prev, [type]: '' }));
-      handleActionSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить расход');
-    }
-  };
-
-  const handleDeleteManualExpense = async (expenseId: number) => {
-    if (!confirm('Удалить этот расход?')) return;
-
-    try {
-      await deletePavilionExpense(pavilionIdNum, expenseId);
-      handleActionSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить расход');
-    }
-  };
 
   const handleDeletePaymentEntry = async (entryId: number) => {
     if (!confirm('Удалить этот платеж?')) return;
@@ -272,18 +181,6 @@ export default function PavilionPage() {
     }
   };
 
-  const handleManualExpenseStatusChange = async (
-    expenseId: number,
-    status: PavilionExpenseStatus,
-  ) => {
-    try {
-      await updatePavilionExpenseStatus(pavilionIdNum, expenseId, status);
-      handleActionSuccess();
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось изменить статус расхода');
-    }
-  };
 
   const handleSetPrepayment = async () => {
     if (!pavilion) return;
@@ -591,33 +488,6 @@ export default function PavilionPage() {
               </div>
             )}
           </div>
-        )}
-
-        {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <PavilionHouseholdExpensesSection
-            pavilion={pavilion}
-            currency={currency}
-            permissions={permissions}
-            expenseName={expenseName}
-            setExpenseName={setExpenseName}
-            expenseAmount={expenseAmount}
-            setExpenseAmount={setExpenseAmount}
-            onCreateHouseholdExpense={handleCreateHouseholdExpense}
-            onDeleteHouseholdExpense={handleDeleteHouseholdExpense}
-          />
-        )}
-
-        {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <PavilionExpensesSection
-            pavilion={pavilion}
-            currency={currency}
-            permissions={permissions}
-            manualExpenseAmountByType={manualExpenseAmountByType}
-            setManualExpenseAmountByType={setManualExpenseAmountByType}
-            onCreateManualExpense={handleCreateManualExpense}
-            onDeleteManualExpense={handleDeleteManualExpense}
-            onManualExpenseStatusChange={handleManualExpenseStatusChange}
-          />
         )}
 
         {hasPermission(permissions, 'VIEW_PAYMENTS') && (

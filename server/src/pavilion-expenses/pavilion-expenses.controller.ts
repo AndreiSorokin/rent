@@ -16,20 +16,20 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { PavilionExpensesService } from './pavilion-expenses.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('pavilions/:pavilionId/expenses')
+@Controller('stores/:storeId/expenses')
 export class PavilionExpensesController {
   constructor(private readonly service: PavilionExpensesService) {}
 
   @Get()
   @Permissions(Permission.VIEW_PAYMENTS)
-  list(@Param('pavilionId', ParseIntPipe) pavilionId: number) {
-    return this.service.list(pavilionId);
+  list(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.list(storeId);
   }
 
   @Post()
   @Permissions(Permission.CREATE_CHARGES)
   create(
-    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('storeId', ParseIntPipe) storeId: number,
     @Body()
     data: {
       type: PavilionExpenseType;
@@ -38,25 +38,25 @@ export class PavilionExpensesController {
       status?: PavilionExpenseStatus;
     },
   ) {
-    return this.service.create(pavilionId, data);
+    return this.service.create(storeId, data);
   }
 
   @Patch(':expenseId/status')
   @Permissions(Permission.EDIT_CHARGES)
   updateStatus(
-    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('storeId', ParseIntPipe) storeId: number,
     @Param('expenseId', ParseIntPipe) expenseId: number,
     @Body() data: { status: PavilionExpenseStatus },
   ) {
-    return this.service.updateStatus(pavilionId, expenseId, data.status);
+    return this.service.updateStatus(storeId, expenseId, data.status);
   }
 
   @Delete(':expenseId')
   @Permissions(Permission.DELETE_CHARGES)
   delete(
-    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('storeId', ParseIntPipe) storeId: number,
     @Param('expenseId', ParseIntPipe) expenseId: number,
   ) {
-    return this.service.delete(pavilionId, expenseId);
+    return this.service.delete(storeId, expenseId);
   }
 }

@@ -8,6 +8,33 @@ import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
+import {
+  createHouseholdExpense,
+  deleteHouseholdExpense,
+  getHouseholdExpenses,
+} from '@/lib/householdExpenses';
+import {
+  createPavilionExpense,
+  deletePavilionExpense,
+  listPavilionExpenses,
+  PavilionExpenseStatus,
+  PavilionExpenseType,
+  updatePavilionExpenseStatus,
+} from '@/lib/pavilionExpenses';
+
+const MANUAL_EXPENSE_CATEGORIES: Array<{
+  type: PavilionExpenseType;
+  label: string;
+}> = [
+  { type: 'SALARIES', label: 'Зарплаты' },
+  { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
+  { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
+  { type: 'DIVIDENDS', label: 'Дивиденды' },
+  { type: 'BANK_SERVICES', label: 'Услуги банка' },
+  { type: 'VAT', label: 'НДС' },
+  { type: 'LAND_RENT', label: 'Аренда земли' },
+  { type: 'OTHER', label: 'Прочие расходы' },
+];
 
 export default function StorePage() {
   const params = useParams();
@@ -31,6 +58,23 @@ export default function StorePage() {
   const [accountingCash1, setAccountingCash1] = useState('');
   const [accountingCash2, setAccountingCash2] = useState('');
   const [accountingSaving, setAccountingSaving] = useState(false);
+  const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
+  const [householdName, setHouseholdName] = useState('');
+  const [householdAmount, setHouseholdAmount] = useState('');
+  const [householdSaving, setHouseholdSaving] = useState(false);
+  const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
+  const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
+    Record<PavilionExpenseType, string>
+  >({
+    SALARIES: '',
+    PAYROLL_TAX: '',
+    PROFIT_TAX: '',
+    DIVIDENDS: '',
+    BANK_SERVICES: '',
+    VAT: '',
+    LAND_RENT: '',
+    OTHER: '',
+  });
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
 
@@ -46,15 +90,27 @@ export default function StorePage() {
       const storeData = await apiFetch(`/stores/${storeId}`);
 
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
-        const analyticsData = await apiFetch<any>(`/stores/${storeId}/analytics`);
-        const accountingData = await apiFetch<any[]>(
-          `/stores/${storeId}/accounting-table`,
-        );
+        const [analyticsData, accountingData] = await Promise.all([
+          apiFetch<any>(`/stores/${storeId}/analytics`),
+          apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
+        ]);
         setAnalytics(analyticsData);
         setAccountingRows(accountingData || []);
       } else {
         setAnalytics(null);
         setAccountingRows([]);
+      }
+
+      if (hasPermission(storeData.permissions || [], 'VIEW_CHARGES')) {
+        const [householdData, expensesData] = await Promise.all([
+          getHouseholdExpenses(storeId),
+          listPavilionExpenses(storeId),
+        ]);
+        setHouseholdExpenses(householdData || []);
+        setStoreExpenses(expensesData || []);
+      } else {
+        setHouseholdExpenses([]);
+        setStoreExpenses([]);
       }
 
       setStore(storeData);
@@ -178,6 +234,95 @@ export default function StorePage() {
     }
   };
 
+  const handleCreateHouseholdExpense = async () => {
+    if (!householdName.trim() || !householdAmount) {
+      alert('Введите название и сумму расхода');
+      return;
+    }
+
+    const amount = Number(householdAmount);
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Некорректная сумма');
+      return;
+    }
+
+    try {
+      setHouseholdSaving(true);
+      await createHouseholdExpense(storeId, {
+        name: householdName.trim(),
+        amount,
+      });
+      setHouseholdName('');
+      setHouseholdAmount('');
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    } finally {
+      setHouseholdSaving(false);
+    }
+  };
+
+  const handleDeleteHouseholdExpense = async (expenseId: number) => {
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      await deleteHouseholdExpense(storeId, expenseId);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    }
+  };
+
+  const handleCreateManualExpense = async (type: PavilionExpenseType) => {
+    const raw = manualExpenseAmountByType[type];
+    if (!raw) {
+      alert('Введите сумму');
+      return;
+    }
+
+    const amount = Number(raw);
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Некорректная сумма');
+      return;
+    }
+
+    try {
+      await createPavilionExpense(storeId, { type, amount });
+      setManualExpenseAmountByType((prev) => ({ ...prev, [type]: '' }));
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    }
+  };
+
+  const handleDeleteManualExpense = async (expenseId: number) => {
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      await deletePavilionExpense(storeId, expenseId);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    }
+  };
+
+  const handleManualExpenseStatusChange = async (
+    expenseId: number,
+    status: PavilionExpenseStatus,
+  ) => {
+    try {
+      await updatePavilionExpenseStatus(storeId, expenseId, status);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось изменить статус расхода');
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -200,6 +345,43 @@ export default function StorePage() {
       : true;
     return byName && byCategory;
   });
+  const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
+    (acc, category) => {
+      acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
+      return acc;
+    },
+    {} as Record<PavilionExpenseType, any[]>,
+  );
+  const householdExpensesTotal = householdExpenses.reduce(
+    (sum, expense) => sum + Number(expense.amount ?? 0),
+    0,
+  );
+  const manualExpensesForecastTotal = storeExpenses.reduce(
+    (sum, item) => sum + Number(item.amount ?? 0),
+    0,
+  );
+  const manualExpensesActualTotal = storeExpenses
+    .filter((item) => item.status === 'PAID')
+    .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
+  const utilitiesExpenseForecast = (store.pavilions || []).reduce((sum: number, pavilion: any) => {
+    const shouldCount =
+      pavilion.status === 'RENTED' || pavilion.status === 'PREPAID';
+    return sum + (shouldCount ? Number(pavilion.utilitiesAmount ?? 0) : 0);
+  }, 0);
+  const utilitiesExpenseActual = (store.pavilions || []).reduce(
+    (sum: number, pavilion: any) =>
+      sum +
+      (pavilion.payments || []).reduce(
+        (paymentSum: number, payment: any) =>
+          paymentSum + Number(payment.utilitiesPaid ?? 0),
+        0,
+      ),
+    0,
+  );
+  const expensesForecastTotal =
+    manualExpensesForecastTotal + householdExpensesTotal + utilitiesExpenseForecast;
+  const expensesActualTotal =
+    manualExpensesActualTotal + householdExpensesTotal + utilitiesExpenseActual;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -238,18 +420,82 @@ export default function StorePage() {
           </div>
         </div>
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+        {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
-            <p className="mb-4 text-gray-600">
-              Основные финансовые показатели магазина на отдельной странице.
-            </p>
-            <Link
-              href={`/stores/${storeId}/summary`}
-              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
-            >
-              Открыть СВОДКУ
-            </Link>
+            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
+
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
+              <input
+                type="text"
+                value={pavilionSearch}
+                onChange={(e) => setPavilionSearch(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Поиск по имени павильона"
+              />
+              <select
+                value={pavilionCategoryFilter}
+                onChange={(e) => setPavilionCategoryFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">Все категории</option>
+                {allCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {filteredPavilions.length === 0 ? (
+              <p className="py-8 text-center text-gray-600">
+                {store.pavilions?.length === 0
+                  ? 'В магазине пока нет павильонов'
+                  : 'По текущим фильтрам павильоны не найдены'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Павильон
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Статус
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Категория
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Арендатор
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {filteredPavilions.map((p: any) => (
+                      <tr
+                        key={p.id}
+                        className="cursor-pointer transition-colors hover:bg-gray-50"
+                        onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          Павильон {p.number}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {statusLabel[p.status] ?? p.status}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {p.category || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {p.tenantName || 'Свободен'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -290,6 +536,203 @@ export default function StorePage() {
                     (analytics?.expenses?.total?.actual ?? 0),
                   store.currency,
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_CHARGES') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Расходы на хоз. часть</h2>
+              <div className="text-sm font-semibold">
+                Итого: {formatMoney(householdExpensesTotal, store.currency)}
+              </div>
+            </div>
+
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
+                <input
+                  type="text"
+                  value={householdName}
+                  onChange={(e) => setHouseholdName(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Название расхода"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={householdAmount}
+                  onChange={(e) => setHouseholdAmount(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Сумма"
+                />
+                <button
+                  onClick={handleCreateHouseholdExpense}
+                  disabled={householdSaving}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-60"
+                >
+                  Добавить
+                </button>
+              </div>
+            )}
+
+            {householdExpenses.length === 0 ? (
+              <p className="text-gray-600">Расходов пока нет</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                      {hasPermission(permissions, 'DELETE_CHARGES') && (
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {householdExpenses.map((expense: any) => (
+                      <tr key={expense.id}>
+                        <td className="px-4 py-3 text-sm">{expense.name}</td>
+                        <td className="px-4 py-3 text-sm">{formatMoney(expense.amount, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <td className="px-4 py-3 text-right text-sm">
+                            <button
+                              onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_CHARGES') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Расходы</h2>
+              <div className="text-right text-sm">
+                <div>Итого прогноз: {formatMoney(expensesForecastTotal, store.currency)}</div>
+                <div>Итого факт: {formatMoney(expensesActualTotal, store.currency)}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {MANUAL_EXPENSE_CATEGORIES.map((category) => {
+                const categoryItems = groupedManualExpenses[category.type] ?? [];
+                const categoryTotal = categoryItems.reduce(
+                  (sum: number, item: any) => sum + Number(item.amount ?? 0),
+                  0,
+                );
+
+                return (
+                  <div key={category.type} className="rounded-md border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="text-sm font-semibold">{category.label}</div>
+                      <div className="text-sm font-semibold">
+                        {formatMoney(categoryTotal, store.currency)}
+                      </div>
+                    </div>
+
+                    {hasPermission(permissions, 'CREATE_CHARGES') && (
+                      <div className="mb-2 flex gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={manualExpenseAmountByType[category.type]}
+                          onChange={(e) =>
+                            setManualExpenseAmountByType((prev) => ({
+                              ...prev,
+                              [category.type]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded border px-2 py-1 text-sm"
+                          placeholder="Сумма"
+                        />
+                        <button
+                          onClick={() => handleCreateManualExpense(category.type)}
+                          className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+
+                    {categoryItems.length > 0 ? (
+                      <div className="max-h-28 space-y-1 overflow-auto">
+                        {categoryItems.map((item: any) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                          >
+                            <span>
+                              {formatMoney(item.amount, store.currency)}{' '}
+                              <span className="text-gray-500">
+                                ({new Date(item.createdAt).toLocaleDateString()})
+                              </span>
+                            </span>
+                            <div className="ml-2 flex items-center gap-2">
+                              {hasPermission(permissions, 'EDIT_CHARGES') && (
+                                <select
+                                  value={item.status}
+                                  onChange={(e) =>
+                                    handleManualExpenseStatusChange(
+                                      item.id,
+                                      e.target.value as PavilionExpenseStatus,
+                                    )
+                                  }
+                                  className="rounded border px-1 py-0.5 text-[10px]"
+                                >
+                                  <option value="UNPAID">Не оплачено</option>
+                                  <option value="PAID">Оплачено</option>
+                                </select>
+                              )}
+                              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                                <button
+                                  onClick={() => handleDeleteManualExpense(item.id)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  x
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500">Записей нет</p>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="rounded-md border p-3">
+                <div className="text-sm font-semibold">Коммуналка</div>
+                <div className="text-xs text-gray-700">
+                  Прогноз: {formatMoney(utilitiesExpenseForecast, store.currency)}
+                </div>
+                <div className="text-xs text-gray-700">
+                  Факт: {formatMoney(utilitiesExpenseActual, store.currency)}
+                </div>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <div className="text-sm font-semibold">Хозяйственные расходы</div>
+                <div className="text-xs text-gray-700">
+                  Итого: {formatMoney(householdExpensesTotal, store.currency)}
+                </div>
               </div>
             </div>
           </div>
@@ -417,85 +860,6 @@ export default function StorePage() {
           </div>
         )}
 
-        {hasPermission(permissions, 'VIEW_PAVILIONS') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
-
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
-              <input
-                type="text"
-                value={pavilionSearch}
-                onChange={(e) => setPavilionSearch(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Поиск по имени павильона"
-              />
-              <select
-                value={pavilionCategoryFilter}
-                onChange={(e) => setPavilionCategoryFilter(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-              >
-                <option value="">Все категории</option>
-                {allCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {filteredPavilions.length === 0 ? (
-              <p className="py-8 text-center text-gray-600">
-                {store.pavilions?.length === 0
-                  ? 'В магазине пока нет павильонов'
-                  : 'По текущим фильтрам павильоны не найдены'}
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Павильон
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Статус
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Категория
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Арендатор
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredPavilions.map((p: any) => (
-                      <tr
-                        key={p.id}
-                        className="cursor-pointer transition-colors hover:bg-gray-50"
-                        onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
-                      >
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          Павильон {p.number}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {statusLabel[p.status] ?? p.status}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {p.category || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {p.tenantName || 'Свободен'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
         {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
@@ -563,6 +927,21 @@ export default function StorePage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
+            <p className="mb-4 text-gray-600">
+              Основные финансовые показатели магазина на отдельной странице.
+            </p>
+            <Link
+              href={`/stores/${storeId}/summary`}
+              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+            >
+              Открыть СВОДКУ
+            </Link>
           </div>
         )}
 

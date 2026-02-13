@@ -5,28 +5,30 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class HouseholdExpenseService {
   constructor(private readonly prisma: PrismaService) {}
 
-  list(pavilionId: number) {
+  list(storeId: number) {
     return this.prisma.householdExpense.findMany({
-      where: { pavilionId },
+      where: {
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  create(pavilionId: number, data: { name: string; amount: number }) {
+  create(storeId: number, data: { name: string; amount: number }) {
     return this.prisma.householdExpense.create({
       data: {
-        pavilionId,
+        storeId,
         name: data.name,
         amount: data.amount,
       },
     });
   }
 
-  async delete(pavilionId: number, expenseId: number) {
+  async delete(storeId: number, expenseId: number) {
     const expense = await this.prisma.householdExpense.findFirst({
       where: {
         id: expenseId,
-        pavilionId,
+        OR: [{ storeId }, { pavilion: { storeId } }],
       },
       select: { id: true },
     });

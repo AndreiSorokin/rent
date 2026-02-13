@@ -15,31 +15,31 @@ import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { HouseholdExpenseService } from './household-expense.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('pavilions/:pavilionId/household-expenses')
+@Controller('stores/:storeId/household-expenses')
 export class HouseholdExpenseController {
   constructor(private readonly service: HouseholdExpenseService) {}
 
   @Get()
   @Permissions(Permission.VIEW_CHARGES)
-  list(@Param('pavilionId', ParseIntPipe) pavilionId: number) {
-    return this.service.list(pavilionId);
+  list(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.list(storeId);
   }
 
   @Post()
   @Permissions(Permission.CREATE_CHARGES)
   create(
-    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('storeId', ParseIntPipe) storeId: number,
     @Body() data: { name: string; amount: number },
   ) {
-    return this.service.create(pavilionId, data);
+    return this.service.create(storeId, data);
   }
 
   @Delete(':expenseId')
   @Permissions(Permission.DELETE_CHARGES)
   delete(
-    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('storeId', ParseIntPipe) storeId: number,
     @Param('expenseId', ParseIntPipe) expenseId: number,
   ) {
-    return this.service.delete(pavilionId, expenseId);
+    return this.service.delete(storeId, expenseId);
   }
 }
