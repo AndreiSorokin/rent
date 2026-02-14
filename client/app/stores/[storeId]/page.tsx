@@ -432,8 +432,11 @@ export default function StorePage() {
   }, 0);
   const utilitiesExpenseActual =
     store.utilitiesExpenseStatus === 'PAID' ? utilitiesExpenseForecast : 0;
-  const householdExpensesActual =
-    store.householdExpenseStatus === 'PAID' ? householdExpensesTotal : 0;
+  const householdExpensesActual = householdExpenses.reduce(
+    (sum, expense) =>
+      expense.status === 'PAID' ? sum + Number(expense.amount ?? 0) : sum,
+    0,
+  );
   const expensesForecastTotal =
     manualExpensesForecastTotal +
     staffSalariesForecastTotal +
