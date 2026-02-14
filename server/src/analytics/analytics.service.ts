@@ -164,7 +164,15 @@ export class AnalyticsService {
     let actualAdditional = 0;
 
     for (const p of incomePavilions) {
-      forecastRent += p.squareMeters * p.pricePerSqM;
+      const baseRent = p.squareMeters * p.pricePerSqM;
+      const monthlyDiscount =
+        p.status === PavilionStatus.PREPAID
+          ? 0
+          : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+      forecastRent +=
+        p.status === PavilionStatus.PREPAID
+          ? baseRent
+          : Math.max(baseRent - monthlyDiscount, 0);
       forecastUtilities += p.utilitiesAmount ?? 0;
       forecastAdditional += p.additionalCharges.reduce(
         (sum, charge) => sum + charge.amount,
@@ -196,7 +204,15 @@ export class AnalyticsService {
     let incomeActualAdditional = 0;
 
     for (const p of incomePavilions) {
-      incomeForecastRent += p.squareMeters * p.pricePerSqM;
+      const baseRent = p.squareMeters * p.pricePerSqM;
+      const monthlyDiscount =
+        p.status === PavilionStatus.PREPAID
+          ? 0
+          : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+      incomeForecastRent +=
+        p.status === PavilionStatus.PREPAID
+          ? baseRent
+          : Math.max(baseRent - monthlyDiscount, 0);
       incomeForecastUtilities += p.utilitiesAmount ?? 0;
       incomeForecastAdditional += p.additionalCharges.reduce(
         (sum, charge) => sum + charge.amount,
@@ -511,5 +527,26 @@ export class AnalyticsService {
       },
       period,
     };
+  }
+
+  private getMonthlyDiscountTotal(
+    discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
+    squareMeters: number,
+    period: Date,
+  ) {
+    const monthStart = startOfMonth(period);
+    const monthEnd = endOfMonth(period);
+
+    return discounts.reduce((sum, discount) => {
+      const startsBeforeMonthEnds = discount.startsAt <= monthEnd;
+      const endsAfterMonthStarts =
+        discount.endsAt === null || discount.endsAt >= monthStart;
+
+      if (startsBeforeMonthEnds && endsAfterMonthStarts) {
+        return sum + discount.amount * squareMeters;
+      }
+
+      return sum;
+    }, 0);
   }
 }
