@@ -3,7 +3,12 @@
 import { useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
-type SheetRows = Record<string, Array<Record<string, any>>>;
+type ParsedSheet = {
+  headers: string[];
+  rows: Array<Record<string, any>>;
+};
+
+type SheetRows = Record<string, ParsedSheet>;
 
 type SectionKey = 'pavilions' | 'householdExpenses' | 'expenses' | 'accounting' | 'staff';
 
@@ -70,6 +75,15 @@ const HEADER_ALIASES: Record<string, string[]> = {
   salaryStatus: ['статус выплаты', 'статус зарплаты'],
 };
 
+const HEADER_HINTS = Array.from(
+  new Set(
+    Object.values(HEADER_ALIASES)
+      .flat()
+      .map((v) => normalizeText(v))
+      .filter((v) => v.length > 0),
+  ),
+);
+
 const EXPENSE_TYPE_MAP: Record<string, string> = {
   'налоги с зарплаты': 'PAYROLL_TAX',
   'налог на прибыль': 'PROFIT_TAX',
@@ -121,6 +135,61 @@ function autoDetectHeader(headers: string[], fieldKey: string) {
   return '';
 }
 
+function toHeaderName(value: unknown, fallbackIndex: number) {
+  const raw = String(value ?? '').trim();
+  return raw.length > 0 ? raw : '';
+}
+
+function buildHeaderMap(headerRow: any[]) {
+  const seen = new Map<string, number>();
+  const map: Array<{ index: number; header: string }> = [];
+
+  headerRow.forEach((cell, idx) => {
+    const base = toHeaderName(cell, idx);
+    if (!base) return;
+
+    const count = seen.get(base) ?? 0;
+    seen.set(base, count + 1);
+    const header = count === 0 ? base : `${base} (${count + 1})`;
+    map.push({ index: idx, header });
+  });
+
+  return map;
+}
+
+function detectHeaderRow(matrix: any[][]) {
+  const maxRowsToScan = Math.min(matrix.length, 100);
+  let bestRow = 0;
+  let bestScore = -1;
+
+  for (let i = 0; i < maxRowsToScan; i += 1) {
+    const row = matrix[i] ?? [];
+    if (row.length === 0) continue;
+
+    const nonEmpty = row.filter((c) => String(c ?? '').trim().length > 0).length;
+    const textCells = row.filter((c) => {
+      const v = String(c ?? '').trim();
+      if (!v) return false;
+      return Number.isNaN(Number(v.replace(',', '.')));
+    }).length;
+    const normalizedCells = row
+      .map((c) => normalizeText(c))
+      .filter((v) => v.length > 0);
+    const aliasHits = HEADER_HINTS.reduce((sum, hint) => {
+      const has = normalizedCells.some((cell) => cell.includes(hint));
+      return sum + (has ? 1 : 0);
+    }, 0);
+    const score = aliasHits * 100 + nonEmpty * 2 + textCells;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestRow = i;
+    }
+  }
+
+  return bestRow;
+}
+
 export function ImportStoreDataModal({
   storeId,
   onClose,
@@ -149,8 +218,36 @@ export function ImportStoreDataModal({
     const rowsBySheet: SheetRows = {};
     for (const sheetName of workbook.SheetNames) {
       const ws = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
-      rowsBySheet[sheetName] = rows;
+      const matrix = XLSX.utils.sheet_to_json<any[]>(ws, {
+        header: 1,
+        defval: '',
+        raw: false,
+      }) as any[][];
+
+      if (!matrix.length) {
+        rowsBySheet[sheetName] = { headers: [], rows: [] };
+        continue;
+      }
+
+      const headerRowIndex = detectHeaderRow(matrix);
+      const headerRow = matrix[headerRowIndex] ?? [];
+      const headerMap = buildHeaderMap(headerRow);
+      const headers = headerMap.map((h) => h.header);
+
+      const rows = matrix
+        .slice(headerRowIndex + 1)
+        .map((row) => {
+          const out: Record<string, any> = {};
+          headerMap.forEach(({ index, header }) => {
+            out[header] = row?.[index] ?? '';
+          });
+          return out;
+        })
+        .filter((row) =>
+          Object.values(row).some((v) => String(v ?? '').trim().length > 0),
+        );
+
+      rowsBySheet[sheetName] = { headers, rows };
     }
     setSheetRows(rowsBySheet);
 
@@ -158,7 +255,7 @@ export function ImportStoreDataModal({
     const initSections = { ...sections };
     (Object.keys(initSections) as SectionKey[]).forEach((key) => {
       initSections[key] = { ...initSections[key], sheet: firstSheet, mappings: {} };
-      const headers = Object.keys(rowsBySheet[firstSheet]?.[0] ?? {});
+      const headers = rowsBySheet[firstSheet]?.headers ?? [];
       for (const field of SECTION_FIELDS[key]) {
         initSections[key].mappings[field.key] = autoDetectHeader(headers, field.key);
       }
@@ -167,14 +264,14 @@ export function ImportStoreDataModal({
   };
 
   const getHeaders = (section: SectionKey) =>
-    Object.keys(sheetRows[sections[section].sheet]?.[0] ?? {});
+    sheetRows[sections[section].sheet]?.headers ?? [];
 
   const buildPayload = () => {
     const payload: Record<string, any[]> = {};
 
     for (const [sectionKey, state] of Object.entries(sections) as [SectionKey, SectionState][]) {
       if (!state.enabled || !state.sheet) continue;
-      const rows = sheetRows[state.sheet] ?? [];
+      const rows = sheetRows[state.sheet]?.rows ?? [];
       const fields = SECTION_FIELDS[sectionKey];
 
       const mappedRows = rows
@@ -339,7 +436,9 @@ export function ImportStoreDataModal({
                       <div className="mb-1">
                         {field.label} {field.required ? '*' : ''}
                       </div>
-                      <select
+                      <input
+                        type="text"
+                        list={`headers-${sectionKey}-${field.key}`}
                         value={sections[sectionKey].mappings[field.key] ?? ''}
                         onChange={(e) =>
                           setSections((prev) => ({
@@ -354,14 +453,16 @@ export function ImportStoreDataModal({
                           }))
                         }
                         className="w-full rounded border px-2 py-1"
-                      >
+                        placeholder="Начните вводить название колонки"
+                      />
+                      <datalist id={`headers-${sectionKey}-${field.key}`}>
                         <option value="">Не выбрано</option>
                         {getHeaders(sectionKey).map((h) => (
                           <option key={h} value={h}>
                             {h}
                           </option>
                         ))}
-                      </select>
+                      </datalist>
                     </label>
                   ))}
                 </div>
