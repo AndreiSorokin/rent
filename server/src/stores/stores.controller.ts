@@ -141,4 +141,55 @@ export class StoresController {
   ) {
     return this.service.deleteAccountingRecord(storeId, recordId);
   }
+
+  @Post(':storeId/import-data')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  importData(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      pavilions?: Array<{
+        number: string;
+        category?: string | null;
+        squareMeters: number;
+        pricePerSqM: number;
+        status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+        tenantName?: string | null;
+        utilitiesAmount?: number | null;
+      }>;
+      householdExpenses?: Array<{
+        name: string;
+        amount: number;
+        status?: 'UNPAID' | 'PAID';
+      }>;
+      expenses?: Array<{
+        type:
+          | 'PAYROLL_TAX'
+          | 'PROFIT_TAX'
+          | 'DIVIDENDS'
+          | 'BANK_SERVICES'
+          | 'VAT'
+          | 'LAND_RENT'
+          | 'OTHER';
+        amount: number;
+        status?: 'UNPAID' | 'PAID';
+        note?: string | null;
+      }>;
+      accounting?: Array<{
+        recordDate: string;
+        bankTransferPaid?: number;
+        cashbox1Paid?: number;
+        cashbox2Paid?: number;
+      }>;
+      staff?: Array<{
+        fullName: string;
+        position: string;
+        salary?: number;
+        salaryStatus?: 'UNPAID' | 'PAID';
+      }>;
+    },
+    @Req() req: any,
+  ) {
+    return this.service.importData(storeId, req.user.id, data);
+  }
 }

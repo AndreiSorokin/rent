@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Currency, Permission, PavilionStatus, Prisma } from '@prisma/client';
-import { endOfDay, startOfDay, startOfMonth, subMonths } from 'date-fns';
+import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
 
 @Injectable()
 export class StoresService {
@@ -232,11 +232,8 @@ export class StoresService {
       throw new NotFoundException('Store not found or access denied');
     }
 
-    if (
-      !storeUser.permissions.includes(Permission.EDIT_CHARGES) &&
-      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
-    ) {
-      throw new ForbiddenException('No permission to update salary status');
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store owner can manage staff');
     }
 
     const fullName = data.fullName.trim();
@@ -277,8 +274,11 @@ export class StoresService {
       throw new NotFoundException('Store not found or access denied');
     }
 
-    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
-      throw new ForbiddenException('Only store owner can manage staff');
+    if (
+      !storeUser.permissions.includes(Permission.EDIT_CHARGES) &&
+      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new ForbiddenException('No permission to update salary status');
     }
 
     const staff = await this.prisma.storeStaff.findFirst({
@@ -487,6 +487,205 @@ export class StoresService {
           lt: cutoff,
         },
       },
+    });
+  }
+
+  async importData(
+    storeId: number,
+    userId: number,
+    data: {
+      pavilions?: Array<{
+        number: string;
+        category?: string | null;
+        squareMeters: number;
+        pricePerSqM: number;
+        status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+        tenantName?: string | null;
+        utilitiesAmount?: number | null;
+      }>;
+      householdExpenses?: Array<{
+        name: string;
+        amount: number;
+        status?: 'UNPAID' | 'PAID';
+      }>;
+      expenses?: Array<{
+        type:
+          | 'PAYROLL_TAX'
+          | 'PROFIT_TAX'
+          | 'DIVIDENDS'
+          | 'BANK_SERVICES'
+          | 'VAT'
+          | 'LAND_RENT'
+          | 'OTHER';
+        amount: number;
+        status?: 'UNPAID' | 'PAID';
+        note?: string | null;
+      }>;
+      accounting?: Array<{
+        recordDate: string;
+        bankTransferPaid?: number;
+        cashbox1Paid?: number;
+        cashbox2Paid?: number;
+      }>;
+      staff?: Array<{
+        fullName: string;
+        position: string;
+        salary?: number;
+        salaryStatus?: 'UNPAID' | 'PAID';
+      }>;
+    },
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: { userId_storeId: { userId, storeId } },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
+      throw new ForbiddenException('Only store owner can import data');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const existingPavilions = await tx.pavilion.findMany({
+        where: { storeId },
+        select: { id: true, number: true },
+      });
+      const pavilionByNumber = new Map(
+        existingPavilions.map((p) => [p.number.trim().toLowerCase(), p]),
+      );
+
+      let importedPavilions = 0;
+      let importedHousehold = 0;
+      let importedExpenses = 0;
+      let importedAccounting = 0;
+      let importedStaff = 0;
+
+      for (const item of data.pavilions ?? []) {
+        const number = item.number?.trim();
+        if (!number) continue;
+
+        const squareMeters = Number(item.squareMeters);
+        const pricePerSqM = Number(item.pricePerSqM);
+        if (Number.isNaN(squareMeters) || Number.isNaN(pricePerSqM)) continue;
+
+        const normalizedStatus =
+          item.status === 'RENTED' || item.status === 'PREPAID'
+            ? item.status
+            : PavilionStatus.AVAILABLE;
+        const key = number.toLowerCase();
+        const rentAmount = squareMeters * pricePerSqM;
+
+        const baseData = {
+          number,
+          category: item.category ?? null,
+          squareMeters,
+          pricePerSqM,
+          rentAmount,
+          status: normalizedStatus,
+          tenantName:
+            normalizedStatus === PavilionStatus.AVAILABLE
+              ? null
+              : (item.tenantName ?? null),
+          utilitiesAmount: item.utilitiesAmount ?? null,
+          prepaidUntil:
+            normalizedStatus === PavilionStatus.PREPAID
+              ? endOfMonth(new Date())
+              : null,
+        };
+
+        const existing = pavilionByNumber.get(key);
+        if (existing) {
+          await tx.pavilion.update({
+            where: { id: existing.id },
+            data: baseData,
+          });
+        } else {
+          const created = await tx.pavilion.create({
+            data: {
+              ...baseData,
+              storeId,
+            },
+          });
+          pavilionByNumber.set(key, { id: created.id, number: created.number });
+        }
+        importedPavilions += 1;
+      }
+
+      for (const item of data.householdExpenses ?? []) {
+        const name = item.name?.trim();
+        const amount = Number(item.amount);
+        if (!name || Number.isNaN(amount)) continue;
+
+        await tx.householdExpense.create({
+          data: {
+            storeId,
+            name,
+            amount,
+            status: item.status ?? 'UNPAID',
+          },
+        });
+        importedHousehold += 1;
+      }
+
+      for (const item of data.expenses ?? []) {
+        const amount = Number(item.amount);
+        if (Number.isNaN(amount)) continue;
+        await tx.pavilionExpense.create({
+          data: {
+            storeId,
+            type: item.type,
+            amount,
+            status: item.status ?? 'UNPAID',
+            note: item.note ?? null,
+          },
+        });
+        importedExpenses += 1;
+      }
+
+      for (const item of data.accounting ?? []) {
+        const parsedDate = new Date(item.recordDate);
+        if (Number.isNaN(parsedDate.getTime())) continue;
+        await tx.storeAccountingRecord.create({
+          data: {
+            storeId,
+            recordDate: startOfDay(parsedDate),
+            bankTransferPaid: Number(item.bankTransferPaid ?? 0),
+            cashbox1Paid: Number(item.cashbox1Paid ?? 0),
+            cashbox2Paid: Number(item.cashbox2Paid ?? 0),
+          },
+        });
+        importedAccounting += 1;
+      }
+
+      for (const item of data.staff ?? []) {
+        const fullName = item.fullName?.trim();
+        const position = item.position?.trim();
+        const salary = Number(item.salary ?? 0);
+        if (!fullName || !position || Number.isNaN(salary)) continue;
+
+        await tx.storeStaff.create({
+          data: {
+            storeId,
+            fullName,
+            position,
+            salary,
+            salaryStatus: item.salaryStatus ?? 'UNPAID',
+          },
+        });
+        importedStaff += 1;
+      }
+
+      return {
+        imported: {
+          pavilions: importedPavilions,
+          householdExpenses: importedHousehold,
+          expenses: importedExpenses,
+          accounting: importedAccounting,
+          staff: importedStaff,
+        },
+      };
     });
   }
 }

@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
+import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import {
   createHouseholdExpense,
@@ -46,6 +47,7 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
@@ -483,6 +485,14 @@ export default function StorePage() {
                   Коммунальные счета
                 </Link>
               )}
+            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="rounded-lg bg-indigo-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-indigo-700"
+              >
+                Загрузить данные
+              </button>
+            )}
             {hasPermission(permissions, 'CREATE_PAVILIONS') && (
               <button
                 onClick={() => setShowCreatePavilionModal(true)}
@@ -1156,6 +1166,16 @@ export default function StorePage() {
           existingCategories={allCategories}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
+        />
+      )}
+      {showImportModal && (
+        <ImportStoreDataModal
+          storeId={storeId}
+          onClose={() => setShowImportModal(false)}
+          onImported={() => {
+            setShowImportModal(false);
+            fetchData();
+          }}
         />
       )}
     </div>
