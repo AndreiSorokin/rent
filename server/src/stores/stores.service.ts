@@ -565,6 +565,15 @@ export class StoresService {
       for (const item of data.pavilions ?? []) {
         const number = item.number?.trim();
         if (!number) continue;
+        const normalizedNumber = number.toLowerCase();
+        if (
+          normalizedNumber.includes('итог') ||
+          normalizedNumber.includes('всего') ||
+          normalizedNumber.includes('total') ||
+          normalizedNumber.includes('sum')
+        ) {
+          continue;
+        }
 
         const squareMeters = Number(item.squareMeters);
         const pricePerSqM = Number(item.pricePerSqM);
@@ -574,7 +583,7 @@ export class StoresService {
           item.status === 'RENTED' || item.status === 'PREPAID'
             ? item.status
             : PavilionStatus.AVAILABLE;
-        const key = number.toLowerCase();
+        const key = normalizedNumber;
         const rentAmount = squareMeters * pricePerSqM;
 
         const baseData = {
