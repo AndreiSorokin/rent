@@ -48,6 +48,9 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(false);
+  const [deleteStoreInput, setDeleteStoreInput] = useState('');
+  const [deletingStore, setDeletingStore] = useState(false);
   const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
@@ -134,6 +137,29 @@ export default function StorePage() {
   const handlePavilionCreated = () => {
     fetchData();
     setShowCreatePavilionModal(false);
+  };
+
+  const handleDeleteStore = async () => {
+    if (deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ') {
+      alert('Введите слово "УДАЛИТЬ" для подтверждения');
+      return;
+    }
+
+    try {
+      setDeletingStore(true);
+      await apiFetch(`/stores/${storeId}`, {
+        method: 'DELETE',
+      });
+      setShowDeleteStoreModal(false);
+      setDeleteStoreInput('');
+      alert('Объект удален');
+      router.push('/dashboard');
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось удалить объект');
+    } finally {
+      setDeletingStore(false);
+    }
   };
 
   const handleCurrencyChange = async (currency: 'RUB' | 'KZT') => {
@@ -504,6 +530,15 @@ export default function StorePage() {
                 className="rounded-lg bg-green-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-green-700"
               >
                 + Добавить павильон
+              </button>
+            )}
+            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+              <button
+                onClick={() => setShowDeleteStoreModal(true)}
+                disabled={deletingStore}
+                className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingStore ? 'Удаление...' : 'Удалить объект'}
               </button>
             )}
           </div>
@@ -1192,6 +1227,41 @@ export default function StorePage() {
             fetchData();
           }}
         />
+      )}
+      {showDeleteStoreModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Удаление объекта</h3>
+            <p className="mt-3 text-sm text-gray-600">
+              Чтобы удалить, напишите слово <span className="font-semibold">УДАЛИТЬ</span>.
+            </p>
+            <input
+              type="text"
+              value={deleteStoreInput}
+              onChange={(e) => setDeleteStoreInput(e.target.value)}
+              className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2"
+              placeholder="УДАЛИТЬ"
+            />
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteStoreModal(false);
+                  setDeleteStoreInput('');
+                }}
+                className="rounded-lg border px-4 py-2 hover:bg-gray-100"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDeleteStore}
+                disabled={deletingStore || deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ'}
+                className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingStore ? 'Удаление...' : 'Удалить объект'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

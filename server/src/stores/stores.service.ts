@@ -153,7 +153,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Delete store (only if empty)
+   * Delete store with all related data
    */
   async delete(storeId: number, userId: number) {
     // Ensure store exists and user is owner/admin
@@ -171,25 +171,24 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('Only store admin can delete store');
     }
 
-    // Ensure no pavilions exist
-    const pavilionCount = await this.prisma.pavilion.count({
-      where: { storeId },
+    // Cascade-like delete flow for store-owned data
+    // Transaction: delete StoreUsers → delete Store
+    await this.prisma.$transaction(async (tx) => {
+      await tx.invitation.deleteMany({
+        where: { storeId },
+      });
+      await tx.storeUser.deleteMany({
+        where: { storeId },
+      });
+      await tx.pavilion.deleteMany({
+        where: { storeId },
+      });
+      await tx.store.delete({
+        where: { id: storeId },
+      });
     });
 
-    if (pavilionCount > 0) {
-      throw new BadRequestException(
-        'Cannot delete store with existing pavilions',
-      );
-    }
-    // Transaction: delete StoreUsers → delete Store
-    return this.prisma.$transaction([
-      this.prisma.storeUser.deleteMany({
-        where: { storeId },
-      }),
-      this.prisma.store.delete({
-        where: { id: storeId },
-      }),
-    ]);
+    return { success: true };
   }
 
   async updateCurrency(storeId: number, userId: number, currency: Currency) {
