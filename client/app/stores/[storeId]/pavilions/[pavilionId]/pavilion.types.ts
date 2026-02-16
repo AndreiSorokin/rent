@@ -52,6 +52,15 @@ export type Pavilion = {
     bankTransferPaid?: number | null;
     cashbox1Paid?: number | null;
     cashbox2Paid?: number | null;
+    rentBankTransferPaid?: number | null;
+    rentCashbox1Paid?: number | null;
+    rentCashbox2Paid?: number | null;
+    utilitiesBankTransferPaid?: number | null;
+    utilitiesCashbox1Paid?: number | null;
+    utilitiesCashbox2Paid?: number | null;
+    advertisingBankTransferPaid?: number | null;
+    advertisingCashbox1Paid?: number | null;
+    advertisingCashbox2Paid?: number | null;
     createdAt: string;
   }>;
   paymentTransactions?: Array<{
@@ -63,6 +72,15 @@ export type Pavilion = {
     bankTransferPaid: number;
     cashbox1Paid: number;
     cashbox2Paid: number;
+    rentBankTransferPaid?: number;
+    rentCashbox1Paid?: number;
+    rentCashbox2Paid?: number;
+    utilitiesBankTransferPaid?: number;
+    utilitiesCashbox1Paid?: number;
+    utilitiesCashbox2Paid?: number;
+    advertisingBankTransferPaid?: number;
+    advertisingCashbox1Paid?: number;
+    advertisingCashbox2Paid?: number;
     createdAt: string;
   }>;
   additionalCharges: any[];

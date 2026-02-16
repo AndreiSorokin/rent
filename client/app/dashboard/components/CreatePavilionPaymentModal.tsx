@@ -19,11 +19,15 @@ export function CreatePavilionPaymentModal({
 }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [period, setPeriod] = useState(currentMonth);
-  const [bankTransferPaid, setBankTransferPaid] = useState('');
-  const [cashbox1Paid, setCashbox1Paid] = useState('');
-  const [cashbox2Paid, setCashbox2Paid] = useState('');
-  const [utilitiesPaid, setUtilitiesPaid] = useState('');
-  const [advertisingPaid, setAdvertisingPaid] = useState('');
+  const [rentBankTransferPaid, setRentBankTransferPaid] = useState('');
+  const [rentCashbox1Paid, setRentCashbox1Paid] = useState('');
+  const [rentCashbox2Paid, setRentCashbox2Paid] = useState('');
+  const [utilitiesBankTransferPaid, setUtilitiesBankTransferPaid] = useState('');
+  const [utilitiesCashbox1Paid, setUtilitiesCashbox1Paid] = useState('');
+  const [utilitiesCashbox2Paid, setUtilitiesCashbox2Paid] = useState('');
+  const [advertisingBankTransferPaid, setAdvertisingBankTransferPaid] = useState('');
+  const [advertisingCashbox1Paid, setAdvertisingCashbox1Paid] = useState('');
+  const [advertisingCashbox2Paid, setAdvertisingCashbox2Paid] = useState('');
   const [currentRentPaid, setCurrentRentPaid] = useState(0);
   const [currentUtilitiesPaid, setCurrentUtilitiesPaid] = useState(0);
   const [currentAdvertisingPaid, setCurrentAdvertisingPaid] = useState(0);
@@ -72,14 +76,20 @@ export function CreatePavilionPaymentModal({
     }
 
     const periodDate = new Date(`${period}-01`);
-    const bank = bankTransferPaid ? Number(bankTransferPaid) : 0;
-    const cash1 = cashbox1Paid ? Number(cashbox1Paid) : 0;
-    const cash2 = cashbox2Paid ? Number(cashbox2Paid) : 0;
-    const rentPaidTotal = bank + cash1 + cash2;
-    const utilitiesValue = utilitiesPaid ? Number(utilitiesPaid) : 0;
-    const advertisingValue = advertisingPaid ? Number(advertisingPaid) : 0;
+    const rentBank = rentBankTransferPaid ? Number(rentBankTransferPaid) : 0;
+    const rentCash1 = rentCashbox1Paid ? Number(rentCashbox1Paid) : 0;
+    const rentCash2 = rentCashbox2Paid ? Number(rentCashbox2Paid) : 0;
+    const utilitiesBank = utilitiesBankTransferPaid ? Number(utilitiesBankTransferPaid) : 0;
+    const utilitiesCash1 = utilitiesCashbox1Paid ? Number(utilitiesCashbox1Paid) : 0;
+    const utilitiesCash2 = utilitiesCashbox2Paid ? Number(utilitiesCashbox2Paid) : 0;
+    const advertisingBank = advertisingBankTransferPaid ? Number(advertisingBankTransferPaid) : 0;
+    const advertisingCash1 = advertisingCashbox1Paid ? Number(advertisingCashbox1Paid) : 0;
+    const advertisingCash2 = advertisingCashbox2Paid ? Number(advertisingCashbox2Paid) : 0;
+    const rentTotal = rentBank + rentCash1 + rentCash2;
+    const utilitiesTotal = utilitiesBank + utilitiesCash1 + utilitiesCash2;
+    const advertisingTotal = advertisingBank + advertisingCash1 + advertisingCash2;
 
-    if (rentPaidTotal <= 0 && utilitiesValue <= 0 && advertisingValue <= 0) {
+    if (rentTotal <= 0 && utilitiesTotal <= 0 && advertisingTotal <= 0) {
       alert('Введите сумму хотя бы в один канал оплаты, коммунальные или рекламу');
       return;
     }
@@ -87,18 +97,42 @@ export function CreatePavilionPaymentModal({
     try {
       await createPavilionPayment(storeId, pavilionId, {
         period: periodDate.toISOString(),
-        rentPaid: rentPaidTotal > 0 ? rentPaidTotal : undefined,
-        bankTransferPaid: bank > 0 ? bank : undefined,
-        cashbox1Paid: cash1 > 0 ? cash1 : undefined,
-        cashbox2Paid: cash2 > 0 ? cash2 : undefined,
+        rentPaid: rentTotal > 0 ? rentTotal : undefined,
+        rentBankTransferPaid: rentBank > 0 ? rentBank : undefined,
+        rentCashbox1Paid: rentCash1 > 0 ? rentCash1 : undefined,
+        rentCashbox2Paid: rentCash2 > 0 ? rentCash2 : undefined,
         utilitiesPaid:
           pavilionStatus === 'PREPAID'
             ? 0
-            : (utilitiesValue > 0 ? utilitiesValue : undefined),
+            : (utilitiesTotal > 0 ? utilitiesTotal : undefined),
+        utilitiesBankTransferPaid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (utilitiesBank > 0 ? utilitiesBank : undefined),
+        utilitiesCashbox1Paid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (utilitiesCash1 > 0 ? utilitiesCash1 : undefined),
+        utilitiesCashbox2Paid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (utilitiesCash2 > 0 ? utilitiesCash2 : undefined),
         advertisingPaid:
           pavilionStatus === 'PREPAID'
             ? 0
-            : (advertisingValue > 0 ? advertisingValue : undefined),
+            : (advertisingTotal > 0 ? advertisingTotal : undefined),
+        advertisingBankTransferPaid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (advertisingBank > 0 ? advertisingBank : undefined),
+        advertisingCashbox1Paid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (advertisingCash1 > 0 ? advertisingCash1 : undefined),
+        advertisingCashbox2Paid:
+          pavilionStatus === 'PREPAID'
+            ? undefined
+            : (advertisingCash2 > 0 ? advertisingCash2 : undefined),
       });
       onSaved();
       onClose();
@@ -109,103 +143,174 @@ export function CreatePavilionPaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6">
-        <h2 className="mb-4 text-xl font-bold">Записать платеж</h2>
-
-        <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium">Период (месяц/год)</label>
-          <input
-            type="month"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="w-full rounded-lg border px-3 py-2"
-          />
+      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="border-b p-4 md:p-6">
+          <h2 className="text-xl font-bold">Записать платеж</h2>
         </div>
 
-        {loadingCurrent ? (
-          <p className="mb-4 text-sm text-gray-500">Загрузка текущих платежей...</p>
-        ) : (
-          <p className="mb-4 text-sm text-gray-600">
-            Текущая оплаченная сумма за месяц:
-            <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) +
-            <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные) +
-            <strong> {currentAdvertisingPaid.toFixed(2)}</strong> (реклама)
-          </p>
-        )}
-
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Безналичный</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={bankTransferPaid}
-              onChange={(e) => setBankTransferPaid(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="0.00"
-            />
+        <div className="max-h-[72vh] space-y-4 overflow-y-auto p-4 md:p-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium">Период (месяц/год)</label>
+              <input
+                type="month"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2"
+              />
+            </div>
+            <div className="rounded-lg border bg-gray-50 p-3 text-sm text-gray-600">
+              {loadingCurrent ? (
+                'Загрузка текущих платежей...'
+              ) : (
+                <>
+                  Текущая оплаченная сумма за месяц:
+                  <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) +
+                  <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные) +
+                  <strong> {currentAdvertisingPaid.toFixed(2)}</strong> (реклама)
+                </>
+              )}
+            </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Наличные - касса 1</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={cashbox1Paid}
-              onChange={(e) => setCashbox1Paid(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="0.00"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Наличные - касса 2</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={cashbox2Paid}
-              onChange={(e) => setCashbox2Paid(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2"
-              placeholder="0.00"
-            />
-          </div>
-
-          {pavilionStatus === 'PREPAID' ? (
-            <p className="text-sm text-amber-700">
-              Для статуса ПРЕДОПЛАТА доступна только оплата аренды за первый месяц.
-            </p>
-          ) : (
-            <>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Коммунальные услуги (добавить)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={utilitiesPaid}
-                  onChange={(e) => setUtilitiesPaid(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                  placeholder="0.00"
-                />
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-lg border p-3">
+              <h3 className="mb-2 text-sm font-semibold">Аренда</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={rentBankTransferPaid}
+                    onChange={(e) => setRentBankTransferPaid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={rentCashbox1Paid}
+                    onChange={(e) => setRentCashbox1Paid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={rentCashbox2Paid}
+                    onChange={(e) => setRentCashbox2Paid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Реклама (добавить)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={advertisingPaid}
-                  onChange={(e) => setAdvertisingPaid(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2"
-                  placeholder="0.00"
-                />
+            </div>
+
+            {pavilionStatus === 'PREPAID' ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 lg:col-span-2">
+                Для статуса ПРЕДОПЛАТА доступна только оплата аренды за первый месяц.
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <div className="rounded-lg border p-3">
+                  <h3 className="mb-2 text-sm font-semibold">Коммунальные</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={utilitiesBankTransferPaid}
+                        onChange={(e) => setUtilitiesBankTransferPaid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={utilitiesCashbox1Paid}
+                        onChange={(e) => setUtilitiesCashbox1Paid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={utilitiesCashbox2Paid}
+                        onChange={(e) => setUtilitiesCashbox2Paid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border p-3">
+                  <h3 className="mb-2 text-sm font-semibold">Реклама</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={advertisingBankTransferPaid}
+                        onChange={(e) => setAdvertisingBankTransferPaid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={advertisingCashbox1Paid}
+                        onChange={(e) => setAdvertisingCashbox1Paid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={advertisingCashbox2Paid}
+                        onChange={(e) => setAdvertisingCashbox2Paid(e.target.value)}
+                        className="w-full rounded-lg border px-3 py-2"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="flex justify-end gap-3 border-t bg-white p-4 md:p-6">
           <button onClick={onClose} className="rounded-lg border px-5 py-2.5 hover:bg-gray-100">
             Отмена
           </button>

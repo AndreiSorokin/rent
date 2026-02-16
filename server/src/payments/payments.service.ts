@@ -149,36 +149,101 @@ async addPayment(
     bankTransferPaid?: number;
     cashbox1Paid?: number;
     cashbox2Paid?: number;
+    rentBankTransferPaid?: number;
+    rentCashbox1Paid?: number;
+    rentCashbox2Paid?: number;
+    utilitiesBankTransferPaid?: number;
+    utilitiesCashbox1Paid?: number;
+    utilitiesCashbox2Paid?: number;
+    advertisingBankTransferPaid?: number;
+    advertisingCashbox1Paid?: number;
+    advertisingCashbox2Paid?: number;
   },
 ) {
   const normalizedPeriod = startOfMonth(period);
-  const channelBank = data.bankTransferPaid ?? 0;
-  const channelCashbox1 = data.cashbox1Paid ?? 0;
-  const channelCashbox2 = data.cashbox2Paid ?? 0;
-  const hasChannelInput =
+  const hasLegacyRentChannels =
     data.bankTransferPaid !== undefined ||
     data.cashbox1Paid !== undefined ||
     data.cashbox2Paid !== undefined;
-  const channelRentTotal = channelBank + channelCashbox1 + channelCashbox2;
-  const rentIncrement = hasChannelInput
-    ? channelRentTotal
-    : (data.rentPaid ?? 0);
-  const utilitiesIncrement = data.utilitiesPaid ?? 0;
-  const advertisingIncrement = data.advertisingPaid ?? 0;
 
-  if (hasChannelInput && data.rentPaid !== undefined) {
-    const diff = Math.abs(data.rentPaid - channelRentTotal);
+  const rentBank = data.rentBankTransferPaid ?? data.bankTransferPaid ?? 0;
+  const rentCashbox1 = data.rentCashbox1Paid ?? data.cashbox1Paid ?? 0;
+  const rentCashbox2 = data.rentCashbox2Paid ?? data.cashbox2Paid ?? 0;
+  const hasRentChannelInput =
+    hasLegacyRentChannels ||
+    data.rentBankTransferPaid !== undefined ||
+    data.rentCashbox1Paid !== undefined ||
+    data.rentCashbox2Paid !== undefined;
+  const rentByChannels = rentBank + rentCashbox1 + rentCashbox2;
+  const rentIncrement = hasRentChannelInput ? rentByChannels : (data.rentPaid ?? 0);
+
+  const utilitiesBank = data.utilitiesBankTransferPaid ?? 0;
+  const utilitiesCashbox1 = data.utilitiesCashbox1Paid ?? 0;
+  const utilitiesCashbox2 = data.utilitiesCashbox2Paid ?? 0;
+  const hasUtilitiesChannelInput =
+    data.utilitiesBankTransferPaid !== undefined ||
+    data.utilitiesCashbox1Paid !== undefined ||
+    data.utilitiesCashbox2Paid !== undefined;
+  const utilitiesByChannels = utilitiesBank + utilitiesCashbox1 + utilitiesCashbox2;
+  const utilitiesIncrement = hasUtilitiesChannelInput
+    ? utilitiesByChannels
+    : (data.utilitiesPaid ?? 0);
+
+  const advertisingBank = data.advertisingBankTransferPaid ?? 0;
+  const advertisingCashbox1 = data.advertisingCashbox1Paid ?? 0;
+  const advertisingCashbox2 = data.advertisingCashbox2Paid ?? 0;
+  const hasAdvertisingChannelInput =
+    data.advertisingBankTransferPaid !== undefined ||
+    data.advertisingCashbox1Paid !== undefined ||
+    data.advertisingCashbox2Paid !== undefined;
+  const advertisingByChannels =
+    advertisingBank + advertisingCashbox1 + advertisingCashbox2;
+  const advertisingIncrement = hasAdvertisingChannelInput
+    ? advertisingByChannels
+    : (data.advertisingPaid ?? 0);
+
+  if (hasRentChannelInput && data.rentPaid !== undefined) {
+    const diff = Math.abs(data.rentPaid - rentByChannels);
     if (diff > 0.01) {
       throw new BadRequestException(
         'Rent amount must equal selected payment channels total',
       );
     }
   }
+  if (hasUtilitiesChannelInput && data.utilitiesPaid !== undefined) {
+    const diff = Math.abs(data.utilitiesPaid - utilitiesByChannels);
+    if (diff > 0.01) {
+      throw new BadRequestException(
+        'Utilities amount must equal selected payment channels total',
+      );
+    }
+  }
+  if (hasAdvertisingChannelInput && data.advertisingPaid !== undefined) {
+    const diff = Math.abs(data.advertisingPaid - advertisingByChannels);
+    if (diff > 0.01) {
+      throw new BadRequestException(
+        'Advertising amount must equal selected payment channels total',
+      );
+    }
+  }
+
+  const channelBank = rentBank + utilitiesBank + advertisingBank;
+  const channelCashbox1 = rentCashbox1 + utilitiesCashbox1 + advertisingCashbox1;
+  const channelCashbox2 = rentCashbox2 + utilitiesCashbox2 + advertisingCashbox2;
 
   if (
     rentIncrement < 0 ||
     utilitiesIncrement < 0 ||
     advertisingIncrement < 0 ||
+    rentBank < 0 ||
+    rentCashbox1 < 0 ||
+    rentCashbox2 < 0 ||
+    utilitiesBank < 0 ||
+    utilitiesCashbox1 < 0 ||
+    utilitiesCashbox2 < 0 ||
+    advertisingBank < 0 ||
+    advertisingCashbox1 < 0 ||
+    advertisingCashbox2 < 0 ||
     channelBank < 0 ||
     channelCashbox1 < 0 ||
     channelCashbox2 < 0
@@ -221,6 +286,20 @@ async addPayment(
     normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesIncrement;
   const safeAdvertisingIncrement =
     normalizedStatus === PavilionStatus.PREPAID ? 0 : advertisingIncrement;
+  const safeUtilitiesBank = normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesBank;
+  const safeUtilitiesCashbox1 =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesCashbox1;
+  const safeUtilitiesCashbox2 =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesCashbox2;
+  const safeAdvertisingBank =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : advertisingBank;
+  const safeAdvertisingCashbox1 =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : advertisingCashbox1;
+  const safeAdvertisingCashbox2 =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : advertisingCashbox2;
+  const safeChannelBank = rentBank + safeUtilitiesBank + safeAdvertisingBank;
+  const safeChannelCashbox1 = rentCashbox1 + safeUtilitiesCashbox1 + safeAdvertisingCashbox1;
+  const safeChannelCashbox2 = rentCashbox2 + safeUtilitiesCashbox2 + safeAdvertisingCashbox2;
 
   const payment = await this.prisma.$transaction(async (tx) => {
     const existing = await tx.payment.findUnique({
@@ -236,9 +315,18 @@ async addPayment(
             rentPaid: { increment: rentIncrement },
             utilitiesPaid: { increment: safeUtilitiesIncrement },
             advertisingPaid: { increment: safeAdvertisingIncrement },
-            bankTransferPaid: { increment: channelBank },
-            cashbox1Paid: { increment: channelCashbox1 },
-            cashbox2Paid: { increment: channelCashbox2 },
+            bankTransferPaid: { increment: safeChannelBank },
+            cashbox1Paid: { increment: safeChannelCashbox1 },
+            cashbox2Paid: { increment: safeChannelCashbox2 },
+            rentBankTransferPaid: { increment: rentBank },
+            rentCashbox1Paid: { increment: rentCashbox1 },
+            rentCashbox2Paid: { increment: rentCashbox2 },
+            utilitiesBankTransferPaid: { increment: safeUtilitiesBank },
+            utilitiesCashbox1Paid: { increment: safeUtilitiesCashbox1 },
+            utilitiesCashbox2Paid: { increment: safeUtilitiesCashbox2 },
+            advertisingBankTransferPaid: { increment: safeAdvertisingBank },
+            advertisingCashbox1Paid: { increment: safeAdvertisingCashbox1 },
+            advertisingCashbox2Paid: { increment: safeAdvertisingCashbox2 },
           },
         })
       : await tx.payment.create({
@@ -248,9 +336,18 @@ async addPayment(
             rentPaid: rentIncrement,
             utilitiesPaid: safeUtilitiesIncrement,
             advertisingPaid: safeAdvertisingIncrement,
-            bankTransferPaid: channelBank,
-            cashbox1Paid: channelCashbox1,
-            cashbox2Paid: channelCashbox2,
+            bankTransferPaid: safeChannelBank,
+            cashbox1Paid: safeChannelCashbox1,
+            cashbox2Paid: safeChannelCashbox2,
+            rentBankTransferPaid: rentBank,
+            rentCashbox1Paid: rentCashbox1,
+            rentCashbox2Paid: rentCashbox2,
+            utilitiesBankTransferPaid: safeUtilitiesBank,
+            utilitiesCashbox1Paid: safeUtilitiesCashbox1,
+            utilitiesCashbox2Paid: safeUtilitiesCashbox2,
+            advertisingBankTransferPaid: safeAdvertisingBank,
+            advertisingCashbox1Paid: safeAdvertisingCashbox1,
+            advertisingCashbox2Paid: safeAdvertisingCashbox2,
           },
         });
 
@@ -262,9 +359,18 @@ async addPayment(
         rentPaid: rentIncrement,
         utilitiesPaid: safeUtilitiesIncrement,
         advertisingPaid: safeAdvertisingIncrement,
-        bankTransferPaid: channelBank,
-        cashbox1Paid: channelCashbox1,
-        cashbox2Paid: channelCashbox2,
+        bankTransferPaid: safeChannelBank,
+        cashbox1Paid: safeChannelCashbox1,
+        cashbox2Paid: safeChannelCashbox2,
+        rentBankTransferPaid: rentBank,
+        rentCashbox1Paid: rentCashbox1,
+        rentCashbox2Paid: rentCashbox2,
+        utilitiesBankTransferPaid: safeUtilitiesBank,
+        utilitiesCashbox1Paid: safeUtilitiesCashbox1,
+        utilitiesCashbox2Paid: safeUtilitiesCashbox2,
+        advertisingBankTransferPaid: safeAdvertisingBank,
+        advertisingCashbox1Paid: safeAdvertisingCashbox1,
+        advertisingCashbox2Paid: safeAdvertisingCashbox2,
       },
     });
 
@@ -305,6 +411,24 @@ async addPayment(
         const nextBank = (payment.bankTransferPaid ?? 0) - entry.bankTransferPaid;
         const nextCashbox1 = (payment.cashbox1Paid ?? 0) - entry.cashbox1Paid;
         const nextCashbox2 = (payment.cashbox2Paid ?? 0) - entry.cashbox2Paid;
+        const nextRentBank =
+          (payment.rentBankTransferPaid ?? 0) - (entry.rentBankTransferPaid ?? 0);
+        const nextRentCashbox1 =
+          (payment.rentCashbox1Paid ?? 0) - (entry.rentCashbox1Paid ?? 0);
+        const nextRentCashbox2 =
+          (payment.rentCashbox2Paid ?? 0) - (entry.rentCashbox2Paid ?? 0);
+        const nextUtilitiesBank =
+          (payment.utilitiesBankTransferPaid ?? 0) - (entry.utilitiesBankTransferPaid ?? 0);
+        const nextUtilitiesCashbox1 =
+          (payment.utilitiesCashbox1Paid ?? 0) - (entry.utilitiesCashbox1Paid ?? 0);
+        const nextUtilitiesCashbox2 =
+          (payment.utilitiesCashbox2Paid ?? 0) - (entry.utilitiesCashbox2Paid ?? 0);
+        const nextAdvertisingBank =
+          (payment.advertisingBankTransferPaid ?? 0) - (entry.advertisingBankTransferPaid ?? 0);
+        const nextAdvertisingCashbox1 =
+          (payment.advertisingCashbox1Paid ?? 0) - (entry.advertisingCashbox1Paid ?? 0);
+        const nextAdvertisingCashbox2 =
+          (payment.advertisingCashbox2Paid ?? 0) - (entry.advertisingCashbox2Paid ?? 0);
 
         const shouldDeleteAggregate =
           Math.abs(nextRent) < 0.01 &&
@@ -312,7 +436,16 @@ async addPayment(
           Math.abs(nextAdvertising) < 0.01 &&
           Math.abs(nextBank) < 0.01 &&
           Math.abs(nextCashbox1) < 0.01 &&
-          Math.abs(nextCashbox2) < 0.01;
+          Math.abs(nextCashbox2) < 0.01 &&
+          Math.abs(nextRentBank) < 0.01 &&
+          Math.abs(nextRentCashbox1) < 0.01 &&
+          Math.abs(nextRentCashbox2) < 0.01 &&
+          Math.abs(nextUtilitiesBank) < 0.01 &&
+          Math.abs(nextUtilitiesCashbox1) < 0.01 &&
+          Math.abs(nextUtilitiesCashbox2) < 0.01 &&
+          Math.abs(nextAdvertisingBank) < 0.01 &&
+          Math.abs(nextAdvertisingCashbox1) < 0.01 &&
+          Math.abs(nextAdvertisingCashbox2) < 0.01;
 
         if (shouldDeleteAggregate) {
           await tx.payment.delete({ where: { id: payment.id } });
@@ -326,6 +459,15 @@ async addPayment(
               bankTransferPaid: nextBank,
               cashbox1Paid: nextCashbox1,
               cashbox2Paid: nextCashbox2,
+              rentBankTransferPaid: nextRentBank,
+              rentCashbox1Paid: nextRentCashbox1,
+              rentCashbox2Paid: nextRentCashbox2,
+              utilitiesBankTransferPaid: nextUtilitiesBank,
+              utilitiesCashbox1Paid: nextUtilitiesCashbox1,
+              utilitiesCashbox2Paid: nextUtilitiesCashbox2,
+              advertisingBankTransferPaid: nextAdvertisingBank,
+              advertisingCashbox1Paid: nextAdvertisingCashbox1,
+              advertisingCashbox2Paid: nextAdvertisingCashbox2,
             },
           });
         }

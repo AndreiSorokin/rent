@@ -103,6 +103,9 @@ model AdditionalChargePayment {
   additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id], onDelete: Cascade)
 
   amountPaid Float
+  bankTransferPaid Float @default(0)
+  cashbox1Paid Float @default(0)
+  cashbox2Paid Float @default(0)
   paidAt     DateTime @default(now())
 }
 
@@ -240,6 +243,15 @@ model Payment {
   bankTransferPaid Float @default(0)
   cashbox1Paid  Float @default(0)
   cashbox2Paid  Float @default(0)
+  rentBankTransferPaid Float @default(0)
+  rentCashbox1Paid Float @default(0)
+  rentCashbox2Paid Float @default(0)
+  utilitiesBankTransferPaid Float @default(0)
+  utilitiesCashbox1Paid Float @default(0)
+  utilitiesCashbox2Paid Float @default(0)
+  advertisingBankTransferPaid Float @default(0)
+  advertisingCashbox1Paid Float @default(0)
+  advertisingCashbox2Paid Float @default(0)
   transactions  PaymentTransaction[]
   createdAt     DateTime @default(now())
 
@@ -271,6 +283,15 @@ model PaymentTransaction {
   bankTransferPaid Float @default(0)
   cashbox1Paid     Float @default(0)
   cashbox2Paid     Float @default(0)
+  rentBankTransferPaid Float @default(0)
+  rentCashbox1Paid Float @default(0)
+  rentCashbox2Paid Float @default(0)
+  utilitiesBankTransferPaid Float @default(0)
+  utilitiesCashbox1Paid Float @default(0)
+  utilitiesCashbox2Paid Float @default(0)
+  advertisingBankTransferPaid Float @default(0)
+  advertisingCashbox1Paid Float @default(0)
+  advertisingCashbox2Paid Float @default(0)
   createdAt        DateTime @default(now())
 
   @@index([pavilionId, period, createdAt])

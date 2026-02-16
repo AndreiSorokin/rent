@@ -11,6 +11,15 @@ export function createPavilionPayment(
     bankTransferPaid?: number;
     cashbox1Paid?: number;
     cashbox2Paid?: number;
+    rentBankTransferPaid?: number;
+    rentCashbox1Paid?: number;
+    rentCashbox2Paid?: number;
+    utilitiesBankTransferPaid?: number;
+    utilitiesCashbox1Paid?: number;
+    utilitiesCashbox2Paid?: number;
+    advertisingBankTransferPaid?: number;
+    advertisingCashbox1Paid?: number;
+    advertisingCashbox2Paid?: number;
   },
 ) {
   return apiFetch(

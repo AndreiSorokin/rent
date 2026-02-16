@@ -301,6 +301,15 @@ export class AnalyticsService {
     let channelsBankTransfer = 0;
     let channelsCashbox1 = 0;
     let channelsCashbox2 = 0;
+    let rentChannelsBankTransfer = 0;
+    let rentChannelsCashbox1 = 0;
+    let rentChannelsCashbox2 = 0;
+    let facilitiesChannelsBankTransfer = 0;
+    let facilitiesChannelsCashbox1 = 0;
+    let facilitiesChannelsCashbox2 = 0;
+    let advertisingChannelsBankTransfer = 0;
+    let advertisingChannelsCashbox1 = 0;
+    let advertisingChannelsCashbox2 = 0;
 
     const nonSalaryManualExpenses = manualExpenses.filter(
       (expense) => expense.type !== 'SALARIES',
@@ -367,11 +376,60 @@ export class AnalyticsService {
 
     for (const pavilion of incomePavilions) {
       for (const pay of pavilion.payments) {
-        channelsBankTransfer += pay.bankTransferPaid ?? 0;
-        channelsCashbox1 += pay.cashbox1Paid ?? 0;
-        channelsCashbox2 += pay.cashbox2Paid ?? 0;
+        const rentBank = pay.rentBankTransferPaid ?? 0;
+        const rentCash1 = pay.rentCashbox1Paid ?? 0;
+        const rentCash2 = pay.rentCashbox2Paid ?? 0;
+        const utilBank = pay.utilitiesBankTransferPaid ?? 0;
+        const utilCash1 = pay.utilitiesCashbox1Paid ?? 0;
+        const utilCash2 = pay.utilitiesCashbox2Paid ?? 0;
+        const advBank = pay.advertisingBankTransferPaid ?? 0;
+        const advCash1 = pay.advertisingCashbox1Paid ?? 0;
+        const advCash2 = pay.advertisingCashbox2Paid ?? 0;
+        const hasEntityChannels =
+          rentBank > 0 ||
+          rentCash1 > 0 ||
+          rentCash2 > 0 ||
+          utilBank > 0 ||
+          utilCash1 > 0 ||
+          utilCash2 > 0 ||
+          advBank > 0 ||
+          advCash1 > 0 ||
+          advCash2 > 0;
+
+        if (hasEntityChannels) {
+          rentChannelsBankTransfer += rentBank;
+          rentChannelsCashbox1 += rentCash1;
+          rentChannelsCashbox2 += rentCash2;
+          facilitiesChannelsBankTransfer += utilBank;
+          facilitiesChannelsCashbox1 += utilCash1;
+          facilitiesChannelsCashbox2 += utilCash2;
+          advertisingChannelsBankTransfer += advBank;
+          advertisingChannelsCashbox1 += advCash1;
+          advertisingChannelsCashbox2 += advCash2;
+        } else {
+          // Backward compatibility for old records where channels were stored only for rent.
+          rentChannelsBankTransfer += pay.bankTransferPaid ?? 0;
+          rentChannelsCashbox1 += pay.cashbox1Paid ?? 0;
+          rentChannelsCashbox2 += pay.cashbox2Paid ?? 0;
+        }
+      }
+
+      for (const charge of pavilion.additionalCharges) {
+        for (const payment of charge.payments) {
+          advertisingChannelsBankTransfer += payment.bankTransferPaid ?? 0;
+          advertisingChannelsCashbox1 += payment.cashbox1Paid ?? 0;
+          advertisingChannelsCashbox2 += payment.cashbox2Paid ?? 0;
+        }
       }
     }
+    channelsBankTransfer =
+      rentChannelsBankTransfer +
+      facilitiesChannelsBankTransfer +
+      advertisingChannelsBankTransfer;
+    channelsCashbox1 =
+      rentChannelsCashbox1 + facilitiesChannelsCashbox1 + advertisingChannelsCashbox1;
+    channelsCashbox2 =
+      rentChannelsCashbox2 + facilitiesChannelsCashbox2 + advertisingChannelsCashbox2;
 
     const areaTotal = pavilions.reduce((sum, p) => sum + p.squareMeters, 0);
     const areaRented = pavilions
@@ -507,6 +565,33 @@ export class AnalyticsService {
             cashbox1: channelsCashbox1,
             cashbox2: channelsCashbox2,
             total: channelsBankTransfer + channelsCashbox1 + channelsCashbox2,
+          },
+          channelsByEntity: {
+            rent: {
+              bankTransfer: rentChannelsBankTransfer,
+              cashbox1: rentChannelsCashbox1,
+              cashbox2: rentChannelsCashbox2,
+              total:
+                rentChannelsBankTransfer + rentChannelsCashbox1 + rentChannelsCashbox2,
+            },
+            facilities: {
+              bankTransfer: facilitiesChannelsBankTransfer,
+              cashbox1: facilitiesChannelsCashbox1,
+              cashbox2: facilitiesChannelsCashbox2,
+              total:
+                facilitiesChannelsBankTransfer +
+                facilitiesChannelsCashbox1 +
+                facilitiesChannelsCashbox2,
+            },
+            advertising: {
+              bankTransfer: advertisingChannelsBankTransfer,
+              cashbox1: advertisingChannelsCashbox1,
+              cashbox2: advertisingChannelsCashbox2,
+              total:
+                advertisingChannelsBankTransfer +
+                advertisingChannelsCashbox1 +
+                advertisingChannelsCashbox2,
+            },
           },
         },
         expenses: {

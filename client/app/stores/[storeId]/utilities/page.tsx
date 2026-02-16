@@ -192,7 +192,7 @@ export default function UtilitiesPage() {
               Назад к магазину
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
-              Коммунальные счета
+              Начисления
             </h1>
             <p className="mt-1 text-sm text-gray-600">
               Валюта магазина: {store.currency} ({currencySymbol})
@@ -203,7 +203,7 @@ export default function UtilitiesPage() {
             disabled={savingAll || pavilions.length === 0}
             className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
           >
-            {savingAll ? 'Сохранение...' : 'Сохранить все'}
+            {savingAll ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
 

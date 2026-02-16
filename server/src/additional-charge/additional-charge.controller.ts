@@ -24,9 +24,19 @@ export class AdditionalChargeController {
   @Permissions(Permission.CREATE_CHARGES)
   payCharge(
     @Param('id', ParseIntPipe) id: number,
-    @Body('amountPaid') amountPaid: number,
+    @Body()
+    body: {
+      amountPaid: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
   ) {
-    return this.service.payCharge(id, amountPaid);
+    return this.service.payCharge(id, body.amountPaid, {
+      bankTransferPaid: body.bankTransferPaid,
+      cashbox1Paid: body.cashbox1Paid,
+      cashbox2Paid: body.cashbox2Paid,
+    });
   }
 
   @Get(':id/payments')

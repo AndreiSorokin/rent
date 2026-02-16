@@ -487,7 +487,7 @@ export default function StorePage() {
                   href={`/stores/${storeId}/utilities`}
                   className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
                 >
-                  Коммунальные счета
+                  Начисления
                 </Link>
               )}
             {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (

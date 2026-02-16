@@ -33,6 +33,15 @@ export class PaymentsController {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
+      rentBankTransferPaid?: number;
+      rentCashbox1Paid?: number;
+      rentCashbox2Paid?: number;
+      utilitiesBankTransferPaid?: number;
+      utilitiesCashbox1Paid?: number;
+      utilitiesCashbox2Paid?: number;
+      advertisingBankTransferPaid?: number;
+      advertisingCashbox1Paid?: number;
+      advertisingCashbox2Paid?: number;
     },
   ) {
     const period = new Date(body.period);
@@ -43,6 +52,15 @@ export class PaymentsController {
       bankTransferPaid: body.bankTransferPaid,
       cashbox1Paid: body.cashbox1Paid,
       cashbox2Paid: body.cashbox2Paid,
+      rentBankTransferPaid: body.rentBankTransferPaid,
+      rentCashbox1Paid: body.rentCashbox1Paid,
+      rentCashbox2Paid: body.rentCashbox2Paid,
+      utilitiesBankTransferPaid: body.utilitiesBankTransferPaid,
+      utilitiesCashbox1Paid: body.utilitiesCashbox1Paid,
+      utilitiesCashbox2Paid: body.utilitiesCashbox2Paid,
+      advertisingBankTransferPaid: body.advertisingBankTransferPaid,
+      advertisingCashbox1Paid: body.advertisingCashbox1Paid,
+      advertisingCashbox2Paid: body.advertisingCashbox2Paid,
     });
   }
 

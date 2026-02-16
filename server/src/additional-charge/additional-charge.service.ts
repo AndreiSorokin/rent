@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -29,7 +29,15 @@ export class AdditionalChargeService {
 }
 
 
-  async payCharge(additionalChargeId: number, amountPaid: number) {
+  async payCharge(
+    additionalChargeId: number,
+    amountPaid: number,
+    channels?: {
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
     const charge = await this.prisma.additionalCharge.findUnique({
       where: { id: additionalChargeId },
     });
@@ -37,11 +45,38 @@ export class AdditionalChargeService {
     if (!charge) {
       throw new NotFoundException('Additional charge not found');
     }
+    const bankTransferPaid = Number(channels?.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(channels?.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(channels?.cashbox2Paid ?? 0);
+    const hasChannelsInput =
+      channels?.bankTransferPaid !== undefined ||
+      channels?.cashbox1Paid !== undefined ||
+      channels?.cashbox2Paid !== undefined;
+    const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+
+    if (
+      Number.isNaN(amountPaid) ||
+      amountPaid <= 0 ||
+      bankTransferPaid < 0 ||
+      cashbox1Paid < 0 ||
+      cashbox2Paid < 0
+    ) {
+      throw new BadRequestException('Payment amounts must be valid and non-negative');
+    }
+
+    if (hasChannelsInput && Math.abs(channelsTotal - amountPaid) > 0.01) {
+      throw new BadRequestException(
+        'Additional charge amount must equal selected payment channels total',
+      );
+    }
 
     return this.prisma.additionalChargePayment.create({
       data: {
         additionalChargeId,
         amountPaid,
+        bankTransferPaid: hasChannelsInput ? bankTransferPaid : amountPaid,
+        cashbox1Paid: hasChannelsInput ? cashbox1Paid : 0,
+        cashbox2Paid: hasChannelsInput ? cashbox2Paid : 0,
       },
     });
   }
