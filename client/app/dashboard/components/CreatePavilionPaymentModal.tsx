@@ -23,8 +23,10 @@ export function CreatePavilionPaymentModal({
   const [cashbox1Paid, setCashbox1Paid] = useState('');
   const [cashbox2Paid, setCashbox2Paid] = useState('');
   const [utilitiesPaid, setUtilitiesPaid] = useState('');
+  const [advertisingPaid, setAdvertisingPaid] = useState('');
   const [currentRentPaid, setCurrentRentPaid] = useState(0);
   const [currentUtilitiesPaid, setCurrentUtilitiesPaid] = useState(0);
+  const [currentAdvertisingPaid, setCurrentAdvertisingPaid] = useState(0);
   const [loadingCurrent, setLoadingCurrent] = useState(false);
 
   useEffect(() => {
@@ -44,14 +46,17 @@ export function CreatePavilionPaymentModal({
         if (matchingPayment) {
           setCurrentRentPaid(matchingPayment.rentPaid || 0);
           setCurrentUtilitiesPaid(matchingPayment.utilitiesPaid || 0);
+          setCurrentAdvertisingPaid(matchingPayment.advertisingPaid || 0);
         } else {
           setCurrentRentPaid(0);
           setCurrentUtilitiesPaid(0);
+          setCurrentAdvertisingPaid(0);
         }
       } catch (err) {
         console.error('Ошибка загрузки текущих платежей', err);
         setCurrentRentPaid(0);
         setCurrentUtilitiesPaid(0);
+        setCurrentAdvertisingPaid(0);
       } finally {
         setLoadingCurrent(false);
       }
@@ -72,9 +77,10 @@ export function CreatePavilionPaymentModal({
     const cash2 = cashbox2Paid ? Number(cashbox2Paid) : 0;
     const rentPaidTotal = bank + cash1 + cash2;
     const utilitiesValue = utilitiesPaid ? Number(utilitiesPaid) : 0;
+    const advertisingValue = advertisingPaid ? Number(advertisingPaid) : 0;
 
-    if (rentPaidTotal <= 0 && utilitiesValue <= 0) {
-      alert('Введите сумму хотя бы в один канал оплаты или в коммунальные');
+    if (rentPaidTotal <= 0 && utilitiesValue <= 0 && advertisingValue <= 0) {
+      alert('Введите сумму хотя бы в один канал оплаты, коммунальные или рекламу');
       return;
     }
 
@@ -89,6 +95,10 @@ export function CreatePavilionPaymentModal({
           pavilionStatus === 'PREPAID'
             ? 0
             : (utilitiesValue > 0 ? utilitiesValue : undefined),
+        advertisingPaid:
+          pavilionStatus === 'PREPAID'
+            ? 0
+            : (advertisingValue > 0 ? advertisingValue : undefined),
       });
       onSaved();
       onClose();
@@ -118,7 +128,8 @@ export function CreatePavilionPaymentModal({
           <p className="mb-4 text-sm text-gray-600">
             Текущая оплаченная сумма за месяц:
             <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) +
-            <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные)
+            <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные) +
+            <strong> {currentAdvertisingPaid.toFixed(2)}</strong> (реклама)
           </p>
         )}
 
@@ -167,17 +178,30 @@ export function CreatePavilionPaymentModal({
               Для статуса ПРЕДОПЛАТА доступна только оплата аренды за первый месяц.
             </p>
           ) : (
-            <div>
-              <label className="mb-1 block text-sm font-medium">Коммунальные услуги (добавить)</label>
-              <input
-                type="number"
-                step="0.01"
-                value={utilitiesPaid}
-                onChange={(e) => setUtilitiesPaid(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2"
-                placeholder="0.00"
-              />
-            </div>
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Коммунальные услуги (добавить)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={utilitiesPaid}
+                  onChange={(e) => setUtilitiesPaid(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Реклама (добавить)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={advertisingPaid}
+                  onChange={(e) => setAdvertisingPaid(e.target.value)}
+                  className="w-full rounded-lg border px-3 py-2"
+                  placeholder="0.00"
+                />
+              </div>
+            </>
           )}
         </div>
 

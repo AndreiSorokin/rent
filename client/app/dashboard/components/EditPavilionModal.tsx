@@ -26,6 +26,7 @@ export function EditPavilionModal({
     tenantName: pavilion?.tenantName ?? '',
     rentAmount: pavilion?.rentAmount ?? '',
     utilitiesAmount: pavilion?.utilitiesAmount ?? '',
+    advertisingAmount: pavilion?.advertisingAmount ?? '',
   }));
   const [selectedCategory, setSelectedCategory] = useState(
     normalizedCurrentCategory,
@@ -56,10 +57,12 @@ export function EditPavilionModal({
       if (name === 'status' && value === 'AVAILABLE') {
         next.tenantName = '';
         next.utilitiesAmount = '';
+        next.advertisingAmount = '';
       }
 
       if (name === 'status' && value === 'PREPAID') {
         next.utilitiesAmount = '0';
+        next.advertisingAmount = '0';
       }
 
       return next;
@@ -76,6 +79,7 @@ export function EditPavilionModal({
       tenantName: form.status === 'AVAILABLE' ? null : form.tenantName,
       rentAmount: form.status === 'AVAILABLE' ? null : Number(form.rentAmount),
       utilitiesAmount: form.status === 'AVAILABLE' ? null : Number(form.utilitiesAmount),
+      advertisingAmount: form.status === 'AVAILABLE' ? null : Number(form.advertisingAmount),
     };
 
     if (pavilion) {
@@ -184,7 +188,7 @@ export function EditPavilionModal({
         {form.status !== 'AVAILABLE' && (
           <>
             <div className="mb-3">
-              <label className="mb-1 block text-sm font-medium text-gray-700">Арендатор</label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Наименование организации</label>
               <input
                 name="tenantName"
                 value={form.tenantName}
@@ -205,14 +209,40 @@ export function EditPavilionModal({
             </div>
 
             {form.status !== 'PREPAID' && (
+              <>
+                <div className="mb-3">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Коммунальные</label>
+                  <input
+                    name="utilitiesAmount"
+                    type="number"
+                    value={form.utilitiesAmount}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Реклама</label>
+                  <input
+                    name="advertisingAmount"
+                    type="number"
+                    value={form.advertisingAmount}
+                    onChange={handleChange}
+                    className="input"
+                  />
+                </div>
+              </>
+            )}
+
+            {form.status === 'PREPAID' && (
               <div className="mb-3">
-                <label className="mb-1 block text-sm font-medium text-gray-700">Коммунальные</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Реклама</label>
                 <input
-                  name="utilitiesAmount"
+                  name="advertisingAmount"
                   type="number"
-                  value={form.utilitiesAmount}
+                  value={form.advertisingAmount}
                   onChange={handleChange}
                   className="input"
+                  disabled
                 />
               </div>
             )}

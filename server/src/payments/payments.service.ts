@@ -58,6 +58,7 @@ export class PaymentsService {
     );
     const expectedRent = ledger.expectedRent;
     const expectedUtilities = ledger.expectedUtilities;
+    const expectedAdvertising = ledger.expectedAdvertising;
     const expectedAdditional = ledger.expectedAdditional;
     const expectedTotal = ledger.expectedTotal;
 
@@ -70,6 +71,8 @@ export class PaymentsService {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const paidUtilities =
       pavilionStatus === PavilionStatus.PREPAID ? 0 : (payment?.utilitiesPaid ?? 0);
+    const paidAdvertising =
+      pavilionStatus === PavilionStatus.PREPAID ? 0 : (payment?.advertisingPaid ?? 0);
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const paidAdditional =
@@ -81,7 +84,7 @@ export class PaymentsService {
             0,
           );
 
-    const paidTotal = paidRent + paidUtilities + paidAdditional;
+    const paidTotal = paidRent + paidUtilities + paidAdvertising + paidAdditional;
 
     /* ======================
       RESULT
@@ -94,12 +97,14 @@ export class PaymentsService {
         discount: pavilionStatus === PavilionStatus.PREPAID ? 0 : monthlyDiscount,
         rent: expectedRent,
         utilities: expectedUtilities,
+        advertising: expectedAdvertising,
         additional: expectedAdditional,
         total: expectedTotal,
       },
       paid: {
         rent: paidRent,
         utilities: paidUtilities,
+        advertising: paidAdvertising,
         additional: paidAdditional,
         total: paidTotal,
       },
@@ -140,6 +145,7 @@ async addPayment(
   data: {
     rentPaid?: number;
     utilitiesPaid?: number;
+    advertisingPaid?: number;
     bankTransferPaid?: number;
     cashbox1Paid?: number;
     cashbox2Paid?: number;
@@ -158,6 +164,7 @@ async addPayment(
     ? channelRentTotal
     : (data.rentPaid ?? 0);
   const utilitiesIncrement = data.utilitiesPaid ?? 0;
+  const advertisingIncrement = data.advertisingPaid ?? 0;
 
   if (hasChannelInput && data.rentPaid !== undefined) {
     const diff = Math.abs(data.rentPaid - channelRentTotal);
@@ -171,6 +178,7 @@ async addPayment(
   if (
     rentIncrement < 0 ||
     utilitiesIncrement < 0 ||
+    advertisingIncrement < 0 ||
     channelBank < 0 ||
     channelCashbox1 < 0 ||
     channelCashbox2 < 0
@@ -202,15 +210,17 @@ async addPayment(
       );
     }
 
-    if (utilitiesIncrement > 0) {
+    if (utilitiesIncrement > 0 || advertisingIncrement > 0) {
       throw new BadRequestException(
-        'Utilities cannot be paid while pavilion status is PREPAID',
+        'Utilities and advertising cannot be paid while pavilion status is PREPAID',
       );
     }
   }
 
   const safeUtilitiesIncrement =
     normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesIncrement;
+  const safeAdvertisingIncrement =
+    normalizedStatus === PavilionStatus.PREPAID ? 0 : advertisingIncrement;
 
   const payment = await this.prisma.$transaction(async (tx) => {
     const existing = await tx.payment.findUnique({
@@ -225,6 +235,7 @@ async addPayment(
           data: {
             rentPaid: { increment: rentIncrement },
             utilitiesPaid: { increment: safeUtilitiesIncrement },
+            advertisingPaid: { increment: safeAdvertisingIncrement },
             bankTransferPaid: { increment: channelBank },
             cashbox1Paid: { increment: channelCashbox1 },
             cashbox2Paid: { increment: channelCashbox2 },
@@ -236,6 +247,7 @@ async addPayment(
             period: normalizedPeriod,
             rentPaid: rentIncrement,
             utilitiesPaid: safeUtilitiesIncrement,
+            advertisingPaid: safeAdvertisingIncrement,
             bankTransferPaid: channelBank,
             cashbox1Paid: channelCashbox1,
             cashbox2Paid: channelCashbox2,
@@ -249,6 +261,7 @@ async addPayment(
         period: normalizedPeriod,
         rentPaid: rentIncrement,
         utilitiesPaid: safeUtilitiesIncrement,
+        advertisingPaid: safeAdvertisingIncrement,
         bankTransferPaid: channelBank,
         cashbox1Paid: channelCashbox1,
         cashbox2Paid: channelCashbox2,
@@ -288,6 +301,7 @@ async addPayment(
       if (payment) {
         const nextRent = (payment.rentPaid ?? 0) - entry.rentPaid;
         const nextUtilities = (payment.utilitiesPaid ?? 0) - entry.utilitiesPaid;
+        const nextAdvertising = (payment.advertisingPaid ?? 0) - entry.advertisingPaid;
         const nextBank = (payment.bankTransferPaid ?? 0) - entry.bankTransferPaid;
         const nextCashbox1 = (payment.cashbox1Paid ?? 0) - entry.cashbox1Paid;
         const nextCashbox2 = (payment.cashbox2Paid ?? 0) - entry.cashbox2Paid;
@@ -295,6 +309,7 @@ async addPayment(
         const shouldDeleteAggregate =
           Math.abs(nextRent) < 0.01 &&
           Math.abs(nextUtilities) < 0.01 &&
+          Math.abs(nextAdvertising) < 0.01 &&
           Math.abs(nextBank) < 0.01 &&
           Math.abs(nextCashbox1) < 0.01 &&
           Math.abs(nextCashbox2) < 0.01;
@@ -307,6 +322,7 @@ async addPayment(
             data: {
               rentPaid: nextRent,
               utilitiesPaid: nextUtilities,
+              advertisingPaid: nextAdvertising,
               bankTransferPaid: nextBank,
               cashbox1Paid: nextCashbox1,
               cashbox2Paid: nextCashbox2,
@@ -422,14 +438,21 @@ async addPayment(
           : 0;
     const expectedUtilities =
       pavilionStatus === PavilionStatus.RENTED ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+    const expectedAdvertising =
+      pavilionStatus === PavilionStatus.RENTED ? Number(pavilion.advertisingAmount ?? 0) : 0;
     const expectedAdditional =
       pavilionStatus === PavilionStatus.RENTED
         ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
         : 0;
-    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+    const expectedTotal =
+      expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
 
     const actualRentAndUtilities = pavilion.payments.reduce(
-      (sum, pay) => sum + Number(pay.rentPaid ?? 0) + Number(pay.utilitiesPaid ?? 0),
+      (sum, pay) =>
+        sum +
+        Number(pay.rentPaid ?? 0) +
+        Number(pay.utilitiesPaid ?? 0) +
+        Number(pay.advertisingPaid ?? 0),
       0,
     );
     const actualAdditional = pavilion.additionalCharges.reduce(
@@ -452,6 +475,7 @@ async addPayment(
       update: {
         expectedRent,
         expectedUtilities,
+        expectedAdvertising,
         expectedAdditional,
         expectedTotal,
         actualTotal,
@@ -464,6 +488,7 @@ async addPayment(
         period: normalizedPeriod,
         expectedRent,
         expectedUtilities,
+        expectedAdvertising,
         expectedAdditional,
         expectedTotal,
         actualTotal,

@@ -337,14 +337,22 @@ async findOne(storeId: number, id: number) {
       pavilion.status === PavilionStatus.RENTED
         ? Number(pavilion.utilitiesAmount ?? 0)
         : 0;
+    const expectedAdvertising =
+      pavilion.status === PavilionStatus.RENTED
+        ? Number(pavilion.advertisingAmount ?? 0)
+        : 0;
     const expectedAdditional =
       pavilion.status === PavilionStatus.RENTED
         ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
         : 0;
-    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+    const expectedTotal =
+      expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
     const actualTotal = pavilion.payments.reduce(
       (sum, payment) =>
-        sum + Number(payment.rentPaid ?? 0) + Number(payment.utilitiesPaid ?? 0),
+        sum +
+        Number(payment.rentPaid ?? 0) +
+        Number(payment.utilitiesPaid ?? 0) +
+        Number(payment.advertisingPaid ?? 0),
       0,
     );
     const monthDelta = expectedTotal - actualTotal;
@@ -360,6 +368,7 @@ async findOne(storeId: number, id: number) {
       update: {
         expectedRent,
         expectedUtilities,
+        expectedAdvertising,
         expectedAdditional,
         expectedTotal,
         actualTotal,
@@ -372,6 +381,7 @@ async findOne(storeId: number, id: number) {
         period: normalizedPeriod,
         expectedRent,
         expectedUtilities,
+        expectedAdvertising,
         expectedAdditional,
         expectedTotal,
         actualTotal,

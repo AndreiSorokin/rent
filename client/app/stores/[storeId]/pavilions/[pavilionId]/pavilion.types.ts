@@ -41,12 +41,14 @@ export type Pavilion = {
   tenantName?: string;
   rentAmount?: number;
   utilitiesAmount?: number;
+  advertisingAmount?: number;
   prepaidUntil?: string | null;
   payments: Array<{
     id: number;
     period: string;
     rentPaid?: number | null;
     utilitiesPaid?: number | null;
+    advertisingPaid?: number | null;
     bankTransferPaid?: number | null;
     cashbox1Paid?: number | null;
     cashbox2Paid?: number | null;
@@ -57,6 +59,7 @@ export type Pavilion = {
     period: string;
     rentPaid: number;
     utilitiesPaid: number;
+    advertisingPaid: number;
     bankTransferPaid: number;
     cashbox1Paid: number;
     cashbox2Paid: number;

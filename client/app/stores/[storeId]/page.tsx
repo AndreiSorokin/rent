@@ -555,7 +555,7 @@ export default function StorePage() {
                         Категория
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Арендатор
+                        Наименование организации
                       </th>
                     </tr>
                   </thead>

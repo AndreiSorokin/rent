@@ -29,6 +29,7 @@ export class PaymentsController {
       period: string;
       rentPaid?: number;
       utilitiesPaid?: number;
+      advertisingPaid?: number;
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
@@ -38,6 +39,7 @@ export class PaymentsController {
     return this.service.addPayment(pavilionId, period, {
       rentPaid: body.rentPaid,
       utilitiesPaid: body.utilitiesPaid,
+      advertisingPaid: body.advertisingPaid,
       bankTransferPaid: body.bankTransferPaid,
       cashbox1Paid: body.cashbox1Paid,
       cashbox2Paid: body.cashbox2Paid,

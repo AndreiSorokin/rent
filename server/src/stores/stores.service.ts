@@ -501,6 +501,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
         tenantName?: string | null;
         utilitiesAmount?: number | null;
+        advertisingAmount?: number | null;
       }>;
       householdExpenses?: Array<{
         name: string;
@@ -560,6 +561,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       let importedExpenses = 0;
       let importedAccounting = 0;
       let importedStaff = 0;
+      const currentPeriod = startOfMonth(new Date());
 
       for (const item of data.pavilions ?? []) {
         const number = item.number?.trim();
@@ -578,10 +580,15 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         const pricePerSqM = Number(item.pricePerSqM);
         if (Number.isNaN(squareMeters) || Number.isNaN(pricePerSqM)) continue;
 
+        const hasTenantName = Boolean(item.tenantName?.trim());
+        const hasUtilities = Number(item.utilitiesAmount ?? 0) > 0;
+        const hasAdvertising = Number(item.advertisingAmount ?? 0) > 0;
         const normalizedStatus =
           item.status === 'RENTED' || item.status === 'PREPAID'
             ? item.status
-            : PavilionStatus.AVAILABLE;
+            : hasTenantName || hasUtilities || hasAdvertising
+              ? PavilionStatus.RENTED
+              : PavilionStatus.AVAILABLE;
         const key = normalizedNumber;
         const rentAmount = squareMeters * pricePerSqM;
 
@@ -596,7 +603,18 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             normalizedStatus === PavilionStatus.AVAILABLE
               ? null
               : (item.tenantName ?? null),
-          utilitiesAmount: item.utilitiesAmount ?? null,
+          utilitiesAmount:
+            normalizedStatus === PavilionStatus.AVAILABLE
+              ? null
+              : normalizedStatus === PavilionStatus.PREPAID
+                ? 0
+                : (item.utilitiesAmount ?? 0),
+          advertisingAmount:
+            normalizedStatus === PavilionStatus.AVAILABLE
+              ? null
+              : normalizedStatus === PavilionStatus.PREPAID
+                ? 0
+                : (item.advertisingAmount ?? 0),
           prepaidUntil:
             normalizedStatus === PavilionStatus.PREPAID
               ? endOfMonth(new Date())
@@ -609,6 +627,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             where: { id: existing.id },
             data: baseData,
           });
+          await tx.pavilionMonthlyLedger.deleteMany({
+            where: {
+              pavilionId: existing.id,
+              period: currentPeriod,
+            },
+          });
         } else {
           const created = await tx.pavilion.create({
             data: {
@@ -617,6 +641,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             },
           });
           pavilionByNumber.set(key, { id: created.id, number: created.number });
+          await tx.pavilionMonthlyLedger.deleteMany({
+            where: {
+              pavilionId: created.id,
+              period: currentPeriod,
+            },
+          });
         }
         importedPavilions += 1;
       }
@@ -684,6 +714,15 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         });
         importedStaff += 1;
       }
+
+      // Treat imported data as the active baseline for the current month.
+      // This prevents immediate monthly rollover from clearing imported utilities/advertising.
+      await tx.store.update({
+        where: { id: storeId },
+        data: {
+          lastMonthlyResetPeriod: currentPeriod,
+        },
+      });
 
       return {
         imported: {
@@ -803,14 +842,21 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               : 0;
         const expectedUtilities =
           pavilion.status === PavilionStatus.RENTED ? (pavilion.utilitiesAmount ?? 0) : 0;
+        const expectedAdvertising =
+          pavilion.status === PavilionStatus.RENTED ? (pavilion.advertisingAmount ?? 0) : 0;
         const expectedAdditional =
           pavilion.status === PavilionStatus.RENTED
             ? pavilion.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0)
             : 0;
-        const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+        const expectedTotal =
+          expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
 
         const actualRentAndUtilities = pavilion.payments.reduce(
-          (sum, payment) => sum + Number(payment.rentPaid ?? 0) + Number(payment.utilitiesPaid ?? 0),
+          (sum, payment) =>
+            sum +
+            Number(payment.rentPaid ?? 0) +
+            Number(payment.utilitiesPaid ?? 0) +
+            Number(payment.advertisingPaid ?? 0),
           0,
         );
         const actualAdditional = pavilion.additionalCharges.reduce(
@@ -836,6 +882,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           update: {
             expectedRent,
             expectedUtilities,
+            expectedAdvertising,
             expectedAdditional,
             expectedTotal,
             actualTotal,
@@ -848,6 +895,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             period: previousPeriod,
             expectedRent,
             expectedUtilities,
+            expectedAdvertising,
             expectedAdditional,
             expectedTotal,
             actualTotal,
@@ -865,6 +913,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
         data: {
           utilitiesAmount: null,
+          advertisingAmount: null,
         },
       });
 
@@ -875,6 +924,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
         data: {
           utilitiesAmount: 0,
+          advertisingAmount: 0,
         },
       });
 

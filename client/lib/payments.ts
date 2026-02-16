@@ -7,6 +7,7 @@ export function createPavilionPayment(
     period: string;
     rentPaid?: number;
     utilitiesPaid?: number;
+    advertisingPaid?: number;
     bankTransferPaid?: number;
     cashbox1Paid?: number;
     cashbox2Paid?: number;

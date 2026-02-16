@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -12,8 +12,10 @@ type Pavilion = {
   id: number;
   number: string | number;
   category?: string | null;
+  tenantName?: string | null;
   status: 'AVAILABLE' | 'RENTED' | 'PREPAID' | string;
   utilitiesAmount?: number | null;
+  advertisingAmount?: number | null;
 };
 
 export default function UtilitiesPage() {
@@ -24,6 +26,7 @@ export default function UtilitiesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [utilitiesById, setUtilitiesById] = useState<Record<number, string>>({});
+  const [advertisingById, setAdvertisingById] = useState<Record<number, string>>({});
   const [savingById, setSavingById] = useState<Record<number, boolean>>({});
 
   const fetchData = async () => {
@@ -31,17 +34,22 @@ export default function UtilitiesPage() {
     try {
       const storeData = await apiFetch(`/stores/${storeId}`);
       setStore(storeData);
-      const initial: Record<number, string> = {};
+      const initialUtilities: Record<number, string> = {};
+      const initialAdvertising: Record<number, string> = {};
       (storeData.pavilions || []).forEach((p: Pavilion) => {
         if (p.status === 'PREPAID') {
-          initial[p.id] = '0';
-        } else if (p.utilitiesAmount == null) {
-          initial[p.id] = '';
-        } else {
-          initial[p.id] = String(p.utilitiesAmount);
+          initialUtilities[p.id] = '0';
+          initialAdvertising[p.id] = '0';
+          return;
         }
+
+        initialUtilities[p.id] =
+          p.utilitiesAmount == null ? '' : String(p.utilitiesAmount);
+        initialAdvertising[p.id] =
+          p.advertisingAmount == null ? '' : String(p.advertisingAmount);
       });
-      setUtilitiesById(initial);
+      setUtilitiesById(initialUtilities);
+      setAdvertisingById(initialAdvertising);
     } catch (err) {
       console.error(err);
       setError('Не удалось загрузить данные магазина');
@@ -64,11 +72,22 @@ export default function UtilitiesPage() {
     setUtilitiesById((prev) => ({ ...prev, [pavilionId]: value }));
   };
 
-  const handleSave = async (pavilion: Pavilion) => {
-    const raw = utilitiesById[pavilion.id] ?? '';
-    const amount = raw ? Number(raw) : 0;
+  const handleAdvertisingChange = (pavilionId: number, value: string) => {
+    setAdvertisingById((prev) => ({ ...prev, [pavilionId]: value }));
+  };
 
-    if (Number.isNaN(amount) || amount < 0) {
+  const handleSave = async (pavilion: Pavilion) => {
+    const rawUtilities = utilitiesById[pavilion.id] ?? '';
+    const rawAdvertising = advertisingById[pavilion.id] ?? '';
+    const utilitiesAmount = rawUtilities ? Number(rawUtilities) : 0;
+    const advertisingAmount = rawAdvertising ? Number(rawAdvertising) : 0;
+
+    if (
+      Number.isNaN(utilitiesAmount) ||
+      Number.isNaN(advertisingAmount) ||
+      utilitiesAmount < 0 ||
+      advertisingAmount < 0
+    ) {
       alert('Сумма должна быть неотрицательной');
       return;
     }
@@ -79,7 +98,13 @@ export default function UtilitiesPage() {
           ? null
           : pavilion.status === 'PREPAID'
             ? 0
-            : amount,
+            : utilitiesAmount,
+      advertisingAmount:
+        pavilion.status === 'AVAILABLE'
+          ? null
+          : pavilion.status === 'PREPAID'
+            ? 0
+            : advertisingAmount,
     };
 
     try {
@@ -88,7 +113,7 @@ export default function UtilitiesPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить коммунальные');
+      alert('Не удалось обновить значения');
     } finally {
       setSavingById((prev) => ({ ...prev, [pavilion.id]: false }));
     }
@@ -142,10 +167,13 @@ export default function UtilitiesPage() {
                       Павильон
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Категория
+                      Наименование организации
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Организация
+                      Коммунальные
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Реклама
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                       Действие
@@ -156,23 +184,34 @@ export default function UtilitiesPage() {
                   {pavilions.map((p) => {
                     const isAvailable = p.status === 'AVAILABLE';
                     const isPrepaid = p.status === 'PREPAID';
-                    const value = utilitiesById[p.id] ?? '';
 
                     return (
                       <tr key={p.id}>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           Павильон {p.number}
                         </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{p.tenantName || '-'}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          {p.category || '-'}
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={utilitiesById[p.id] ?? ''}
+                            onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
+                            disabled={isAvailable || isPrepaid}
+                            className={`w-32 rounded border px-2 py-1 text-sm ${
+                              isAvailable || isPrepaid ? 'bg-gray-100 text-gray-500' : ''
+                            }`}
+                            placeholder={isAvailable ? '-' : '0'}
+                          />
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            value={value}
-                            onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
+                            value={advertisingById[p.id] ?? ''}
+                            onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
                             disabled={isAvailable || isPrepaid}
                             className={`w-32 rounded border px-2 py-1 text-sm ${
                               isAvailable || isPrepaid ? 'bg-gray-100 text-gray-500' : ''

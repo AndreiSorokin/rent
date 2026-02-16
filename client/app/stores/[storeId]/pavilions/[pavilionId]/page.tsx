@@ -215,6 +215,7 @@ export default function PavilionPage() {
           period: periodIso,
           rentPaid: rentDelta,
           utilitiesPaid: 0,
+          advertisingPaid: 0,
         });
       }
 
@@ -256,6 +257,7 @@ export default function PavilionPage() {
             ).toISOString(),
             rentPaid: -currentRentPaid,
             utilitiesPaid: 0,
+            advertisingPaid: 0,
           });
         }
       }
@@ -367,7 +369,7 @@ export default function PavilionPage() {
               <p className="text-lg font-medium">{statusLabel[pavilion.status] ?? pavilion.status}</p>
             </div>
             <div>
-              <p className="text-gray-600">Арендатор</p>
+              <p className="text-gray-600">Наименование организации</p>
               <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
             </div>
             <div>
@@ -382,6 +384,14 @@ export default function PavilionPage() {
                 {pavilion.utilitiesAmount == null
                   ? '-'
                   : formatMoney(pavilion.utilitiesAmount, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-600">Реклама</p>
+              <p className="text-lg font-medium">
+                {pavilion.advertisingAmount == null
+                  ? '-'
+                  : formatMoney(pavilion.advertisingAmount, currency)}
               </p>
             </div>
             <div>
@@ -594,12 +604,13 @@ export default function PavilionPage() {
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
                       const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
+                      const expectedAdvertising = pavilion.status === 'PREPAID' ? 0 : (pavilion.advertisingAmount || 0);
                       const expectedRent =
                         pavilion.status === 'PREPAID'
                           ? baseRent
                           : Math.max(baseRent - periodDiscount, 0);
-                      const expected = expectedRent + expectedUtilities;
-                      const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0);
+                      const expected = expectedRent + expectedUtilities + expectedAdvertising;
+                      const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0) + (pay.advertisingPaid || 0);
                       const balance = paid - expected;
 
                       return (
@@ -640,6 +651,7 @@ export default function PavilionPage() {
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Коммунальные</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Реклама</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичный</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
@@ -660,6 +672,9 @@ export default function PavilionPage() {
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
                               {formatMoney(entry.utilitiesPaid, currency)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-sm">
+                              {formatMoney(entry.advertisingPaid, currency)}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
                               {formatMoney(entry.bankTransferPaid, currency)}

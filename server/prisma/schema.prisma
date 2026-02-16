@@ -118,6 +118,7 @@ model Pavilion {
   tenantName      String?
   rentAmount      Float?
   utilitiesAmount Float?
+  advertisingAmount Float?
 
   additionalCharges AdditionalCharge[]
   householdExpenses HouseholdExpense[]
@@ -174,6 +175,7 @@ model PavilionMonthlyLedger {
   period DateTime
   expectedRent Float @default(0)
   expectedUtilities Float @default(0)
+  expectedAdvertising Float @default(0)
   expectedAdditional Float @default(0)
   expectedTotal Float @default(0)
   actualTotal Float @default(0)
@@ -234,6 +236,7 @@ model Payment {
   period        DateTime
   rentPaid      Float? // actual amount paid for rent
   utilitiesPaid Float? // actual amount paid for utilities
+  advertisingPaid Float? // actual amount paid for advertising
   bankTransferPaid Float @default(0)
   cashbox1Paid  Float @default(0)
   cashbox2Paid  Float @default(0)
@@ -264,6 +267,7 @@ model PaymentTransaction {
   period           DateTime
   rentPaid         Float @default(0)
   utilitiesPaid    Float @default(0)
+  advertisingPaid  Float @default(0)
   bankTransferPaid Float @default(0)
   cashbox1Paid     Float @default(0)
   cashbox2Paid     Float @default(0)

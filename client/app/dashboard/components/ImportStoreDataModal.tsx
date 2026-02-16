@@ -12,6 +12,7 @@ type ParsedResult = {
     status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
     tenantName?: string | null;
     utilitiesAmount?: number | null;
+    advertisingAmount?: number | null;
   }>;
   householdExpenses: Array<{
     name: string;
@@ -57,8 +58,14 @@ const PAVILION_COLUMNS = {
   number: 'Номер павильона',
   category: 'Категория',
   squareMeters: 'Площадь',
-  pricePerSqM: 'Цена за м²',
+  pricePerSqM: 'Цена за м2',
+  utilitiesAmount: 'Коммунальные',
+  status: 'Статус',
+  tenantName: 'Наименование организации',
+  advertisingAmount: 'Реклама',
 } as const;
+
+const STATUS_VALUES = ['ЗАНЯТ', 'СВОБОДЕН', 'ПРЕДОПЛАТА'] as const;
 
 const EXPENSE_TYPE_MAP: Record<string, ParsedResult['expenses'][number]['type']> = {
   payroll_tax: 'PAYROLL_TAX',
@@ -92,6 +99,14 @@ function mapPayStatus(value: unknown): 'UNPAID' | 'PAID' {
   const v = normalizeText(value);
   if (v === 'paid' || v === 'оплачено') return 'PAID';
   return 'UNPAID';
+}
+
+function mapPavilionStatus(value: unknown): 'AVAILABLE' | 'RENTED' | 'PREPAID' {
+  const v = normalizeText(value);
+  if (v === 'свободен' || v === 'available') return 'AVAILABLE';
+  if (v === 'занят' || v === 'rented') return 'RENTED';
+  if (v === 'предоплата' || v === 'prepaid') return 'PREPAID';
+  return 'AVAILABLE';
 }
 
 function isSummaryText(value: unknown) {
@@ -134,26 +149,35 @@ export function ImportStoreDataModal({
     const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
 
-    const pavilions = XLSX.utils.aoa_to_sheet([[
-      PAVILION_COLUMNS.number,
-      PAVILION_COLUMNS.category,
-      PAVILION_COLUMNS.squareMeters,
-      PAVILION_COLUMNS.pricePerSqM,
-    ]]);
+    const pavilions = XLSX.utils.aoa_to_sheet([
+      [
+        PAVILION_COLUMNS.number,
+        PAVILION_COLUMNS.category,
+        PAVILION_COLUMNS.squareMeters,
+        PAVILION_COLUMNS.pricePerSqM,
+        PAVILION_COLUMNS.utilitiesAmount,
+        PAVILION_COLUMNS.status,
+        PAVILION_COLUMNS.tenantName,
+        PAVILION_COLUMNS.advertisingAmount,
+      ],
+    ]);
+
+    // Dropdown list for status column in Pavilion sheet.
+    (pavilions as any)['!dataValidation'] = [
+      {
+        sqref: 'F2:F5000',
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${STATUS_VALUES.join(',')}"`],
+      },
+    ];
+
     const household = XLSX.utils.aoa_to_sheet([['name', 'amount', 'status']]);
     const expenses = XLSX.utils.aoa_to_sheet([['type', 'amount', 'status', 'note']]);
-    const accounting = XLSX.utils.aoa_to_sheet([[
-      'recordDate',
-      'bankTransferPaid',
-      'cashbox1Paid',
-      'cashbox2Paid',
-    ]]);
-    const staff = XLSX.utils.aoa_to_sheet([[
-      'fullName',
-      'position',
-      'salary',
-      'salaryStatus',
-    ]]);
+    const accounting = XLSX.utils.aoa_to_sheet([
+      ['recordDate', 'bankTransferPaid', 'cashbox1Paid', 'cashbox2Paid'],
+    ]);
+    const staff = XLSX.utils.aoa_to_sheet([['fullName', 'position', 'salary', 'salaryStatus']]);
 
     XLSX.utils.book_append_sheet(wb, pavilions, SHEETS.pavilions);
     XLSX.utils.book_append_sheet(wb, household, SHEETS.householdExpenses);
@@ -192,6 +216,10 @@ export function ImportStoreDataModal({
         PAVILION_COLUMNS.category,
         PAVILION_COLUMNS.squareMeters,
         PAVILION_COLUMNS.pricePerSqM,
+        PAVILION_COLUMNS.utilitiesAmount,
+        PAVILION_COLUMNS.status,
+        PAVILION_COLUMNS.tenantName,
+        PAVILION_COLUMNS.advertisingAmount,
       ],
       SHEETS.pavilions,
       localErrors,
@@ -211,14 +239,36 @@ export function ImportStoreDataModal({
         const number = String(r[PAVILION_COLUMNS.number] ?? '').trim();
         const squareMeters = parseNumber(r[PAVILION_COLUMNS.squareMeters]);
         const pricePerSqM = parseNumber(r[PAVILION_COLUMNS.pricePerSqM]);
+        const utilitiesAmount = parseNumber(r[PAVILION_COLUMNS.utilitiesAmount]);
+        const advertisingAmount = parseNumber(r[PAVILION_COLUMNS.advertisingAmount]);
+        const tenantName = String(r[PAVILION_COLUMNS.tenantName] ?? '').trim() || null;
+        const rawStatus = String(r[PAVILION_COLUMNS.status] ?? '').trim();
+        const status =
+          rawStatus.length > 0
+            ? mapPavilionStatus(rawStatus)
+            : tenantName || (utilitiesAmount ?? 0) > 0 || (advertisingAmount ?? 0) > 0
+              ? 'RENTED'
+              : 'AVAILABLE';
+
         return {
           number,
           category: String(r[PAVILION_COLUMNS.category] ?? '').trim() || null,
           squareMeters: squareMeters ?? NaN,
           pricePerSqM: pricePerSqM ?? NaN,
-          status: 'AVAILABLE' as const,
-          tenantName: null,
-          utilitiesAmount: null,
+          status,
+          tenantName,
+          utilitiesAmount:
+            status === 'AVAILABLE'
+              ? null
+              : status === 'PREPAID'
+                ? 0
+                : (utilitiesAmount ?? 0),
+          advertisingAmount:
+            status === 'AVAILABLE'
+              ? null
+              : status === 'PREPAID'
+                ? 0
+                : (advertisingAmount ?? 0),
         };
       })
       .filter(
@@ -268,7 +318,9 @@ export function ImportStoreDataModal({
       .filter((r) => r.fullName && r.position && !isSummaryText(r.fullName));
 
     if (pavilions.length === 0) {
-      localErrors.push('Лист "Павильоны": не найдено валидных строк (проверьте number/squareMeters/pricePerSqM)');
+      localErrors.push(
+        'Лист "Павильоны": не найдено валидных строк (проверьте Номер павильона / Площадь / Цена за м2)',
+      );
     }
 
     setErrors(localErrors);

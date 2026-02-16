@@ -161,10 +161,12 @@ export class AnalyticsService {
 
     let forecastRent = 0;
     let forecastUtilities = 0;
+    let forecastAdvertising = 0;
     let forecastAdditional = 0;
 
     let actualRent = 0;
     let actualUtilities = 0;
+    let actualAdvertising = 0;
     let actualAdditional = 0;
 
     for (const p of incomePavilions) {
@@ -172,6 +174,7 @@ export class AnalyticsService {
       if (currentLedger) {
         forecastRent += Number(currentLedger.expectedRent ?? 0);
         forecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
+        forecastAdvertising += Number(currentLedger.expectedAdvertising ?? 0);
         forecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
       } else {
         const baseRent = p.squareMeters * p.pricePerSqM;
@@ -184,6 +187,7 @@ export class AnalyticsService {
             ? baseRent
             : Math.max(baseRent - monthlyDiscount, 0);
         forecastUtilities += p.utilitiesAmount ?? 0;
+        forecastAdvertising += p.status === PavilionStatus.RENTED ? (p.advertisingAmount ?? 0) : 0;
         forecastAdditional += p.additionalCharges.reduce(
           (sum, charge) => sum + charge.amount,
           0,
@@ -193,6 +197,7 @@ export class AnalyticsService {
       for (const pay of p.payments) {
         actualRent += pay.rentPaid ?? 0;
         actualUtilities += pay.utilitiesPaid ?? 0;
+        actualAdvertising += pay.advertisingPaid ?? 0;
       }
 
       for (const charge of p.additionalCharges) {
@@ -203,15 +208,18 @@ export class AnalyticsService {
       }
     }
 
-    const forecastTotal = forecastRent + forecastUtilities + forecastAdditional;
-    const actualTotal = actualRent + actualUtilities + actualAdditional;
+    const forecastTotal =
+      forecastRent + forecastUtilities + forecastAdvertising + forecastAdditional;
+    const actualTotal = actualRent + actualUtilities + actualAdvertising + actualAdditional;
 
     let incomeForecastRent = 0;
     let incomeForecastUtilities = 0;
+    let incomeForecastAdvertising = 0;
     let incomeForecastAdditional = 0;
 
     let incomeActualRent = 0;
     let incomeActualUtilities = 0;
+    let incomeActualAdvertising = 0;
     let incomeActualAdditional = 0;
 
     for (const p of incomePavilions) {
@@ -219,6 +227,7 @@ export class AnalyticsService {
       if (currentLedger) {
         incomeForecastRent += Number(currentLedger.expectedRent ?? 0);
         incomeForecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
+        incomeForecastAdvertising += Number(currentLedger.expectedAdvertising ?? 0);
         incomeForecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
       } else {
         const baseRent = p.squareMeters * p.pricePerSqM;
@@ -231,6 +240,7 @@ export class AnalyticsService {
             ? baseRent
             : Math.max(baseRent - monthlyDiscount, 0);
         incomeForecastUtilities += p.utilitiesAmount ?? 0;
+        incomeForecastAdvertising += p.status === PavilionStatus.RENTED ? (p.advertisingAmount ?? 0) : 0;
         incomeForecastAdditional += p.additionalCharges.reduce(
           (sum, charge) => sum + charge.amount,
           0,
@@ -240,6 +250,7 @@ export class AnalyticsService {
       for (const pay of p.payments) {
         incomeActualRent += pay.rentPaid ?? 0;
         incomeActualUtilities += pay.utilitiesPaid ?? 0;
+        incomeActualAdvertising += pay.advertisingPaid ?? 0;
       }
 
       for (const charge of p.additionalCharges) {
@@ -251,9 +262,15 @@ export class AnalyticsService {
     }
 
     const incomeForecastTotal =
-      incomeForecastRent + incomeForecastUtilities + incomeForecastAdditional;
+      incomeForecastRent +
+      incomeForecastUtilities +
+      incomeForecastAdvertising +
+      incomeForecastAdditional;
     const incomeActualTotal =
-      incomeActualRent + incomeActualUtilities + incomeActualAdditional;
+      incomeActualRent +
+      incomeActualUtilities +
+      incomeActualAdvertising +
+      incomeActualAdditional;
 
     let expensesTotalForecast = 0;
     let expensesTotalActual = 0;
@@ -375,7 +392,8 @@ export class AnalyticsService {
     let previousIncomeTotal = 0;
     for (const p of previousIncomePavilions) {
       for (const pay of p.payments) {
-        previousIncomeTotal += (pay.rentPaid ?? 0) + (pay.utilitiesPaid ?? 0);
+        previousIncomeTotal +=
+          (pay.rentPaid ?? 0) + (pay.utilitiesPaid ?? 0) + (pay.advertisingPaid ?? 0);
       }
       for (const charge of p.additionalCharges) {
         previousIncomeTotal += charge.payments.reduce(
@@ -428,24 +446,28 @@ export class AnalyticsService {
       forecastIncome: {
         rent: forecastRent,
         utilities: forecastUtilities,
+        advertising: forecastAdvertising,
         additional: forecastAdditional,
         total: forecastTotal,
       },
       actualIncome: {
         rent: actualRent,
         utilities: actualUtilities,
+        advertising: actualAdvertising,
         additional: actualAdditional,
         total: actualTotal,
       },
       expected: {
         rent: forecastRent,
         utilities: forecastUtilities,
+        advertising: forecastAdvertising,
         additional: forecastAdditional,
         total: forecastTotal,
       },
       paid: {
         rent: actualRent,
         utilities: actualUtilities,
+        advertising: actualAdvertising,
         additional: actualAdditional,
         total: actualTotal,
       },
@@ -454,12 +476,14 @@ export class AnalyticsService {
         forecast: {
           rent: incomeForecastRent,
           utilities: incomeForecastUtilities,
+          advertising: incomeForecastAdvertising,
           additional: incomeForecastAdditional,
           total: incomeForecastTotal,
         },
         actual: {
           rent: incomeActualRent,
           utilities: incomeActualUtilities,
+          advertising: incomeActualAdvertising,
           additional: incomeActualAdditional,
           total: incomeActualTotal,
         },
@@ -474,6 +498,7 @@ export class AnalyticsService {
         income: {
           rent: actualRent,
           facilities: actualUtilities,
+          advertising: actualAdvertising,
           additional: actualAdditional,
           total: overallIncomeTotal,
           previousMonthBalance,

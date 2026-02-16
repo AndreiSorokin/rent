@@ -40,6 +40,10 @@ export class CreatePavilionDto {
   @IsOptional()
   utilitiesAmount?: number;
 
+  @IsNumber()
+  @IsOptional()
+  advertisingAmount?: number;
+
   @IsDateString()
   @IsOptional()
   prepaidUntil?: string;

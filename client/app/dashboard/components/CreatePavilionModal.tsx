@@ -24,6 +24,7 @@ export function CreatePavilionModal({
   const [pricePerSqM, setPricePerSqM] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
   const [tenantName, setTenantName] = useState('');
+  const [advertisingAmount, setAdvertisingAmount] = useState('');
   const [prepaymentMonth, setPrepaymentMonth] = useState(
     new Date().toISOString().slice(0, 7),
   );
@@ -42,7 +43,7 @@ export function CreatePavilionModal({
     }
 
     if (needsTenant && !tenantName.trim()) {
-      setError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите имя арендатора');
+      setError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
       return;
     }
 
@@ -64,6 +65,12 @@ export function CreatePavilionModal({
           pricePerSqM: price,
           status,
           tenantName: needsTenant ? tenantName.trim() : undefined,
+          advertisingAmount:
+            status === 'AVAILABLE'
+              ? null
+              : status === 'PREPAID'
+                ? 0
+                : (advertisingAmount ? Number(advertisingAmount) : 0),
           prepaidUntil: status === 'PREPAID' ? prepaidPeriodIso : undefined,
         }),
       });
@@ -186,7 +193,7 @@ export function CreatePavilionModal({
           {(status === 'RENTED' || status === 'PREPAID') && (
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Имя арендатора
+                Наименование организации
               </label>
               <input
                 type="text"
@@ -194,6 +201,23 @@ export function CreatePavilionModal({
                 onChange={(e) => setTenantName(e.target.value)}
                 className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Например: Иван Петров"
+              />
+            </div>
+          )}
+
+          {status === 'RENTED' && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Реклама
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={advertisingAmount}
+                onChange={(e) => setAdvertisingAmount(e.target.value)}
+                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
               />
             </div>
           )}

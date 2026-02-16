@@ -156,6 +156,7 @@ export class StoresController {
         status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
         tenantName?: string | null;
         utilitiesAmount?: number | null;
+        advertisingAmount?: number | null;
       }>;
       householdExpenses?: Array<{
         name: string;

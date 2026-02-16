@@ -83,6 +83,7 @@ export default function StoreSummaryPage() {
             <div>Остаток с предыдущего месяца: {formatMoney(income.previousMonthBalance ?? 0, currency)}</div>
             <div>Аренда: {formatMoney(income.rent ?? 0, currency)}</div>
             <div>Коммуналка: {formatMoney(income.facilities ?? 0, currency)}</div>
+            <div>Реклама: {formatMoney(income.advertising ?? 0, currency)}</div>
             <div>Доп. начисления: {formatMoney(income.additional ?? 0, currency)}</div>
             <div className="font-semibold">Итого доход: {formatMoney(income.total ?? 0, currency)}</div>
           </div>
