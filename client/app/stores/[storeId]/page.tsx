@@ -86,6 +86,7 @@ export default function StorePage() {
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
+  console.log(analytics)
 
   const fetchData = async () => {
     setLoading(true);

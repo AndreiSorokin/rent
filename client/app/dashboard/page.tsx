@@ -4,25 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { CreateStoreModal } from './components/CreateStoreModal';
-
-// This function must be defined ONLY ONCE
-export function getCurrentUserFromToken() {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name || null,
-      // permissions: payload.permissions || [],
-    };
-  } catch (e) {
-    console.error('Invalid token');
-    return null;
-  }
-}
+import { getCurrentUserFromToken } from '@/lib/auth';
 
 interface StoreSummary {
   id: number;
@@ -63,7 +45,7 @@ export default function StoresPage() {
       <div className="max-w-6xl mx-auto p-4 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <h1 className="text-3xl font-bold text-gray-800 text-center md:text-left">
-            Мои магазины
+            Мои объекты
           </h1>
 
           {/* Button to create store */}
@@ -71,7 +53,7 @@ export default function StoresPage() {
             onClick={() => setShowCreateModal(true)}
             className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition shadow-sm"
           >
-            + Создать новый магазин
+            + Добавить объект
           </button>
         </div>
 

@@ -145,7 +145,7 @@ export default function UtilitiesPage() {
                       Категория
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Коммунальные
+                      Организация
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                       Действие
