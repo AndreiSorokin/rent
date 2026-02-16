@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from './password-policy';
 
 @Injectable()
 export class AuthService {
@@ -16,6 +17,10 @@ export class AuthService {
   ) {}
 
   async register(email: string, password: string, name?: string) {
+    if (!isPasswordStrong(password)) {
+      throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { email },
     });

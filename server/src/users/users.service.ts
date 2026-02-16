@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from '../auth/password-policy';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,10 @@ export class UsersService {
   }
 
   async create(email: string, password: string, name?: string) {
+    if (!isPasswordStrong(password)) {
+      throw new BadRequestException(PASSWORD_POLICY_MESSAGE);
+    }
+
     const existing = await this.prisma.user.findUnique({
       where: { email },
     });

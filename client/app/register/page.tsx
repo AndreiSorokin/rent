@@ -10,10 +10,19 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
   const mapRegisterError = (message: string) => {
     const normalized = message.toLowerCase();
+    if (
+      normalized.includes('password must be at least 6 characters') ||
+      (normalized.includes('password') &&
+        normalized.includes('letters') &&
+        normalized.includes('numbers'))
+    ) {
+      return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
+    }
     if (
       normalized.includes('email already registered') ||
       normalized.includes('already registered') ||
@@ -27,6 +36,20 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    const isStrongPassword =
+      /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(password);
+    if (!isStrongPassword) {
+      setError(
+        'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ',
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Пароли не совпадают');
+      return;
+    }
 
     try {
       await apiFetch('/auth/register', {
@@ -67,10 +90,22 @@ export default function RegisterPage() {
         <input
           type="password"
           className="w-full border p-2"
-          placeholder="Password"
+          placeholder="Пароль"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
+        <input
+          type="password"
+          className="w-full border p-2"
+          placeholder="Повторите пароль"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
+        <p className="text-xs text-gray-500">
+          Пароль: минимум 6 символов, буквы, цифры и специальный символ.
+        </p>
 
         {error && <p className="text-red-500">{error}</p>}
 
@@ -86,3 +121,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

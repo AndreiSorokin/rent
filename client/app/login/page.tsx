@@ -47,7 +47,7 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="w-96 space-y-4 rounded border p-6"
       >
-        <h1 className="text-xl font-bold">Login</h1>
+        <h1 className="text-xl font-bold">Вход</h1>
 
         <input
           className="w-full border p-2"
@@ -59,7 +59,7 @@ export default function LoginPage() {
         <input
           type="password"
           className="w-full border p-2"
-          placeholder="Password"
+          placeholder="Пароль"
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
@@ -67,7 +67,7 @@ export default function LoginPage() {
         {error && <p className="text-red-500">{error}</p>}
 
         <button className="w-full bg-black p-2 text-white">
-          Login
+          Войти
         </button>
 
         <p className="text-center text-sm text-gray-600">
