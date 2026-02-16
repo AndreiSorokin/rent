@@ -57,23 +57,15 @@ export class StoresService {
    * Get all stores current user belongs to
    */
   async findAll(userId: number) {
-    await this.prisma.pavilion.updateMany({
-      where: {
-        store: {
-          storeUsers: {
-            some: { userId },
-          },
-        },
-        status: PavilionStatus.PREPAID,
-        prepaidUntil: {
-          lt: startOfMonth(new Date()),
-        },
-      },
-      data: {
-        status: PavilionStatus.RENTED,
-        prepaidUntil: null,
-      },
+    const memberships = await this.prisma.storeUser.findMany({
+      where: { userId },
+      select: { storeId: true },
     });
+    await Promise.all(
+      memberships.map((membership) =>
+        this.runMonthlyRolloverForStore(membership.storeId),
+      ),
+    );
 
     return this.prisma.store.findMany({
       where: {
@@ -102,19 +94,7 @@ export class StoresService {
    * Get one store (only if user belongs to it)
    */
   async findOne(storeId: number, userId: number) {
-    await this.prisma.pavilion.updateMany({
-      where: {
-        storeId,
-        status: PavilionStatus.PREPAID,
-        prepaidUntil: {
-          lt: startOfMonth(new Date()),
-        },
-      },
-      data: {
-        status: PavilionStatus.RENTED,
-        prepaidUntil: null,
-      },
-    });
+    await this.runMonthlyRolloverForStore(storeId);
 
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -695,6 +675,198 @@ export class StoresService {
           staff: importedStaff,
         },
       };
+    });
+  }
+
+  private getMonthlyDiscountTotal(
+    discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
+    squareMeters: number,
+    period: Date,
+  ) {
+    const monthStart = startOfMonth(period);
+    const monthEnd = endOfMonth(period);
+
+    return discounts.reduce((sum, discount) => {
+      const startsBeforeMonthEnds = discount.startsAt <= monthEnd;
+      const endsAfterMonthStarts =
+        discount.endsAt === null || discount.endsAt >= monthStart;
+      if (startsBeforeMonthEnds && endsAfterMonthStarts) {
+        return sum + discount.amount * squareMeters;
+      }
+      return sum;
+    }, 0);
+  }
+
+  private async runMonthlyRolloverForStore(storeId: number) {
+    const currentPeriod = startOfMonth(new Date());
+    const previousPeriod = startOfMonth(subMonths(currentPeriod, 1));
+    const previousPeriodStart = startOfMonth(previousPeriod);
+    const previousPeriodEnd = endOfMonth(previousPeriod);
+
+    // Always keep PREPAID state up to date.
+    await this.prisma.pavilion.updateMany({
+      where: {
+        storeId,
+        status: PavilionStatus.PREPAID,
+        prepaidUntil: {
+          lt: currentPeriod,
+        },
+      },
+      data: {
+        status: PavilionStatus.RENTED,
+        prepaidUntil: null,
+      },
+    });
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        lastMonthlyResetPeriod: true,
+      },
+    });
+    if (!store) return;
+
+    const alreadyResetThisMonth =
+      store.lastMonthlyResetPeriod &&
+      startOfMonth(store.lastMonthlyResetPeriod).getTime() === currentPeriod.getTime();
+    if (alreadyResetThisMonth) return;
+
+    const pavilions = await this.prisma.pavilion.findMany({
+      where: { storeId },
+      include: {
+        discounts: true,
+        payments: {
+          where: { period: previousPeriod },
+        },
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: previousPeriodStart,
+              lte: previousPeriodEnd,
+            },
+          },
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: previousPeriodStart,
+                  lte: previousPeriodEnd,
+                },
+              },
+            },
+          },
+        },
+        monthlyLedgers: {
+          orderBy: { period: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const pavilion of pavilions) {
+        const openingDebt = pavilion.monthlyLedgers[0]?.closingDebt ?? 0;
+        const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+        const discount =
+          pavilion.status === PavilionStatus.PREPAID
+            ? 0
+            : this.getMonthlyDiscountTotal(
+                pavilion.discounts,
+                pavilion.squareMeters,
+                previousPeriod,
+              );
+        const expectedRent =
+          pavilion.status === PavilionStatus.PREPAID
+            ? baseRent
+            : pavilion.status === PavilionStatus.RENTED
+              ? Math.max(baseRent - discount, 0)
+              : 0;
+        const expectedUtilities =
+          pavilion.status === PavilionStatus.RENTED ? (pavilion.utilitiesAmount ?? 0) : 0;
+        const expectedAdditional =
+          pavilion.status === PavilionStatus.RENTED
+            ? pavilion.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0)
+            : 0;
+        const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+
+        const actualRentAndUtilities = pavilion.payments.reduce(
+          (sum, payment) => sum + Number(payment.rentPaid ?? 0) + Number(payment.utilitiesPaid ?? 0),
+          0,
+        );
+        const actualAdditional = pavilion.additionalCharges.reduce(
+          (sum, charge) =>
+            sum +
+            charge.payments.reduce(
+              (paymentSum, payment) => paymentSum + Number(payment.amountPaid ?? 0),
+              0,
+            ),
+          0,
+        );
+        const actualTotal = actualRentAndUtilities + actualAdditional;
+        const monthDelta = expectedTotal - actualTotal;
+        const closingDebt = openingDebt + monthDelta;
+
+        await tx.pavilionMonthlyLedger.upsert({
+          where: {
+            pavilionId_period: {
+              pavilionId: pavilion.id,
+              period: previousPeriod,
+            },
+          },
+          update: {
+            expectedRent,
+            expectedUtilities,
+            expectedAdditional,
+            expectedTotal,
+            actualTotal,
+            openingDebt,
+            monthDelta,
+            closingDebt,
+          },
+          create: {
+            pavilionId: pavilion.id,
+            period: previousPeriod,
+            expectedRent,
+            expectedUtilities,
+            expectedAdditional,
+            expectedTotal,
+            actualTotal,
+            openingDebt,
+            monthDelta,
+            closingDebt,
+          },
+        });
+      }
+
+      await tx.pavilion.updateMany({
+        where: {
+          storeId,
+          status: PavilionStatus.RENTED,
+        },
+        data: {
+          utilitiesAmount: null,
+        },
+      });
+
+      await tx.pavilion.updateMany({
+        where: {
+          storeId,
+          status: PavilionStatus.PREPAID,
+        },
+        data: {
+          utilitiesAmount: 0,
+        },
+      });
+
+      await tx.store.update({
+        where: { id: storeId },
+        data: {
+          utilitiesExpenseStatus: 'UNPAID',
+          householdExpenseStatus: 'UNPAID',
+          lastMonthlyResetPeriod: currentPeriod,
+        },
+      });
     });
   }
 }

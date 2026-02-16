@@ -41,6 +41,7 @@ export class PaymentsService {
     }
 
     const pavilionStatus = await this.normalizePrepaidStatus(pavilion);
+    const ledger = await this.refreshMonthlyLedger(pavilionId, normalizedPeriod, pavilionStatus);
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const payment = pavilion.payments[0]; // one payment per month
@@ -55,21 +56,10 @@ export class PaymentsService {
       pavilion.squareMeters,
       normalizedPeriod,
     );
-    const expectedRent =
-      pavilionStatus === PavilionStatus.PREPAID
-        ? baseRent
-        : Math.max(baseRent - monthlyDiscount, 0);
-    const expectedUtilities =
-      pavilionStatus === PavilionStatus.PREPAID
-        ? 0
-        : (pavilion.utilitiesAmount ?? 0);
-
-    const expectedAdditional =
-      pavilionStatus === PavilionStatus.PREPAID
-        ? 0
-        : pavilion.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-
-    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+    const expectedRent = ledger.expectedRent;
+    const expectedUtilities = ledger.expectedUtilities;
+    const expectedAdditional = ledger.expectedAdditional;
+    const expectedTotal = ledger.expectedTotal;
 
     /* ======================
       PAID AMOUNTS
@@ -114,6 +104,11 @@ export class PaymentsService {
         total: paidTotal,
       },
       balance: expectedTotal - paidTotal,
+      debt: {
+        opening: ledger.openingDebt,
+        monthDelta: ledger.monthDelta,
+        closing: ledger.closingDebt,
+      },
     };
   }
 
@@ -217,7 +212,7 @@ async addPayment(
   const safeUtilitiesIncrement =
     normalizedStatus === PavilionStatus.PREPAID ? 0 : utilitiesIncrement;
 
-  return this.prisma.$transaction(async (tx) => {
+  const payment = await this.prisma.$transaction(async (tx) => {
     const existing = await tx.payment.findUnique({
       where: {
         pavilionId_period: { pavilionId, period: normalizedPeriod },
@@ -262,6 +257,8 @@ async addPayment(
 
     return payment;
   });
+  await this.refreshMonthlyLedger(pavilionId, normalizedPeriod, normalizedStatus);
+  return payment;
 }
 
   list(pavilionId: number) {
@@ -273,7 +270,7 @@ async addPayment(
   }
 
   async deleteEntry(pavilionId: number, entryId: number) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const entry = await tx.paymentTransaction.findFirst({
         where: { id: entryId, pavilionId },
       });
@@ -318,10 +315,16 @@ async addPayment(
         }
       }
 
-      return tx.paymentTransaction.delete({
+      await tx.paymentTransaction.delete({
         where: { id: entryId },
       });
+
+      return { period: entry.period };
     });
+
+    const normalizedPeriod = startOfMonth(result.period);
+    await this.refreshMonthlyLedger(pavilionId, normalizedPeriod);
+    return { success: true };
   }
 
   private async normalizePrepaidStatus(pavilion: {
@@ -346,5 +349,128 @@ async addPayment(
     }
 
     return pavilion.status;
+  }
+
+  private async refreshMonthlyLedger(
+    pavilionId: number,
+    period: Date,
+    normalizedStatus?: PavilionStatus,
+  ) {
+    const normalizedPeriod = startOfMonth(period);
+    const start = startOfMonth(normalizedPeriod);
+    const end = endOfMonth(normalizedPeriod);
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      include: {
+        discounts: true,
+        payments: {
+          where: {
+            period: normalizedPeriod,
+          },
+        },
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
+          },
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: start,
+                  lte: end,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
+    const pavilionStatus = normalizedStatus ?? (await this.normalizePrepaidStatus(pavilion));
+    const previousPeriod = startOfMonth(
+      new Date(normalizedPeriod.getFullYear(), normalizedPeriod.getMonth() - 1, 1),
+    );
+    const previousLedger = await this.prisma.pavilionMonthlyLedger.findUnique({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: previousPeriod,
+        },
+      },
+      select: { closingDebt: true },
+    });
+    const openingDebt = previousLedger?.closingDebt ?? 0;
+
+    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const monthlyDiscount = this.getMonthlyDiscountTotal(
+      pavilion.discounts,
+      pavilion.squareMeters,
+      normalizedPeriod,
+    );
+    const expectedRent =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? baseRent
+        : pavilionStatus === PavilionStatus.RENTED
+          ? Math.max(baseRent - monthlyDiscount, 0)
+          : 0;
+    const expectedUtilities =
+      pavilionStatus === PavilionStatus.RENTED ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+    const expectedAdditional =
+      pavilionStatus === PavilionStatus.RENTED
+        ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
+        : 0;
+    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+
+    const actualRentAndUtilities = pavilion.payments.reduce(
+      (sum, pay) => sum + Number(pay.rentPaid ?? 0) + Number(pay.utilitiesPaid ?? 0),
+      0,
+    );
+    const actualAdditional = pavilion.additionalCharges.reduce(
+      (sum, charge) =>
+        sum +
+        charge.payments.reduce((paymentSum, payment) => paymentSum + Number(payment.amountPaid ?? 0), 0),
+      0,
+    );
+    const actualTotal = actualRentAndUtilities + actualAdditional;
+    const monthDelta = expectedTotal - actualTotal;
+    const closingDebt = openingDebt + monthDelta;
+
+    return this.prisma.pavilionMonthlyLedger.upsert({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: normalizedPeriod,
+        },
+      },
+      update: {
+        expectedRent,
+        expectedUtilities,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
+      },
+      create: {
+        pavilionId,
+        period: normalizedPeriod,
+        expectedRent,
+        expectedUtilities,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
+      },
+    });
   }
 }

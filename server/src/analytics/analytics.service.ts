@@ -49,6 +49,10 @@ export class AnalyticsService {
         payments: {
           where: { period },
         },
+        monthlyLedgers: {
+          where: { period },
+          take: 1,
+        },
         discounts: true,
         additionalCharges: {
           where: {
@@ -164,20 +168,27 @@ export class AnalyticsService {
     let actualAdditional = 0;
 
     for (const p of incomePavilions) {
-      const baseRent = p.squareMeters * p.pricePerSqM;
-      const monthlyDiscount =
-        p.status === PavilionStatus.PREPAID
-          ? 0
-          : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
-      forecastRent +=
-        p.status === PavilionStatus.PREPAID
-          ? baseRent
-          : Math.max(baseRent - monthlyDiscount, 0);
-      forecastUtilities += p.utilitiesAmount ?? 0;
-      forecastAdditional += p.additionalCharges.reduce(
-        (sum, charge) => sum + charge.amount,
-        0,
-      );
+      const currentLedger = p.monthlyLedgers[0];
+      if (currentLedger) {
+        forecastRent += Number(currentLedger.expectedRent ?? 0);
+        forecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
+        forecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
+      } else {
+        const baseRent = p.squareMeters * p.pricePerSqM;
+        const monthlyDiscount =
+          p.status === PavilionStatus.PREPAID
+            ? 0
+            : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+        forecastRent +=
+          p.status === PavilionStatus.PREPAID
+            ? baseRent
+            : Math.max(baseRent - monthlyDiscount, 0);
+        forecastUtilities += p.utilitiesAmount ?? 0;
+        forecastAdditional += p.additionalCharges.reduce(
+          (sum, charge) => sum + charge.amount,
+          0,
+        );
+      }
 
       for (const pay of p.payments) {
         actualRent += pay.rentPaid ?? 0;
@@ -204,20 +215,27 @@ export class AnalyticsService {
     let incomeActualAdditional = 0;
 
     for (const p of incomePavilions) {
-      const baseRent = p.squareMeters * p.pricePerSqM;
-      const monthlyDiscount =
-        p.status === PavilionStatus.PREPAID
-          ? 0
-          : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
-      incomeForecastRent +=
-        p.status === PavilionStatus.PREPAID
-          ? baseRent
-          : Math.max(baseRent - monthlyDiscount, 0);
-      incomeForecastUtilities += p.utilitiesAmount ?? 0;
-      incomeForecastAdditional += p.additionalCharges.reduce(
-        (sum, charge) => sum + charge.amount,
-        0,
-      );
+      const currentLedger = p.monthlyLedgers[0];
+      if (currentLedger) {
+        incomeForecastRent += Number(currentLedger.expectedRent ?? 0);
+        incomeForecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
+        incomeForecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
+      } else {
+        const baseRent = p.squareMeters * p.pricePerSqM;
+        const monthlyDiscount =
+          p.status === PavilionStatus.PREPAID
+            ? 0
+            : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+        incomeForecastRent +=
+          p.status === PavilionStatus.PREPAID
+            ? baseRent
+            : Math.max(baseRent - monthlyDiscount, 0);
+        incomeForecastUtilities += p.utilitiesAmount ?? 0;
+        incomeForecastAdditional += p.additionalCharges.reduce(
+          (sum, charge) => sum + charge.amount,
+          0,
+        );
+      }
 
       for (const pay of p.payments) {
         incomeActualRent += pay.rentPaid ?? 0;
@@ -305,9 +323,10 @@ export class AnalyticsService {
     expenseByTypeActual.SALARIES = staffSalariesActual;
 
     for (const pavilion of pavilions) {
-      const utilitiesForecast =
-        pavilion.status === PavilionStatus.RENTED ||
-        pavilion.status === PavilionStatus.PREPAID
+      const utilitiesForecast = pavilion.monthlyLedgers[0]
+        ? Number(pavilion.monthlyLedgers[0].expectedUtilities ?? 0)
+        : pavilion.status === PavilionStatus.RENTED ||
+            pavilion.status === PavilionStatus.PREPAID
           ? (pavilion.utilitiesAmount ?? 0)
           : 0;
       expenseUtilitiesForecast += utilitiesForecast;

@@ -39,6 +39,7 @@ model Store {
   currency    Currency     @default(RUB)
   utilitiesExpenseStatus PavilionExpenseStatus @default(UNPAID)
   householdExpenseStatus PavilionExpenseStatus @default(UNPAID)
+  lastMonthlyResetPeriod DateTime?
   storeUsers  StoreUser[]
   pavilions   Pavilion[]
   invitations Invitation[]
@@ -124,6 +125,7 @@ model Pavilion {
   discounts         PavilionDiscount[]
   payments          Payment[]
   paymentTransactions PaymentTransaction[]
+  monthlyLedgers    PavilionMonthlyLedger[]
   contracts         Contract[]
 
   storeId Int
@@ -161,6 +163,28 @@ enum PavilionExpenseType {
   VAT
   LAND_RENT
   OTHER
+}
+
+model PavilionMonthlyLedger {
+  id Int @id @default(autoincrement())
+
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  period DateTime
+  expectedRent Float @default(0)
+  expectedUtilities Float @default(0)
+  expectedAdditional Float @default(0)
+  expectedTotal Float @default(0)
+  actualTotal Float @default(0)
+  openingDebt Float @default(0)
+  monthDelta Float @default(0)
+  closingDebt Float @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pavilionId, period])
+  @@index([period, pavilionId])
 }
 
 enum PavilionExpenseStatus {

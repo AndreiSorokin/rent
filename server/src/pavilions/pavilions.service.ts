@@ -17,7 +17,7 @@ export class PavilionsService {
       ? endOfMonth(new Date(dto.prepaidUntil))
       : endOfMonth(new Date());
 
-    return this.prisma.pavilion.create({
+    const created = await this.prisma.pavilion.create({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: {
         ...dto,
@@ -27,6 +27,8 @@ export class PavilionsService {
         store: { connect: { id: storeId } },
       },
     });
+    await this.refreshMonthlyLedger(created.id, startOfMonth(new Date()));
+    return created;
   }
 
   async findAll(storeId: number) {
@@ -137,10 +139,12 @@ async findOne(storeId: number, id: number) {
       data.prepaidUntil = null;
     }
 
-    return this.prisma.pavilion.update({
+    const updated = await this.prisma.pavilion.update({
       where: { id: pavilionId },
       data,
     });
+    await this.refreshMonthlyLedger(updated.id, startOfMonth(new Date()));
+    return updated;
   }
 
   // async update(
@@ -263,6 +267,117 @@ async findOne(storeId: number, id: number) {
       data: {
         status: PavilionStatus.RENTED,
         prepaidUntil: null,
+      },
+    });
+  }
+
+  private getMonthlyDiscountTotal(
+    discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
+    squareMeters: number,
+    period: Date,
+  ) {
+    const monthStart = startOfMonth(period);
+    const monthEnd = endOfMonth(period);
+
+    return discounts.reduce((sum, discount) => {
+      const startsBeforeMonthEnds = discount.startsAt <= monthEnd;
+      const endsAfterMonthStarts =
+        discount.endsAt === null || discount.endsAt >= monthStart;
+      if (startsBeforeMonthEnds && endsAfterMonthStarts) {
+        return sum + discount.amount * squareMeters;
+      }
+      return sum;
+    }, 0);
+  }
+
+  private async refreshMonthlyLedger(pavilionId: number, period: Date) {
+    const normalizedPeriod = startOfMonth(period);
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      include: {
+        discounts: true,
+        payments: {
+          where: { period: normalizedPeriod },
+        },
+        additionalCharges: true,
+      },
+    });
+    if (!pavilion) return;
+
+    const previousPeriod = startOfMonth(
+      new Date(normalizedPeriod.getFullYear(), normalizedPeriod.getMonth() - 1, 1),
+    );
+    const previousLedger = await this.prisma.pavilionMonthlyLedger.findUnique({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: previousPeriod,
+        },
+      },
+      select: { closingDebt: true },
+    });
+    const openingDebt = previousLedger?.closingDebt ?? 0;
+
+    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const monthlyDiscount =
+      pavilion.status === PavilionStatus.PREPAID
+        ? 0
+        : this.getMonthlyDiscountTotal(
+            pavilion.discounts,
+            pavilion.squareMeters,
+            normalizedPeriod,
+          );
+    const expectedRent =
+      pavilion.status === PavilionStatus.PREPAID
+        ? baseRent
+        : pavilion.status === PavilionStatus.RENTED
+          ? Math.max(baseRent - monthlyDiscount, 0)
+          : 0;
+    const expectedUtilities =
+      pavilion.status === PavilionStatus.RENTED
+        ? Number(pavilion.utilitiesAmount ?? 0)
+        : 0;
+    const expectedAdditional =
+      pavilion.status === PavilionStatus.RENTED
+        ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
+        : 0;
+    const expectedTotal = expectedRent + expectedUtilities + expectedAdditional;
+    const actualTotal = pavilion.payments.reduce(
+      (sum, payment) =>
+        sum + Number(payment.rentPaid ?? 0) + Number(payment.utilitiesPaid ?? 0),
+      0,
+    );
+    const monthDelta = expectedTotal - actualTotal;
+    const closingDebt = openingDebt + monthDelta;
+
+    await this.prisma.pavilionMonthlyLedger.upsert({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: normalizedPeriod,
+        },
+      },
+      update: {
+        expectedRent,
+        expectedUtilities,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
+      },
+      create: {
+        pavilionId,
+        period: normalizedPeriod,
+        expectedRent,
+        expectedUtilities,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
       },
     });
   }
