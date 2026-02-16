@@ -101,12 +101,12 @@ function mapPayStatus(value: unknown): 'UNPAID' | 'PAID' {
   return 'UNPAID';
 }
 
-function mapPavilionStatus(value: unknown): 'AVAILABLE' | 'RENTED' | 'PREPAID' {
+function mapPavilionStatus(value: unknown): 'AVAILABLE' | 'RENTED' | 'PREPAID' | null {
   const v = normalizeText(value);
   if (v === 'свободен' || v === 'available') return 'AVAILABLE';
-  if (v === 'занят' || v === 'rented') return 'RENTED';
+  if (v === 'занят' || v === 'занято' || v === 'rented') return 'RENTED';
   if (v === 'предоплата' || v === 'prepaid') return 'PREPAID';
-  return 'AVAILABLE';
+  return null;
 }
 
 function isSummaryText(value: unknown) {
@@ -235,7 +235,7 @@ export function ImportStoreDataModal({
     requireColumns(staffRows, ['fullName', 'position', 'salary', 'salaryStatus'], SHEETS.staff, localErrors);
 
     const pavilions: ParsedResult['pavilions'] = pavilionRows
-      .map((r) => {
+      .map((r, index) => {
         const number = String(r[PAVILION_COLUMNS.number] ?? '').trim();
         const squareMeters = parseNumber(r[PAVILION_COLUMNS.squareMeters]);
         const pricePerSqM = parseNumber(r[PAVILION_COLUMNS.pricePerSqM]);
@@ -243,12 +243,22 @@ export function ImportStoreDataModal({
         const advertisingAmount = parseNumber(r[PAVILION_COLUMNS.advertisingAmount]);
         const tenantName = String(r[PAVILION_COLUMNS.tenantName] ?? '').trim() || null;
         const rawStatus = String(r[PAVILION_COLUMNS.status] ?? '').trim();
-        const status =
-          rawStatus.length > 0
-            ? mapPavilionStatus(rawStatus)
-            : tenantName || (utilitiesAmount ?? 0) > 0 || (advertisingAmount ?? 0) > 0
+        let status: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+        if (rawStatus.length > 0) {
+          const mappedStatus = mapPavilionStatus(rawStatus);
+          if (!mappedStatus) {
+            localErrors.push(
+              `Sheet "${SHEETS.pavilions}", row ${index + 2}: invalid status "${rawStatus}". Allowed values: ${STATUS_VALUES.join(', ')}`,
+            );
+            return null;
+          }
+          status = mappedStatus;
+        } else {
+          status =
+            Boolean(tenantName) || (utilitiesAmount ?? 0) > 0 || (advertisingAmount ?? 0) > 0
               ? 'RENTED'
               : 'AVAILABLE';
+        }
 
         return {
           number,
@@ -257,23 +267,25 @@ export function ImportStoreDataModal({
           pricePerSqM: pricePerSqM ?? NaN,
           status,
           tenantName,
-          utilitiesAmount:
-            status === 'AVAILABLE'
-              ? null
-              : status === 'PREPAID'
-                ? 0
-                : (utilitiesAmount ?? 0),
-          advertisingAmount:
-            status === 'AVAILABLE'
-              ? null
-              : status === 'PREPAID'
-                ? 0
-                : (advertisingAmount ?? 0),
+          utilitiesAmount: utilitiesAmount ?? null,
+          advertisingAmount: advertisingAmount ?? null,
         };
       })
       .filter(
-        (r) =>
-          r.number &&
+        (
+          r,
+        ): r is {
+          number: string;
+          category: string | null;
+          squareMeters: number;
+          pricePerSqM: number;
+          status: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+          tenantName: string | null;
+          utilitiesAmount: number | null;
+          advertisingAmount: number | null;
+        } =>
+          r !== null &&
+          r.number.length > 0 &&
           !isSummaryText(r.number) &&
           Number.isFinite(r.squareMeters) &&
           Number.isFinite(r.pricePerSqM),
