@@ -11,6 +11,9 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState('');
 
   const mapRegisterError = (message: string) => {
@@ -22,6 +25,16 @@ export default function RegisterPage() {
         normalized.includes('numbers'))
     ) {
       return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
+    }
+    if (
+      normalized.includes('verification code is required') ||
+      normalized.includes('verification code is invalid') ||
+      normalized.includes('invalid or expired')
+    ) {
+      return 'Неверный или просроченный код подтверждения';
+    }
+    if (normalized.includes('verification code sent')) {
+      return 'Код подтверждения отправлен на email';
     }
     if (
       normalized.includes('email already registered') ||
@@ -50,6 +63,10 @@ export default function RegisterPage() {
       setError('Пароли не совпадают');
       return;
     }
+    if (!verificationCode.trim()) {
+      setError('Введите код подтверждения из email');
+      return;
+    }
 
     try {
       await apiFetch('/auth/register', {
@@ -58,6 +75,7 @@ export default function RegisterPage() {
           name: name.trim() || undefined,
           email,
           password,
+          verificationCode: verificationCode.trim(),
         }),
       });
 
@@ -65,6 +83,30 @@ export default function RegisterPage() {
     } catch (err: any) {
       console.error('Registration failed:', err);
       setError(mapRegisterError(String(err?.message || '')));
+    }
+  }
+
+  async function handleSendCode() {
+    setError('');
+
+    if (!email.trim()) {
+      setError('Введите email для подтверждения');
+      return;
+    }
+
+    try {
+      setSendingCode(true);
+      await apiFetch('/auth/register/send-code', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      setCodeSent(true);
+      alert('Код подтверждения отправлен на ваш email');
+    } catch (err: any) {
+      console.error('Send code failed:', err);
+      setError(mapRegisterError(String(err?.message || '')));
+    } finally {
+      setSendingCode(false);
     }
   }
 
@@ -85,6 +127,21 @@ export default function RegisterPage() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={handleSendCode}
+          disabled={sendingCode || !email.trim()}
+          className="w-full rounded bg-blue-600 p-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {sendingCode ? 'Отправка...' : codeSent ? 'Отправить код повторно' : 'Отправить код подтверждения'}
+        </button>
+
+        <input
+          className="w-full border p-2"
+          placeholder="Код подтверждения из email"
+          value={verificationCode}
+          onChange={(e) => setVerificationCode(e.target.value)}
         />
 
         <input
@@ -121,4 +178,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

@@ -5,13 +5,19 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Post('register/send-code')
+  sendRegisterCode(@Body('email') email: string) {
+    return this.authService.sendVerificationCode(email);
+  }
+
   @Post('register')
   register(
     @Body('email') email: string,
     @Body('password') password: string,
+    @Body('verificationCode') verificationCode: string,
     @Body('name') name?: string,
   ) {
-    return this.authService.register(email, password, name);
+    return this.authService.register(email, password, verificationCode, name);
   }
 
   @Post('login')

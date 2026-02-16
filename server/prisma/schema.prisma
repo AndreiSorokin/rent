@@ -17,6 +17,18 @@ model User {
   sentInvitations Invitation[] @relation("inviter")
 }
 
+model EmailVerificationCode {
+  id        Int      @id @default(autoincrement())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([email, expiresAt, usedAt])
+}
+
 model StoreUser {
   id Int @id @default(autoincrement())
 
