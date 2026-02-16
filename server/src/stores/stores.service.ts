@@ -2,15 +2,34 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Currency, Permission, PavilionStatus, Prisma } from '@prisma/client';
 import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
 
 @Injectable()
-export class StoresService {
+export class StoresService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(StoresService.name);
+  private monthlyRolloverTimer?: NodeJS.Timeout;
+
+  onModuleInit() {
+    void this.runMonthlyRolloverForAllStores();
+    this.monthlyRolloverTimer = setInterval(() => {
+      void this.runMonthlyRolloverForAllStores();
+    }, 60 * 60 * 1000);
+  }
+
+  onModuleDestroy() {
+    if (this.monthlyRolloverTimer) {
+      clearInterval(this.monthlyRolloverTimer);
+      this.monthlyRolloverTimer = undefined;
+    }
+  }
 
   /**
    * Get all stores which belong to a specific owner
@@ -868,5 +887,18 @@ export class StoresService {
         },
       });
     });
+  }
+
+  private async runMonthlyRolloverForAllStores() {
+    try {
+      const stores = await this.prisma.store.findMany({
+        select: { id: true },
+      });
+      await Promise.all(
+        stores.map((store) => this.runMonthlyRolloverForStore(store.id)),
+      );
+    } catch (error) {
+      this.logger.error('Failed to execute monthly rollover job', error as Error);
+    }
   }
 }
