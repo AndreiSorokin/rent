@@ -80,6 +80,7 @@ export default function StorePage() {
   });
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
+  const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -400,7 +401,10 @@ export default function StorePage() {
     const byCategory = pavilionCategoryFilter
       ? (p.category || '') === pavilionCategoryFilter
       : true;
-    return byName && byCategory;
+    const byStatus = pavilionStatusFilter
+      ? p.status === pavilionStatusFilter
+      : true;
+    return byName && byCategory && byStatus;
   });
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
@@ -509,7 +513,7 @@ export default function StorePage() {
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px]">
               <input
                 type="text"
                 value={pavilionSearch}
@@ -528,6 +532,16 @@ export default function StorePage() {
                     {category}
                   </option>
                 ))}
+              </select>
+              <select
+                value={pavilionStatusFilter}
+                onChange={(e) => setPavilionStatusFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">Все статусы</option>
+                <option value="AVAILABLE">СВОБОДЕН</option>
+                <option value="RENTED">ЗАНЯТ</option>
+                <option value="PREPAID">ПРЕДОПЛАТА</option>
               </select>
             </div>
 

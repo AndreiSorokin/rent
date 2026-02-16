@@ -27,7 +27,7 @@ export default function UtilitiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [utilitiesById, setUtilitiesById] = useState<Record<number, string>>({});
   const [advertisingById, setAdvertisingById] = useState<Record<number, string>>({});
-  const [savingById, setSavingById] = useState<Record<number, boolean>>({});
+  const [savingAll, setSavingAll] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -76,46 +76,77 @@ export default function UtilitiesPage() {
     setAdvertisingById((prev) => ({ ...prev, [pavilionId]: value }));
   };
 
-  const handleSave = async (pavilion: Pavilion) => {
-    const rawUtilities = utilitiesById[pavilion.id] ?? '';
-    const rawAdvertising = advertisingById[pavilion.id] ?? '';
-    const utilitiesAmount = rawUtilities ? Number(rawUtilities) : 0;
-    const advertisingAmount = rawAdvertising ? Number(rawAdvertising) : 0;
+  const handleSaveAll = async () => {
+    const pavilions: Pavilion[] = store?.pavilions || [];
+    const updates: Array<{
+      pavilion: Pavilion;
+      payload: { utilitiesAmount: number | null; advertisingAmount: number | null };
+    }> = [];
 
-    if (
-      Number.isNaN(utilitiesAmount) ||
-      Number.isNaN(advertisingAmount) ||
-      utilitiesAmount < 0 ||
-      advertisingAmount < 0
-    ) {
-      alert('Сумма должна быть неотрицательной');
-      return;
+    for (const pavilion of pavilions) {
+      const rawUtilities = utilitiesById[pavilion.id] ?? '';
+      const rawAdvertising = advertisingById[pavilion.id] ?? '';
+      const utilitiesAmount = rawUtilities ? Number(rawUtilities) : 0;
+      const advertisingAmount = rawAdvertising ? Number(rawAdvertising) : 0;
+
+      if (
+        Number.isNaN(utilitiesAmount) ||
+        Number.isNaN(advertisingAmount) ||
+        utilitiesAmount < 0 ||
+        advertisingAmount < 0
+      ) {
+        alert(`Некорректная сумма у павильона ${pavilion.number}`);
+        return;
+      }
+
+      updates.push({
+        pavilion,
+        payload: {
+          utilitiesAmount:
+            pavilion.status === 'AVAILABLE'
+              ? null
+              : pavilion.status === 'PREPAID'
+                ? 0
+                : utilitiesAmount,
+          advertisingAmount:
+            pavilion.status === 'AVAILABLE'
+              ? null
+              : pavilion.status === 'PREPAID'
+                ? 0
+                : advertisingAmount,
+        },
+      });
     }
 
-    const payload = {
-      utilitiesAmount:
-        pavilion.status === 'AVAILABLE'
-          ? null
-          : pavilion.status === 'PREPAID'
-            ? 0
-            : utilitiesAmount,
-      advertisingAmount:
-        pavilion.status === 'AVAILABLE'
-          ? null
-          : pavilion.status === 'PREPAID'
-            ? 0
-            : advertisingAmount,
-    };
-
     try {
-      setSavingById((prev) => ({ ...prev, [pavilion.id]: true }));
-      await updatePavilion(storeId, pavilion.id, payload);
-      await fetchData();
+      setSavingAll(true);
+      await Promise.all(
+        updates.map(({ pavilion, payload }) =>
+          updatePavilion(storeId, pavilion.id, payload),
+        ),
+      );
+
+      setStore((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pavilions: (prev.pavilions || []).map((p: Pavilion) => {
+            const updated = updates.find((u) => u.pavilion.id === p.id);
+            if (!updated) return p;
+            return {
+              ...p,
+              utilitiesAmount: updated.payload.utilitiesAmount,
+              advertisingAmount: updated.payload.advertisingAmount,
+            };
+          }),
+        };
+      });
+      alert('Все значения сохранены');
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить значения');
+      alert('Не удалось сохранить все значения');
     } finally {
-      setSavingById((prev) => ({ ...prev, [pavilion.id]: false }));
+      setSavingAll(false);
     }
   };
 
@@ -136,7 +167,21 @@ export default function UtilitiesPage() {
     );
   }
 
-  const pavilions: Pavilion[] = store.pavilions || [];
+  const pavilions: Pavilion[] = [...(store.pavilions || [])].sort((a, b) => {
+    const aNumber = String(a.number ?? '').trim();
+    const bNumber = String(b.number ?? '').trim();
+    const aNum = Number(aNumber.replace(',', '.'));
+    const bNum = Number(bNumber.replace(',', '.'));
+
+    const aIsNum = Number.isFinite(aNum);
+    const bIsNum = Number.isFinite(bNum);
+    if (aIsNum && bIsNum && aNum !== bNum) return aNum - bNum;
+    if (aIsNum !== bIsNum) return aIsNum ? -1 : 1;
+
+    const textCompare = aNumber.localeCompare(bNumber, 'ru');
+    if (textCompare !== 0) return textCompare;
+    return a.id - b.id;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -153,6 +198,13 @@ export default function UtilitiesPage() {
               Валюта магазина: {store.currency} ({currencySymbol})
             </p>
           </div>
+          <button
+            onClick={handleSaveAll}
+            disabled={savingAll || pavilions.length === 0}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {savingAll ? 'Сохранение...' : 'Сохранить все'}
+          </button>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow md:p-8">
@@ -174,9 +226,6 @@ export default function UtilitiesPage() {
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Реклама
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                      Действие
                     </th>
                   </tr>
                 </thead>
@@ -218,15 +267,6 @@ export default function UtilitiesPage() {
                             }`}
                             placeholder={isAvailable ? '-' : '0'}
                           />
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm">
-                          <button
-                            onClick={() => handleSave(p)}
-                            disabled={savingById[p.id] || isAvailable}
-                            className="rounded bg-blue-600 px-3 py-1.5 text-white hover:bg-blue-700 disabled:opacity-60"
-                          >
-                            Сохранить
-                          </button>
                         </td>
                       </tr>
                     );
