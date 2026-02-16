@@ -13,6 +13,7 @@ model User {
   password        String
   name            String?
   stores          StoreUser[]
+  passwordResetTokens PasswordResetToken[]
   createdAt       DateTime     @default(now())
   sentInvitations Invitation[] @relation("inviter")
 }
@@ -27,6 +28,19 @@ model EmailVerificationCode {
 
   @@index([email, createdAt])
   @@index([email, expiresAt, usedAt])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, usedAt])
 }
 
 model StoreUser {

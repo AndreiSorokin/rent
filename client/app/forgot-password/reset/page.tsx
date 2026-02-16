@@ -1,29 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 
-function mapResetPasswordError(message: string) {
+function mapError(message: string) {
   const normalized = message.toLowerCase();
-  if (normalized.includes('current password is incorrect')) {
-    return 'Текущий пароль введен неверно';
-  }
-  if (normalized.includes('new password must be different')) {
-    return 'Новый пароль должен отличаться от текущего';
+  if (
+    normalized.includes('invalid or expired') ||
+    normalized.includes('reset token')
+  ) {
+    return 'Ссылка недействительна или истек срок действия';
   }
   if (normalized.includes('password must be at least 6 characters')) {
     return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
   }
+  if (normalized.includes('new password must be different')) {
+    return 'Новый пароль должен отличаться от предыдущего';
+  }
   return 'Не удалось обновить пароль';
 }
 
-export default function ResetPasswordPage() {
+export default function ForgotPasswordResetPage() {
   const router = useRouter();
-  const [currentPassword, setCurrentPassword] = useState('');
+  const searchParams = useSearchParams();
+  const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
   const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,16 +35,18 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError('');
 
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
+    if (!token) {
+      setError('Отсутствует токен сброса пароля');
+      return;
+    }
+    if (!newPassword || !confirmPassword) {
       setError('Заполните все поля');
       return;
     }
-
-    if (newPassword !== confirmNewPassword) {
-      setError('Новый пароль и подтверждение не совпадают');
+    if (newPassword !== confirmPassword) {
+      setError('Пароли не совпадают');
       return;
     }
-
     const isStrongPassword =
       /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
     if (!isStrongPassword) {
@@ -52,19 +58,18 @@ export default function ResetPasswordPage() {
 
     try {
       setSaving(true);
-      await apiFetch('/users/me/password', {
-        method: 'PATCH',
+      await apiFetch('/auth/forgot-password/reset', {
+        method: 'POST',
         body: JSON.stringify({
-          currentPassword,
+          token,
           newPassword,
         }),
       });
-
       localStorage.removeItem('token');
-      alert('Пароль обновлен. Выполните вход снова.');
+      alert('Пароль успешно обновлен. Войдите с новым паролем.');
       router.replace('/login');
     } catch (err: any) {
-      setError(mapResetPasswordError(String(err?.message || '')));
+      setError(mapError(String(err?.message || '')));
     } finally {
       setSaving(false);
     }
@@ -73,24 +78,10 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
-        <div className="flex justify-between text-sm">
-          <Link href="/dashboard" className="text-blue-600 hover:underline">
-            Назад в dashboard
-          </Link>
-          <Link href="/forgot-password" className="text-blue-600 hover:underline">
-            Забыли пароль?
-          </Link>
-        </div>
-
-        <h1 className="text-xl font-bold">Смена пароля</h1>
-
-        <input
-          type="password"
-          className="w-full rounded border p-2"
-          placeholder="Текущий пароль"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-        />
+        <Link href="/login" className="text-sm text-blue-600 hover:underline">
+          Назад ко входу
+        </Link>
+        <h1 className="text-xl font-bold">Создать новый пароль</h1>
 
         <input
           type="password"
@@ -104,8 +95,8 @@ export default function ResetPasswordPage() {
           type="password"
           className="w-full rounded border p-2"
           placeholder="Повторите новый пароль"
-          value={confirmNewPassword}
-          onChange={(e) => setConfirmNewPassword(e.target.value)}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
         <p className="text-xs text-gray-500">
@@ -119,7 +110,7 @@ export default function ResetPasswordPage() {
           disabled={saving}
           className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? 'Сохранение...' : 'Обновить пароль'}
+          {saving ? 'Сохранение...' : 'Сохранить новый пароль'}
         </button>
       </form>
     </div>

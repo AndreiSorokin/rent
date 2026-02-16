@@ -34,7 +34,6 @@ export default function LoginPage() {
 
       localStorage.setItem('token', res.access_token);
       router.push('/dashboard');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Login failed:', err);
       setError(mapLoginError(String(err?.message || '')));
@@ -43,17 +42,14 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="w-96 space-y-4 rounded border p-6"
-      >
+      <form onSubmit={handleSubmit} className="w-96 space-y-4 rounded border p-6">
         <h1 className="text-xl font-bold">Вход</h1>
 
         <input
           className="w-full border p-2"
           placeholder="Email"
           value={email}
-          onChange={e => setEmail(e.target.value)}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
@@ -61,22 +57,27 @@ export default function LoginPage() {
           className="w-full border p-2"
           placeholder="Пароль"
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={(e) => setPassword(e.target.value)}
         />
 
         {error && <p className="text-red-500">{error}</p>}
 
-        <button className="w-full bg-black p-2 text-white">
-          Войти
-        </button>
+        <button className="w-full bg-black p-2 text-white">Войти</button>
+
+        <p className="text-center text-sm">
+          <Link href="/forgot-password" className="text-blue-600 hover:underline">
+            Забыли пароль?
+          </Link>
+        </p>
 
         <p className="text-center text-sm text-gray-600">
           Нет аккаунта?{' '}
           <Link href="/register" className="text-blue-600 hover:underline">
-            Зарегестироваться
+            Зарегистрироваться
           </Link>
         </p>
       </form>
     </div>
   );
 }
+
