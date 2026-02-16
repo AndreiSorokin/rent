@@ -20,7 +20,6 @@ export default function StoresPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
-    // Safe: localStorage only in browser
     const user = getCurrentUserFromToken();
     setCurrentUser(user);
 
@@ -28,7 +27,7 @@ export default function StoresPage() {
       .then((data) => {
         setStores(data || []);
       })
-      .catch(() => setError('Не удалось загрузить магазины'))
+      .catch(() => setError('Не удалось загрузить объекты'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -42,55 +41,59 @@ export default function StoresPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-4 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 text-center md:text-left">
+      <div className="mx-auto max-w-6xl p-4 md:p-8">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <h1 className="text-center text-3xl font-bold text-gray-800 md:text-left">
             Мои объекты
           </h1>
 
-          {/* Button to create store */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition shadow-sm"
+            className="rounded-lg bg-green-600 px-6 py-3 font-medium text-white shadow-sm transition hover:bg-green-700"
           >
             + Добавить объект
           </button>
         </div>
 
-        {/* User info */}
         {currentUser ? (
-          <div className="bg-white rounded-xl shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Добро пожаловать!</h2>
+          <div className="mb-8 rounded-xl bg-white p-6 shadow">
+            <h2 className="mb-4 text-xl font-semibold">Добро пожаловать!</h2>
             <p className="text-lg">
               <strong>{currentUser.name || 'Пользователь'}</strong> ({currentUser.email})
             </p>
+            <div className="mt-6 border-t pt-4">
+              <Link
+                href="/reset-password"
+                className="inline-flex rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              >
+                Сменить пароль
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow p-6 mb-8 animate-pulse">
-            <h2 className="text-xl font-semibold mb-4">Загрузка пользователя...</h2>
+          <div className="mb-8 animate-pulse rounded-xl bg-white p-6 shadow">
+            <h2 className="mb-4 text-xl font-semibold">Загрузка пользователя...</h2>
           </div>
         )}
 
         {stores.length === 0 ? (
-          <div className="bg-white rounded-xl shadow p-8 text-center">
-            <p className="text-gray-600 text-lg mb-6">
-              У вас пока нет магазинов
-            </p>
+          <div className="rounded-xl bg-white p-8 text-center shadow">
+            <p className="mb-6 text-lg text-gray-600">У вас пока нет объектов</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {stores.map((store) => (
               <Link
                 key={store.id}
                 href={`/stores/${store.id}`}
-                className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow overflow-hidden"
+                className="overflow-hidden rounded-xl bg-white shadow transition-shadow hover:shadow-lg"
               >
                 <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2 truncate">
+                  <h3 className="mb-2 truncate text-xl font-semibold text-gray-800">
                     {store.name}
                   </h3>
                   <div className="flex items-center justify-between">
-                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm text-indigo-800">
                       {store.permissions?.join(', ') || 'Сотрудник'}
                     </span>
                   </div>
@@ -101,7 +104,6 @@ export default function StoresPage() {
         )}
       </div>
 
-      {/* Create Store Modal */}
       {showCreateModal && (
         <CreateStoreModal
           onClose={() => setShowCreateModal(false)}
