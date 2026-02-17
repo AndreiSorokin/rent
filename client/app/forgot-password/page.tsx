@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
         <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          Назад ко входу
+          Назад
         </Link>
         <h1 className="text-xl font-bold">Забыли пароль?</h1>
         <p className="text-sm text-gray-600">

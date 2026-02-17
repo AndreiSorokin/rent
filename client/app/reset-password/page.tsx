@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
         <div className="flex justify-between text-sm">
           <Link href="/dashboard" className="text-blue-600 hover:underline">
-            Назад в dashboard
+            Назад в личный кабинет
           </Link>
           <Link href="/forgot-password" className="text-blue-600 hover:underline">
             Забыли пароль?

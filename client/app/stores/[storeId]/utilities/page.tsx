@@ -27,6 +27,8 @@ export default function UtilitiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [utilitiesById, setUtilitiesById] = useState<Record<number, string>>({});
   const [advertisingById, setAdvertisingById] = useState<Record<number, string>>({});
+  const [orderedPavilionIds, setOrderedPavilionIds] = useState<number[]>([]);
+  const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
 
   const fetchData = async () => {
@@ -61,6 +63,64 @@ export default function UtilitiesPage() {
   useEffect(() => {
     if (storeId) fetchData();
   }, [storeId]);
+
+  const defaultSortedPavilions: Pavilion[] = useMemo(() => {
+    return [...(store?.pavilions || [])].sort((a, b) => {
+      const aNumber = String(a.number ?? '').trim();
+      const bNumber = String(b.number ?? '').trim();
+      const aNum = Number(aNumber.replace(',', '.'));
+      const bNum = Number(bNumber.replace(',', '.'));
+
+      const aIsNum = Number.isFinite(aNum);
+      const bIsNum = Number.isFinite(bNum);
+      if (aIsNum && bIsNum && aNum !== bNum) return aNum - bNum;
+      if (aIsNum !== bIsNum) return aIsNum ? -1 : 1;
+
+      const textCompare = aNumber.localeCompare(bNumber, 'ru');
+      if (textCompare !== 0) return textCompare;
+      return a.id - b.id;
+    });
+  }, [store?.pavilions]);
+
+  useEffect(() => {
+    if (!storeId || defaultSortedPavilions.length === 0) {
+      setOrderedPavilionIds([]);
+      return;
+    }
+
+    const storageKey = `utilities-order-${storeId}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const idSet = new Set(defaultSortedPavilions.map((p) => p.id));
+          const restored = parsed
+            .map((v) => Number(v))
+            .filter((id) => Number.isFinite(id) && idSet.has(id));
+          const missing = defaultSortedPavilions
+            .map((p) => p.id)
+            .filter((id) => !restored.includes(id));
+          setOrderedPavilionIds([...restored, ...missing]);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to restore pavilion order', err);
+    }
+
+    setOrderedPavilionIds(defaultSortedPavilions.map((p) => p.id));
+  }, [storeId, defaultSortedPavilions]);
+
+  useEffect(() => {
+    if (!storeId || orderedPavilionIds.length === 0) return;
+    const storageKey = `utilities-order-${storeId}`;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(orderedPavilionIds));
+    } catch (err) {
+      console.warn('Failed to persist pavilion order', err);
+    }
+  }, [storeId, orderedPavilionIds]);
 
   const permissions = useMemo(() => store?.permissions || [], [store]);
   const hasPaymentsAccess =
@@ -167,21 +227,29 @@ export default function UtilitiesPage() {
     );
   }
 
-  const pavilions: Pavilion[] = [...(store.pavilions || [])].sort((a, b) => {
-    const aNumber = String(a.number ?? '').trim();
-    const bNumber = String(b.number ?? '').trim();
-    const aNum = Number(aNumber.replace(',', '.'));
-    const bNum = Number(bNumber.replace(',', '.'));
+  const pavilionMap = new Map<number, Pavilion>(
+    (store.pavilions || []).map((p: Pavilion) => [p.id, p]),
+  );
+  const pavilions: Pavilion[] =
+    orderedPavilionIds.length > 0
+      ? orderedPavilionIds
+          .map((id) => pavilionMap.get(id))
+          .filter((p): p is Pavilion => Boolean(p))
+      : defaultSortedPavilions;
 
-    const aIsNum = Number.isFinite(aNum);
-    const bIsNum = Number.isFinite(bNum);
-    if (aIsNum && bIsNum && aNum !== bNum) return aNum - bNum;
-    if (aIsNum !== bIsNum) return aIsNum ? -1 : 1;
+  const movePavilion = (dragId: number, targetId: number) => {
+    if (dragId === targetId) return;
+    setOrderedPavilionIds((prev) => {
+      const source = prev.length > 0 ? [...prev] : defaultSortedPavilions.map((p) => p.id);
+      const fromIndex = source.indexOf(dragId);
+      const toIndex = source.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
 
-    const textCompare = aNumber.localeCompare(bNumber, 'ru');
-    if (textCompare !== 0) return textCompare;
-    return a.id - b.id;
-  });
+      const [moved] = source.splice(fromIndex, 1);
+      source.splice(toIndex, 0, moved);
+      return source;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -216,6 +284,9 @@ export default function UtilitiesPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Перенос
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Павильон
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -235,7 +306,36 @@ export default function UtilitiesPage() {
                     const isPrepaid = p.status === 'PREPAID';
 
                     return (
-                      <tr key={p.id}>
+                      <tr
+                        key={p.id}
+                        onDragOver={(e) => {
+                          if (draggedPavilionId == null) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedPavilionId == null) return;
+                          movePavilion(draggedPavilionId, p.id);
+                          setDraggedPavilionId(null);
+                        }}
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedPavilionId(p.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={() => setDraggedPavilionId(null)}
+                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
+                            title="Потяните, чтобы изменить порядок"
+                            aria-label={`Переместить павильон ${p.number}`}
+                          >
+                            ⋮⋮
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           Павильон {p.number}
                         </td>
