@@ -316,6 +316,8 @@ export default function PavilionPage() {
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
   const currentMonthDiscount = getDiscountForPeriod(new Date());
+  const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
+  const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
   const prepaidAmount = (() => {
     if (!pavilion.prepaidUntil) return null;
 
@@ -341,21 +343,26 @@ export default function PavilionPage() {
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {hasPermission(permissions, 'DELETE_PAVILIONS') && (
-              <button
-                onClick={handleDeletePavilion}
-                className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-              >
-                Удалить павильон
-              </button>
-            )}
+          <div>
+            <button
+              className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+            >
+              Разделить павильон
+            </button>
           </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Основная информация</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="text-gray-600">Наименование организации</p>
+              <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Статус</p>
+              <p className="text-lg font-medium">{statusLabel[pavilion.status] ?? pavilion.status}</p>
+            </div>
             <div>
               <p className="text-gray-600">Площадь</p>
               <p className="text-lg font-medium">{pavilion.squareMeters} м2</p>
@@ -365,18 +372,21 @@ export default function PavilionPage() {
               <p className="text-lg font-medium">{formatMoney(pavilion.pricePerSqM, currency)}</p>
             </div>
             <div>
-              <p className="text-gray-600">Статус</p>
-              <p className="text-lg font-medium">{statusLabel[pavilion.status] ?? pavilion.status}</p>
-            </div>
-            <div>
-              <p className="text-gray-600">Наименование организации</p>
-              <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
-            </div>
-            <div>
               <p className="text-gray-600">Аренда</p>
-              <p className="text-lg font-medium">
-                {pavilion.rentAmount == null ? '-' : formatMoney(pavilion.rentAmount, currency)}
-              </p>
+              {pavilion.rentAmount == null ? (
+                <p className="text-lg font-medium">-</p>
+              ) : currentMonthDiscount > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500 line-through">
+                    {formatMoney(baseRentAmount, currency)}
+                  </p>
+                  <p className="inline-block rounded bg-yellow-200 px-2 py-0.5 text-lg font-semibold text-yellow-900">
+                    {formatMoney(discountedRentAmount, currency)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-lg font-medium">{formatMoney(baseRentAmount, currency)}</p>
+              )}
             </div>
             <div>
               <p className="text-gray-600">Коммунальные</p>
@@ -395,14 +405,14 @@ export default function PavilionPage() {
               </p>
             </div>
             <div>
-              <p className="text-gray-600">Скидка (текущий месяц)</p>
-              <p className="text-lg font-medium">{formatMoney(currentMonthDiscount, currency)}</p>
-            </div>
-            <div>
               <p className="text-gray-600">Сумма предоплаты</p>
               <p className="text-lg font-medium">
                 {prepaidAmount == null ? '-' : formatMoney(prepaidAmount, currency)}
               </p>
+            </div>
+            <div>
+              <p className="text-gray-600">Скидка (текущий месяц)</p>
+              <p className="text-lg font-medium">{formatMoney(currentMonthDiscount, currency)}</p>
             </div>
           </div>
 
@@ -944,6 +954,16 @@ export default function PavilionPage() {
             onClose={() => setPayingCharge(null)}
             onSaved={handleActionSuccess}
           />
+        )}
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {hasPermission(permissions, 'DELETE_PAVILIONS') && (
+          <button
+            onClick={handleDeletePavilion}
+            className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          >
+            Удалить павильон
+          </button>
         )}
       </div>
     </div>
