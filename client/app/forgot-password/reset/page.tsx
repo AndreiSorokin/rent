@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -22,7 +22,7 @@ function mapError(message: string) {
   return 'Не удалось обновить пароль';
 }
 
-export default function ForgotPasswordResetPage() {
+function ForgotPasswordResetForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get('token') || '', [searchParams]);
@@ -117,3 +117,10 @@ export default function ForgotPasswordResetPage() {
   );
 }
 
+export default function ForgotPasswordResetPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-lg">Загрузка...</div>}>
+      <ForgotPasswordResetForm />
+    </Suspense>
+  );
+}
