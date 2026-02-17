@@ -443,141 +443,6 @@ export default function PavilionPage() {
           )}
         </div>
 
-        {hasPermission(permissions, 'VIEW_CONTRACTS') && (
-          <div className="rounded-xl bg-white p-6 shadow">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Договоры</h2>
-              {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
-                <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
-                  {uploadingContract ? 'Загрузка...' : '+ Загрузить документ'}
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleContractUpload}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
-                    disabled={uploadingContract}
-                  />
-                </label>
-              )}
-            </div>
-
-            {!pavilion.contracts || pavilion.contracts.length === 0 ? (
-              <p className="text-gray-500">Документы не загружены</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {pavilion.contracts.map((contract) => (
-                      <tr key={contract.id}>
-                        <td className="px-6 py-4 text-sm">
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {contract.fileName}
-                          </a>
-                        </td>
-                        <td className="px-6 py-4 text-sm">{contract.fileType}</td>
-                        <td className="px-6 py-4 text-sm">
-                          {new Date(contract.uploadedAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 text-right text-sm">
-                          {hasPermission(permissions, 'DELETE_CONTRACTS') && (
-                            <button
-                              onClick={() => handleDeleteContract(contract.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-          <div className="rounded-xl bg-white p-6 shadow">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Скидки</h2>
-            {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-              <button
-                onClick={() => setShowDiscountModal(true)}
-                className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-              >
-                + Добавить скидку
-              </button>
-            )}
-          </div>
-
-          {pavilion.discounts.length === 0 ? (
-            <p className="text-gray-500">Скидок нет</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м2</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Комментарий</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pavilion.discounts.map((discount) => (
-                    <tr key={discount.id}>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        {discount.amount.toFixed(2)} {currencySymbol}/м2
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        {formatMoney(discount.amount * pavilion.squareMeters, currency)}
-                      </td>
-                      <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
-                      <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
-                      <td className="px-6 py-4 text-sm">
-                        {isDiscountActiveNow(discount) ? (
-                          <span className="font-semibold text-green-700">Активна</span>
-                        ) : (
-                          <span className="font-semibold text-gray-600">Не активна</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
-                      <td className="px-6 py-4 text-right text-sm">
-                        {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-                          <button
-                            onClick={() => handleDeleteDiscount(discount.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Удалить
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          </div>
-        )}
-
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
@@ -712,6 +577,141 @@ export default function PavilionPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_CONTRACTS') && (
+          <div className="rounded-xl bg-white p-6 shadow">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Договоры</h2>
+              {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
+                <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
+                  {uploadingContract ? 'Загрузка...' : '+ Загрузить документ'}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleContractUpload}
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                    disabled={uploadingContract}
+                  />
+                </label>
+              )}
+            </div>
+
+            {!pavilion.contracts || pavilion.contracts.length === 0 ? (
+              <p className="text-gray-500">Документы не загружены</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pavilion.contracts.map((contract) => (
+                      <tr key={contract.id}>
+                        <td className="px-6 py-4 text-sm">
+                          <a
+                            href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {contract.fileName}
+                          </a>
+                        </td>
+                        <td className="px-6 py-4 text-sm">{contract.fileType}</td>
+                        <td className="px-6 py-4 text-sm">
+                          {new Date(contract.uploadedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm">
+                          {hasPermission(permissions, 'DELETE_CONTRACTS') && (
+                            <button
+                              onClick={() => handleDeleteContract(contract.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+          <div className="rounded-xl bg-white p-6 shadow">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Скидки</h2>
+            {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+              <button
+                onClick={() => setShowDiscountModal(true)}
+                className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+              >
+                + Добавить скидку
+              </button>
+            )}
+          </div>
+
+          {pavilion.discounts.length === 0 ? (
+            <p className="text-gray-500">Скидок нет</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м2</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Комментарий</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pavilion.discounts.map((discount) => (
+                    <tr key={discount.id}>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        {discount.amount.toFixed(2)} {currencySymbol}/м2
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium">
+                        {formatMoney(discount.amount * pavilion.squareMeters, currency)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
+                      <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {isDiscountActiveNow(discount) ? (
+                          <span className="font-semibold text-green-700">Активна</span>
+                        ) : (
+                          <span className="font-semibold text-gray-600">Не активна</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
+                      <td className="px-6 py-4 text-right text-sm">
+                        {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+                          <button
+                            onClick={() => handleDeleteDiscount(discount.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
           </div>
@@ -956,7 +956,7 @@ export default function PavilionPage() {
           />
         )}
       </div>
-      <div className="flex flex-wrap gap-3">
+      <div className="mx-auto mt-6 flex w-full max-w-6xl justify-center p-4 md:px-8 md:pb-8">
         {hasPermission(permissions, 'DELETE_PAVILIONS') && (
           <button
             onClick={handleDeletePavilion}
