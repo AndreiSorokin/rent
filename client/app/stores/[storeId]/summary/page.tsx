@@ -82,10 +82,6 @@ export default function StoreSummaryPage() {
           <h2 className="mb-4 text-xl font-semibold">1. Общий доход</h2>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>Остаток с предыдущего месяца: {formatMoney(income.previousMonthBalance ?? 0, currency)}</div>
-            <div>Аренда: {formatMoney(income.rent ?? 0, currency)}</div>
-            <div>Коммуналка: {formatMoney(income.facilities ?? 0, currency)}</div>
-            <div>Реклама: {formatMoney(income.advertising ?? 0, currency)}</div>
-            <div>Доп. начисления: {formatMoney(income.additional ?? 0, currency)}</div>
             <div className="font-semibold">Итого доход: {formatMoney(income.total ?? 0, currency)}</div>
           </div>
           <div className="mt-4 border-t pt-4">
@@ -155,10 +151,6 @@ export default function StoreSummaryPage() {
             <div className="font-semibold">
               Итого расход (факт): {formatMoney(expenses.totals?.actual ?? 0, currency)}
             </div>
-          </div>
-          <div className="mt-3 text-sm text-gray-600">
-            Коммуналка по прогнозу: {formatMoney(expenseByTypeForecast.facilities ?? 0, currency)}; факт:{' '}
-            {formatMoney(expenseByType.facilities ?? 0, currency)}
           </div>
         </div>
 
