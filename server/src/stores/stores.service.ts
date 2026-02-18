@@ -938,6 +938,68 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async listFacilities(storeId: number) {
+    return this.prisma.storeFacility.findMany({
+      where: { storeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createFacility(
+    storeId: number,
+    data: { name: string; amount: number },
+  ) {
+    const name = data.name?.trim();
+    const amount = Number(data.amount);
+    if (!name) {
+      throw new BadRequestException('name is required');
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      throw new BadRequestException('amount must be non-negative');
+    }
+
+    return this.prisma.storeFacility.create({
+      data: {
+        storeId,
+        name,
+        amount,
+      },
+    });
+  }
+
+  async updateFacilityStatus(
+    storeId: number,
+    facilityId: number,
+    status: 'UNPAID' | 'PAID',
+  ) {
+    const facility = await this.prisma.storeFacility.findFirst({
+      where: { id: facilityId, storeId },
+      select: { id: true },
+    });
+    if (!facility) {
+      throw new NotFoundException('Store facility not found');
+    }
+
+    return this.prisma.storeFacility.update({
+      where: { id: facilityId },
+      data: { status },
+    });
+  }
+
+  async deleteFacility(storeId: number, facilityId: number) {
+    const facility = await this.prisma.storeFacility.findFirst({
+      where: { id: facilityId, storeId },
+      select: { id: true },
+    });
+    if (!facility) {
+      throw new NotFoundException('Store facility not found');
+    }
+
+    return this.prisma.storeFacility.delete({
+      where: { id: facilityId },
+    });
+  }
+
   private async runMonthlyRolloverForAllStores() {
     try {
       const stores = await this.prisma.store.findMany({

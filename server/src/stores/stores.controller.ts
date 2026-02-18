@@ -77,6 +77,40 @@ export class StoresController {
     return this.service.createStaff(storeId, req.user.id, data);
   }
 
+  @Get(':storeId/facilities')
+  @Permissions(Permission.VIEW_CHARGES)
+  listFacilities(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.listFacilities(storeId);
+  }
+
+  @Post(':storeId/facilities')
+  @Permissions(Permission.CREATE_CHARGES)
+  createFacility(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { name: string; amount: number },
+  ) {
+    return this.service.createFacility(storeId, data);
+  }
+
+  @Patch(':storeId/facilities/:facilityId/status')
+  @Permissions(Permission.EDIT_CHARGES)
+  updateFacilityStatus(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('facilityId', ParseIntPipe) facilityId: number,
+    @Body() data: { status: 'UNPAID' | 'PAID' },
+  ) {
+    return this.service.updateFacilityStatus(storeId, facilityId, data.status);
+  }
+
+  @Delete(':storeId/facilities/:facilityId')
+  @Permissions(Permission.DELETE_CHARGES)
+  deleteFacility(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('facilityId', ParseIntPipe) facilityId: number,
+  ) {
+    return this.service.deleteFacility(storeId, facilityId);
+  }
+
   @Patch(':storeId/staff/:staffId')
   @Permissions(Permission.EDIT_CHARGES)
   updateStaff(

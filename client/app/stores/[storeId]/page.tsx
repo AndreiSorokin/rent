@@ -23,6 +23,12 @@ import {
   PavilionExpenseType,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
+import {
+  createStoreFacility,
+  deleteStoreFacility,
+  listStoreFacilities,
+  updateStoreFacilityStatus,
+} from '@/lib/storeFacilities';
 
 const MANUAL_EXPENSE_CATEGORIES: Array<{
   type: PavilionExpenseType;
@@ -68,6 +74,10 @@ export default function StorePage() {
   const [householdName, setHouseholdName] = useState('');
   const [householdAmount, setHouseholdAmount] = useState('');
   const [householdSaving, setHouseholdSaving] = useState(false);
+  const [storeFacilities, setStoreFacilities] = useState<any[]>([]);
+  const [facilityName, setFacilityName] = useState('');
+  const [facilityAmount, setFacilityAmount] = useState('');
+  const [facilitySaving, setFacilitySaving] = useState(false);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
     Record<PavilionExpenseType, string>
@@ -110,15 +120,18 @@ export default function StorePage() {
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_CHARGES')) {
-        const [householdData, expensesData] = await Promise.all([
+        const [householdData, expensesData, facilitiesData] = await Promise.all([
           getHouseholdExpenses(storeId),
           listPavilionExpenses(storeId),
+          listStoreFacilities(storeId),
         ]);
         setHouseholdExpenses(householdData || []);
         setStoreExpenses(expensesData || []);
+        setStoreFacilities(facilitiesData || []);
       } else {
         setHouseholdExpenses([]);
         setStoreExpenses([]);
+        setStoreFacilities([]);
       }
 
       setStore(storeData);
@@ -244,22 +257,6 @@ export default function StorePage() {
     }
   };
 
-  const handleUpdateStoreExpenseStatuses = async (data: {
-    utilitiesExpenseStatus?: 'UNPAID' | 'PAID';
-    householdExpenseStatus?: 'UNPAID' | 'PAID';
-  }) => {
-    try {
-      await apiFetch(`/stores/${storeId}/expenses/statuses`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось обновить статус расхода');
-    }
-  };
-
   const handleCreateAccountingRecord = async () => {
     const bank = accountingBank ? Number(accountingBank) : 0;
     const cash1 = accountingCash1 ? Number(accountingCash1) : 0;
@@ -358,6 +355,60 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус хоз. расхода');
+    }
+  };
+
+  const handleCreateStoreFacility = async () => {
+    if (!facilityName.trim() || !facilityAmount) {
+      alert('Введите название и сумму коммуналки объекта');
+      return;
+    }
+
+    const amount = Number(facilityAmount);
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Некорректная сумма');
+      return;
+    }
+
+    try {
+      setFacilitySaving(true);
+      await createStoreFacility(storeId, {
+        name: facilityName.trim(),
+        amount,
+      });
+      setFacilityName('');
+      setFacilityAmount('');
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить коммуналку объекта');
+    } finally {
+      setFacilitySaving(false);
+    }
+  };
+
+  const handleDeleteStoreFacility = async (facilityId: number) => {
+    if (!confirm('Удалить запись коммуналки объекта?')) return;
+
+    try {
+      await deleteStoreFacility(storeId, facilityId);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить запись');
+    }
+  };
+
+  const handleUpdateStoreFacilityStatus = async (
+    facilityId: number,
+    status: 'UNPAID' | 'PAID',
+  ) => {
+    try {
+      await updateStoreFacilityStatus(storeId, facilityId, status);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить статус коммуналки объекта');
     }
   };
 
@@ -460,13 +511,13 @@ export default function StorePage() {
   const staffSalariesActualTotal = (store.staff || [])
     .filter((staff: any) => staff.salaryStatus === 'PAID')
     .reduce((sum: number, staff: any) => sum + Number(staff.salary ?? 0), 0);
-  const utilitiesExpenseForecast = (store.pavilions || []).reduce((sum: number, pavilion: any) => {
-    const shouldCount =
-      pavilion.status === 'RENTED' || pavilion.status === 'PREPAID';
-    return sum + (shouldCount ? Number(pavilion.utilitiesAmount ?? 0) : 0);
-  }, 0);
-  const utilitiesExpenseActual =
-    store.utilitiesExpenseStatus === 'PAID' ? utilitiesExpenseForecast : 0;
+  const utilitiesExpenseForecast = storeFacilities.reduce(
+    (sum: number, facility: any) => sum + Number(facility.amount ?? 0),
+    0,
+  );
+  const utilitiesExpenseActual = storeFacilities
+    .filter((facility: any) => facility.status === 'PAID')
+    .reduce((sum: number, facility: any) => sum + Number(facility.amount ?? 0), 0);
   const householdExpensesActual = householdExpenses.reduce(
     (sum, expense) =>
       expense.status === 'PAID' ? sum + Number(expense.amount ?? 0) : sum,
@@ -883,22 +934,78 @@ export default function StorePage() {
               })}
 
               <div className="rounded-md border p-3">
-                <div className="mb-2 text-sm font-semibold">Коммуналка</div>
-                {hasPermission(permissions, 'EDIT_CHARGES') && (
-                  <select
-                    value={store.utilitiesExpenseStatus ?? 'UNPAID'}
-                    onChange={(e) =>
-                      handleUpdateStoreExpenseStatuses({
-                        utilitiesExpenseStatus: e.target.value as 'UNPAID' | 'PAID',
-                      })
-                    }
-                    className="mb-2 w-full rounded border px-2 py-1 text-xs"
-                  >
-                    <option value="UNPAID">Не оплачено</option>
-                    <option value="PAID">Оплачено</option>
-                  </select>
+                <div className="mb-2 text-sm font-semibold">Коммуналка объекта</div>
+                {hasPermission(permissions, 'CREATE_CHARGES') && (
+                  <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_auto]">
+                    <input
+                      type="text"
+                      value={facilityName}
+                      onChange={(e) => setFacilityName(e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                      placeholder="Название"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={facilityAmount}
+                      onChange={(e) => setFacilityAmount(e.target.value)}
+                      className="rounded border px-2 py-1 text-sm"
+                      placeholder="Сумма"
+                    />
+                    <button
+                      onClick={handleCreateStoreFacility}
+                      disabled={facilitySaving}
+                      className="rounded bg-sky-600 px-3 py-1 text-xs text-white hover:bg-sky-700 disabled:opacity-60"
+                    >
+                      +
+                    </button>
+                  </div>
                 )}
-                <div className="text-xs text-gray-700">
+
+                {storeFacilities.length > 0 ? (
+                  <div className="max-h-28 space-y-1 overflow-auto">
+                    {storeFacilities.map((facility: any) => (
+                      <div
+                        key={facility.id}
+                        className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                      >
+                        <span>
+                          {facility.name}: {formatMoney(facility.amount, store.currency)}
+                        </span>
+                        <div className="ml-2 flex items-center gap-2">
+                          {hasPermission(permissions, 'EDIT_CHARGES') && (
+                            <select
+                              value={facility.status}
+                              onChange={(e) =>
+                                handleUpdateStoreFacilityStatus(
+                                  facility.id,
+                                  e.target.value as 'UNPAID' | 'PAID',
+                                )
+                              }
+                              className="rounded border px-1 py-0.5 text-[10px]"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                          )}
+                          {hasPermission(permissions, 'DELETE_CHARGES') && (
+                            <button
+                              onClick={() => handleDeleteStoreFacility(facility.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              x
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">Записей нет</p>
+                )}
+
+                <div className="mt-2 text-xs text-gray-700">
                   Прогноз: {formatMoney(utilitiesExpenseForecast, store.currency)}
                 </div>
                 <div className="text-xs text-gray-700">

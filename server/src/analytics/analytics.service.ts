@@ -115,7 +115,14 @@ export class AnalyticsService {
         },
       },
     });
-    const [manualExpenses, householdExpenses, previousManualExpenses, previousHouseholdExpenses] =
+    const [
+      manualExpenses,
+      householdExpenses,
+      previousManualExpenses,
+      previousHouseholdExpenses,
+      storeFacilities,
+      previousStoreFacilities,
+    ] =
       await Promise.all([
         this.prisma.pavilionExpense.findMany({
           where: {
@@ -151,6 +158,24 @@ export class AnalyticsService {
               lte: prevPeriodEnd,
             },
             OR: [{ storeId }, { pavilion: { storeId } }],
+          },
+        }),
+        this.prisma.storeFacility.findMany({
+          where: {
+            storeId,
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+        }),
+        this.prisma.storeFacility.findMany({
+          where: {
+            storeId,
+            createdAt: {
+              gte: prevPeriodStart,
+              lte: prevPeriodEnd,
+            },
           },
         }),
       ]);
@@ -348,20 +373,21 @@ export class AnalyticsService {
     expenseByTypeForecast.SALARIES = staffSalariesForecast;
     expenseByTypeActual.SALARIES = staffSalariesActual;
 
-    for (const pavilion of pavilions) {
-      const utilitiesForecast = pavilion.monthlyLedgers[0]
-        ? Number(pavilion.monthlyLedgers[0].expectedUtilities ?? 0)
-        : pavilion.status === PavilionStatus.RENTED ||
-            pavilion.status === PavilionStatus.PREPAID
-          ? (pavilion.utilitiesAmount ?? 0)
-          : 0;
-      expenseUtilitiesForecast += utilitiesForecast;
-    }
+    expenseUtilitiesForecast = storeFacilities.reduce(
+      (sum, facility) => sum + Number(facility.amount ?? 0),
+      0,
+    );
 
     const householdActual =
       storeMeta?.householdExpenseStatus === 'PAID' ? expenseHouseholdTotal : 0;
-    const utilitiesActualByStatus =
-      storeMeta?.utilitiesExpenseStatus === 'PAID' ? expenseUtilitiesForecast : 0;
+    const utilitiesActualByStatus = storeFacilities
+      .filter((facility) => facility.status === 'PAID')
+      .reduce((sum, facility) => sum + Number(facility.amount ?? 0), 0);
+    const facilitiesStatus =
+      expenseUtilitiesForecast > 0 &&
+      Math.abs(utilitiesActualByStatus - expenseUtilitiesForecast) < 0.01
+        ? 'PAID'
+        : 'UNPAID';
 
     expensesTotalForecast =
       manualExpensesForecast +
@@ -475,17 +501,9 @@ export class AnalyticsService {
       previousStoreMeta?.householdExpenseStatus === 'PAID'
         ? previousHouseholdExpensesTotal
         : 0;
-    const previousUtilitiesActualByStatus =
-      previousStoreMeta?.utilitiesExpenseStatus === 'PAID'
-        ? previousMonthPavilions.reduce((sum, pavilion) => {
-            const utilitiesForecast =
-              pavilion.status === PavilionStatus.RENTED ||
-              pavilion.status === PavilionStatus.PREPAID
-                ? (pavilion.utilitiesAmount ?? 0)
-                : 0;
-            return sum + utilitiesForecast;
-          }, 0)
-        : 0;
+    const previousUtilitiesActualByStatus = previousStoreFacilities
+      .filter((facility) => facility.status === 'PAID')
+      .reduce((sum, facility) => sum + Number(facility.amount ?? 0), 0);
     const previousExpenseTotal =
       previousManualExpensesActual +
       previousSalariesActual +
@@ -636,7 +654,7 @@ export class AnalyticsService {
             utilities: {
               forecast: expenseUtilitiesForecast,
               actual: utilitiesActualByStatus,
-              status: storeMeta?.utilitiesExpenseStatus ?? 'UNPAID',
+              status: facilitiesStatus,
             },
           },
           totals: {
