@@ -297,6 +297,9 @@ export class AnalyticsService {
     let advertisingChannelsBankTransfer = 0;
     let advertisingChannelsCashbox1 = 0;
     let advertisingChannelsCashbox2 = 0;
+    let additionalChannelsBankTransfer = 0;
+    let additionalChannelsCashbox1 = 0;
+    let additionalChannelsCashbox2 = 0;
 
     const nonSalaryManualExpenses = manualExpenses.filter(
       (expense) => expense.type !== 'SALARIES',
@@ -427,20 +430,27 @@ export class AnalyticsService {
 
       for (const charge of pavilion.additionalCharges) {
         for (const payment of charge.payments) {
-          advertisingChannelsBankTransfer += payment.bankTransferPaid ?? 0;
-          advertisingChannelsCashbox1 += payment.cashbox1Paid ?? 0;
-          advertisingChannelsCashbox2 += payment.cashbox2Paid ?? 0;
+          additionalChannelsBankTransfer += payment.bankTransferPaid ?? 0;
+          additionalChannelsCashbox1 += payment.cashbox1Paid ?? 0;
+          additionalChannelsCashbox2 += payment.cashbox2Paid ?? 0;
         }
       }
     }
     channelsBankTransfer =
       rentChannelsBankTransfer +
       facilitiesChannelsBankTransfer +
-      advertisingChannelsBankTransfer;
+      advertisingChannelsBankTransfer +
+      additionalChannelsBankTransfer;
     channelsCashbox1 =
-      rentChannelsCashbox1 + facilitiesChannelsCashbox1 + advertisingChannelsCashbox1;
+      rentChannelsCashbox1 +
+      facilitiesChannelsCashbox1 +
+      advertisingChannelsCashbox1 +
+      additionalChannelsCashbox1;
     channelsCashbox2 =
-      rentChannelsCashbox2 + facilitiesChannelsCashbox2 + advertisingChannelsCashbox2;
+      rentChannelsCashbox2 +
+      facilitiesChannelsCashbox2 +
+      advertisingChannelsCashbox2 +
+      additionalChannelsCashbox2;
 
     const areaTotal = pavilions.reduce((sum, p) => sum + p.squareMeters, 0);
     const areaRented = pavilions
@@ -598,6 +608,15 @@ export class AnalyticsService {
                 advertisingChannelsBankTransfer +
                 advertisingChannelsCashbox1 +
                 advertisingChannelsCashbox2,
+            },
+            additional: {
+              bankTransfer: additionalChannelsBankTransfer,
+              cashbox1: additionalChannelsCashbox1,
+              cashbox2: additionalChannelsCashbox2,
+              total:
+                additionalChannelsBankTransfer +
+                additionalChannelsCashbox1 +
+                additionalChannelsCashbox2,
             },
           },
         },

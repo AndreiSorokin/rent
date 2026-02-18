@@ -29,6 +29,9 @@ export function CreatePavilionModal({
     new Date().toISOString().slice(0, 7),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
+  const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
+  const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
+  const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +58,24 @@ export function CreatePavilionModal({
       const price = Number(pricePerSqM);
       const autoRent = square * price;
       const prepaidPeriodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+      const prepaymentTarget = prepaymentAmount ? Number(prepaymentAmount) : autoRent;
+      const prepayBank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;
+      const prepayCash1 = prepaymentCashbox1Paid ? Number(prepaymentCashbox1Paid) : 0;
+      const prepayCash2 = prepaymentCashbox2Paid ? Number(prepaymentCashbox2Paid) : 0;
+      const prepayChannelsTotal = prepayBank + prepayCash1 + prepayCash2;
+
+      if (status === 'PREPAID') {
+        if (prepaymentTarget <= 0) {
+          setError('Сумма предоплаты должна быть больше 0');
+          setLoading(false);
+          return;
+        }
+        if (Math.abs(prepayChannelsTotal - prepaymentTarget) > 0.01) {
+          setError('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+          setLoading(false);
+          return;
+        }
+      }
 
       const pavilion = await apiFetch<{ id: number }>(`/stores/${storeId}/pavilions`, {
         method: 'POST',
@@ -78,7 +99,10 @@ export function CreatePavilionModal({
       if (status === 'PREPAID') {
         await createPavilionPayment(storeId, pavilion.id, {
           period: prepaidPeriodIso,
-          rentPaid: prepaymentAmount ? Number(prepaymentAmount) : autoRent,
+          rentPaid: prepaymentTarget,
+          rentBankTransferPaid: prepayBank > 0 ? prepayBank : undefined,
+          rentCashbox1Paid: prepayCash1 > 0 ? prepayCash1 : undefined,
+          rentCashbox2Paid: prepayCash2 > 0 ? prepayCash2 : undefined,
           utilitiesPaid: 0,
         });
       }
@@ -247,6 +271,38 @@ export function CreatePavilionModal({
                   className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Например: 1200"
                 />
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="mb-2 text-sm font-medium text-gray-700">Каналы оплаты предоплаты</p>
+                <div className="space-y-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={prepaymentBankTransferPaid}
+                    onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Безналичные"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={prepaymentCashbox1Paid}
+                    onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Наличные - касса 1"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={prepaymentCashbox2Paid}
+                    onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
+                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Наличные - касса 2"
+                  />
+                </div>
               </div>
             </>
           )}

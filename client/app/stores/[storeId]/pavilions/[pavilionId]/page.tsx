@@ -45,6 +45,9 @@ export default function PavilionPage() {
     new Date().toISOString().slice(0, 7),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
+  const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
+  const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
+  const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [uploadingContract, setUploadingContract] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
 
@@ -188,6 +191,19 @@ export default function PavilionPage() {
     const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
     const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
+    const bank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;
+    const cash1 = prepaymentCashbox1Paid ? Number(prepaymentCashbox1Paid) : 0;
+    const cash2 = prepaymentCashbox2Paid ? Number(prepaymentCashbox2Paid) : 0;
+    const channelsTotal = bank + cash1 + cash2;
+
+    if (targetRentPaid <= 0) {
+      alert('Сумма предоплаты должна быть больше 0');
+      return;
+    }
+    if (Math.abs(channelsTotal - targetRentPaid) > 0.01) {
+      alert('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+      return;
+    }
 
     try {
       const payments = await apiFetch<any[]>(
@@ -214,6 +230,9 @@ export default function PavilionPage() {
         await createPavilionPayment(storeIdNum, pavilionIdNum, {
           period: periodIso,
           rentPaid: rentDelta,
+          rentBankTransferPaid: bank > 0 ? bank : undefined,
+          rentCashbox1Paid: cash1 > 0 ? cash1 : undefined,
+          rentCashbox2Paid: cash2 > 0 ? cash2 : undefined,
           utilitiesPaid: 0,
           advertisingPaid: 0,
         });
@@ -221,6 +240,9 @@ export default function PavilionPage() {
 
       setShowPrepaymentModal(false);
       setPrepaymentAmount('');
+      setPrepaymentBankTransferPaid('');
+      setPrepaymentCashbox1Paid('');
+      setPrepaymentCashbox2Paid('');
       handleActionSuccess();
     } catch (err) {
       console.error(err);
@@ -248,6 +270,9 @@ export default function PavilionPage() {
         });
 
         const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
+        const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
+        const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
+        const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
         if (currentRentPaid > 0) {
           await createPavilionPayment(storeIdNum, pavilionIdNum, {
             period: new Date(
@@ -256,6 +281,9 @@ export default function PavilionPage() {
               1,
             ).toISOString(),
             rentPaid: -currentRentPaid,
+            rentBankTransferPaid: currentRentBank > 0 ? -currentRentBank : undefined,
+            rentCashbox1Paid: currentRentCash1 > 0 ? -currentRentCash1 : undefined,
+            rentCashbox2Paid: currentRentCash2 > 0 ? -currentRentCash2 : undefined,
             utilitiesPaid: 0,
             advertisingPaid: 0,
           });
@@ -825,16 +853,32 @@ export default function PavilionPage() {
                               {charge.payments?.length ? (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-gray-500">История оплат</div>
+                                  <div className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] gap-3 text-xs font-semibold text-gray-500">
+                                    <span>Дата</span>
+                                    <span>Сумма</span>
+                                    <span>Безналичные</span>
+                                    <span>Касса 1</span>
+                                    <span>Касса 2</span>
+                                    <span className="text-right">Действия</span>
+                                  </div>
                                   {charge.payments.map((p: any) => (
-                                    <div key={p.id} className="flex items-center justify-between gap-3">
+                                    <div
+                                      key={p.id}
+                                      className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] items-center gap-3 rounded bg-white px-2 py-1"
+                                    >
                                       <span>{new Date(p.paidAt).toLocaleDateString()}</span>
                                       <span className="font-medium">{formatMoney(p.amountPaid, currency)}</span>
-                                      <button
-                                        onClick={() => handleDeleteChargePayment(charge.id, p.id)}
-                                        className="text-xs text-red-600 hover:underline"
-                                      >
-                                        Удалить
-                                      </button>
+                                      <span>{formatMoney(p.bankTransferPaid ?? 0, currency)}</span>
+                                      <span>{formatMoney(p.cashbox1Paid ?? 0, currency)}</span>
+                                      <span>{formatMoney(p.cashbox2Paid ?? 0, currency)}</span>
+                                      <div className="text-right">
+                                        <button
+                                          onClick={() => handleDeleteChargePayment(charge.id, p.id)}
+                                          className="text-xs text-red-600 hover:underline"
+                                        >
+                                          Удалить
+                                        </button>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -915,6 +959,38 @@ export default function PavilionPage() {
                     className="w-full rounded border px-3 py-2"
                     placeholder={(pavilion.squareMeters * pavilion.pricePerSqM).toFixed(2)}
                   />
+                </div>
+                <div className="rounded border p-3">
+                  <p className="mb-2 text-sm font-medium">Каналы оплаты предоплаты</p>
+                  <div className="space-y-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={prepaymentBankTransferPaid}
+                      onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
+                      className="w-full rounded border px-3 py-2"
+                      placeholder="Безналичные"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={prepaymentCashbox1Paid}
+                      onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
+                      className="w-full rounded border px-3 py-2"
+                      placeholder="Наличные - касса 1"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={prepaymentCashbox2Paid}
+                      onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
+                      className="w-full rounded border px-3 py-2"
+                      placeholder="Наличные - касса 2"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">

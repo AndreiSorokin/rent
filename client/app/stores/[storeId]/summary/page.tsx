@@ -96,7 +96,7 @@ export default function StoreSummaryPage() {
           </div>
           <div className="mt-4 border-t pt-4">
             <h3 className="mb-2 font-medium">По сущностям и каналам</h3>
-            <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded border p-2">
                 <div className="mb-1 font-semibold">Аренда</div>
                 <div>Безнал: {formatMoney(channelsByEntity.rent?.bankTransfer ?? 0, currency)}</div>
@@ -117,6 +117,13 @@ export default function StoreSummaryPage() {
                 <div>Касса 1: {formatMoney(channelsByEntity.advertising?.cashbox1 ?? 0, currency)}</div>
                 <div>Касса 2: {formatMoney(channelsByEntity.advertising?.cashbox2 ?? 0, currency)}</div>
                 <div className="font-medium">Итого: {formatMoney(channelsByEntity.advertising?.total ?? 0, currency)}</div>
+              </div>
+              <div className="rounded border p-2">
+                <div className="mb-1 font-semibold">Доп. начисления</div>
+                <div>Безнал: {formatMoney(channelsByEntity.additional?.bankTransfer ?? 0, currency)}</div>
+                <div>Касса 1: {formatMoney(channelsByEntity.additional?.cashbox1 ?? 0, currency)}</div>
+                <div>Касса 2: {formatMoney(channelsByEntity.additional?.cashbox2 ?? 0, currency)}</div>
+                <div className="font-medium">Итого: {formatMoney(channelsByEntity.additional?.total ?? 0, currency)}</div>
               </div>
             </div>
           </div>

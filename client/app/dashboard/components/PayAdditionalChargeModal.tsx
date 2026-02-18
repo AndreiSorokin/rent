@@ -1,6 +1,7 @@
 'use client';
-import { payAdditionalCharge } from '@/lib/additionalCharges';
+
 import { useState } from 'react';
+import { payAdditionalCharge } from '@/lib/additionalCharges';
 
 export function PayAdditionalChargeModal({
   pavilionId,
@@ -30,11 +31,16 @@ export function PayAdditionalChargeModal({
     const channelsTotal = bank + cash1 + cash2;
 
     if (!amountPaid || amountValue <= 0) {
-      alert('Please enter a valid amount');
+      alert('Введите корректную сумму платежа');
       return;
     }
 
-    if (channelsTotal > 0 && Math.abs(channelsTotal - amountValue) > 0.01) {
+    if (channelsTotal <= 0) {
+      alert('Укажите сумму хотя бы в одном канале оплаты');
+      return;
+    }
+
+    if (Math.abs(channelsTotal - amountValue) > 0.01) {
       alert('Сумма по каналам должна совпадать с суммой платежа');
       return;
     }
@@ -49,30 +55,31 @@ export function PayAdditionalChargeModal({
       onClose();
     } catch (err) {
       console.error('Payment failed:', err);
-      alert('Failed to record payment. Please try again.');
+      alert('Не удалось записать платеж');
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-[90vw]">
-        <h2 className="text-xl font-bold mb-4">Record Payment – Additional Charge</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-96 max-w-[90vw] rounded-lg bg-white p-6">
+        <h2 className="mb-4 text-xl font-bold">Оплата доп. начисления</h2>
         <p className="mb-2 font-medium">{chargeName}</p>
-        <p className="text-sm text-gray-600 mb-4">
-          Expected: ${expectedAmount.toFixed(2)}
+        <p className="mb-4 text-sm text-gray-600">
+          Начислено: {expectedAmount.toFixed(2)}
         </p>
 
         <input
           type="number"
           step="0.01"
           min="0.01"
-          placeholder="Amount paid"
+          placeholder="Сумма оплаты"
           value={amountPaid}
           onChange={(e) => setAmountPaid(e.target.value)}
-          className="w-full p-2 border rounded mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="mb-6 w-full rounded border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium">Безналичный</label>
+          <label className="mb-1 block text-sm font-medium">Безналичные</label>
           <input
             type="number"
             step="0.01"
@@ -83,6 +90,7 @@ export function PayAdditionalChargeModal({
             placeholder="0.00"
           />
         </div>
+
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium">Наличные - касса 1</label>
           <input
@@ -95,6 +103,7 @@ export function PayAdditionalChargeModal({
             placeholder="0.00"
           />
         </div>
+
         <div className="mb-6">
           <label className="mb-1 block text-sm font-medium">Наличные - касса 2</label>
           <input
@@ -109,18 +118,15 @@ export function PayAdditionalChargeModal({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            Cancel
+          <button onClick={onClose} className="rounded border px-4 py-2 hover:bg-gray-100">
+            Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={!amountPaid || Number(amountPaid) <= 0}
-            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Record Payment
+            Записать платеж
           </button>
         </div>
       </div>
