@@ -1,29 +1,12 @@
-Missing:
-File upload handling
+Clarification:
+householdExpenses в frontend = только таблица Расходы на хоз. часть
+Поля: name, amount, status, createdAt (плюс id).
+
+Административные расходы в frontend сейчас идут через pavilionExpenses (store-level записи с storeId), а не через householdExpenses.
 
 After MVP:
-1. Add password strength
-2. Reset password
-3. Forgot password
+
 4. kick from a store
 5. Paid subscribtion
-6. Add store-level analytics (totals across pavilions)
+
 7. Email invitation
-8. Search on a store page (user emails, )
-9. On a store page show the debt-paid difference for every pavilion
-
-
-
-main hierarhy:
-Store
- ├── Pavilion[]
- └── StoreUser[]
-       └── User
-
-
-Clarification:
-1. We use Permission-based access control 
-2. When registering we can select whether it's admin or user
-
-Suggestions:
-1. If you delete store or pavilion it will go to "recently deleted" section where you can restore them if they have been deleted by mistake

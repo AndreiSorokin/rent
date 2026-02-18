@@ -73,21 +73,6 @@ model Store {
   accountingRecords StoreAccountingRecord[]
   householdExpenses HouseholdExpense[]
   pavilionExpenses PavilionExpense[]
-  facilities StoreFacility[]
-}
-
-model StoreFacility {
-  id Int @id @default(autoincrement())
-
-  storeId Int
-  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  name   String
-  amount Float
-  status PavilionExpenseStatus @default(UNPAID)
-  createdAt DateTime @default(now())
-
-  @@index([storeId, createdAt])
 }
 
 model StoreAccountingRecord {
@@ -201,6 +186,7 @@ enum PavilionStatus {
 
 enum PavilionExpenseType {
   SALARIES
+  STORE_FACILITIES
   PAYROLL_TAX
   PROFIT_TAX
   DIVIDENDS

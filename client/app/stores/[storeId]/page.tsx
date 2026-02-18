@@ -23,22 +23,19 @@ import {
   PavilionExpenseType,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
-import {
-  createStoreFacility,
-  deleteStoreFacility,
-  listStoreFacilities,
-  updateStoreFacilityStatus,
-} from '@/lib/storeFacilities';
+
+type ManualExpenseType = Exclude<PavilionExpenseType, 'SALARIES'>;
 
 const MANUAL_EXPENSE_CATEGORIES: Array<{
-  type: PavilionExpenseType;
+  type: ManualExpenseType;
   label: string;
 }> = [
+  { type: 'STORE_FACILITIES', label: 'Коммунальный платеж' },
   { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
   { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
-  { type: 'DIVIDENDS', label: 'Дивиденды' },
-  { type: 'BANK_SERVICES', label: 'Услуги банка' },
   { type: 'VAT', label: 'НДС' },
+  { type: 'BANK_SERVICES', label: 'Услуги банка' },
+  { type: 'DIVIDENDS', label: 'Дивиденды' },
   { type: 'LAND_RENT', label: 'Аренда земли' },
   { type: 'OTHER', label: 'Прочие расходы' },
 ];
@@ -74,15 +71,11 @@ export default function StorePage() {
   const [householdName, setHouseholdName] = useState('');
   const [householdAmount, setHouseholdAmount] = useState('');
   const [householdSaving, setHouseholdSaving] = useState(false);
-  const [storeFacilities, setStoreFacilities] = useState<any[]>([]);
-  const [facilityName, setFacilityName] = useState('');
-  const [facilityAmount, setFacilityAmount] = useState('');
-  const [facilitySaving, setFacilitySaving] = useState(false);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
-    Record<PavilionExpenseType, string>
+    Record<ManualExpenseType, string>
   >({
-    SALARIES: '',
+    STORE_FACILITIES: '',
     PAYROLL_TAX: '',
     PROFIT_TAX: '',
     DIVIDENDS: '',
@@ -120,18 +113,15 @@ export default function StorePage() {
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_CHARGES')) {
-        const [householdData, expensesData, facilitiesData] = await Promise.all([
+        const [householdData, expensesData] = await Promise.all([
           getHouseholdExpenses(storeId),
           listPavilionExpenses(storeId),
-          listStoreFacilities(storeId),
         ]);
         setHouseholdExpenses(householdData || []);
         setStoreExpenses(expensesData || []);
-        setStoreFacilities(facilitiesData || []);
       } else {
         setHouseholdExpenses([]);
         setStoreExpenses([]);
-        setStoreFacilities([]);
       }
 
       setStore(storeData);
@@ -358,61 +348,7 @@ export default function StorePage() {
     }
   };
 
-  const handleCreateStoreFacility = async () => {
-    if (!facilityName.trim() || !facilityAmount) {
-      alert('Введите название и сумму коммуналки объекта');
-      return;
-    }
-
-    const amount = Number(facilityAmount);
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Некорректная сумма');
-      return;
-    }
-
-    try {
-      setFacilitySaving(true);
-      await createStoreFacility(storeId, {
-        name: facilityName.trim(),
-        amount,
-      });
-      setFacilityName('');
-      setFacilityAmount('');
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить коммуналку объекта');
-    } finally {
-      setFacilitySaving(false);
-    }
-  };
-
-  const handleDeleteStoreFacility = async (facilityId: number) => {
-    if (!confirm('Удалить запись коммуналки объекта?')) return;
-
-    try {
-      await deleteStoreFacility(storeId, facilityId);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить запись');
-    }
-  };
-
-  const handleUpdateStoreFacilityStatus = async (
-    facilityId: number,
-    status: 'UNPAID' | 'PAID',
-  ) => {
-    try {
-      await updateStoreFacilityStatus(storeId, facilityId, status);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось обновить статус коммуналки объекта');
-    }
-  };
-
-  const handleCreateManualExpense = async (type: PavilionExpenseType) => {
+  const handleCreateManualExpense = async (type: ManualExpenseType) => {
     const raw = manualExpenseAmountByType[type];
     if (!raw) {
       alert('Введите сумму');
@@ -490,7 +426,7 @@ export default function StorePage() {
       acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
       return acc;
     },
-    {} as Record<PavilionExpenseType, any[]>,
+    {} as Record<ManualExpenseType, any[]>,
   );
   const householdExpensesTotal = householdExpenses.reduce(
     (sum, expense) => sum + Number(expense.amount ?? 0),
@@ -498,11 +434,18 @@ export default function StorePage() {
   );
   const manualExpensesForecastTotal = storeExpenses.reduce(
     (sum, item) =>
-      item.type === 'SALARIES' ? sum : sum + Number(item.amount ?? 0),
+      item.type === 'SALARIES' || item.type === 'STORE_FACILITIES'
+        ? sum
+        : sum + Number(item.amount ?? 0),
     0,
   );
   const manualExpensesActualTotal = storeExpenses
-    .filter((item) => item.type !== 'SALARIES' && item.status === 'PAID')
+    .filter(
+      (item) =>
+        item.type !== 'SALARIES' &&
+        item.type !== 'STORE_FACILITIES' &&
+        item.status === 'PAID',
+    )
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
   const staffSalariesForecastTotal = (store.staff || []).reduce(
     (sum: number, staff: any) => sum + Number(staff.salary ?? 0),
@@ -511,13 +454,18 @@ export default function StorePage() {
   const staffSalariesActualTotal = (store.staff || [])
     .filter((staff: any) => staff.salaryStatus === 'PAID')
     .reduce((sum: number, staff: any) => sum + Number(staff.salary ?? 0), 0);
-  const utilitiesExpenseForecast = storeFacilities.reduce(
-    (sum: number, facility: any) => sum + Number(facility.amount ?? 0),
-    0,
-  );
-  const utilitiesExpenseActual = storeFacilities
-    .filter((facility: any) => facility.status === 'PAID')
-    .reduce((sum: number, facility: any) => sum + Number(facility.amount ?? 0), 0);
+  const utilitiesExpenseForecast = storeExpenses
+    .filter((item) => item.type === 'STORE_FACILITIES')
+    .reduce(
+      (sum: number, item: any) => sum + Number(item.amount ?? 0),
+      0,
+    );
+  const utilitiesExpenseActual = storeExpenses
+    .filter((item: any) => item.type === 'STORE_FACILITIES' && item.status === 'PAID')
+    .reduce(
+      (sum: number, item: any) => sum + Number(item.amount ?? 0),
+      0,
+    );
   const householdExpensesActual = householdExpenses.reduce(
     (sum, expense) =>
       expense.status === 'PAID' ? sum + Number(expense.amount ?? 0) : sum,
@@ -692,56 +640,8 @@ export default function StorePage() {
           </div>
         )}
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
-              <div className="text-sm text-gray-700">
-                Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Расходы</h3>
-              <div className="text-sm text-gray-700">
-                Прогноз: {formatMoney(analytics?.expenses?.total?.forecast ?? 0, store.currency)}
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт: {formatMoney(analytics?.expenses?.total?.actual ?? 0, store.currency)}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Прибыль</h3>
-              <div className="text-sm text-gray-700">
-                Прогноз:{' '}
-                {formatMoney(
-                  (analytics?.income?.forecast?.total ?? 0) -
-                    (analytics?.expenses?.total?.forecast ?? 0),
-                  store.currency,
-                )}
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт:{' '}
-                {formatMoney(
-                  (analytics?.income?.actual?.total ?? 0) -
-                    (analytics?.expenses?.total?.actual ?? 0),
-                  store.currency,
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Хозяйственный расходы</h2>
-              <div className="text-sm font-semibold">
-                Итого: {formatMoney(householdExpensesTotal, store.currency)}
-              </div>
-            </div>
 
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
@@ -837,10 +737,6 @@ export default function StorePage() {
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Административные расходы</h2>
-              <div className="text-right text-sm">
-                <div>Итого прогноз: {formatMoney(expensesForecastTotal, store.currency)}</div>
-                <div>Итого факт: {formatMoney(expensesActualTotal, store.currency)}</div>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -933,84 +829,154 @@ export default function StorePage() {
                 );
               })}
 
-              <div className="rounded-md border p-3">
-                <div className="mb-2 text-sm font-semibold">Коммуналка объекта</div>
-                {hasPermission(permissions, 'CREATE_CHARGES') && (
-                  <div className="mb-2 grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_auto]">
-                    <input
-                      type="text"
-                      value={facilityName}
-                      onChange={(e) => setFacilityName(e.target.value)}
-                      className="rounded border px-2 py-1 text-sm"
-                      placeholder="Название"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={facilityAmount}
-                      onChange={(e) => setFacilityAmount(e.target.value)}
-                      className="rounded border px-2 py-1 text-sm"
-                      placeholder="Сумма"
-                    />
-                    <button
-                      onClick={handleCreateStoreFacility}
-                      disabled={facilitySaving}
-                      className="rounded bg-sky-600 px-3 py-1 text-xs text-white hover:bg-sky-700 disabled:opacity-60"
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
+            </div>
+          </div>
+        )}
 
-                {storeFacilities.length > 0 ? (
-                  <div className="max-h-28 space-y-1 overflow-auto">
-                    {storeFacilities.map((facility: any) => (
-                      <div
-                        key={facility.id}
-                        className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
-                      >
-                        <span>
-                          {facility.name}: {formatMoney(facility.amount, store.currency)}
-                        </span>
-                        <div className="ml-2 flex items-center gap-2">
-                          {hasPermission(permissions, 'EDIT_CHARGES') && (
+        {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
+            </div>
+
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+              <input
+                type="text"
+                value={staffPosition}
+                onChange={(e) => setStaffPosition(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Должность"
+              />
+              <input
+                type="text"
+                value={staffFullName}
+                onChange={(e) => setStaffFullName(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Имя фамилия"
+              />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={staffSalary}
+                onChange={(e) => setStaffSalary(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+                placeholder="Зарплата"
+              />
+              <button
+                onClick={handleAddStaff}
+                disabled={staffSaving}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Добавить
+              </button>
+            </div>
+
+            {!store.staff || store.staff.length === 0 ? (
+              <p className="text-gray-600">Список сотрудников пуст</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Должность
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Имя фамилия
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Зарплата
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Статус оплаты
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                        Действия
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {store.staff.map((staff: any) => (
+                      <tr key={staff.id}>
+                        <td className="px-4 py-3 text-sm">{staff.position}</td>
+                        <td className="px-4 py-3 text-sm">{staff.fullName}</td>
+                        <td className="px-4 py-3 text-sm">{formatMoney(staff.salary ?? 0, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
                             <select
-                              value={facility.status}
+                              value={staff.salaryStatus ?? 'UNPAID'}
                               onChange={(e) =>
-                                handleUpdateStoreFacilityStatus(
-                                  facility.id,
+                                handleUpdateStaffSalaryStatus(
+                                  staff.id,
                                   e.target.value as 'UNPAID' | 'PAID',
                                 )
                               }
-                              className="rounded border px-1 py-0.5 text-[10px]"
+                              className="rounded border px-2 py-1 text-xs"
                             >
                               <option value="UNPAID">Не оплачено</option>
                               <option value="PAID">Оплачено</option>
                             </select>
+                          ) : staff.salaryStatus === 'PAID' ? (
+                            'Оплачено'
+                          ) : (
+                            'Не оплачено'
                           )}
-                          {hasPermission(permissions, 'DELETE_CHARGES') && (
-                            <button
-                              onClick={() => handleDeleteStoreFacility(facility.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              x
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm">
+                          <button
+                            onClick={() => handleDeleteStaff(staff.id)}
+                            className="text-red-600 hover:underline"
+                          >
+                            Удалить
+                          </button>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500">Записей нет</p>
-                )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
-                <div className="mt-2 text-xs text-gray-700">
-                  Прогноз: {formatMoney(utilitiesExpenseForecast, store.currency)}
-                </div>
-                <div className="text-xs text-gray-700">
-                  Факт: {formatMoney(utilitiesExpenseActual, store.currency)}
-                </div>
+        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Расходы</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз: {formatMoney(analytics?.expenses?.total?.forecast ?? 0, store.currency)}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт: {formatMoney(analytics?.expenses?.total?.actual ?? 0, store.currency)}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-6 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Прибыль</h3>
+              <div className="text-sm text-gray-700">
+                Прогноз:{' '}
+                {formatMoney(
+                  (analytics?.income?.forecast?.total ?? 0) -
+                    (analytics?.expenses?.total?.forecast ?? 0),
+                  store.currency,
+                )}
+              </div>
+              <div className="text-sm text-gray-700">
+                Факт:{' '}
+                {formatMoney(
+                  (analytics?.income?.actual?.total ?? 0) -
+                    (analytics?.expenses?.total?.actual ?? 0),
+                  store.currency,
+                )}
               </div>
             </div>
           </div>
@@ -1129,113 +1095,6 @@ export default function StorePage() {
                             </button>
                           </td>
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
-            </div>
-
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
-              <input
-                type="text"
-                value={staffPosition}
-                onChange={(e) => setStaffPosition(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Должность"
-              />
-              <input
-                type="text"
-                value={staffFullName}
-                onChange={(e) => setStaffFullName(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Имя фамилия"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={staffSalary}
-                onChange={(e) => setStaffSalary(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Зарплата"
-              />
-              <button
-                onClick={handleAddStaff}
-                disabled={staffSaving}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                Добавить
-              </button>
-            </div>
-
-            {!store.staff || store.staff.length === 0 ? (
-              <p className="text-gray-600">Список сотрудников пуст</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Должность
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Имя фамилия
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Зарплата
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Статус оплаты
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                        Действия
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {store.staff.map((staff: any) => (
-                      <tr key={staff.id}>
-                        <td className="px-4 py-3 text-sm">{staff.position}</td>
-                        <td className="px-4 py-3 text-sm">{staff.fullName}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(staff.salary ?? 0, store.currency)}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                            <select
-                              value={staff.salaryStatus ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleUpdateStaffSalaryStatus(
-                                  staff.id,
-                                  e.target.value as 'UNPAID' | 'PAID',
-                                )
-                              }
-                              className="rounded border px-2 py-1 text-xs"
-                            >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
-                          ) : staff.salaryStatus === 'PAID' ? (
-                            'Оплачено'
-                          ) : (
-                            'Не оплачено'
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm">
-                          <button
-                            onClick={() => handleDeleteStaff(staff.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Удалить
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>

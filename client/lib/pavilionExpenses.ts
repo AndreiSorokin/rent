@@ -2,6 +2,7 @@ import { apiFetch } from './api';
 
 export type PavilionExpenseType =
   | 'SALARIES'
+  | 'STORE_FACILITIES'
   | 'PAYROLL_TAX'
   | 'PROFIT_TAX'
   | 'DIVIDENDS'
