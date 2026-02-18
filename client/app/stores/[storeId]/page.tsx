@@ -90,10 +90,10 @@ export default function StorePage() {
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
-  console.log(analytics)
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (withLoader = true) => {
+    if (withLoader) {
+      setLoading(true);
+    }
     try {
       const storeData = await apiFetch(`/stores/${storeId}`);
 
@@ -126,16 +126,18 @@ export default function StorePage() {
       setError('Не удалось загрузить данные магазина');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (withLoader) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (storeId) fetchData();
+    if (storeId) fetchData(true);
   }, [storeId]);
 
   const handlePavilionCreated = () => {
-    fetchData();
+    fetchData(false);
     setShowCreatePavilionModal(false);
   };
 
@@ -169,7 +171,7 @@ export default function StorePage() {
         method: 'PATCH',
         body: JSON.stringify({ currency }),
       });
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось изменить валюту');
@@ -203,7 +205,7 @@ export default function StorePage() {
       setStaffFullName('');
       setStaffPosition('');
       setStaffSalary('');
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить сотрудника');
@@ -219,7 +221,7 @@ export default function StorePage() {
       await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
         method: 'DELETE',
       });
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить сотрудника');
@@ -235,7 +237,7 @@ export default function StorePage() {
         method: 'PATCH',
         body: JSON.stringify({ salaryStatus }),
       });
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус зарплаты');
@@ -251,7 +253,7 @@ export default function StorePage() {
         method: 'PATCH',
         body: JSON.stringify(data),
       });
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус расхода');
@@ -282,7 +284,7 @@ export default function StorePage() {
       setAccountingBank('');
       setAccountingCash1('');
       setAccountingCash2('');
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить запись в бух. таблицу');
@@ -298,7 +300,7 @@ export default function StorePage() {
       await apiFetch(`/stores/${storeId}/accounting-table/${recordId}`, {
         method: 'DELETE',
       });
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить запись');
@@ -325,7 +327,7 @@ export default function StorePage() {
       });
       setHouseholdName('');
       setHouseholdAmount('');
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить расход');
@@ -339,7 +341,7 @@ export default function StorePage() {
 
     try {
       await deleteHouseholdExpense(storeId, expenseId);
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить расход');
@@ -352,7 +354,7 @@ export default function StorePage() {
   ) => {
     try {
       await updateHouseholdExpenseStatus(storeId, expenseId, status);
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус хоз. расхода');
@@ -375,7 +377,7 @@ export default function StorePage() {
     try {
       await createPavilionExpense(storeId, { type, amount });
       setManualExpenseAmountByType((prev) => ({ ...prev, [type]: '' }));
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить расход');
@@ -387,7 +389,7 @@ export default function StorePage() {
 
     try {
       await deletePavilionExpense(storeId, expenseId);
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить расход');
@@ -400,7 +402,7 @@ export default function StorePage() {
   ) => {
     try {
       await updatePavilionExpenseStatus(storeId, expenseId, status);
-      await fetchData();
+      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось изменить статус расхода');
@@ -684,7 +686,7 @@ export default function StorePage() {
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Расходы на хоз. часть</h2>
+              <h2 className="text-xl font-semibold md:text-2xl">Хозяйственный расходы</h2>
               <div className="text-sm font-semibold">
                 Итого: {formatMoney(householdExpensesTotal, store.currency)}
               </div>
@@ -783,7 +785,7 @@ export default function StorePage() {
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Расходы</h2>
+              <h2 className="text-xl font-semibold md:text-2xl">Административные расходы</h2>
               <div className="text-right text-sm">
                 <div>Итого прогноз: {formatMoney(expensesForecastTotal, store.currency)}</div>
                 <div>Итого факт: {formatMoney(expensesActualTotal, store.currency)}</div>
@@ -791,50 +793,6 @@ export default function StorePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-md border p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold">Зарплаты</div>
-                  <div className="text-sm font-semibold">
-                    {formatMoney(staffSalariesForecastTotal, store.currency)}
-                  </div>
-                </div>
-
-                {!store.staff || store.staff.length === 0 ? (
-                  <p className="text-xs text-gray-500">Сотрудников нет</p>
-                ) : (
-                  <div className="max-h-28 space-y-1 overflow-auto">
-                    {store.staff.map((staff: any) => (
-                      <div
-                        key={staff.id}
-                        className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
-                      >
-                        <span>
-                          {staff.fullName}: {formatMoney(staff.salary ?? 0, store.currency)}
-                        </span>
-                        {hasPermission(permissions, 'EDIT_CHARGES') && (
-                          <select
-                            value={staff.salaryStatus ?? 'UNPAID'}
-                            onChange={(e) =>
-                              handleUpdateStaffSalaryStatus(
-                                staff.id,
-                                e.target.value as 'UNPAID' | 'PAID',
-                              )
-                            }
-                            className="rounded border px-1 py-0.5 text-[10px]"
-                          >
-                            <option value="UNPAID">Не оплачено</option>
-                            <option value="PAID">Оплачено</option>
-                          </select>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-2 text-xs text-gray-700">
-                  Факт: {formatMoney(staffSalariesActualTotal, store.currency)}
-                </div>
-              </div>
-
               {MANUAL_EXPENSE_CATEGORIES.map((category) => {
                 const categoryItems = groupedManualExpenses[category.type] ?? [];
                 const categoryTotal = categoryItems.reduce(
@@ -945,30 +903,6 @@ export default function StorePage() {
                 </div>
                 <div className="text-xs text-gray-700">
                   Факт: {formatMoney(utilitiesExpenseActual, store.currency)}
-                </div>
-              </div>
-
-              <div className="rounded-md border p-3">
-                <div className="mb-2 text-sm font-semibold">Хозяйственные расходы</div>
-                {hasPermission(permissions, 'EDIT_CHARGES') && (
-                  <select
-                    value={store.householdExpenseStatus ?? 'UNPAID'}
-                    onChange={(e) =>
-                      handleUpdateStoreExpenseStatuses({
-                        householdExpenseStatus: e.target.value as 'UNPAID' | 'PAID',
-                      })
-                    }
-                    className="mb-2 w-full rounded border px-2 py-1 text-xs"
-                  >
-                    <option value="UNPAID">Не оплачено</option>
-                    <option value="PAID">Оплачено</option>
-                  </select>
-                )}
-                <div className="text-xs text-gray-700">
-                  Прогноз: {formatMoney(householdExpensesTotal, store.currency)}
-                </div>
-                <div className="text-xs text-gray-700">
-                  Факт: {formatMoney(householdExpensesActual, store.currency)}
                 </div>
               </div>
             </div>
@@ -1100,7 +1034,7 @@ export default function StorePage() {
         {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Сотрудники</h2>
+              <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
             </div>
 
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
@@ -1152,6 +1086,9 @@ export default function StorePage() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Зарплата
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Статус оплаты
+                      </th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                         Действия
                       </th>
@@ -1163,6 +1100,27 @@ export default function StorePage() {
                         <td className="px-4 py-3 text-sm">{staff.position}</td>
                         <td className="px-4 py-3 text-sm">{staff.fullName}</td>
                         <td className="px-4 py-3 text-sm">{formatMoney(staff.salary ?? 0, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                            <select
+                              value={staff.salaryStatus ?? 'UNPAID'}
+                              onChange={(e) =>
+                                handleUpdateStaffSalaryStatus(
+                                  staff.id,
+                                  e.target.value as 'UNPAID' | 'PAID',
+                                )
+                              }
+                              className="rounded border px-2 py-1 text-xs"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                          ) : staff.salaryStatus === 'PAID' ? (
+                            'Оплачено'
+                          ) : (
+                            'Не оплачено'
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right text-sm">
                           <button
                             onClick={() => handleDeleteStaff(staff.id)}
@@ -1224,7 +1182,7 @@ export default function StorePage() {
           onClose={() => setShowImportModal(false)}
           onImported={() => {
             setShowImportModal(false);
-            fetchData();
+            fetchData(false);
           }}
         />
       )}
