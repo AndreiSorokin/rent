@@ -371,13 +371,24 @@ export default function PavilionPage() {
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
           </div>
-          <div>
+          {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+          <div className="flex flex-wrap gap-3">
             <button
-              className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+              onClick={() => setEditingPavilion(pavilion)}
+              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
             >
-              Разделить павильон
+              Редактировать
             </button>
+            {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+              <Link
+                href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/archive`}
+                className="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-800"
+              >
+                Бухгалтерский архив
+              </Link>
+            )}
           </div>
+        )}
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
@@ -917,15 +928,6 @@ export default function PavilionPage() {
             </div>
           )}
         </div>
-
-        {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-          <button
-            onClick={() => setEditingPavilion(pavilion)}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            Редактировать
-          </button>
-        )}
 
         {showPaymentModal && (
           <CreatePavilionPaymentModal
