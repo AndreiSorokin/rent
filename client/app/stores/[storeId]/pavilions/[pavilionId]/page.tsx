@@ -769,6 +769,9 @@ export default function PavilionPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичные</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
                     <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
@@ -778,6 +781,21 @@ export default function PavilionPage() {
                   {pavilion.additionalCharges.map((charge: any) => {
                     const totalPaid =
                       charge.payments?.reduce((sum: number, p: any) => sum + (p.amountPaid ?? 0), 0) ?? 0;
+                    const totalBankTransferPaid =
+                      charge.payments?.reduce(
+                        (sum: number, p: any) => sum + (p.bankTransferPaid ?? 0),
+                        0,
+                      ) ?? 0;
+                    const totalCashbox1Paid =
+                      charge.payments?.reduce(
+                        (sum: number, p: any) => sum + (p.cashbox1Paid ?? 0),
+                        0,
+                      ) ?? 0;
+                    const totalCashbox2Paid =
+                      charge.payments?.reduce(
+                        (sum: number, p: any) => sum + (p.cashbox2Paid ?? 0),
+                        0,
+                      ) ?? 0;
                     const balance = totalPaid - charge.amount;
                     const isPaid = balance >= 0;
                     const isExpanded = expandedCharges.has(charge.id);
@@ -801,6 +819,9 @@ export default function PavilionPage() {
                           <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
                           <td className="px-6 py-4 text-sm">{formatMoney(charge.amount, currency)}</td>
                           <td className="px-6 py-4 text-sm">{formatMoney(totalPaid, currency)}</td>
+                          <td className="px-6 py-4 text-sm">{formatMoney(totalBankTransferPaid, currency)}</td>
+                          <td className="px-6 py-4 text-sm">{formatMoney(totalCashbox1Paid, currency)}</td>
+                          <td className="px-6 py-4 text-sm">{formatMoney(totalCashbox2Paid, currency)}</td>
                           <td
                             className={`px-6 py-4 text-sm font-medium ${
                               balance > 0
@@ -849,7 +870,7 @@ export default function PavilionPage() {
 
                         {isExpanded && (
                           <tr className="bg-gray-50">
-                            <td colSpan={7} className="px-6 py-3 text-sm text-gray-700">
+                            <td colSpan={10} className="px-6 py-3 text-sm text-gray-700">
                               {charge.payments?.length ? (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-gray-500">История оплат</div>
