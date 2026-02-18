@@ -186,6 +186,7 @@ enum PavilionStatus {
 
 enum PavilionExpenseType {
   SALARIES
+  HOUSEHOLD
   STORE_FACILITIES
   PAYROLL_TAX
   PROFIT_TAX

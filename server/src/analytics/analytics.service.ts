@@ -117,9 +117,7 @@ export class AnalyticsService {
     });
     const [
       manualExpenses,
-      householdExpenses,
       previousManualExpenses,
-      previousHouseholdExpenses,
     ] =
       await Promise.all([
         this.prisma.pavilionExpense.findMany({
@@ -131,15 +129,6 @@ export class AnalyticsService {
             OR: [{ storeId }, { pavilion: { storeId } }],
           },
         }),
-        this.prisma.householdExpense.findMany({
-          where: {
-            createdAt: {
-              gte: periodStart,
-              lte: periodEnd,
-            },
-            storeId,
-          },
-        }),
         this.prisma.pavilionExpense.findMany({
           where: {
             createdAt: {
@@ -147,15 +136,6 @@ export class AnalyticsService {
               lte: prevPeriodEnd,
             },
             OR: [{ storeId }, { pavilion: { storeId } }],
-          },
-        }),
-        this.prisma.householdExpense.findMany({
-          where: {
-            createdAt: {
-              gte: prevPeriodStart,
-              lte: prevPeriodEnd,
-            },
-            storeId,
           },
         }),
       ]);
@@ -327,14 +307,24 @@ export class AnalyticsService {
     const storeFacilitiesExpenses = nonSalaryManualExpenses.filter(
       (expense) => String(expense.type) === 'STORE_FACILITIES',
     );
+    const householdTypeExpenses = nonSalaryManualExpenses.filter(
+      (expense) => String(expense.type) === 'HOUSEHOLD',
+    );
     const previousStoreFacilitiesExpenses = nonSalaryPreviousManualExpenses.filter(
       (expense) => String(expense.type) === 'STORE_FACILITIES',
     );
+    const previousHouseholdTypeExpenses = nonSalaryPreviousManualExpenses.filter(
+      (expense) => String(expense.type) === 'HOUSEHOLD',
+    );
     const manualAdministrativeExpenses = nonSalaryManualExpenses.filter(
-      (expense) => String(expense.type) !== 'STORE_FACILITIES',
+      (expense) =>
+        String(expense.type) !== 'STORE_FACILITIES' &&
+        String(expense.type) !== 'HOUSEHOLD',
     );
     const previousManualAdministrativeExpenses = nonSalaryPreviousManualExpenses.filter(
-      (expense) => String(expense.type) !== 'STORE_FACILITIES',
+      (expense) =>
+        String(expense.type) !== 'STORE_FACILITIES' &&
+        String(expense.type) !== 'HOUSEHOLD',
     );
     const staffSalariesForecast = (storeMeta?.staff ?? []).reduce(
       (sum, member) => sum + Number(member.salary ?? 0),
@@ -351,7 +341,7 @@ export class AnalyticsService {
     const manualExpensesActual = manualAdministrativeExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + expense.amount, 0);
-    expenseHouseholdTotal = householdExpenses.reduce(
+    expenseHouseholdTotal = householdTypeExpenses.reduce(
       (sum, expense) => sum + expense.amount,
       0,
     );
@@ -372,7 +362,7 @@ export class AnalyticsService {
       0,
     );
 
-    const householdActual = householdExpenses
+    const householdActual = householdTypeExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
     const utilitiesActualByStatus = storeFacilitiesExpenses
@@ -485,14 +475,14 @@ export class AnalyticsService {
     const previousManualExpensesActual = previousManualAdministrativeExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + expense.amount, 0);
-    const previousHouseholdExpensesTotal = previousHouseholdExpenses.reduce(
+    const previousHouseholdExpensesTotal = previousHouseholdTypeExpenses.reduce(
       (sum, expense) => sum + expense.amount,
       0,
     );
     const previousSalariesActual = (previousStoreMeta?.staff ?? [])
       .filter((member) => member.salaryStatus === 'PAID')
       .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
-    const previousHouseholdActual = previousHouseholdExpenses
+    const previousHouseholdActual = previousHouseholdTypeExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
     const householdStatus =

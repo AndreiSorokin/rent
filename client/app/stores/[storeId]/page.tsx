@@ -25,9 +25,10 @@ import {
 } from '@/lib/pavilionExpenses';
 
 type ManualExpenseType = Exclude<PavilionExpenseType, 'SALARIES'>;
+type CardExpenseType = Exclude<ManualExpenseType, 'OTHER'>;
 
 const MANUAL_EXPENSE_CATEGORIES: Array<{
-  type: ManualExpenseType;
+  type: CardExpenseType;
   label: string;
 }> = [
   { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
@@ -36,8 +37,7 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   { type: 'BANK_SERVICES', label: 'Услуги банка' },
   { type: 'DIVIDENDS', label: 'Дивиденды' },
   { type: 'LAND_RENT', label: 'Аренда земли' },
-  { type: 'OTHER', label: 'Прочие расходы' },
-  { type: 'STORE_FACILITIES', label: 'Коммунальный платеж' },
+  { type: 'STORE_FACILITIES', label: 'Коммуналка объекта' },
 ];
 
 export default function StorePage() {
@@ -71,10 +71,14 @@ export default function StorePage() {
   const [householdName, setHouseholdName] = useState('');
   const [householdAmount, setHouseholdAmount] = useState('');
   const [householdSaving, setHouseholdSaving] = useState(false);
+  const [otherExpenseName, setOtherExpenseName] = useState('');
+  const [otherExpenseAmount, setOtherExpenseAmount] = useState('');
+  const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
     Record<ManualExpenseType, string>
   >({
+    HOUSEHOLD: '',
     STORE_FACILITIES: '',
     PAYROLL_TAX: '',
     PROFIT_TAX: '',
@@ -371,6 +375,36 @@ export default function StorePage() {
     }
   };
 
+  const handleCreateOtherExpense = async () => {
+    if (!otherExpenseName.trim() || !otherExpenseAmount) {
+      alert('Введите название и сумму расхода');
+      return;
+    }
+
+    const amount = Number(otherExpenseAmount);
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Некорректная сумма');
+      return;
+    }
+
+    try {
+      setOtherExpenseSaving(true);
+      await createPavilionExpense(storeId, {
+        type: 'OTHER',
+        amount,
+        note: otherExpenseName.trim(),
+      });
+      setOtherExpenseName('');
+      setOtherExpenseAmount('');
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    } finally {
+      setOtherExpenseSaving(false);
+    }
+  };
+
   const handleDeleteManualExpense = async (expenseId: number) => {
     if (!confirm('Удалить этот расход?')) return;
 
@@ -426,15 +460,18 @@ export default function StorePage() {
       acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
       return acc;
     },
-    {} as Record<ManualExpenseType, any[]>,
+    {} as Record<CardExpenseType, any[]>,
   );
+  const otherExpenses = storeExpenses.filter((item: any) => item.type === 'OTHER');
   const householdExpensesTotal = householdExpenses.reduce(
     (sum, expense) => sum + Number(expense.amount ?? 0),
     0,
   );
   const manualExpensesForecastTotal = storeExpenses.reduce(
     (sum, item) =>
-      item.type === 'SALARIES' || item.type === 'STORE_FACILITIES'
+      item.type === 'SALARIES' ||
+      item.type === 'STORE_FACILITIES' ||
+      item.type === 'HOUSEHOLD'
         ? sum
         : sum + Number(item.amount ?? 0),
     0,
@@ -444,6 +481,7 @@ export default function StorePage() {
       (item) =>
         item.type !== 'SALARIES' &&
         item.type !== 'STORE_FACILITIES' &&
+        item.type !== 'HOUSEHOLD' &&
         item.status === 'PAID',
     )
     .reduce((sum, item) => sum + Number(item.amount ?? 0), 0);
@@ -642,7 +680,7 @@ export default function StorePage() {
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="text-xl font-semibold md:text-2xl">Хозяйственный расходы</h2>
+            <h2 className="text-xl font-semibold md:text-2xl">Хозяйственные расходы</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
                 <input
@@ -718,6 +756,100 @@ export default function StorePage() {
                           <td className="px-4 py-3 text-right text-sm">
                             <button
                               onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {hasPermission(permissions, 'VIEW_CHARGES') && (
+          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+            <h2 className="mb-3 text-xl font-semibold md:text-2xl">Прочие расходы</h2>
+
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
+                <input
+                  type="text"
+                  value={otherExpenseName}
+                  onChange={(e) => setOtherExpenseName(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Название расхода"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={otherExpenseAmount}
+                  onChange={(e) => setOtherExpenseAmount(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Сумма"
+                />
+                <button
+                  onClick={handleCreateOtherExpense}
+                  disabled={otherExpenseSaving}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-60"
+                >
+                  Добавить
+                </button>
+              </div>
+            )}
+
+            {otherExpenses.length === 0 ? (
+              <p className="text-gray-600">Расходов пока нет</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                      {hasPermission(permissions, 'DELETE_CHARGES') && (
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {otherExpenses.map((expense: any) => (
+                      <tr key={expense.id}>
+                        <td className="px-4 py-3 text-sm">{expense.note || 'Прочий расход'}</td>
+                        <td className="px-4 py-3 text-sm">{formatMoney(expense.amount, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                            <select
+                              value={expense.status ?? 'UNPAID'}
+                              onChange={(e) =>
+                                handleManualExpenseStatusChange(
+                                  expense.id,
+                                  e.target.value as PavilionExpenseStatus,
+                                )
+                              }
+                              className="rounded border px-2 py-1 text-xs"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                          ) : expense.status === 'PAID' ? (
+                            'Оплачено'
+                          ) : (
+                            'Не оплачено'
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <td className="px-4 py-3 text-right text-sm">
+                            <button
+                              onClick={() => handleDeleteManualExpense(expense.id)}
                               className="text-red-600 hover:underline"
                             >
                               Удалить
@@ -830,6 +962,7 @@ export default function StorePage() {
               })}
 
             </div>
+
           </div>
         )}
 

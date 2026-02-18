@@ -655,10 +655,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         const amount = Number(item.amount);
         if (!name || Number.isNaN(amount)) continue;
 
-        await tx.householdExpense.create({
+        await tx.pavilionExpense.create({
           data: {
             storeId,
-            name,
+            type: 'HOUSEHOLD' as any,
+            note: name,
             amount,
             status: item.status ?? 'UNPAID',
           },

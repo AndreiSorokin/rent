@@ -1,5 +1,5 @@
 Clarification:
-householdExpenses в frontend = только таблица Расходы на хоз. часть
+householdExpenses в frontend = только таблица Хозяйственные расходы
 Поля: name, amount, status, createdAt (плюс id).
 
 Административные расходы в frontend сейчас идут через pavilionExpenses (store-level записи с storeId), а не через householdExpenses.
