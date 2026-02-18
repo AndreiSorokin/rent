@@ -137,7 +137,7 @@ export class AnalyticsService {
               gte: periodStart,
               lte: periodEnd,
             },
-            OR: [{ storeId }, { pavilion: { storeId } }],
+            storeId,
           },
         }),
         this.prisma.pavilionExpense.findMany({
@@ -155,7 +155,7 @@ export class AnalyticsService {
               gte: prevPeriodStart,
               lte: prevPeriodEnd,
             },
-            OR: [{ storeId }, { pavilion: { storeId } }],
+            storeId,
           },
         }),
       ]);
@@ -372,8 +372,9 @@ export class AnalyticsService {
       0,
     );
 
-    const householdActual =
-      storeMeta?.householdExpenseStatus === 'PAID' ? expenseHouseholdTotal : 0;
+    const householdActual = householdExpenses
+      .filter((expense) => expense.status === 'PAID')
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
     const utilitiesActualByStatus = storeFacilitiesExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
@@ -491,10 +492,14 @@ export class AnalyticsService {
     const previousSalariesActual = (previousStoreMeta?.staff ?? [])
       .filter((member) => member.salaryStatus === 'PAID')
       .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
-    const previousHouseholdActual =
-      previousStoreMeta?.householdExpenseStatus === 'PAID'
-        ? previousHouseholdExpensesTotal
-        : 0;
+    const previousHouseholdActual = previousHouseholdExpenses
+      .filter((expense) => expense.status === 'PAID')
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
+    const householdStatus =
+      expenseHouseholdTotal > 0 &&
+      Math.abs(householdActual - expenseHouseholdTotal) < 0.01
+        ? 'PAID'
+        : 'UNPAID';
     const previousUtilitiesActualByStatus = previousStoreFacilitiesExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
@@ -643,7 +648,7 @@ export class AnalyticsService {
             household: {
               forecast: expenseHouseholdTotal,
               actual: householdActual,
-              status: storeMeta?.householdExpenseStatus ?? 'UNPAID',
+              status: householdStatus,
             },
             utilities: {
               forecast: expenseUtilitiesForecast,

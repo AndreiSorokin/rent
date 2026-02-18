@@ -30,7 +30,6 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   type: ManualExpenseType;
   label: string;
 }> = [
-  { type: 'STORE_FACILITIES', label: 'Коммунальный платеж' },
   { type: 'PAYROLL_TAX', label: 'Налоги с зарплаты' },
   { type: 'PROFIT_TAX', label: 'Налог на прибыль' },
   { type: 'VAT', label: 'НДС' },
@@ -38,6 +37,7 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   { type: 'DIVIDENDS', label: 'Дивиденды' },
   { type: 'LAND_RENT', label: 'Аренда земли' },
   { type: 'OTHER', label: 'Прочие расходы' },
+  { type: 'STORE_FACILITIES', label: 'Коммунальный платеж' },
 ];
 
 export default function StorePage() {
@@ -642,7 +642,7 @@ export default function StorePage() {
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
-
+            <h2 className="text-xl font-semibold md:text-2xl">Хозяйственный расходы</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
                 <input

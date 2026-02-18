@@ -9,7 +9,7 @@ export class HouseholdExpenseService {
   list(storeId: number) {
     return this.prisma.householdExpense.findMany({
       where: {
-        OR: [{ storeId }, { pavilion: { storeId } }],
+        storeId,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -29,7 +29,7 @@ export class HouseholdExpenseService {
     const expense = await this.prisma.householdExpense.findFirst({
       where: {
         id: expenseId,
-        OR: [{ storeId }, { pavilion: { storeId } }],
+        storeId,
       },
       select: { id: true },
     });
@@ -51,7 +51,7 @@ export class HouseholdExpenseService {
     const expense = await this.prisma.householdExpense.findFirst({
       where: {
         id: expenseId,
-        OR: [{ storeId }, { pavilion: { storeId } }],
+        storeId,
       },
       select: { id: true },
     });
