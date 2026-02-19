@@ -205,15 +205,34 @@ export function EditPavilionModal({
           );
         });
         const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
+        const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
+        const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
+        const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
         const rentDelta = targetPrepayment - currentRentPaid;
+        const rentBankDelta = prepayBank - currentRentBank;
+        const rentCash1Delta = prepayCash1 - currentRentCash1;
+        const rentCash2Delta = prepayCash2 - currentRentCash2;
+
+        if (
+          rentDelta < -0.01 ||
+          rentBankDelta < -0.01 ||
+          rentCash1Delta < -0.01 ||
+          rentCash2Delta < -0.01
+        ) {
+          setError(
+            'Уменьшение предоплаты или перераспределение по каналам не поддерживается через редактирование. Удалите предоплату и задайте заново.',
+          );
+          setSaving(false);
+          return;
+        }
 
         if (Math.abs(rentDelta) > 0.0001) {
           await createPavilionPayment(storeId, pavilion.id, {
             period: periodIso,
             rentPaid: rentDelta,
-            rentBankTransferPaid: prepayBank > 0 ? prepayBank : undefined,
-            rentCashbox1Paid: prepayCash1 > 0 ? prepayCash1 : undefined,
-            rentCashbox2Paid: prepayCash2 > 0 ? prepayCash2 : undefined,
+            rentBankTransferPaid: rentBankDelta > 0 ? rentBankDelta : undefined,
+            rentCashbox1Paid: rentCash1Delta > 0 ? rentCash1Delta : undefined,
+            rentCashbox2Paid: rentCash2Delta > 0 ? rentCash2Delta : undefined,
             utilitiesPaid: 0,
             advertisingPaid: 0,
           });
@@ -372,18 +391,6 @@ export function EditPavilionModal({
                 value={form.tenantName}
                 onChange={handleChange}
                 className="input"
-              />
-            </div>
-
-            <div className="mb-3">
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Аренда (авторасчет)
-              </label>
-              <input
-                type="number"
-                value={Number.isFinite(rentAmount) ? rentAmount : 0}
-                readOnly
-                className="input bg-gray-50"
               />
             </div>
 

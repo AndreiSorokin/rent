@@ -219,20 +219,33 @@ export default function PavilionPage() {
       });
 
       const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
+      const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
+      const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
+      const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
       const rentDelta = targetRentPaid - currentRentPaid;
+      const rentBankDelta = bank - currentRentBank;
+      const rentCash1Delta = cash1 - currentRentCash1;
+      const rentCash2Delta = cash2 - currentRentCash2;
+
+      if (rentDelta < -0.01 || rentBankDelta < -0.01 || rentCash1Delta < -0.01 || rentCash2Delta < -0.01) {
+        alert(
+          'Уменьшение предоплаты или перераспределение по каналам не поддерживается через "Изменить предоплату". Удалите предоплату и задайте заново.',
+        );
+        return;
+      }
 
       await updatePavilion(storeIdNum, pavilionIdNum, {
         status: 'PREPAID',
         prepaidUntil: periodIso,
       });
 
-      if (rentDelta !== 0) {
+      if (Math.abs(rentDelta) > 0.0001) {
         await createPavilionPayment(storeIdNum, pavilionIdNum, {
           period: periodIso,
           rentPaid: rentDelta,
-          rentBankTransferPaid: bank > 0 ? bank : undefined,
-          rentCashbox1Paid: cash1 > 0 ? cash1 : undefined,
-          rentCashbox2Paid: cash2 > 0 ? cash2 : undefined,
+          rentBankTransferPaid: rentBankDelta > 0 ? rentBankDelta : undefined,
+          rentCashbox1Paid: rentCash1Delta > 0 ? rentCash1Delta : undefined,
+          rentCashbox2Paid: rentCash2Delta > 0 ? rentCash2Delta : undefined,
           utilitiesPaid: 0,
           advertisingPaid: 0,
         });
