@@ -16,5 +16,8 @@ export function formatMoney(
 ) {
   const amount = Number(value ?? 0);
   const safeAmount = Number.isFinite(amount) ? amount : 0;
-  return `${safeAmount.toFixed(2)} ${getCurrencySymbol(currency)}`;
+  const sign = safeAmount < 0 ? '-' : '';
+  const [whole, fraction] = Math.abs(safeAmount).toFixed(2).split('.');
+  const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${sign}${groupedWhole}.${fraction} ${getCurrencySymbol(currency)}`;
 }
