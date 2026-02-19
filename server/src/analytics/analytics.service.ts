@@ -72,6 +72,16 @@ export class AnalyticsService {
             },
           },
         },
+        groupMemberships: {
+          include: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -460,6 +470,115 @@ export class AnalyticsService {
       .filter((p) => p.status === PavilionStatus.AVAILABLE)
       .reduce((sum, p) => sum + p.squareMeters, 0);
 
+    const groupSummariesMap = new Map<
+      number,
+      {
+        groupId: number;
+        name: string;
+        pavilionsTotal: number;
+        pavilionsRentedOrPrepaid: number;
+        squareTotal: number;
+        forecastIncome: number;
+        actualIncome: number;
+      }
+    >();
+
+    for (const pavilion of pavilions) {
+      const currentLedger = pavilion.monthlyLedgers[0];
+      let pavilionForecast = 0;
+      if (currentLedger) {
+        pavilionForecast += Number(currentLedger.expectedTotal ?? 0);
+      } else {
+        const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+        const monthlyDiscount =
+          pavilion.status === PavilionStatus.PREPAID
+            ? 0
+            : this.getMonthlyDiscountTotal(
+                pavilion.discounts,
+                pavilion.squareMeters,
+                period,
+              );
+        const expectedRent =
+          pavilion.status === PavilionStatus.PREPAID
+            ? baseRent
+            : pavilion.status === PavilionStatus.RENTED
+              ? Math.max(baseRent - monthlyDiscount, 0)
+              : 0;
+        const expectedUtilities =
+          pavilion.status === PavilionStatus.RENTED
+            ? Number(pavilion.utilitiesAmount ?? 0)
+            : 0;
+        const expectedAdvertising =
+          pavilion.status === PavilionStatus.RENTED
+            ? Number(pavilion.advertisingAmount ?? 0)
+            : 0;
+        const expectedAdditional =
+          pavilion.status === PavilionStatus.RENTED
+            ? pavilion.additionalCharges.reduce(
+                (sum, charge) => sum + Number(charge.amount ?? 0),
+                0,
+              )
+            : 0;
+        pavilionForecast =
+          expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
+      }
+
+      const pavilionActualRentUtilitiesAdvertising = pavilion.payments.reduce(
+        (sum, pay) =>
+          sum +
+          Number(pay.rentPaid ?? 0) +
+          Number(pay.utilitiesPaid ?? 0) +
+          Number(pay.advertisingPaid ?? 0),
+        0,
+      );
+      const pavilionActualAdditional = pavilion.additionalCharges.reduce(
+        (sum, charge) =>
+          sum +
+          charge.payments.reduce(
+            (chargeSum, payment) => chargeSum + Number(payment.amountPaid ?? 0),
+            0,
+          ),
+        0,
+      );
+      const pavilionActual =
+        pavilionActualRentUtilitiesAdvertising + pavilionActualAdditional;
+
+      for (const membership of pavilion.groupMemberships) {
+        const groupId = membership.group.id;
+        if (!groupSummariesMap.has(groupId)) {
+          groupSummariesMap.set(groupId, {
+            groupId,
+            name: membership.group.name,
+            pavilionsTotal: 0,
+            pavilionsRentedOrPrepaid: 0,
+            squareTotal: 0,
+            forecastIncome: 0,
+            actualIncome: 0,
+          });
+        }
+
+        const group = groupSummariesMap.get(groupId);
+        if (!group) continue;
+        group.pavilionsTotal += 1;
+        if (
+          pavilion.status === PavilionStatus.RENTED ||
+          pavilion.status === PavilionStatus.PREPAID
+        ) {
+          group.pavilionsRentedOrPrepaid += 1;
+        }
+        group.squareTotal += Number(pavilion.squareMeters ?? 0);
+        group.forecastIncome += pavilionForecast;
+        group.actualIncome += pavilionActual;
+      }
+    }
+
+    const groupSummaries = Array.from(groupSummariesMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((group) => ({
+        ...group,
+        delta: group.actualIncome - group.forecastIncome,
+      }));
+
     const overallIncomeTotal = actualTotal;
     const overallExpenseTotal = expensesTotalActual;
     const saldo = overallIncomeTotal - overallExpenseTotal;
@@ -679,6 +798,7 @@ export class AnalyticsService {
           squareRented: areaRented,
           squareAvailable: areaAvailable,
         },
+        groupedByPavilionGroups: groupSummaries,
       },
       period,
     };

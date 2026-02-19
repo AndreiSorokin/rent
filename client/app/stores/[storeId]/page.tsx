@@ -97,6 +97,12 @@ export default function StorePage() {
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [groupSaving, setGroupSaving] = useState(false);
+  const [groupSelectionByPavilionId, setGroupSelectionByPavilionId] = useState<
+    Record<number, string>
+  >({});
+  const [groupActionLoading, setGroupActionLoading] = useState(false);
   const [orderedPavilionIds, setOrderedPavilionIds] = useState<number[]>([]);
   const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
   const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
@@ -113,7 +119,6 @@ export default function StorePage() {
     }
     try {
       const storeData = await apiFetch(`/stores/${storeId}`);
-
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
         const [analyticsData, accountingData] = await Promise.all([
           apiFetch<any>(`/stores/${storeId}/analytics`),
@@ -554,6 +559,72 @@ export default function StorePage() {
     }
   };
 
+  const handleCreatePavilionGroup = async () => {
+    const name = newGroupName.trim();
+    if (!name) {
+      alert('Введите название группы');
+      return;
+    }
+
+    try {
+      setGroupSaving(true);
+      await apiFetch(`/stores/${storeId}/pavilion-groups`, {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      setNewGroupName('');
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось создать группу');
+    } finally {
+      setGroupSaving(false);
+    }
+  };
+
+  const handleAddPavilionToGroup = async (pavilionId: number) => {
+    const groupId = Number(groupSelectionByPavilionId[pavilionId] ?? '');
+    if (!groupId || Number.isNaN(groupId)) {
+      alert('Выберите группу');
+      return;
+    }
+
+    try {
+      setGroupActionLoading(true);
+      await apiFetch(
+        `/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`,
+        {
+          method: 'POST',
+        },
+      );
+      setGroupSelectionByPavilionId((prev) => ({ ...prev, [pavilionId]: '' }));
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось добавить павильон в группу');
+    } finally {
+      setGroupActionLoading(false);
+    }
+  };
+
+  const handleRemovePavilionFromGroup = async (pavilionId: number, groupId: number) => {
+    try {
+      setGroupActionLoading(true);
+      await apiFetch(
+        `/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`,
+        {
+          method: 'DELETE',
+        },
+      );
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось удалить павильон из группы');
+    } finally {
+      setGroupActionLoading(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -757,7 +828,27 @@ export default function StorePage() {
 
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Павильоны</h2>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
+              {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+                <div className="flex w-full max-w-md gap-2">
+                  <input
+                    type="text"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Название новой группы"
+                  />
+                  <button
+                    onClick={handleCreatePavilionGroup}
+                    disabled={groupSaving}
+                    className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {groupSaving ? 'Создание...' : 'Создать группу'}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px]">
               <input
@@ -820,6 +911,9 @@ export default function StorePage() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Наименование организации
                       </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Группы
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -875,6 +969,69 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {p.tenantName || 'Свободен'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <div
+                            className="space-y-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex flex-wrap gap-2">
+                              {(p.groupMemberships || []).length === 0 ? (
+                                <span className="text-xs text-gray-500">Нет групп</span>
+                              ) : (
+                                p.groupMemberships.map((membership: any) => (
+                                  <span
+                                    key={`${p.id}-${membership.group.id}`}
+                                    className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs"
+                                  >
+                                    {membership.group.name}
+                                    {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+                                      <button
+                                        onClick={() =>
+                                          handleRemovePavilionFromGroup(
+                                            p.id,
+                                            membership.group.id,
+                                          )
+                                        }
+                                        className="text-red-600 hover:underline"
+                                        title="Удалить из группы"
+                                      >
+                                        x
+                                      </button>
+                                    )}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                            {hasPermission(permissions, 'EDIT_PAVILIONS') && (
+                              <div className="flex gap-2">
+                                <select
+                                  value={groupSelectionByPavilionId[p.id] ?? ''}
+                                  onChange={(e) =>
+                                    setGroupSelectionByPavilionId((prev) => ({
+                                      ...prev,
+                                      [p.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="rounded border px-2 py-1 text-xs"
+                                >
+                                  <option value="">Добавить в группу</option>
+                                  {(store.pavilionGroups || []).map((group: any) => (
+                                    <option key={group.id} value={group.id}>
+                                      {group.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={() => handleAddPavilionToGroup(p.id)}
+                                  disabled={groupActionLoading}
+                                  className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-60"
+                                >
+                                  Добавить
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

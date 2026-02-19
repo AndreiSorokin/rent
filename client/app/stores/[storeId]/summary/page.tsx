@@ -52,9 +52,9 @@ export default function StoreSummaryPage() {
   const channelsByEntity = income.channelsByEntity || {};
   const expenses = summary.expenses || {};
   const expenseByType = expenses.byType || {};
-  const expenseByTypeForecast = expenses.byTypeForecast || {};
   const storeLevelExpenses = expenses.storeLevel || {};
   const tradeArea = summary.tradeArea || {};
+  const groupedByPavilionGroups = summary.groupedByPavilionGroups || [];
 
   const storeLevelForecast =
     (storeLevelExpenses.manual?.forecast ?? 0) +
@@ -74,21 +74,29 @@ export default function StoreSummaryPage() {
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">СВОДКА</h1>
           <p className="text-sm text-gray-600">
-            Общая сумма денег: {formatMoney((income.total ?? 0) - (expenses.totals?.actual ?? 0), currency)}
+            Общая сумма денег:{' '}
+            {formatMoney((income.total ?? 0) - (expenses.totals?.actual ?? 0), currency)}
           </p>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">1. Общий доход</h2>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            <div>Остаток с предыдущего месяца: {formatMoney(income.previousMonthBalance ?? 0, currency)}</div>
-            <div className="font-semibold">Итого доход: {formatMoney(income.total ?? 0, currency)}</div>
+            <div>
+              Остаток с предыдущего месяца:{' '}
+              {formatMoney(income.previousMonthBalance ?? 0, currency)}
+            </div>
+            <div className="font-semibold">
+              Итого доход: {formatMoney(income.total ?? 0, currency)}
+            </div>
           </div>
           <div className="mt-4 border-t pt-4">
             <div>Безналичные: {formatMoney(income.channels?.bankTransfer ?? 0, currency)}</div>
             <div>Наличные касса 1: {formatMoney(income.channels?.cashbox1 ?? 0, currency)}</div>
             <div>Наличные касса 2: {formatMoney(income.channels?.cashbox2 ?? 0, currency)}</div>
-            <div className="font-semibold">Итого по каналам: {formatMoney(income.channels?.total ?? 0, currency)}</div>
+            <div className="font-semibold">
+              Итого по каналам: {formatMoney(income.channels?.total ?? 0, currency)}
+            </div>
           </div>
           <div className="mt-4 border-t pt-4">
             <h3 className="mb-2 font-medium">По сущностям и каналам</h3>
@@ -98,28 +106,42 @@ export default function StoreSummaryPage() {
                 <div>Безнал: {formatMoney(channelsByEntity.rent?.bankTransfer ?? 0, currency)}</div>
                 <div>Касса 1: {formatMoney(channelsByEntity.rent?.cashbox1 ?? 0, currency)}</div>
                 <div>Касса 2: {formatMoney(channelsByEntity.rent?.cashbox2 ?? 0, currency)}</div>
-                <div className="font-medium">Итого: {formatMoney(channelsByEntity.rent?.total ?? 0, currency)}</div>
+                <div className="font-medium">
+                  Итого: {formatMoney(channelsByEntity.rent?.total ?? 0, currency)}
+                </div>
               </div>
               <div className="rounded border p-2">
                 <div className="mb-1 font-semibold">Коммунальные</div>
-                <div>Безнал: {formatMoney(channelsByEntity.facilities?.bankTransfer ?? 0, currency)}</div>
+                <div>
+                  Безнал: {formatMoney(channelsByEntity.facilities?.bankTransfer ?? 0, currency)}
+                </div>
                 <div>Касса 1: {formatMoney(channelsByEntity.facilities?.cashbox1 ?? 0, currency)}</div>
                 <div>Касса 2: {formatMoney(channelsByEntity.facilities?.cashbox2 ?? 0, currency)}</div>
-                <div className="font-medium">Итого: {formatMoney(channelsByEntity.facilities?.total ?? 0, currency)}</div>
+                <div className="font-medium">
+                  Итого: {formatMoney(channelsByEntity.facilities?.total ?? 0, currency)}
+                </div>
               </div>
               <div className="rounded border p-2">
                 <div className="mb-1 font-semibold">Реклама</div>
-                <div>Безнал: {formatMoney(channelsByEntity.advertising?.bankTransfer ?? 0, currency)}</div>
+                <div>
+                  Безнал: {formatMoney(channelsByEntity.advertising?.bankTransfer ?? 0, currency)}
+                </div>
                 <div>Касса 1: {formatMoney(channelsByEntity.advertising?.cashbox1 ?? 0, currency)}</div>
                 <div>Касса 2: {formatMoney(channelsByEntity.advertising?.cashbox2 ?? 0, currency)}</div>
-                <div className="font-medium">Итого: {formatMoney(channelsByEntity.advertising?.total ?? 0, currency)}</div>
+                <div className="font-medium">
+                  Итого: {formatMoney(channelsByEntity.advertising?.total ?? 0, currency)}
+                </div>
               </div>
               <div className="rounded border p-2">
                 <div className="mb-1 font-semibold">Доп. начисления</div>
-                <div>Безнал: {formatMoney(channelsByEntity.additional?.bankTransfer ?? 0, currency)}</div>
+                <div>
+                  Безнал: {formatMoney(channelsByEntity.additional?.bankTransfer ?? 0, currency)}
+                </div>
                 <div>Касса 1: {formatMoney(channelsByEntity.additional?.cashbox1 ?? 0, currency)}</div>
                 <div>Касса 2: {formatMoney(channelsByEntity.additional?.cashbox2 ?? 0, currency)}</div>
-                <div className="font-medium">Итого: {formatMoney(channelsByEntity.additional?.total ?? 0, currency)}</div>
+                <div className="font-medium">
+                  Итого: {formatMoney(channelsByEntity.additional?.total ?? 0, currency)}
+                </div>
               </div>
             </div>
           </div>
@@ -139,7 +161,9 @@ export default function StoreSummaryPage() {
             <div>Коммуналка: {formatMoney(expenseByType.facilities ?? 0, currency)}</div>
             <div>Дивиденды: {formatMoney(expenseByType.dividends ?? 0, currency)}</div>
             <div>Услуги банка: {formatMoney(expenseByType.bankServices ?? 0, currency)}</div>
-            <div>Хозяйственные расходы: {formatMoney(expenseByType.household ?? 0, currency)}</div>
+            <div>
+              Хозяйственные расходы: {formatMoney(expenseByType.household ?? 0, currency)}
+            </div>
             <div>НДС: {formatMoney(expenseByType.vat ?? 0, currency)}</div>
             <div>Аренда земли: {formatMoney(expenseByType.landRent ?? 0, currency)}</div>
             <div>Прочие расходы: {formatMoney(expenseByType.other ?? 0, currency)}</div>
@@ -169,6 +193,35 @@ export default function StoreSummaryPage() {
             <div>Площадь в аренде: {tradeArea.squareRented ?? 0} м2</div>
             <div>Свободная площадь: {tradeArea.squareAvailable ?? 0} м2</div>
           </div>
+        </div>
+
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">5. Группы павильонов</h2>
+          {groupedByPavilionGroups.length === 0 ? (
+            <p className="text-gray-600">Группы не созданы</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {groupedByPavilionGroups.map((group: any) => (
+                <div key={group.groupId} className="rounded border p-3">
+                  <div className="mb-2 font-semibold">{group.name}</div>
+                  <div className="text-sm">Павильонов: {group.pavilionsTotal}</div>
+                  <div className="text-sm">
+                    Занято/предоплата: {group.pavilionsRentedOrPrepaid}
+                  </div>
+                  <div className="text-sm">Площадь: {group.squareTotal} м2</div>
+                  <div className="mt-2 text-sm">
+                    Прогнозный доход: {formatMoney(group.forecastIncome ?? 0, currency)}
+                  </div>
+                  <div className="text-sm">
+                    Фактический доход: {formatMoney(group.actualIncome ?? 0, currency)}
+                  </div>
+                  <div className="text-sm font-medium">
+                    Схождение: {formatMoney(group.delta ?? 0, currency)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -67,6 +67,38 @@ export class StoresController {
     return this.service.updateCurrency(storeId, req.user.id, data.currency);
   }
 
+  @Post(':storeId/pavilion-groups')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  createPavilionGroup(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { name: string },
+    @Req() req: any,
+  ) {
+    return this.service.createPavilionGroup(storeId, req.user.id, data);
+  }
+
+  @Post(':storeId/pavilions/:pavilionId/pavilion-groups/:groupId')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  addPavilionToGroup(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Req() req: any,
+  ) {
+    return this.service.addPavilionToGroup(storeId, pavilionId, groupId, req.user.id);
+  }
+
+  @Delete(':storeId/pavilions/:pavilionId/pavilion-groups/:groupId')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  removePavilionFromGroup(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Req() req: any,
+  ) {
+    return this.service.removePavilionFromGroup(storeId, pavilionId, groupId, req.user.id);
+  }
+
   @Post(':storeId/staff')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   createStaff(

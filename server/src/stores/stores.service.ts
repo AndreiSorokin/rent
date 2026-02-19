@@ -127,6 +127,26 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               },
             },
             discounts: true,
+            groupMemberships: {
+              include: {
+                group: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        pavilionGroups: {
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          include: {
+            pavilions: {
+              select: {
+                pavilionId: true,
+              },
+            },
           },
         },
         storeUsers: {
@@ -251,6 +271,114 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         fullName,
         position,
         salary,
+      },
+    });
+  }
+
+  async createPavilionGroup(
+    storeId: number,
+    userId: number,
+    data: { name: string },
+  ) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const name = data.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Group name is required');
+    }
+
+    return this.prisma.pavilionGroup.create({
+      data: {
+        storeId,
+        name,
+      },
+    });
+  }
+
+  async addPavilionToGroup(
+    storeId: number,
+    pavilionId: number,
+    groupId: number,
+    userId: number,
+  ) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
+    const group = await this.prisma.pavilionGroup.findFirst({
+      where: { id: groupId, storeId },
+      select: { id: true },
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return this.prisma.pavilionGroupMembership.upsert({
+      where: {
+        groupId_pavilionId: {
+          groupId,
+          pavilionId,
+        },
+      },
+      create: {
+        groupId,
+        pavilionId,
+      },
+      update: {},
+    });
+  }
+
+  async removePavilionFromGroup(
+    storeId: number,
+    pavilionId: number,
+    groupId: number,
+    userId: number,
+  ) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const group = await this.prisma.pavilionGroup.findFirst({
+      where: { id: groupId, storeId },
+      select: { id: true },
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    const membership = await this.prisma.pavilionGroupMembership.findUnique({
+      where: {
+        groupId_pavilionId: {
+          groupId,
+          pavilionId,
+        },
+      },
+      select: { groupId: true, pavilionId: true },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('Membership not found');
+    }
+
+    return this.prisma.pavilionGroupMembership.delete({
+      where: {
+        groupId_pavilionId: {
+          groupId,
+          pavilionId,
+        },
       },
     });
   }
@@ -949,6 +1077,30 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (error) {
       this.logger.error('Failed to execute monthly rollover job', error as Error);
+    }
+  }
+
+  private async assertStorePermission(
+    storeId: number,
+    userId: number,
+    required: Permission[],
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    const allowed = required.some((permission) =>
+      storeUser.permissions.includes(permission),
+    );
+    if (!allowed) {
+      throw new ForbiddenException('No permission for this action');
     }
   }
 }

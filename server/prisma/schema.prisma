@@ -73,6 +73,7 @@ model Store {
   accountingRecords StoreAccountingRecord[]
   householdExpenses HouseholdExpense[]
   pavilionExpenses PavilionExpense[]
+  pavilionGroups PavilionGroup[]
 }
 
 model StoreAccountingRecord {
@@ -157,9 +158,37 @@ model Pavilion {
   paymentTransactions PaymentTransaction[]
   monthlyLedgers    PavilionMonthlyLedger[]
   contracts         Contract[]
+  groupMemberships PavilionGroupMembership[]
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id])
+}
+
+model PavilionGroup {
+  id Int @id @default(autoincrement())
+  name String
+
+  storeId Int
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  pavilions PavilionGroupMembership[]
+  createdAt DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@unique([storeId, name])
+}
+
+model PavilionGroupMembership {
+  groupId Int
+  group PavilionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  pavilionId Int
+  pavilion Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([groupId, pavilionId])
+  @@index([pavilionId, createdAt])
 }
 
 model PavilionDiscount {
