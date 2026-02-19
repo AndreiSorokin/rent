@@ -88,6 +88,27 @@ export class StoresController {
     return this.service.addPavilionToGroup(storeId, pavilionId, groupId, req.user.id);
   }
 
+  @Patch(':storeId/pavilion-groups/:groupId')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  renamePavilionGroup(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Body() data: { name: string },
+    @Req() req: any,
+  ) {
+    return this.service.renamePavilionGroup(storeId, groupId, req.user.id, data);
+  }
+
+  @Delete(':storeId/pavilion-groups/:groupId')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  deletePavilionGroup(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Req() req: any,
+  ) {
+    return this.service.deletePavilionGroup(storeId, groupId, req.user.id);
+  }
+
   @Delete(':storeId/pavilions/:pavilionId/pavilion-groups/:groupId')
   @Permissions(Permission.EDIT_PAVILIONS)
   removePavilionFromGroup(

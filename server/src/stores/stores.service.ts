@@ -340,6 +340,55 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async renamePavilionGroup(
+    storeId: number,
+    groupId: number,
+    userId: number,
+    data: { name: string },
+  ) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const name = data.name?.trim();
+    if (!name) {
+      throw new BadRequestException('Group name is required');
+    }
+
+    const group = await this.prisma.pavilionGroup.findFirst({
+      where: { id: groupId, storeId },
+      select: { id: true },
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return this.prisma.pavilionGroup.update({
+      where: { id: groupId },
+      data: { name },
+    });
+  }
+
+  async deletePavilionGroup(storeId: number, groupId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const group = await this.prisma.pavilionGroup.findFirst({
+      where: { id: groupId, storeId },
+      select: { id: true },
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return this.prisma.pavilionGroup.delete({
+      where: { id: groupId },
+    });
+  }
+
   async removePavilionFromGroup(
     storeId: number,
     pavilionId: number,

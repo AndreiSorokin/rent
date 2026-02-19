@@ -97,8 +97,14 @@ export default function StorePage() {
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
+  const [pavilionGroupFilter, setPavilionGroupFilter] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [groupSaving, setGroupSaving] = useState(false);
+  const [groupRenameById, setGroupRenameById] = useState<Record<number, string>>({});
+  const [groupRenameLoadingById, setGroupRenameLoadingById] = useState<
+    Record<number, boolean>
+  >({});
+  const [groupDeletingId, setGroupDeletingId] = useState<number | null>(null);
   const [groupSelectionByPavilionId, setGroupSelectionByPavilionId] = useState<
     Record<number, string>
   >({});
@@ -231,6 +237,14 @@ export default function StorePage() {
     }
     setStaffSalaryDraftById(nextDrafts);
   }, [store?.staff]);
+
+  useEffect(() => {
+    const nextDrafts: Record<number, string> = {};
+    for (const group of store?.pavilionGroups || []) {
+      nextDrafts[group.id] = String(group.name ?? '');
+    }
+    setGroupRenameById(nextDrafts);
+  }, [store?.pavilionGroups]);
 
   useEffect(() => {
     if (!storeId || orderedStaffIds.length === 0) return;
@@ -625,6 +639,48 @@ export default function StorePage() {
     }
   };
 
+  const handleRenamePavilionGroup = async (groupId: number) => {
+    const name = (groupRenameById[groupId] ?? '').trim();
+    if (!name) {
+      alert('Введите название группы');
+      return;
+    }
+
+    try {
+      setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: true }));
+      await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
+      });
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось переименовать группу');
+    } finally {
+      setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: false }));
+    }
+  };
+
+  const handleDeletePavilionGroup = async (groupId: number) => {
+    if (!confirm('Удалить эту группу?')) return;
+
+    try {
+      setGroupDeletingId(groupId);
+      await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
+        method: 'DELETE',
+      });
+      if (pavilionGroupFilter === String(groupId)) {
+        setPavilionGroupFilter('');
+      }
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось удалить группу');
+    } finally {
+      setGroupDeletingId(null);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -658,7 +714,12 @@ export default function StorePage() {
     const byStatus = pavilionStatusFilter
       ? p.status === pavilionStatusFilter
       : true;
-    return byName && byCategory && byStatus;
+    const byGroup = pavilionGroupFilter
+      ? (p.groupMemberships || []).some(
+          (membership: any) => String(membership.group?.id) === pavilionGroupFilter,
+        )
+      : true;
+    return byName && byCategory && byStatus && byGroup;
   });
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
@@ -850,7 +911,58 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px]">
+            {hasPermission(permissions, 'EDIT_PAVILIONS') &&
+              (store.pavilionGroups || []).length > 0 && (
+                <div className="mb-4 rounded-lg border border-gray-200 p-3">
+                  <div className="mb-2 text-sm font-medium text-gray-700">
+                    Управление группами
+                  </div>
+                  <div className="space-y-2">
+                    {(store.pavilionGroups || []).map((group: any) => {
+                      const rawDraft = groupRenameById[group.id] ?? '';
+                      const draftName = rawDraft.trim();
+                      const currentName = String(group.name ?? '').trim();
+                      const changed = draftName.length > 0 && draftName !== currentName;
+
+                      return (
+                        <div key={group.id} className="flex flex-col gap-2 md:flex-row">
+                          <input
+                            type="text"
+                            value={rawDraft}
+                            onChange={(e) =>
+                              setGroupRenameById((prev) => ({
+                                ...prev,
+                                [group.id]: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleRenamePavilionGroup(group.id)}
+                              disabled={Boolean(groupRenameLoadingById[group.id]) || !changed}
+                              className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {groupRenameLoadingById[group.id]
+                                ? 'Сохранение...'
+                                : 'Переименовать'}
+                            </button>
+                            <button
+                              onClick={() => handleDeletePavilionGroup(group.id)}
+                              disabled={groupDeletingId === group.id}
+                              className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {groupDeletingId === group.id ? 'Удаление...' : 'Удалить'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px_220px]">
               <input
                 type="text"
                 value={pavilionSearch}
@@ -879,6 +991,18 @@ export default function StorePage() {
                 <option value="AVAILABLE">СВОБОДЕН</option>
                 <option value="RENTED">ЗАНЯТ</option>
                 <option value="PREPAID">ПРЕДОПЛАТА</option>
+              </select>
+              <select
+                value={pavilionGroupFilter}
+                onChange={(e) => setPavilionGroupFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">Все группы</option>
+                {(store.pavilionGroups || []).map((group: any) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
               </select>
             </div>
 
