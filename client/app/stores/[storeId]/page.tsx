@@ -59,6 +59,12 @@ export default function StorePage() {
   const [staffPosition, setStaffPosition] = useState('');
   const [staffSalary, setStaffSalary] = useState('');
   const [staffSaving, setStaffSaving] = useState(false);
+  const [staffSalaryDraftById, setStaffSalaryDraftById] = useState<
+    Record<number, string>
+  >({});
+  const [staffSalaryUpdatingById, setStaffSalaryUpdatingById] = useState<
+    Record<number, boolean>
+  >({});
   const [accountingRows, setAccountingRows] = useState<any[]>([]);
   const [accountingDate, setAccountingDate] = useState(
     new Date().toISOString().slice(0, 10),
@@ -91,6 +97,10 @@ export default function StorePage() {
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
+  const [orderedPavilionIds, setOrderedPavilionIds] = useState<number[]>([]);
+  const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
+  const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
+  const [draggedStaffId, setDraggedStaffId] = useState<number | null>(null);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -142,6 +152,92 @@ export default function StorePage() {
   useEffect(() => {
     if (storeId) fetchData(true);
   }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId || !store?.pavilions) {
+      setOrderedPavilionIds([]);
+      return;
+    }
+    const ids: number[] = (store.pavilions || []).map((p: any) => Number(p.id));
+    const key = `store-page-pavilions-order-${storeId}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const idSet = new Set(ids);
+          const restored: number[] = parsed
+            .map((v) => Number(v))
+            .filter((id) => Number.isFinite(id) && idSet.has(id));
+          const missing: number[] = ids.filter((id) => !restored.includes(id));
+          setOrderedPavilionIds([...restored, ...missing]);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to restore pavilion order on store page', err);
+    }
+    setOrderedPavilionIds(ids);
+  }, [storeId, store?.pavilions]);
+
+  useEffect(() => {
+    if (!storeId || orderedPavilionIds.length === 0) return;
+    try {
+      localStorage.setItem(
+        `store-page-pavilions-order-${storeId}`,
+        JSON.stringify(orderedPavilionIds),
+      );
+    } catch (err) {
+      console.warn('Failed to persist pavilion order on store page', err);
+    }
+  }, [storeId, orderedPavilionIds]);
+
+  useEffect(() => {
+    if (!storeId || !store?.staff) {
+      setOrderedStaffIds([]);
+      return;
+    }
+    const ids: number[] = (store.staff || []).map((s: any) => Number(s.id));
+    const key = `store-page-staff-order-${storeId}`;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed: unknown = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const idSet = new Set(ids);
+          const restored: number[] = parsed
+            .map((v) => Number(v))
+            .filter((id) => Number.isFinite(id) && idSet.has(id));
+          const missing: number[] = ids.filter((id) => !restored.includes(id));
+          setOrderedStaffIds([...restored, ...missing]);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to restore staff order on store page', err);
+    }
+    setOrderedStaffIds(ids);
+  }, [storeId, store?.staff]);
+
+  useEffect(() => {
+    const nextDrafts: Record<number, string> = {};
+    for (const staffMember of store?.staff || []) {
+      nextDrafts[staffMember.id] = String(staffMember.salary ?? 0);
+    }
+    setStaffSalaryDraftById(nextDrafts);
+  }, [store?.staff]);
+
+  useEffect(() => {
+    if (!storeId || orderedStaffIds.length === 0) return;
+    try {
+      localStorage.setItem(
+        `store-page-staff-order-${storeId}`,
+        JSON.stringify(orderedStaffIds),
+      );
+    } catch (err) {
+      console.warn('Failed to persist staff order on store page', err);
+    }
+  }, [storeId, orderedStaffIds]);
 
   const handlePavilionCreated = () => {
     fetchData(false);
@@ -248,6 +344,34 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус зарплаты');
+    }
+  };
+
+  const handleUpdateStaffSalary = async (staffId: number) => {
+    const rawSalary = staffSalaryDraftById[staffId];
+    const salary = Number(rawSalary);
+
+    if (rawSalary === undefined || rawSalary === '') {
+      alert('Введите зарплату');
+      return;
+    }
+    if (Number.isNaN(salary) || salary < 0) {
+      alert('Зарплата должна быть неотрицательной');
+      return;
+    }
+
+    try {
+      setStaffSalaryUpdatingById((prev) => ({ ...prev, [staffId]: true }));
+      await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ salary }),
+      });
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить зарплату');
+    } finally {
+      setStaffSalaryUpdatingById((prev) => ({ ...prev, [staffId]: false }));
     }
   };
 
@@ -442,7 +566,17 @@ export default function StorePage() {
         .filter((category: string) => category.length > 0),
     ),
   ).sort((a: string, b: string) => a.localeCompare(b));
-  const filteredPavilions = (store.pavilions || []).filter((p: any) => {
+  const pavilionMap = new Map<number, any>(
+    (store.pavilions || []).map((p: any) => [Number(p.id), p]),
+  );
+  const orderedPavilions =
+    orderedPavilionIds.length > 0
+      ? orderedPavilionIds
+          .map((id) => pavilionMap.get(id))
+          .filter((p): p is any => Boolean(p))
+      : (store.pavilions || []);
+
+  const filteredPavilions = orderedPavilions.filter((p: any) => {
     const byName = p.number
       ?.toString()
       .toLowerCase()
@@ -519,6 +653,44 @@ export default function StorePage() {
     staffSalariesActualTotal +
     householdExpensesActual +
     utilitiesExpenseActual;
+
+  const staffMap = new Map<number, any>(
+    (store.staff || []).map((staff: any) => [Number(staff.id), staff]),
+  );
+  const orderedStaff =
+    orderedStaffIds.length > 0
+      ? orderedStaffIds
+          .map((id) => staffMap.get(id))
+          .filter((staff): staff is any => Boolean(staff))
+      : (store.staff || []);
+
+  const movePavilion = (dragId: number, targetId: number) => {
+    if (dragId === targetId) return;
+    setOrderedPavilionIds((prev) => {
+      const source = prev.length > 0 ? [...prev] : (store.pavilions || []).map((p: any) => p.id);
+      const fromIndex = source.indexOf(dragId);
+      const toIndex = source.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
+
+      const [moved] = source.splice(fromIndex, 1);
+      source.splice(toIndex, 0, moved);
+      return source;
+    });
+  };
+
+  const moveStaff = (dragId: number, targetId: number) => {
+    if (dragId === targetId) return;
+    setOrderedStaffIds((prev) => {
+      const source = prev.length > 0 ? [...prev] : (store.staff || []).map((s: any) => s.id);
+      const fromIndex = source.indexOf(dragId);
+      const toIndex = source.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
+
+      const [moved] = source.splice(fromIndex, 1);
+      source.splice(toIndex, 0, moved);
+      return source;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -631,6 +803,9 @@ export default function StorePage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Перенос
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Павильон
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -652,8 +827,40 @@ export default function StorePage() {
                       <tr
                         key={p.id}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
+                        onDragOver={(e) => {
+                          if (draggedPavilionId == null) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedPavilionId == null) return;
+                          movePavilion(draggedPavilionId, p.id);
+                          setDraggedPavilionId(null);
+                        }}
                         onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
                       >
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <button
+                            type="button"
+                            draggable
+                            onClick={(e) => e.stopPropagation()}
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              setDraggedPavilionId(p.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={(e) => {
+                              e.stopPropagation();
+                              setDraggedPavilionId(null);
+                            }}
+                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
+                            title="Потяните, чтобы изменить порядок"
+                            aria-label={`Переместить павильон ${p.number}`}
+                          >
+                            ⋮⋮
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           Павильон {p.number}
                         </td>
@@ -1013,6 +1220,9 @@ export default function StorePage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Перенос
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Должность
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -1030,11 +1240,71 @@ export default function StorePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {store.staff.map((staff: any) => (
-                      <tr key={staff.id}>
+                    {orderedStaff.map((staff: any) => (
+                      <tr
+                        key={staff.id}
+                        onDragOver={(e) => {
+                          if (draggedStaffId == null) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedStaffId == null) return;
+                          moveStaff(draggedStaffId, staff.id);
+                          setDraggedStaffId(null);
+                        }}
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <button
+                            type="button"
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedStaffId(staff.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={() => setDraggedStaffId(null)}
+                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
+                            title="Потяните, чтобы изменить порядок"
+                            aria-label={`Переместить сотрудника ${staff.fullName}`}
+                          >
+                            ⋮⋮
+                          </button>
+                        </td>
                         <td className="px-4 py-3 text-sm">{staff.position}</td>
                         <td className="px-4 py-3 text-sm">{staff.fullName}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(staff.salary ?? 0, store.currency)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={
+                                staffSalaryDraftById[staff.id] ??
+                                String(staff.salary ?? 0)
+                              }
+                              onChange={(e) =>
+                                setStaffSalaryDraftById((prev) => ({
+                                  ...prev,
+                                  [staff.id]: e.target.value,
+                                }))
+                              }
+                              className="w-32 rounded border px-2 py-1 text-sm"
+                            />
+                            <button
+                              onClick={() => handleUpdateStaffSalary(staff.id)}
+                              disabled={
+                                Boolean(staffSalaryUpdatingById[staff.id]) ||
+                                Number(
+                                  staffSalaryDraftById[staff.id] ?? staff.salary ?? 0,
+                                ) === Number(staff.salary ?? 0)
+                              }
+                              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {staffSalaryUpdatingById[staff.id] ? '...' : 'Сохранить'}
+                            </button>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-sm">
                           {hasPermission(permissions, 'EDIT_CHARGES') ? (
                             <select
