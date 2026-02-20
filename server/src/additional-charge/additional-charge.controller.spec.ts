@@ -1,15 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AdditionalChargeController } from './additional-charge.controller';
+import { AdditionalChargeService } from './additional-charge.service';
 
 describe('AdditionalChargeController', () => {
   let controller: AdditionalChargeController;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AdditionalChargeController],
-    }).compile();
-
-    controller = module.get<AdditionalChargeController>(AdditionalChargeController);
+  beforeEach(() => {
+    controller = new AdditionalChargeController({} as AdditionalChargeService);
   });
 
   it('should be defined', () => {

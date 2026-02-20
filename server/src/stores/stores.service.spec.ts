@@ -101,13 +101,13 @@ describe('StoresService monthly rollover', () => {
     expect(prisma.pavilion.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ storeId: 10, status: 'RENTED' }),
-        data: { utilitiesAmount: null },
+        data: { utilitiesAmount: null, advertisingAmount: null },
       }),
     );
     expect(prisma.pavilion.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ storeId: 10, status: 'PREPAID' }),
-        data: { utilitiesAmount: 0 },
+        data: { utilitiesAmount: 0, advertisingAmount: 0 },
       }),
     );
     expect(prisma.store.update).toHaveBeenCalledWith(
@@ -145,5 +145,65 @@ describe('StoresService monthly rollover', () => {
         },
       }),
     );
+  });
+});
+
+describe('StoresService pavilion groups', () => {
+  let service: StoresService;
+  let prisma: any;
+
+  beforeEach(() => {
+    prisma = {
+      storeUser: {
+        findUnique: jest.fn(),
+      },
+      pavilionGroup: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+    };
+
+    service = new StoresService(prisma);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renames pavilion group when user has permissions', async () => {
+    prisma.storeUser.findUnique.mockResolvedValue({
+      permissions: ['EDIT_PAVILIONS'],
+    });
+    prisma.pavilionGroup.findFirst.mockResolvedValue({ id: 7 });
+    prisma.pavilionGroup.update.mockResolvedValue({
+      id: 7,
+      name: 'Новая группа',
+    });
+
+    const result = await service.renamePavilionGroup(10, 7, 1, {
+      name: '  Новая группа  ',
+    });
+
+    expect(prisma.pavilionGroup.update).toHaveBeenCalledWith({
+      where: { id: 7 },
+      data: { name: 'Новая группа' },
+    });
+    expect(result).toEqual({ id: 7, name: 'Новая группа' });
+  });
+
+  it('deletes pavilion group when user has permissions', async () => {
+    prisma.storeUser.findUnique.mockResolvedValue({
+      permissions: ['ASSIGN_PERMISSIONS'],
+    });
+    prisma.pavilionGroup.findFirst.mockResolvedValue({ id: 9 });
+    prisma.pavilionGroup.delete.mockResolvedValue({ id: 9 });
+
+    const result = await service.deletePavilionGroup(10, 9, 1);
+
+    expect(prisma.pavilionGroup.delete).toHaveBeenCalledWith({
+      where: { id: 9 },
+    });
+    expect(result).toEqual({ id: 9 });
   });
 });
