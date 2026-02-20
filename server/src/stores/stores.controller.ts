@@ -67,6 +67,52 @@ export class StoresController {
     return this.service.updateCurrency(storeId, req.user.id, data.currency);
   }
 
+  @Patch(':storeId/name')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateName(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { name: string },
+    @Req() req: any,
+  ) {
+    return this.service.updateName(storeId, req.user.id, data.name);
+  }
+
+  @Post(':storeId/pavilion-categories')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  addPavilionCategory(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { name: string },
+    @Req() req: any,
+  ) {
+    return this.service.addPavilionCategory(storeId, req.user.id, data.name);
+  }
+
+  @Patch(':storeId/pavilion-categories/:oldName')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  renamePavilionCategory(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('oldName') oldName: string,
+    @Body() data: { newName: string },
+    @Req() req: any,
+  ) {
+    return this.service.renamePavilionCategory(
+      storeId,
+      req.user.id,
+      oldName,
+      data.newName,
+    );
+  }
+
+  @Delete(':storeId/pavilion-categories/:name')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  deletePavilionCategory(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('name') name: string,
+    @Req() req: any,
+  ) {
+    return this.service.deletePavilionCategory(storeId, req.user.id, name);
+  }
+
   @Post(':storeId/pavilion-groups')
   @Permissions(Permission.EDIT_PAVILIONS)
   createPavilionGroup(

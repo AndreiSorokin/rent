@@ -234,6 +234,135 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async updateName(storeId: number, userId: number, name: string) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const normalizedName = name?.trim();
+    if (!normalizedName) {
+      throw new BadRequestException('Store name is required');
+    }
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { name: normalizedName },
+      select: { id: true, name: true },
+    });
+  }
+
+  async addPavilionCategory(storeId: number, userId: number, name: string) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const normalizedName = name?.trim();
+    if (!normalizedName) {
+      throw new BadRequestException('Category name is required');
+    }
+
+    const store = (await (this.prisma.store as any).findUnique({
+      where: { id: storeId },
+      select: { pavilionCategoryPresets: true },
+    })) as { pavilionCategoryPresets?: string[] } | null;
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const unique = Array.from(
+      new Set([...(store.pavilionCategoryPresets ?? []), normalizedName]),
+    );
+
+    return (this.prisma.store as any).update({
+      where: { id: storeId },
+      data: { pavilionCategoryPresets: unique },
+      select: { id: true, pavilionCategoryPresets: true },
+    });
+  }
+
+  async renamePavilionCategory(
+    storeId: number,
+    userId: number,
+    oldName: string,
+    newName: string,
+  ) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const normalizedOldName = decodeURIComponent(oldName ?? '').trim();
+    const normalizedNewName = newName?.trim();
+    if (!normalizedOldName || !normalizedNewName) {
+      throw new BadRequestException('Both old and new category names are required');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.pavilion.updateMany({
+        where: { storeId, category: normalizedOldName },
+        data: { category: normalizedNewName },
+      });
+
+      const store = (await (tx.store as any).findUnique({
+        where: { id: storeId },
+        select: { pavilionCategoryPresets: true },
+      })) as { pavilionCategoryPresets?: string[] } | null;
+      if (!store) {
+        throw new NotFoundException('Store not found');
+      }
+
+      const updatedPresets = Array.from(
+        new Set(
+          (store.pavilionCategoryPresets ?? []).map((category) =>
+            category === normalizedOldName ? normalizedNewName : category,
+          ),
+        ),
+      );
+
+      return (tx.store as any).update({
+        where: { id: storeId },
+        data: { pavilionCategoryPresets: updatedPresets },
+        select: { id: true, pavilionCategoryPresets: true },
+      });
+    });
+  }
+
+  async deletePavilionCategory(storeId: number, userId: number, name: string) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.EDIT_PAVILIONS,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    const normalizedName = decodeURIComponent(name ?? '').trim();
+    if (!normalizedName) {
+      throw new BadRequestException('Category name is required');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.pavilion.updateMany({
+        where: { storeId, category: normalizedName },
+        data: { category: null },
+      });
+
+      const store = (await (tx.store as any).findUnique({
+        where: { id: storeId },
+        select: { pavilionCategoryPresets: true },
+      })) as { pavilionCategoryPresets?: string[] } | null;
+      if (!store) {
+        throw new NotFoundException('Store not found');
+      }
+
+      const updatedPresets = (store.pavilionCategoryPresets ?? []).filter(
+        (category) => category !== normalizedName,
+      );
+
+      return (tx.store as any).update({
+        where: { id: storeId },
+        data: { pavilionCategoryPresets: updatedPresets },
+        select: { id: true, pavilionCategoryPresets: true },
+      });
+    });
+  }
+
   async createStaff(
     storeId: number,
     userId: number,

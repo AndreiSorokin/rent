@@ -8,7 +8,6 @@ import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
-import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -51,10 +50,6 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(false);
-  const [deleteStoreInput, setDeleteStoreInput] = useState('');
-  const [deletingStore, setDeletingStore] = useState(false);
-  const [currencyUpdating, setCurrencyUpdating] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
   const [staffSalary, setStaffSalary] = useState('');
@@ -98,13 +93,6 @@ export default function StorePage() {
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
   const [pavilionGroupFilter, setPavilionGroupFilter] = useState('');
-  const [newGroupName, setNewGroupName] = useState('');
-  const [groupSaving, setGroupSaving] = useState(false);
-  const [groupRenameById, setGroupRenameById] = useState<Record<number, string>>({});
-  const [groupRenameLoadingById, setGroupRenameLoadingById] = useState<
-    Record<number, boolean>
-  >({});
-  const [groupDeletingId, setGroupDeletingId] = useState<number | null>(null);
   const [groupSelectionByPavilionId, setGroupSelectionByPavilionId] = useState<
     Record<number, string>
   >({});
@@ -239,14 +227,6 @@ export default function StorePage() {
   }, [store?.staff]);
 
   useEffect(() => {
-    const nextDrafts: Record<number, string> = {};
-    for (const group of store?.pavilionGroups || []) {
-      nextDrafts[group.id] = String(group.name ?? '');
-    }
-    setGroupRenameById(nextDrafts);
-  }, [store?.pavilionGroups]);
-
-  useEffect(() => {
     if (!storeId || orderedStaffIds.length === 0) return;
     try {
       localStorage.setItem(
@@ -261,45 +241,6 @@ export default function StorePage() {
   const handlePavilionCreated = () => {
     fetchData(false);
     setShowCreatePavilionModal(false);
-  };
-
-  const handleDeleteStore = async () => {
-    if (deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ') {
-      alert('Введите слово "УДАЛИТЬ" для подтверждения');
-      return;
-    }
-
-    try {
-      setDeletingStore(true);
-      await apiFetch(`/stores/${storeId}`, {
-        method: 'DELETE',
-      });
-      setShowDeleteStoreModal(false);
-      setDeleteStoreInput('');
-      alert('Объект удален');
-      router.push('/dashboard');
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось удалить объект');
-    } finally {
-      setDeletingStore(false);
-    }
-  };
-
-  const handleCurrencyChange = async (currency: 'RUB' | 'KZT') => {
-    try {
-      setCurrencyUpdating(true);
-      await apiFetch(`/stores/${storeId}/currency`, {
-        method: 'PATCH',
-        body: JSON.stringify({ currency }),
-      });
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось изменить валюту');
-    } finally {
-      setCurrencyUpdating(false);
-    }
   };
 
   const handleAddStaff = async () => {
@@ -573,29 +514,6 @@ export default function StorePage() {
     }
   };
 
-  const handleCreatePavilionGroup = async () => {
-    const name = newGroupName.trim();
-    if (!name) {
-      alert('Введите название группы');
-      return;
-    }
-
-    try {
-      setGroupSaving(true);
-      await apiFetch(`/stores/${storeId}/pavilion-groups`, {
-        method: 'POST',
-        body: JSON.stringify({ name }),
-      });
-      setNewGroupName('');
-      await fetchData(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось создать группу');
-    } finally {
-      setGroupSaving(false);
-    }
-  };
-
   const handleAddPavilionToGroup = async (pavilionId: number) => {
     const groupId = Number(groupSelectionByPavilionId[pavilionId] ?? '');
     if (!groupId || Number.isNaN(groupId)) {
@@ -639,59 +557,20 @@ export default function StorePage() {
     }
   };
 
-  const handleRenamePavilionGroup = async (groupId: number) => {
-    const name = (groupRenameById[groupId] ?? '').trim();
-    if (!name) {
-      alert('Введите название группы');
-      return;
-    }
-
-    try {
-      setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: true }));
-      await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name }),
-      });
-      await fetchData(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось переименовать группу');
-    } finally {
-      setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: false }));
-    }
-  };
-
-  const handleDeletePavilionGroup = async (groupId: number) => {
-    if (!confirm('Удалить эту группу?')) return;
-
-    try {
-      setGroupDeletingId(groupId);
-      await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
-        method: 'DELETE',
-      });
-      if (pavilionGroupFilter === String(groupId)) {
-        setPavilionGroupFilter('');
-      }
-      await fetchData(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось удалить группу');
-    } finally {
-      setGroupDeletingId(null);
-    }
-  };
-
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
   const permissions = store.permissions || [];
   const allCategories: string[] = Array.from(
-    new Set<string>(
-      (store.pavilions || [])
+    new Set<string>([
+      ...(store.pavilions || [])
         .map((p: any) => (p.category || '').trim())
         .filter((category: string) => category.length > 0),
-    ),
+      ...((store.pavilionCategoryPresets || [])
+        .map((category: string) => String(category || '').trim())
+        .filter((category: string) => category.length > 0) as string[]),
+    ]),
   ).sort((a: string, b: string) => a.localeCompare(b));
   const pavilionMap = new Map<number, any>(
     (store.pavilions || []).map((p: any) => [Number(p.id), p]),
@@ -839,16 +718,15 @@ export default function StorePage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
-              <select
-                value={store.currency ?? 'RUB'}
-                onChange={(e) => handleCurrencyChange(e.target.value as 'RUB' | 'KZT')}
-                disabled={currencyUpdating}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+            {(hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
+              hasPermission(permissions, 'EDIT_PAVILIONS') ||
+              hasPermission(permissions, 'INVITE_USERS')) && (
+              <Link
+                href={`/stores/${storeId}/settings`}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
               >
-                <option value="RUB">Российский рубль (₽)</option>
-                <option value="KZT">Казахстанский тенге (₸)</option>
-              </select>
+                Настройки
+              </Link>
             )}
             {hasPermission(permissions, 'VIEW_PAYMENTS') &&
               hasPermission(permissions, 'EDIT_PAYMENTS') && (
@@ -875,15 +753,6 @@ export default function StorePage() {
                 + Добавить павильон
               </button>
             )}
-            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
-              <button
-                onClick={() => setShowDeleteStoreModal(true)}
-                disabled={deletingStore}
-                className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingStore ? 'Удаление...' : 'Удалить объект'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -891,76 +760,7 @@ export default function StorePage() {
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
-              {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-                <div className="flex w-full max-w-md gap-2">
-                  <input
-                    type="text"
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Название новой группы"
-                  />
-                  <button
-                    onClick={handleCreatePavilionGroup}
-                    disabled={groupSaving}
-                    className="whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    {groupSaving ? 'Создание...' : 'Создать группу'}
-                  </button>
-                </div>
-              )}
             </div>
-
-            {hasPermission(permissions, 'EDIT_PAVILIONS') &&
-              (store.pavilionGroups || []).length > 0 && (
-                <div className="mb-4 rounded-lg border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-medium text-gray-700">
-                    Управление группами
-                  </div>
-                  <div className="space-y-2">
-                    {(store.pavilionGroups || []).map((group: any) => {
-                      const rawDraft = groupRenameById[group.id] ?? '';
-                      const draftName = rawDraft.trim();
-                      const currentName = String(group.name ?? '').trim();
-                      const changed = draftName.length > 0 && draftName !== currentName;
-
-                      return (
-                        <div key={group.id} className="flex flex-col gap-2 md:flex-row">
-                          <input
-                            type="text"
-                            value={rawDraft}
-                            onChange={(e) =>
-                              setGroupRenameById((prev) => ({
-                                ...prev,
-                                [group.id]: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleRenamePavilionGroup(group.id)}
-                              disabled={Boolean(groupRenameLoadingById[group.id]) || !changed}
-                              className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {groupRenameLoadingById[group.id]
-                                ? 'Сохранение...'
-                                : 'Переименовать'}
-                            </button>
-                            <button
-                              onClick={() => handleDeletePavilionGroup(group.id)}
-                              disabled={groupDeletingId === group.id}
-                              className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {groupDeletingId === group.id ? 'Удаление...' : 'Удалить'}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
             <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px_220px]">
               <input
@@ -1802,20 +1602,6 @@ export default function StorePage() {
             </Link>
           </div>
         )}
-
-        {(hasPermission(permissions, 'INVITE_USERS') ||
-          hasPermission(permissions, 'ASSIGN_PERMISSIONS')) && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
-            <StoreUsersSection
-              storeId={storeId}
-              permissions={permissions}
-              onUsersChanged={() => {
-                // no-op
-              }}
-            />
-          </div>
-        )}
       </div>
 
       {showCreatePavilionModal && (
@@ -1835,41 +1621,6 @@ export default function StorePage() {
             fetchData(false);
           }}
         />
-      )}
-      {showDeleteStoreModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Удаление объекта</h3>
-            <p className="mt-3 text-sm text-gray-600">
-              Чтобы удалить, напишите слово <span className="font-semibold">УДАЛИТЬ</span>.
-            </p>
-            <input
-              type="text"
-              value={deleteStoreInput}
-              onChange={(e) => setDeleteStoreInput(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2"
-              placeholder="УДАЛИТЬ"
-            />
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteStoreModal(false);
-                  setDeleteStoreInput('');
-                }}
-                className="rounded-lg border px-4 py-2 hover:bg-gray-100"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleDeleteStore}
-                disabled={deletingStore || deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ'}
-                className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingStore ? 'Удаление...' : 'Удалить объект'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -63,6 +63,7 @@ model Store {
   id          Int          @id @default(autoincrement())
   name        String
   currency    Currency     @default(RUB)
+  pavilionCategoryPresets String[] @default([])
   utilitiesExpenseStatus PavilionExpenseStatus @default(UNPAID)
   householdExpenseStatus PavilionExpenseStatus @default(UNPAID)
   lastMonthlyResetPeriod DateTime?
