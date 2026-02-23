@@ -185,9 +185,9 @@ export default function StoreSummaryPage() {
             <div>Павильонов всего: {tradeArea.pavilionsTotal ?? 0}</div>
             <div>Павильонов занято: {tradeArea.pavilionsRented ?? 0}</div>
             <div>Павильонов свободно: {tradeArea.pavilionsAvailable ?? 0}</div>
-            <div>Общая площадь: {tradeArea.squareTotal ?? 0} м2</div>
-            <div>Площадь в аренде: {tradeArea.squareRented ?? 0} м2</div>
-            <div>Свободная площадь: {tradeArea.squareAvailable ?? 0} м2</div>
+            <div>Общая площадь: {tradeArea.squareTotal ?? 0} м²</div>
+            <div>Площадь в аренде: {tradeArea.squareRented ?? 0} м²</div>
+            <div>Свободная площадь: {tradeArea.squareAvailable ?? 0} м²</div>
           </div>
         </div>
 
@@ -204,7 +204,7 @@ export default function StoreSummaryPage() {
                   <div className="text-sm">
                     Занято/предоплата: {group.pavilionsRentedOrPrepaid}
                   </div>
-                  <div className="text-sm">Площадь: {group.squareTotal} м2</div>
+                  <div className="text-sm">Площадь: {group.squareTotal} м²</div>
                   <div className="mt-2 text-sm">
                     Прогнозный доход: {formatMoney(group.forecastIncome ?? 0, currency)}
                   </div>

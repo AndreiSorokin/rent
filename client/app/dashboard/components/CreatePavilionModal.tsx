@@ -178,7 +178,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Площадь (м2)</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Площадь (м²)</label>
             <input
               type="number"
               step="0.01"
@@ -190,7 +190,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Цена за м2</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Цена за м²</label>
             <input
               type="number"
               step="0.01"

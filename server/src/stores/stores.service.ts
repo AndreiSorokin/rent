@@ -856,10 +856,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       const existingPavilions = await tx.pavilion.findMany({
         where: { storeId },
         select: { id: true, number: true },
+        orderBy: { id: 'asc' },
       });
-      const pavilionByNumber = new Map(
-        existingPavilions.map((p) => [p.number.trim().toLowerCase(), p]),
-      );
+      const pavilionsByNumber = new Map<string, Array<{ id: number; number: string }>>();
+      for (const pavilion of existingPavilions) {
+        const key = pavilion.number.trim().toLowerCase();
+        const bucket = pavilionsByNumber.get(key) ?? [];
+        bucket.push(pavilion);
+        pavilionsByNumber.set(key, bucket);
+      }
+      const consumedExistingByNumber = new Map<string, number>();
 
       let importedPavilions = 0;
       let importedHousehold = 0;
@@ -926,8 +932,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               : null,
         };
 
-        const existing = pavilionByNumber.get(key);
+        const consumedCount = consumedExistingByNumber.get(key) ?? 0;
+        const existingForKey = pavilionsByNumber.get(key) ?? [];
+        const existing = existingForKey[consumedCount];
         if (existing) {
+          consumedExistingByNumber.set(key, consumedCount + 1);
           await tx.pavilion.update({
             where: { id: existing.id },
             data: baseData,
@@ -945,7 +954,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               storeId,
             },
           });
-          pavilionByNumber.set(key, { id: created.id, number: created.number });
           await tx.pavilionMonthlyLedger.deleteMany({
             where: {
               pavilionId: created.id,

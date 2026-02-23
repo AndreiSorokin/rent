@@ -129,7 +129,7 @@ export function EditPavilionModal({
       return;
     }
     if (!Number.isFinite(parsedPricePerSqM) || parsedPricePerSqM < 0) {
-      setError('Цена за м2 должна быть неотрицательной');
+      setError('Цена за м² должна быть неотрицательной');
       return;
     }
     if (form.status !== 'AVAILABLE' && !form.tenantName.trim()) {
@@ -322,7 +322,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Площадь (м2)
+            Площадь (м²)
           </label>
           <input
             name="squareMeters"
@@ -337,7 +337,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Цена за м2
+            Цена за м²
           </label>
           <input
             name="pricePerSqM"

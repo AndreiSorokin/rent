@@ -405,10 +405,10 @@ export default function PavilionPage() {
             </div>
             <div>
               <p className="text-gray-600">Площадь</p>
-              <p className="text-lg font-medium">{pavilion.squareMeters} м2</p>
+              <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
             </div>
             <div>
-              <p className="text-gray-600">Цена за м2</p>
+              <p className="text-gray-600">Цена за м²</p>
               <p className="text-lg font-medium">{formatMoney(pavilion.pricePerSqM, currency)}</p>
             </div>
             <div>
@@ -710,7 +710,7 @@ export default function PavilionPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м2</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м²</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
@@ -723,7 +723,7 @@ export default function PavilionPage() {
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
                       <td className="px-6 py-4 text-sm font-medium">
-                        {discount.amount.toFixed(2)} {currencySymbol}/м2
+                        {discount.amount.toFixed(2)} {currencySymbol}/м²
                       </td>
                       <td className="px-6 py-4 text-sm font-medium">
                         {formatMoney(discount.amount * pavilion.squareMeters, currency)}
