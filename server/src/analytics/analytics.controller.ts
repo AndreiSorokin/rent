@@ -21,4 +21,10 @@ export class AnalyticsController {
   get(@Param('storeId', ParseIntPipe) storeId: number) {
     return this.service.getStoreAnalytics(storeId);
   }
+
+  @Get('summary-view')
+  @Permissions('VIEW_SUMMARY' as Permission)
+  getSummaryView(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.getStoreAnalytics(storeId);
+  }
 }

@@ -4,6 +4,7 @@ export type Permission =
   | 'EDIT_PAVILIONS'
   | 'DELETE_PAVILIONS'
   | 'VIEW_PAYMENTS'
+  | 'VIEW_SUMMARY'
   | 'CREATE_PAYMENTS'
   | 'EDIT_PAYMENTS'
   | 'CALCULATE_PAYMENTS'

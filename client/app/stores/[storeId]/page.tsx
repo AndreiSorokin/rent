@@ -1569,7 +1569,7 @@ export default function StorePage() {
           </div>
         )}
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+        {hasPermission(permissions, 'VIEW_SUMMARY') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
             <p className="mb-4 text-gray-600">

@@ -24,12 +24,14 @@ export default function StoreSummaryPage() {
         setLoading(true);
         const storeData = await apiFetch<any>(`/stores/${storeId}`);
 
-        if (!hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
+        if (!hasPermission(storeData.permissions || [], 'VIEW_SUMMARY')) {
           router.replace(`/stores/${storeId}`);
           return;
         }
 
-        const analyticsData = await apiFetch<any>(`/stores/${storeId}/analytics`);
+        const analyticsData = await apiFetch<any>(
+          `/stores/${storeId}/analytics/summary-view`,
+        );
         setStore(storeData);
         setAnalytics(analyticsData);
       } catch (err) {

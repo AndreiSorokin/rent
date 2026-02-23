@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 
@@ -8,6 +8,7 @@ const PERMISSION_LABELS = {
   EDIT_PAVILIONS: 'Изменять павильоны',
   DELETE_PAVILIONS: 'Удалять павильоны',
   VIEW_PAYMENTS: 'Просмотр оплат',
+  VIEW_SUMMARY: 'Просмотр сводки',
   CREATE_PAYMENTS: 'Записывать оплаты',
   EDIT_PAYMENTS: 'Изменять оплаты',
   CALCULATE_PAYMENTS: 'Рассчитывать оплаты',
@@ -44,7 +45,7 @@ export function ManagePermissionsModal({
 
   const togglePermission = (perm: string) => {
     setSelectedPermissions((prev) =>
-      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
+      prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm],
     );
   };
 
@@ -53,26 +54,26 @@ export function ManagePermissionsModal({
     try {
       await onSave(userId, selectedPermissions);
       onClose();
-    } catch (err) {
-      alert('Failed to save permissions');
+    } catch {
+      alert('Не удалось сохранить права доступа');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">Управление правами доступа для {userEmail}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6">
+        <h2 className="mb-4 text-xl font-bold">Управление правами доступа для {userEmail}</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-2 md:grid-cols-2">
           {Object.entries(PERMISSION_LABELS).map(([value, label]) => (
-            <label key={value} className="flex items-center space-x-2 cursor-pointer">
+            <label key={value} className="flex cursor-pointer items-center space-x-2">
               <input
                 type="checkbox"
                 checked={selectedPermissions.includes(value)}
                 onChange={() => togglePermission(value)}
-                className="form-checkbox h-5 w-5 text-blue-600"
+                className="h-5 w-5"
               />
               <span className="text-sm">{label}</span>
             </label>
@@ -83,14 +84,14 @@ export function ManagePermissionsModal({
           <button
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+            className="rounded border px-4 py-2 hover:bg-gray-100 disabled:opacity-50"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {saving ? 'Сохранение...' : 'Сохранить изменения'}
           </button>
