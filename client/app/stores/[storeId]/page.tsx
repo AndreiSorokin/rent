@@ -94,10 +94,6 @@ export default function StorePage() {
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
   const [pavilionGroupFilter, setPavilionGroupFilter] = useState('');
-  const [groupSelectionByPavilionId, setGroupSelectionByPavilionId] = useState<
-    Record<number, string>
-  >({});
-  const [groupActionLoading, setGroupActionLoading] = useState(false);
   const [pavilions, setPavilions] = useState<any[]>([]);
   const [pavilionsTotal, setPavilionsTotal] = useState(0);
   const [pavilionsPage, setPavilionsPage] = useState(1);
@@ -573,49 +569,6 @@ export default function StorePage() {
     }
   };
 
-  const handleAddPavilionToGroup = async (pavilionId: number) => {
-    const groupId = Number(groupSelectionByPavilionId[pavilionId] ?? '');
-    if (!groupId || Number.isNaN(groupId)) {
-      alert('Выберите группу');
-      return;
-    }
-
-    try {
-      setGroupActionLoading(true);
-      await apiFetch(
-        `/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`,
-        {
-          method: 'POST',
-        },
-      );
-      setGroupSelectionByPavilionId((prev) => ({ ...prev, [pavilionId]: '' }));
-      await fetchData(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось добавить павильон в группу');
-    } finally {
-      setGroupActionLoading(false);
-    }
-  };
-
-  const handleRemovePavilionFromGroup = async (pavilionId: number, groupId: number) => {
-    try {
-      setGroupActionLoading(true);
-      await apiFetch(
-        `/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`,
-        {
-          method: 'DELETE',
-        },
-      );
-      await fetchData(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.message || 'Не удалось удалить павильон из группы');
-    } finally {
-      setGroupActionLoading(false);
-    }
-  };
-
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -951,52 +904,10 @@ export default function StorePage() {
                                     className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs"
                                   >
                                     {membership.group.name}
-                                    {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-                                      <button
-                                        onClick={() =>
-                                          handleRemovePavilionFromGroup(
-                                            p.id,
-                                            membership.group.id,
-                                          )
-                                        }
-                                        className="text-red-600 hover:underline"
-                                        title="Удалить из группы"
-                                      >
-                                        x
-                                      </button>
-                                    )}
                                   </span>
                                 ))
                               )}
                             </div>
-                            {hasPermission(permissions, 'EDIT_PAVILIONS') && (
-                              <div className="flex gap-2">
-                                <select
-                                  value={groupSelectionByPavilionId[p.id] ?? ''}
-                                  onChange={(e) =>
-                                    setGroupSelectionByPavilionId((prev) => ({
-                                      ...prev,
-                                      [p.id]: e.target.value,
-                                    }))
-                                  }
-                                  className="rounded border px-2 py-1 text-xs"
-                                >
-                                  <option value="">Добавить в группу</option>
-                                  {(store.pavilionGroups || []).map((group: any) => (
-                                    <option key={group.id} value={group.id}>
-                                      {group.name}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button
-                                  onClick={() => handleAddPavilionToGroup(p.id)}
-                                  disabled={groupActionLoading}
-                                  className="rounded bg-indigo-600 px-2 py-1 text-xs text-white hover:bg-indigo-700 disabled:opacity-60"
-                                >
-                                  Добавить
-                                </button>
-                              </div>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -1007,9 +918,6 @@ export default function StorePage() {
             )}
 
             <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-              <div>
-                Показано {orderedPavilions.length} из {pavilionsTotal}
-              </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

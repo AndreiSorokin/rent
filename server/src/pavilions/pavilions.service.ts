@@ -91,6 +91,16 @@ export class PavilionsService {
       discounts: true,
       payments: true,
       contracts: true,
+      groupMemberships: {
+        include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
     } satisfies Prisma.PavilionInclude;
 
     if (options?.paginated) {

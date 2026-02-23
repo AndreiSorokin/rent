@@ -44,6 +44,18 @@ export default function StoreSettingsPage() {
     Record<number, boolean>
   >({});
   const [groupDeletingId, setGroupDeletingId] = useState<number | null>(null);
+  const [groupPavilionEditorGroupId, setGroupPavilionEditorGroupId] = useState<
+    number | null
+  >(null);
+  const [groupPavilionSearchById, setGroupPavilionSearchById] = useState<
+    Record<number, string>
+  >({});
+  const [groupPavilionSelectionById, setGroupPavilionSelectionById] = useState<
+    Record<number, number[]>
+  >({});
+  const [groupPavilionSavingById, setGroupPavilionSavingById] = useState<
+    Record<number, boolean>
+  >({});
 
   const fetchStore = async (withLoader = true) => {
     if (withLoader) setLoading(true);
@@ -291,6 +303,65 @@ export default function StoreSettingsPage() {
     }
   };
 
+  const handleOpenGroupPavilionEditor = (group: any) => {
+    const currentIds: number[] = (group.pavilions || []).map((item: any) =>
+      Number(item.pavilionId),
+    );
+    setGroupPavilionSelectionById((prev) => ({
+      ...prev,
+      [group.id]: currentIds,
+    }));
+    setGroupPavilionEditorGroupId((prev) => (prev === group.id ? null : group.id));
+  };
+
+  const handleToggleGroupPavilionSelection = (groupId: number, pavilionId: number) => {
+    setGroupPavilionSelectionById((prev) => {
+      const current = prev[groupId] || [];
+      const exists = current.includes(pavilionId);
+      return {
+        ...prev,
+        [groupId]: exists
+          ? current.filter((id) => id !== pavilionId)
+          : [...current, pavilionId],
+      };
+    });
+  };
+
+  const handleSaveGroupPavilions = async (group: any) => {
+    const groupId = Number(group.id);
+    const currentIds = new Set<number>(
+      (group.pavilions || []).map((item: any) => Number(item.pavilionId)),
+    );
+    const selectedIds = new Set<number>(groupPavilionSelectionById[groupId] || []);
+
+    const toAdd = Array.from(selectedIds).filter((id) => !currentIds.has(id));
+    const toRemove = Array.from(currentIds).filter((id) => !selectedIds.has(id));
+
+    try {
+      setGroupPavilionSavingById((prev) => ({ ...prev, [groupId]: true }));
+
+      await Promise.all([
+        ...toAdd.map((pavilionId) =>
+          apiFetch(`/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`, {
+            method: 'POST',
+          }),
+        ),
+        ...toRemove.map((pavilionId) =>
+          apiFetch(`/stores/${storeId}/pavilions/${pavilionId}/pavilion-groups/${groupId}`, {
+            method: 'DELETE',
+          }),
+        ),
+      ]);
+
+      await fetchStore(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось сохранить состав группы');
+    } finally {
+      setGroupPavilionSavingById((prev) => ({ ...prev, [groupId]: false }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
@@ -446,38 +517,113 @@ export default function StoreSettingsPage() {
                   const draftName = rawDraft.trim();
                   const currentName = String(group.name ?? '').trim();
                   const changed = draftName.length > 0 && draftName !== currentName;
+                  const allPavilions: any[] = store.pavilions || [];
+                  const search = (groupPavilionSearchById[group.id] || '').trim().toLowerCase();
+                  const filteredPavilions = allPavilions.filter((p) =>
+                    String(p.number || '').toLowerCase().includes(search),
+                  );
+                  const selectedIds = new Set<number>(groupPavilionSelectionById[group.id] || []);
 
                   return (
-                    <div key={group.id} className="flex flex-col gap-2 md:flex-row">
-                      <input
-                        type="text"
-                        value={rawDraft}
-                        onChange={(e) =>
-                          setGroupRenameById((prev) => ({
-                            ...prev,
-                            [group.id]: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded border border-gray-300 px-3 py-2"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleRenamePavilionGroup(group.id)}
-                          disabled={Boolean(groupRenameLoadingById[group.id]) || !changed}
-                          className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {groupRenameLoadingById[group.id]
-                            ? 'Сохранение...'
-                            : 'Переименовать'}
-                        </button>
-                        <button
-                          onClick={() => handleDeletePavilionGroup(group.id)}
-                          disabled={groupDeletingId === group.id}
-                          className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {groupDeletingId === group.id ? 'Удаление...' : 'Удалить'}
-                        </button>
+                    <div key={group.id} className="rounded border p-3">
+                      <div className="flex flex-col gap-2 md:flex-row">
+                        <input
+                          type="text"
+                          value={rawDraft}
+                          onChange={(e) =>
+                            setGroupRenameById((prev) => ({
+                              ...prev,
+                              [group.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded border border-gray-300 px-3 py-2"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleOpenGroupPavilionEditor(group)}
+                            className="rounded bg-indigo-600 px-3 py-2 text-xs text-white hover:bg-indigo-700"
+                          >
+                            {groupPavilionEditorGroupId === group.id
+                              ? 'Скрыть список'
+                              : 'Добавить павильоны'}
+                          </button>
+                          <button
+                            onClick={() => handleRenamePavilionGroup(group.id)}
+                            disabled={Boolean(groupRenameLoadingById[group.id]) || !changed}
+                            className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {groupRenameLoadingById[group.id]
+                              ? 'Сохранение...'
+                              : 'Переименовать'}
+                          </button>
+                          <button
+                            onClick={() => handleDeletePavilionGroup(group.id)}
+                            disabled={groupDeletingId === group.id}
+                            className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {groupDeletingId === group.id ? 'Удаление...' : 'Удалить'}
+                          </button>
+                        </div>
                       </div>
+
+                      <div className="mt-2 text-xs text-gray-600">
+                        Текущий состав: {(group.pavilions || []).length} павильонов
+                      </div>
+
+                      {groupPavilionEditorGroupId === group.id && (
+                        <div className="mt-3 rounded bg-gray-50 p-3">
+                          <input
+                            type="text"
+                            value={groupPavilionSearchById[group.id] || ''}
+                            onChange={(e) =>
+                              setGroupPavilionSearchById((prev) => ({
+                                ...prev,
+                                [group.id]: e.target.value,
+                              }))
+                            }
+                            className="mb-3 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                            placeholder="Поиск павильона по номеру"
+                          />
+                          <div className="max-h-56 space-y-2 overflow-y-auto rounded border bg-white p-2">
+                            {filteredPavilions.length === 0 ? (
+                              <p className="text-xs text-gray-500">Павильоны не найдены</p>
+                            ) : (
+                              filteredPavilions.map((p: any) => (
+                                <label
+                                  key={`${group.id}-${p.id}`}
+                                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedIds.has(Number(p.id))}
+                                    onChange={() =>
+                                      handleToggleGroupPavilionSelection(group.id, Number(p.id))
+                                    }
+                                  />
+                                  <span className="text-sm">
+                                    {p.number} {p.category ? `(${p.category})` : ''}
+                                  </span>
+                                </label>
+                              ))
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Выбрано: {selectedIds.size}
+                            </span>
+                            <button
+                              onClick={() => handleSaveGroupPavilions(group)}
+                              disabled={Boolean(groupPavilionSavingById[group.id])}
+                              className="rounded bg-green-600 px-3 py-2 text-xs text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {groupPavilionSavingById[group.id]
+                                ? 'Сохранение...'
+                                : 'Сохранить выбор'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
