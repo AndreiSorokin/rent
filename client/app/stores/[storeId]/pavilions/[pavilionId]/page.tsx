@@ -368,7 +368,7 @@ export default function PavilionPage() {
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <Link href={`/stores/${storeId}`} className="mb-2 inline-block text-blue-600 hover:underline">
-              Назад к магазину
+              Назад к объекту
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
           </div>

@@ -218,7 +218,7 @@ export default function UtilitiesPage() {
     return (
       <div className="p-6">
         <Link href={`/stores/${storeId}`} className="text-sm text-blue-600 hover:underline">
-          Назад к магазину
+          Назад к объекту
         </Link>
         <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
           Недостаточно прав для просмотра и редактирования коммунальных счетов.
@@ -257,7 +257,7 @@ export default function UtilitiesPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <Link href={`/stores/${storeId}`} className="text-sm text-blue-600 hover:underline">
-              Назад к магазину
+              Назад к объекту
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
               Начисления

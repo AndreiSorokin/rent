@@ -64,7 +64,7 @@ export default function StoreSummaryPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div className="flex flex-col gap-2">
           <Link href={`/stores/${storeId}`} className="text-blue-600 hover:underline">
-            Назад к магазину
+            Назад к объекту
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">СВОДКА</h1>
           <p className="text-sm text-gray-600">

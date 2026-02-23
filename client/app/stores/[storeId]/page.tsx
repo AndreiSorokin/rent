@@ -710,7 +710,7 @@ export default function StorePage() {
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <Link href="/dashboard" className="text-sm text-blue-600 hover:underline md:text-base">
-              Назад к магазинам
+              Назад к объектам
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">{store.name}</h1>
             <p className="mt-1 text-sm text-gray-600">
