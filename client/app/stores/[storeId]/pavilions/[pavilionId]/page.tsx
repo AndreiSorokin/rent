@@ -282,24 +282,12 @@ export default function PavilionPage() {
           );
         });
 
-        const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
-        const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
-        const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
-        const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
-        if (currentRentPaid > 0) {
-          await createPavilionPayment(storeIdNum, pavilionIdNum, {
-            period: new Date(
-              prepaidPeriod.getFullYear(),
-              prepaidPeriod.getMonth(),
-              1,
-            ).toISOString(),
-            rentPaid: -currentRentPaid,
-            rentBankTransferPaid: currentRentBank > 0 ? -currentRentBank : undefined,
-            rentCashbox1Paid: currentRentCash1 > 0 ? -currentRentCash1 : undefined,
-            rentCashbox2Paid: currentRentCash2 > 0 ? -currentRentCash2 : undefined,
-            utilitiesPaid: 0,
-            advertisingPaid: 0,
-          });
+        if (existingForPeriod?.id) {
+          await deletePavilionPaymentEntry(
+            storeIdNum,
+            pavilionIdNum,
+            Number(existingForPeriod.id),
+          );
         }
       }
 

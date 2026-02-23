@@ -395,7 +395,28 @@ async addPayment(
       });
 
       if (!entry) {
-        throw new NotFoundException('Payment entry not found');
+        // Backward-compatible path: some clients pass aggregate payment.id instead
+        // of payment transaction id. In that case delete the whole monthly aggregate.
+        const aggregate = await tx.payment.findFirst({
+          where: { id: entryId, pavilionId },
+        });
+
+        if (!aggregate) {
+          throw new NotFoundException('Payment entry not found');
+        }
+
+        await tx.paymentTransaction.deleteMany({
+          where: {
+            pavilionId,
+            period: aggregate.period,
+          },
+        });
+
+        await tx.payment.delete({
+          where: { id: aggregate.id },
+        });
+
+        return { period: aggregate.period };
       }
 
       const payment = await tx.payment.findUnique({

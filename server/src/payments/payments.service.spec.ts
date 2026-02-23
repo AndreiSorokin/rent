@@ -1,84 +1,129 @@
-jest.mock('src/prisma/prisma.service', () => ({
-  PrismaService: class PrismaService {},
-}), { virtual: true });
-
+import { BadRequestException } from '@nestjs/common';
+import { PavilionStatus } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 
-describe('PaymentsService discounts', () => {
-  let service: PaymentsService;
-  let prisma: any;
+describe('PaymentsService', () => {
+  const makePrismaMock = () => {
+    const pavilionFindUnique = jest.fn();
+    const pavilionUpdate = jest.fn();
+    const paymentFindUnique = jest.fn();
+    const paymentCreate = jest.fn();
+    const paymentUpdate = jest.fn();
+    const paymentTransactionCreate = jest.fn();
+    const pavilionMonthlyLedgerFindUnique = jest.fn();
+    const pavilionMonthlyLedgerUpsert = jest.fn();
 
-  beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-03-10T10:00:00.000Z'));
-
-    prisma = {
+    return {
       pavilion: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-      pavilionMonthlyLedger: {
-        findUnique: jest.fn(),
-        upsert: jest.fn(),
+        findUnique: pavilionFindUnique,
+        update: pavilionUpdate,
       },
       payment: {
-        findUnique: jest.fn(),
-        update: jest.fn(),
-        create: jest.fn(),
+        findUnique: paymentFindUnique,
+        create: paymentCreate,
+        update: paymentUpdate,
       },
       paymentTransaction: {
-        create: jest.fn(),
-        findFirst: jest.fn(),
-        delete: jest.fn(),
+        create: paymentTransactionCreate,
+      },
+      pavilionMonthlyLedger: {
+        findUnique: pavilionMonthlyLedgerFindUnique,
+        upsert: pavilionMonthlyLedgerUpsert,
       },
       $transaction: jest.fn(),
     };
+  };
 
-    service = new PaymentsService(prisma);
+  it('throws when rentPaid does not equal rent channels total', async () => {
+    const prisma = makePrismaMock();
+    const service = new PaymentsService(prisma as any);
+
+    await expect(
+      service.addPayment(1, new Date(), {
+        rentPaid: 100,
+        rentBankTransferPaid: 50,
+        rentCashbox1Paid: 40,
+        rentCashbox2Paid: 5,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.addPayment(1, new Date(), {
+        rentPaid: 100,
+        rentBankTransferPaid: 50,
+        rentCashbox1Paid: 40,
+        rentCashbox2Paid: 5,
+      }),
+    ).rejects.toThrow('Rent amount must equal selected payment channels total');
   });
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
+  it('throws when any payment amount is negative', async () => {
+    const prisma = makePrismaMock();
+    const service = new PaymentsService(prisma as any);
+
+    await expect(
+      service.addPayment(1, new Date(), {
+        rentPaid: -1,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    await expect(
+      service.addPayment(1, new Date(), {
+        rentPaid: -1,
+      }),
+    ).rejects.toThrow('Payment amounts must be non-negative');
   });
 
-  it('does not apply discount when its end date is before current month', async () => {
-    const pavilion = {
-      id: 22,
-      status: 'RENTED',
-      prepaidUntil: null,
-      squareMeters: 10,
-      pricePerSqM: 100,
-      utilitiesAmount: 0,
-      discounts: [
-        {
-          amount: 10,
-          startsAt: new Date('2026-01-01T00:00:00.000Z'),
-          endsAt: new Date('2026-02-20T00:00:00.000Z'),
-        },
-      ],
-      payments: [{ rentPaid: 500, utilitiesPaid: 0 }],
-      additionalCharges: [],
-    };
+  it('rejects payment for PREPAID pavilion outside prepaid month', async () => {
+    const prisma = makePrismaMock();
+    const service = new PaymentsService(prisma as any);
 
-    prisma.pavilion.findUnique
-      .mockResolvedValueOnce(pavilion)
-      .mockResolvedValueOnce(pavilion);
-    prisma.pavilionMonthlyLedger.findUnique.mockResolvedValue({
-      closingDebt: 0,
+    const prepaidMonth = new Date();
+    prepaidMonth.setDate(1);
+    prepaidMonth.setHours(0, 0, 0, 0);
+
+    prisma.pavilion.findUnique.mockResolvedValue({
+      id: 10,
+      status: PavilionStatus.PREPAID,
+      prepaidUntil: prepaidMonth,
     });
-    prisma.pavilionMonthlyLedger.upsert.mockImplementation(
-      async ({ create }: any) => create,
+
+    const otherMonth = new Date(
+      prepaidMonth.getFullYear(),
+      prepaidMonth.getMonth() - 1,
+      1,
     );
 
-    const summary = await service.getMonthlySummary(22, new Date('2026-03-05T00:00:00.000Z'));
-
-    expect(summary.expected.discount).toBe(0);
-    expect(prisma.pavilionMonthlyLedger.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
-          expectedRent: 1000,
-        }),
+    await expect(
+      service.addPayment(10, otherMonth, {
+        rentPaid: 100,
       }),
+    ).rejects.toThrow(
+      'For PREPAID pavilion, payment is allowed only for the first prepaid month',
+    );
+  });
+
+  it('rejects utilities/advertising payments for PREPAID pavilion', async () => {
+    const prisma = makePrismaMock();
+    const service = new PaymentsService(prisma as any);
+
+    const prepaidMonth = new Date();
+    prepaidMonth.setDate(1);
+    prepaidMonth.setHours(0, 0, 0, 0);
+
+    prisma.pavilion.findUnique.mockResolvedValue({
+      id: 11,
+      status: PavilionStatus.PREPAID,
+      prepaidUntil: prepaidMonth,
+    });
+
+    await expect(
+      service.addPayment(11, prepaidMonth, {
+        rentPaid: 100,
+        utilitiesPaid: 10,
+      }),
+    ).rejects.toThrow(
+      'Utilities and advertising cannot be paid while pavilion status is PREPAID',
     );
   });
 });

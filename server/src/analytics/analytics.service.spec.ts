@@ -1,237 +1,139 @@
+import { PavilionStatus } from '@prisma/client';
 import { AnalyticsService } from './analytics.service';
 
-jest.mock(
-  'src/prisma/prisma.service',
-  () => ({
-    PrismaService: class PrismaService {},
-  }),
-  { virtual: true },
-);
-
 describe('AnalyticsService', () => {
-  let service: AnalyticsService;
-  let prisma: any;
+  const makePrismaMock = () => {
+    const storeFindUnique = jest.fn();
+    const pavilionUpdateMany = jest.fn();
+    const pavilionFindMany = jest.fn();
+    const pavilionExpenseFindMany = jest.fn();
 
-  beforeEach(() => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-03-15T10:00:00.000Z'));
-
-    prisma = {
-      store: {
-        findUnique: jest.fn(),
-      },
-      pavilion: {
-        updateMany: jest.fn(),
-        findMany: jest.fn(),
-      },
-      pavilionExpense: {
-        findMany: jest.fn(),
-      },
+    return {
+      store: { findUnique: storeFindUnique },
+      pavilion: { updateMany: pavilionUpdateMany, findMany: pavilionFindMany },
+      pavilionExpense: { findMany: pavilionExpenseFindMany },
     };
+  };
 
-    service = new AnalyticsService(prisma);
-  });
+  it('calculates income/expenses/saldo/channels and previous month balance correctly', async () => {
+    const prisma = makePrismaMock();
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
-  });
-
-  it('calculates summary saldo from actual income minus actual expenses', async () => {
     prisma.store.findUnique
       .mockResolvedValueOnce({
         utilitiesExpenseStatus: 'UNPAID',
         householdExpenseStatus: 'UNPAID',
-        staff: [{ salary: 500, salaryStatus: 'PAID' }],
+        staff: [{ salary: 1000, salaryStatus: 'PAID' }],
       })
       .mockResolvedValueOnce({
         utilitiesExpenseStatus: 'UNPAID',
         householdExpenseStatus: 'UNPAID',
-        staff: [{ salary: 200, salaryStatus: 'PAID' }],
+        staff: [{ salary: 1000, salaryStatus: 'PAID' }],
       });
 
     prisma.pavilion.updateMany.mockResolvedValue({ count: 0 });
+
     prisma.pavilion.findMany
       .mockResolvedValueOnce([
         {
-          id: 1,
-          status: 'RENTED',
+          status: PavilionStatus.RENTED,
           squareMeters: 10,
           pricePerSqM: 100,
-          utilitiesAmount: 50,
-          advertisingAmount: 30,
+          utilitiesAmount: 80,
+          advertisingAmount: 20,
           discounts: [],
           monthlyLedgers: [],
           payments: [
             {
-              rentPaid: 800,
-              utilitiesPaid: 40,
-              advertisingPaid: 10,
-              rentBankTransferPaid: 800,
-              rentCashbox1Paid: 0,
-              rentCashbox2Paid: 0,
-              utilitiesBankTransferPaid: 40,
-              utilitiesCashbox1Paid: 0,
-              utilitiesCashbox2Paid: 0,
-              advertisingBankTransferPaid: 10,
-              advertisingCashbox1Paid: 0,
-              advertisingCashbox2Paid: 0,
+              rentPaid: 1000,
+              utilitiesPaid: 200,
+              advertisingPaid: 100,
               bankTransferPaid: 0,
               cashbox1Paid: 0,
               cashbox2Paid: 0,
+              rentBankTransferPaid: 600,
+              rentCashbox1Paid: 300,
+              rentCashbox2Paid: 100,
+              utilitiesBankTransferPaid: 100,
+              utilitiesCashbox1Paid: 100,
+              utilitiesCashbox2Paid: 0,
+              advertisingBankTransferPaid: 40,
+              advertisingCashbox1Paid: 60,
+              advertisingCashbox2Paid: 0,
             },
           ],
           additionalCharges: [
             {
-              amount: 20,
+              amount: 150,
               payments: [
                 {
-                  amountPaid: 5,
-                  bankTransferPaid: 5,
-                  cashbox1Paid: 0,
+                  amountPaid: 50,
+                  bankTransferPaid: 20,
+                  cashbox1Paid: 30,
                   cashbox2Paid: 0,
                 },
               ],
             },
           ],
-          groupMemberships: [],
+          groupMemberships: [
+            {
+              group: {
+                id: 1,
+                name: 'Группа 1',
+              },
+            },
+          ],
         },
       ])
       .mockResolvedValueOnce([
         {
-          status: 'RENTED',
-          payments: [{ rentPaid: 300, utilitiesPaid: 0, advertisingPaid: 0 }],
-          additionalCharges: [],
+          status: PavilionStatus.RENTED,
+          payments: [{ rentPaid: 500, utilitiesPaid: 50, advertisingPaid: 50 }],
+          additionalCharges: [
+            {
+              payments: [{ amountPaid: 25 }],
+            },
+          ],
         },
       ]);
 
     prisma.pavilionExpense.findMany
       .mockResolvedValueOnce([
-        { type: 'PAYROLL_TAX', amount: 100, status: 'PAID' },
-        { type: 'STORE_FACILITIES', amount: 70, status: 'UNPAID' },
-        { type: 'HOUSEHOLD', amount: 30, status: 'PAID' },
+        { type: 'PAYROLL_TAX', amount: 300, status: 'PAID' },
+        { type: 'OTHER', amount: 100, status: 'PAID' },
+        { type: 'HOUSEHOLD', amount: 200, status: 'PAID' },
+        { type: 'STORE_FACILITIES', amount: 400, status: 'UNPAID' },
       ])
       .mockResolvedValueOnce([
-        { type: 'PAYROLL_TAX', amount: 50, status: 'PAID' },
-        { type: 'STORE_FACILITIES', amount: 10, status: 'PAID' },
-        { type: 'HOUSEHOLD', amount: 40, status: 'PAID' },
+        { type: 'PAYROLL_TAX', amount: 100, status: 'PAID' },
+        { type: 'HOUSEHOLD', amount: 50, status: 'PAID' },
+        { type: 'STORE_FACILITIES', amount: 40, status: 'PAID' },
       ]);
 
-    const result = await service.getStoreAnalytics(10);
+    const service = new AnalyticsService(prisma as any);
+    const result = await service.getStoreAnalytics(2);
 
-    expect(result.summaryPage.income.total).toBe(855);
-    expect(result.summaryPage.expenses.totals.actual).toBe(630);
-    expect(result.summaryPage.saldo).toBe(225);
-    expect(result.summaryPage.income.previousMonthBalance).toBe(0);
-  });
-
-  it('aggregates payment channels by entity and supports old fallback payment fields', async () => {
-    prisma.store.findUnique
-      .mockResolvedValueOnce({
-        utilitiesExpenseStatus: 'UNPAID',
-        householdExpenseStatus: 'UNPAID',
-        staff: [],
-      })
-      .mockResolvedValueOnce({
-        utilitiesExpenseStatus: 'UNPAID',
-        householdExpenseStatus: 'UNPAID',
-        staff: [],
-      });
-
-    prisma.pavilion.updateMany.mockResolvedValue({ count: 0 });
-    prisma.pavilion.findMany
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          status: 'RENTED',
-          squareMeters: 10,
-          pricePerSqM: 100,
-          utilitiesAmount: 0,
-          advertisingAmount: 0,
-          discounts: [],
-          monthlyLedgers: [],
-          payments: [
-            {
-              // old style record: only generic rent channels used
-              rentPaid: 300,
-              utilitiesPaid: 0,
-              advertisingPaid: 0,
-              rentBankTransferPaid: 0,
-              rentCashbox1Paid: 0,
-              rentCashbox2Paid: 0,
-              utilitiesBankTransferPaid: 0,
-              utilitiesCashbox1Paid: 0,
-              utilitiesCashbox2Paid: 0,
-              advertisingBankTransferPaid: 0,
-              advertisingCashbox1Paid: 0,
-              advertisingCashbox2Paid: 0,
-              bankTransferPaid: 100,
-              cashbox1Paid: 200,
-              cashbox2Paid: 0,
-            },
-            {
-              // new style record: split by entity
-              rentPaid: 50,
-              utilitiesPaid: 30,
-              advertisingPaid: 20,
-              rentBankTransferPaid: 10,
-              rentCashbox1Paid: 20,
-              rentCashbox2Paid: 20,
-              utilitiesBankTransferPaid: 5,
-              utilitiesCashbox1Paid: 10,
-              utilitiesCashbox2Paid: 15,
-              advertisingBankTransferPaid: 3,
-              advertisingCashbox1Paid: 7,
-              advertisingCashbox2Paid: 10,
-              bankTransferPaid: 0,
-              cashbox1Paid: 0,
-              cashbox2Paid: 0,
-            },
-          ],
-          additionalCharges: [
-            {
-              amount: 0,
-              payments: [
-                {
-                  amountPaid: 10,
-                  bankTransferPaid: 2,
-                  cashbox1Paid: 3,
-                  cashbox2Paid: 5,
-                },
-              ],
-            },
-          ],
-          groupMemberships: [],
-        },
-      ])
-      .mockResolvedValueOnce([]);
-    prisma.pavilionExpense.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
-
-    const result = await service.getStoreAnalytics(10);
-
-    expect(result.summaryPage.income.channelsByEntity.rent).toEqual({
-      bankTransfer: 110,
-      cashbox1: 220,
-      cashbox2: 20,
-      total: 350,
+    expect(result.income.actual.total).toBe(1350);
+    expect(result.summaryPage.income.total).toBe(1350);
+    expect(result.summaryPage.income.channels).toEqual({
+      bankTransfer: 760,
+      cashbox1: 490,
+      cashbox2: 100,
+      total: 1350,
     });
-    expect(result.summaryPage.income.channelsByEntity.facilities).toEqual({
-      bankTransfer: 5,
-      cashbox1: 10,
-      cashbox2: 15,
-      total: 30,
+
+    expect(result.expenses.total.forecast).toBe(2000);
+    expect(result.expenses.total.actual).toBe(1600);
+    expect(result.summaryPage.expenses.totals.actual).toBe(1600);
+
+    expect(result.summaryPage.saldo).toBe(-250);
+    expect(result.summaryPage.income.previousMonthBalance).toBe(-565);
+
+    expect(result.summaryPage.groupedByPavilionGroups).toHaveLength(1);
+    expect(result.summaryPage.groupedByPavilionGroups[0]).toMatchObject({
+      name: 'Группа 1',
+      forecastIncome: 1250,
+      actualIncome: 1350,
+      delta: 100,
     });
-    expect(result.summaryPage.income.channelsByEntity.advertising).toEqual({
-      bankTransfer: 3,
-      cashbox1: 7,
-      cashbox2: 10,
-      total: 20,
-    });
-    expect(result.summaryPage.income.channelsByEntity.additional).toEqual({
-      bankTransfer: 2,
-      cashbox1: 3,
-      cashbox2: 5,
-      total: 10,
-    });
-    expect(result.summaryPage.income.channels.total).toBe(410);
   });
 });

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { calcProfit } from '@/lib/finance';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import {
@@ -824,7 +825,7 @@ export default function StorePage() {
                         Павильон
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Площадь (м2)
+                        м²
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Статус
@@ -880,7 +881,7 @@ export default function StorePage() {
                           </button>
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          Павильон {p.number}
+                          {p.number}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {p.squareMeters ?? 0}
@@ -1449,16 +1450,20 @@ export default function StorePage() {
               <div className="text-sm text-gray-700">
                 Прогноз:{' '}
                 {formatMoney(
-                  (analytics?.income?.forecast?.total ?? 0) -
-                    (analytics?.expenses?.total?.forecast ?? 0),
+                  calcProfit(
+                    analytics?.income?.forecast?.total,
+                    analytics?.expenses?.total?.forecast,
+                  ),
                   store.currency,
                 )}
               </div>
               <div className="text-sm text-gray-700">
                 Факт:{' '}
                 {formatMoney(
-                  (analytics?.income?.actual?.total ?? 0) -
-                    (analytics?.expenses?.total?.actual ?? 0),
+                  calcProfit(
+                    analytics?.income?.actual?.total,
+                    analytics?.expenses?.total?.actual,
+                  ),
                   store.currency,
                 )}
               </div>

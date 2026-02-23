@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 
 export default function StoreSummaryPage() {
   const params = useParams();
@@ -56,14 +57,7 @@ export default function StoreSummaryPage() {
   const tradeArea = summary.tradeArea || {};
   const groupedByPavilionGroups = summary.groupedByPavilionGroups || [];
 
-  const storeLevelForecast =
-    (storeLevelExpenses.manual?.forecast ?? 0) +
-    (storeLevelExpenses.salaries?.forecast ?? 0) +
-    (storeLevelExpenses.household?.forecast ?? 0);
-  const storeLevelActual =
-    (storeLevelExpenses.manual?.actual ?? 0) +
-    (storeLevelExpenses.salaries?.actual ?? 0) +
-    (storeLevelExpenses.household?.actual ?? 0);
+  const storeLevelTotals = calcStoreLevelExpensesTotals(storeLevelExpenses);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -75,7 +69,7 @@ export default function StoreSummaryPage() {
           <h1 className="text-2xl font-bold md:text-3xl">СВОДКА</h1>
           <p className="text-sm text-gray-600">
             Общая сумма денег:{' '}
-            {formatMoney((income.total ?? 0) - (expenses.totals?.actual ?? 0), currency)}
+            {formatMoney(calcSummaryTotalMoney(income.total, expenses.totals?.actual), currency)}
           </p>
         </div>
 
@@ -151,8 +145,8 @@ export default function StoreSummaryPage() {
           <h2 className="mb-4 text-xl font-semibold">2. Общий расход</h2>
           <div className="mb-4 rounded-lg bg-gray-50 p-3 text-sm">
             <div>Расходы уровня магазина (ручные + хоз. часть):</div>
-            <div>Прогноз: {formatMoney(storeLevelForecast, currency)}</div>
-            <div>Факт: {formatMoney(storeLevelActual, currency)}</div>
+            <div>Прогноз: {formatMoney(storeLevelTotals.forecast, currency)}</div>
+            <div>Факт: {formatMoney(storeLevelTotals.actual, currency)}</div>
           </div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             <div>Зарплаты: {formatMoney(expenseByType.salaries ?? 0, currency)}</div>
@@ -180,7 +174,9 @@ export default function StoreSummaryPage() {
 
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-2 text-xl font-semibold">3. Сальдо</h2>
-          <div className="text-lg font-semibold">{formatMoney(summary.saldo ?? 0, currency)}</div>
+          <div className="text-lg font-semibold">
+            {formatMoney(calcProfit(income.total, expenses.totals?.actual), currency)}
+          </div>
         </div>
 
         <div className="rounded-xl bg-white p-6 shadow">

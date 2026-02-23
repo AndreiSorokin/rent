@@ -26,6 +26,11 @@ test('register page is reachable and has required controls', async ({ page }) =>
 });
 
 test('unknown route redirects to dashboard (app not-found behavior)', async ({ page }) => {
+  await page.goto('/this-route-does-not-exist');
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test('unknown route redirects to dashboard for authorized user', async ({ page }) => {
   const token = makeJwt({
     sub: 111,
     email: 'smoke@test.local',
