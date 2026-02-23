@@ -469,6 +469,9 @@ export default function StoreSummaryPage() {
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthValue());
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadMonth, setDownloadMonth] = useState<string>(getCurrentMonthValue());
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -588,6 +591,46 @@ export default function StoreSummaryPage() {
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
 
+  const handleDownloadSummaryPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/analytics/summary-view/pdf?period=${encodeURIComponent(downloadMonth)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Не удалось скачать сводку');
+      }
+
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = fileUrl;
+      anchor.download = `svodka-${storeId}-${downloadMonth}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(fileUrl);
+      setShowDownloadModal(false);
+    } catch (downloadError) {
+      console.error(downloadError);
+      alert('Не удалось скачать PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:space-y-8 md:p-8">
@@ -599,7 +642,7 @@ export default function StoreSummaryPage() {
               </Link>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">СВОДКА</h1>
               <p className="mt-1 text-sm text-gray-600">Ключевые финансовые показатели объекта</p>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <label htmlFor="summary-month" className="text-sm text-gray-600">
                   Месяц:
                 </label>
@@ -610,6 +653,15 @@ export default function StoreSummaryPage() {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
                 />
+                <button
+                  onClick={() => {
+                    setDownloadMonth(selectedMonth);
+                    setShowDownloadModal(true);
+                  }}
+                  className="ml-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  Скачать сводку
+                </button>
               </div>
             </div>
             <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
@@ -849,6 +901,44 @@ export default function StoreSummaryPage() {
           )}
         </section>
       </div>
+      {showDownloadModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900">Скачать сводку (PDF)</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Выберите месяц, за который нужно сформировать файл.
+            </p>
+            <div className="mt-4">
+              <label htmlFor="download-month" className="mb-1 block text-sm text-gray-700">
+                Месяц
+              </label>
+              <input
+                id="download-month"
+                type="month"
+                value={downloadMonth}
+                onChange={(e) => setDownloadMonth(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+              />
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                disabled={downloadingPdf}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDownloadSummaryPdf}
+                disabled={downloadingPdf || !downloadMonth}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {downloadingPdf ? 'Формирование...' : 'Скачать PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

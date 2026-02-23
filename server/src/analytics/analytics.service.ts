@@ -7,6 +7,14 @@ import { PavilionStatus } from '@prisma/client';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
+  async getStoreName(storeId: number) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { name: true },
+    });
+    return store?.name ?? `Объект #${storeId}`;
+  }
+
   async getStoreAnalytics(storeId: number, periodInput?: string) {
     const storeMeta = await this.prisma.store.findUnique({
       where: { id: storeId },
