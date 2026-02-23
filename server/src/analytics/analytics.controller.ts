@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
@@ -18,13 +19,19 @@ export class AnalyticsController {
 
   @Get()
   @Permissions(Permission.VIEW_PAYMENTS)
-  get(@Param('storeId', ParseIntPipe) storeId: number) {
-    return this.service.getStoreAnalytics(storeId);
+  get(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('period') period?: string,
+  ) {
+    return this.service.getStoreAnalytics(storeId, period);
   }
 
   @Get('summary-view')
   @Permissions('VIEW_SUMMARY' as Permission)
-  getSummaryView(@Param('storeId', ParseIntPipe) storeId: number) {
-    return this.service.getStoreAnalytics(storeId);
+  getSummaryView(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('period') period?: string,
+  ) {
+    return this.service.getStoreAnalytics(storeId, period);
   }
 }

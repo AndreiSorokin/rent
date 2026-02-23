@@ -8,6 +8,13 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 
+function getCurrentMonthValue() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
 type MetricCardProps = {
   title: string;
   value: string;
@@ -461,6 +468,7 @@ export default function StoreSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthValue());
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -475,6 +483,7 @@ export default function StoreSummaryPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
         const storeData = await apiFetch<any>(`/stores/${storeId}`);
 
         if (!hasPermission(storeData.permissions || [], 'VIEW_SUMMARY')) {
@@ -482,7 +491,9 @@ export default function StoreSummaryPage() {
           return;
         }
 
-        const analyticsData = await apiFetch<any>(`/stores/${storeId}/analytics/summary-view`);
+        const analyticsData = await apiFetch<any>(
+          `/stores/${storeId}/analytics/summary-view?period=${encodeURIComponent(selectedMonth)}`,
+        );
         setStore(storeData);
         setAnalytics(analyticsData);
       } catch (err) {
@@ -494,7 +505,7 @@ export default function StoreSummaryPage() {
     };
 
     if (storeId) fetchData();
-  }, [router, storeId]);
+  }, [router, selectedMonth, storeId]);
 
   const data = useMemo(() => {
     if (!store || !analytics) return null;
@@ -588,6 +599,18 @@ export default function StoreSummaryPage() {
               </Link>
               <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">СВОДКА</h1>
               <p className="mt-1 text-sm text-gray-600">Ключевые финансовые показатели объекта</p>
+              <div className="mt-3 flex items-center gap-2">
+                <label htmlFor="summary-month" className="text-sm text-gray-600">
+                  Месяц:
+                </label>
+                <input
+                  id="summary-month"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                />
+              </div>
             </div>
             <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Общая сумма денег</p>

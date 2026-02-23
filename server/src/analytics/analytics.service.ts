@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { PavilionStatus } from '@prisma/client';
@@ -7,7 +7,7 @@ import { PavilionStatus } from '@prisma/client';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getStoreAnalytics(storeId: number) {
+  async getStoreAnalytics(storeId: number, periodInput?: string) {
     const storeMeta = await this.prisma.store.findUnique({
       where: { id: storeId },
       select: {
@@ -36,7 +36,7 @@ export class AnalyticsService {
       },
     });
 
-    const period = startOfMonth(new Date());
+    const period = this.parsePeriod(periodInput);
     const periodStart = startOfMonth(period);
     const periodEnd = endOfMonth(period);
     const prevPeriod = startOfMonth(subMonths(period, 1));
@@ -963,6 +963,25 @@ export class AnalyticsService {
       },
       period,
     };
+  }
+
+  private parsePeriod(periodInput?: string) {
+    if (!periodInput) {
+      return startOfMonth(new Date());
+    }
+
+    const match = /^(\d{4})-(\d{2})$/.exec(periodInput.trim());
+    if (!match) {
+      throw new BadRequestException('period must be in YYYY-MM format');
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      throw new BadRequestException('period must be in YYYY-MM format');
+    }
+
+    return startOfMonth(new Date(year, month - 1, 1));
   }
 
   private getMonthlyDiscountTotal(
