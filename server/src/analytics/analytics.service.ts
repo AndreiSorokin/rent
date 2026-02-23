@@ -139,6 +139,7 @@ export class AnalyticsService {
       select: {
         period: true,
         expectedTotal: true,
+        actualTotal: true,
         pavilion: {
           select: {
             squareMeters: true,
@@ -708,6 +709,86 @@ export class AnalyticsService {
       };
     });
 
+    const manualExpensesForTrend = await this.prisma.pavilionExpense.findMany({
+      where: {
+        createdAt: {
+          gte: trendStart,
+          lte: periodEnd,
+        },
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
+      select: {
+        createdAt: true,
+        amount: true,
+        status: true,
+      },
+    });
+
+    const monthlyFinanceMap = new Map<
+      string,
+      {
+        incomeForecast: number;
+        incomeActual: number;
+        expensesForecast: number;
+        expensesActual: number;
+      }
+    >();
+    for (const monthDate of months) {
+      monthlyFinanceMap.set(monthDate.toISOString(), {
+        incomeForecast: 0,
+        incomeActual: 0,
+        expensesForecast: 0,
+        expensesActual: 0,
+      });
+    }
+
+    for (const ledger of monthlyLedgers) {
+      const monthKey = startOfMonth(ledger.period).toISOString();
+      const bucket = monthlyFinanceMap.get(monthKey);
+      if (!bucket) continue;
+      bucket.incomeForecast += Number(ledger.expectedTotal ?? 0);
+      bucket.incomeActual += Number(ledger.actualTotal ?? 0);
+    }
+
+    for (const expense of manualExpensesForTrend) {
+      const monthKey = startOfMonth(expense.createdAt).toISOString();
+      const bucket = monthlyFinanceMap.get(monthKey);
+      if (!bucket) continue;
+      bucket.expensesForecast += Number(expense.amount ?? 0);
+      if (expense.status === 'PAID') {
+        bucket.expensesActual += Number(expense.amount ?? 0);
+      }
+    }
+
+    if (monthlyFinanceMap.has(currentKey)) {
+      const current = monthlyFinanceMap.get(currentKey);
+      if (current) {
+        current.incomeForecast = incomeForecastTotal;
+        current.incomeActual = incomeActualTotal;
+        current.expensesForecast = expensesTotalForecast;
+        current.expensesActual = expensesTotalActual;
+      }
+    }
+
+    const monthlyFinanceTrend = months.map((monthDate) => {
+      const key = monthDate.toISOString();
+      const month = monthlyFinanceMap.get(key) ?? {
+        incomeForecast: 0,
+        incomeActual: 0,
+        expensesForecast: 0,
+        expensesActual: 0,
+      };
+
+      return {
+        period: monthDate,
+        incomeForecast: month.incomeForecast,
+        incomeActual: month.incomeActual,
+        expensesForecast: month.expensesForecast,
+        expensesActual: month.expensesActual,
+        saldo: month.incomeActual - month.expensesActual,
+      };
+    });
+
     return {
       pavilions: {
         total: pavilions.length,
@@ -878,6 +959,7 @@ export class AnalyticsService {
           monthlyTrend,
         },
         groupedByPavilionGroups: groupSummaries,
+        financeTrend: monthlyFinanceTrend,
       },
       period,
     };

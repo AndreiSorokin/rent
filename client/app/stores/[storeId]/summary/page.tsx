@@ -92,13 +92,13 @@ function MonthlyLineChart({
     1,
     ...items.map((item) => Number(item[totalKey] ?? item[valueKey] ?? 0)),
   );
-  const chartWidth = 1000;
-  const svgHeight = 264;
+  const chartWidth = 420;
+  const svgHeight = 276;
   const plotTop = 16;
-  const plotBottom = 196;
+  const plotBottom = 206;
   const plotHeight = plotBottom - plotTop;
-  const plotLeft = 70;
-  const plotRight = 980;
+  const plotLeft = 40;
+  const plotRight = 410;
   const plotWidth = plotRight - plotLeft;
   const step = items.length > 1 ? plotWidth / (items.length - 1) : plotWidth;
   const yTicks = [
@@ -126,7 +126,7 @@ function MonthlyLineChart({
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
       <p className="text-sm font-semibold text-gray-800">{title}</p>
       <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
-        <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[21.5rem] w-full">
+        <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[39rem] w-full sm:h-[22rem]">
           <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
           {yTicks.map((tick) => {
             const y = plotBottom - (tick / maxValue) * plotHeight;
@@ -145,7 +145,7 @@ function MonthlyLineChart({
                   y={y}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  fontSize="9"
+                  fontSize="14"
                   fill="#6b7280"
                 >
                   {Math.max(0, tick)}
@@ -205,9 +205,9 @@ function MonthlyLineChart({
             <text
               key={`${String(point.period)}-label`}
               x={point.x}
-              y={236}
+              y={248}
               textAnchor="middle"
-              fontSize="10"
+              fontSize="16"
               fill="#6b7280"
             >
               {new Date(point.period).toLocaleDateString('ru-RU', {
@@ -237,6 +237,220 @@ function MonthlyLineChart({
   );
 }
 
+type MonthlyFinancePoint = {
+  period: string | Date;
+  incomeForecast: number;
+  incomeActual: number;
+  expensesForecast: number;
+  expensesActual: number;
+  saldo: number;
+};
+
+type FinanceTrendChartProps = {
+  title: string;
+  items: MonthlyFinancePoint[];
+  actualKey: 'incomeActual' | 'expensesActual' | 'saldo';
+  forecastKey?: 'incomeForecast' | 'expensesForecast';
+  valueFormatter?: (value: number) => string;
+};
+
+function FinanceTrendChart({
+  title,
+  items,
+  actualKey,
+  forecastKey,
+  valueFormatter = (value: number) => String(Math.round(value)),
+}: FinanceTrendChartProps) {
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    label: string;
+    actual: string;
+    forecast?: string;
+  } | null>(null);
+
+  const allValues = items.flatMap((item) => {
+    const values = [Number(item[actualKey] ?? 0)];
+    if (forecastKey) values.push(Number(item[forecastKey] ?? 0));
+    return values;
+  });
+  const maxValue = Math.max(...allValues, 0);
+  const minValue = Math.min(0, ...allValues);
+  const range = Math.max(1, maxValue - minValue);
+
+  const chartWidth = 420;
+  const svgHeight = 276;
+  const plotTop = 16;
+  const plotBottom = 206;
+  const plotHeight = plotBottom - plotTop;
+  const plotLeft = 40;
+  const plotRight = 410;
+  const plotWidth = plotRight - plotLeft;
+  const step = items.length > 1 ? plotWidth / (items.length - 1) : plotWidth;
+
+  const yScale = (value: number) =>
+    plotBottom - ((value - minValue) / range) * plotHeight;
+  const yTicks = [maxValue, maxValue - range * 0.25, maxValue - range * 0.5, maxValue - range * 0.75, minValue];
+
+  const actualPoints = items.map((item, index) => ({
+    x: items.length > 1 ? plotLeft + index * step : plotLeft + plotWidth / 2,
+    y: yScale(Number(item[actualKey] ?? 0)),
+    actual: Number(item[actualKey] ?? 0),
+    forecast: forecastKey ? Number(item[forecastKey] ?? 0) : undefined,
+    period: item.period,
+  }));
+  const actualPolyline = actualPoints.map((p) => `${p.x},${p.y}`).join(' ');
+
+  const forecastPolyline = forecastKey
+    ? actualPoints
+        .map((p) => `${p.x},${yScale(Number(p.forecast ?? 0))}`)
+        .join(' ')
+    : '';
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-gray-800">{title}</p>
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <span className="inline-flex items-center gap-1.5 text-gray-700">
+            <span className="inline-block h-0.5 w-5 rounded bg-blue-600" />
+            Сплошная = Факт
+          </span>
+          {forecastKey ? (
+            <span className="inline-flex items-center gap-1.5 text-gray-600">
+              <span className="inline-block h-0.5 w-5 border-t-2 border-dashed border-slate-400" />
+              Пунктир = Прогноз
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
+        <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[39rem] w-full sm:h-[22rem]">
+          <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
+          {yTicks.map((tick, idx) => {
+            const y = yScale(tick);
+            return (
+              <g key={`finance-tick-${idx}`}>
+                <line
+                  x1={plotLeft}
+                  y1={y}
+                  x2={plotRight}
+                  y2={y}
+                  stroke={Math.abs(tick) < 0.0001 ? '#cbd5e1' : '#f3f4f6'}
+                  strokeWidth={Math.abs(tick) < 0.0001 ? '1.5' : '1'}
+                />
+                <text
+                  x={plotLeft - 1.5}
+                  y={y}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  fontSize="14"
+                  fill="#6b7280"
+                >
+                  {Math.round(tick)}
+                </text>
+              </g>
+            );
+          })}
+
+          {actualPoints.map((point) => (
+            <line
+              key={`${String(point.period)}-finance-x-grid`}
+              x1={point.x}
+              y1={plotTop}
+              x2={point.x}
+              y2={plotBottom}
+              stroke="#f8fafc"
+              strokeWidth="1"
+            />
+          ))}
+
+          {forecastKey ? (
+            <polyline
+              fill="none"
+              stroke="#94a3b8"
+              strokeWidth="2"
+              strokeDasharray="6 4"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              points={forecastPolyline}
+            />
+          ) : null}
+
+          <polyline
+            fill="none"
+            stroke="#2563eb"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={actualPolyline}
+          />
+
+          {actualPoints.map((point) => (
+            <circle
+              key={`${String(point.period)}-finance-dot`}
+              cx={point.x}
+              cy={point.y}
+              r="3.2"
+              fill="#1d4ed8"
+              className="cursor-pointer"
+              onMouseMove={(event) => {
+                const bounds = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                if (!bounds) return;
+                setTooltip({
+                  x: event.clientX - bounds.left + 12,
+                  y: event.clientY - bounds.top + 12,
+                  label: new Date(point.period).toLocaleDateString('ru-RU', {
+                    month: 'long',
+                    year: 'numeric',
+                  }),
+                  actual: valueFormatter(point.actual),
+                  forecast:
+                    forecastKey && point.forecast !== undefined
+                      ? valueFormatter(point.forecast)
+                      : undefined,
+                });
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          ))}
+
+          {actualPoints.map((point) => (
+            <text
+              key={`${String(point.period)}-finance-label`}
+              x={point.x}
+              y={248}
+              textAnchor="middle"
+              fontSize="16"
+              fill="#6b7280"
+            >
+              {new Date(point.period).toLocaleDateString('ru-RU', {
+                month: 'short',
+              })}
+            </text>
+          ))}
+        </svg>
+        {tooltip ? (
+          <div
+            className="pointer-events-none absolute z-20 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 text-xs shadow-lg"
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            <div className="font-semibold text-gray-900">{tooltip.label}</div>
+            <div className="text-gray-700">Факт: {tooltip.actual}</div>
+            {tooltip.forecast ? <div className="text-gray-500">Прогноз: {tooltip.forecast}</div> : null}
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-2 text-xs text-gray-600">
+        Текущее значение:{' '}
+        <span className="font-medium text-gray-900">
+          {valueFormatter(actualPoints[actualPoints.length - 1]?.actual ?? 0)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function StoreSummaryPage() {
   const params = useParams();
   const router = useRouter();
@@ -246,6 +460,16 @@ export default function StoreSummaryPage() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 640px)');
+    const apply = () => setIsMobile(media.matches);
+    apply();
+    media.addEventListener('change', apply);
+    return () => media.removeEventListener('change', apply);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -284,6 +508,48 @@ export default function StoreSummaryPage() {
     const storeLevelExpenses = expenses.storeLevel || {};
     const tradeArea = summary.tradeArea || {};
     const groupedByPavilionGroups = summary.groupedByPavilionGroups || [];
+    const financeTrend = summary.financeTrend || [];
+    const tradeAreaTrend = Array.isArray(tradeArea?.monthlyTrend)
+      ? tradeArea.monthlyTrend
+      : [];
+    const financeTrendFallback = Array.isArray(financeTrend) && financeTrend.length > 0
+      ? financeTrend
+      : (() => {
+          if (tradeAreaTrend.length === 0) {
+            return [
+              {
+                period: new Date(),
+                incomeForecast: Number(analytics?.income?.forecast?.total ?? 0),
+                incomeActual: Number(summary?.income?.total ?? 0),
+                expensesForecast: Number(summary?.expenses?.totals?.forecast ?? 0),
+                expensesActual: Number(summary?.expenses?.totals?.actual ?? 0),
+                saldo:
+                  Number(summary?.income?.total ?? 0) -
+                  Number(summary?.expenses?.totals?.actual ?? 0),
+              },
+            ];
+          }
+          const fallback = tradeAreaTrend.map((point: any, index: number) => ({
+            period: point.period,
+            incomeForecast: 0,
+            incomeActual: 0,
+            expensesForecast: 0,
+            expensesActual: 0,
+            saldo: 0,
+          }));
+          const lastIndex = fallback.length - 1;
+          fallback[lastIndex] = {
+            ...fallback[lastIndex],
+            incomeForecast: Number(analytics?.income?.forecast?.total ?? 0),
+            incomeActual: Number(summary?.income?.total ?? 0),
+            expensesForecast: Number(summary?.expenses?.totals?.forecast ?? 0),
+            expensesActual: Number(summary?.expenses?.totals?.actual ?? 0),
+            saldo:
+              Number(summary?.income?.total ?? 0) -
+              Number(summary?.expenses?.totals?.actual ?? 0),
+          };
+          return fallback;
+        })();
 
     const storeLevelTotals = calcStoreLevelExpensesTotals(storeLevelExpenses);
     const totalMoney = calcSummaryTotalMoney(income.total, expenses.totals?.actual);
@@ -295,13 +561,17 @@ export default function StoreSummaryPage() {
       channelsByEntity,
       expenses,
       expenseByType,
-      tradeArea,
+      tradeArea: {
+        ...tradeArea,
+        monthlyTrend: isMobile ? tradeAreaTrend.slice(-4) : tradeAreaTrend,
+      },
       groupedByPavilionGroups,
+      financeTrend: isMobile ? financeTrendFallback.slice(-4) : financeTrendFallback,
       storeLevelTotals,
       totalMoney,
       saldo,
     };
-  }, [store, analytics]);
+  }, [store, analytics, isMobile]);
 
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -398,6 +668,13 @@ export default function StoreSummaryPage() {
               </div>
             </div>
           </div>
+          <FinanceTrendChart
+            title="Тренд дохода по месяцам"
+            items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
+            actualKey="incomeActual"
+            forecastKey="incomeForecast"
+            valueFormatter={(value) => formatMoney(value, data.currency)}
+          />
         </section>
 
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
@@ -439,6 +716,13 @@ export default function StoreSummaryPage() {
               tone="danger"
             />
           </div>
+          <FinanceTrendChart
+            title="Тренд расхода по месяцам"
+            items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
+            actualKey="expensesActual"
+            forecastKey="expensesForecast"
+            valueFormatter={(value) => formatMoney(value, data.currency)}
+          />
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
@@ -458,6 +742,14 @@ export default function StoreSummaryPage() {
               title="Сальдо"
               value={formatMoney(data.saldo, data.currency)}
               tone={data.saldo >= 0 ? 'success' : 'danger'}
+            />
+          </div>
+          <div className="mt-4">
+            <FinanceTrendChart
+              title="Тренд сальдо по месяцам"
+              items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
+              actualKey="saldo"
+              valueFormatter={(value) => formatMoney(value, data.currency)}
             />
           </div>
         </section>
