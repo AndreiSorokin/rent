@@ -11,6 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import { PavilionsService } from './pavilions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -40,8 +41,25 @@ export class PavilionsController {
 
   @Get()
   @Permissions(Permission.VIEW_PAVILIONS)
-  findAll(@Param('storeId', ParseIntPipe) storeId: number) {
-    return this.service.findAll(storeId);
+  findAll(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('category') category?: string,
+    @Query('groupId') groupId?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('paginated') paginated?: string,
+  ) {
+    return this.service.findAll(storeId, {
+      search,
+      status,
+      category,
+      groupId: groupId ? Number(groupId) : undefined,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      paginated: paginated === 'true' || paginated === '1',
+    });
   }
 
   @Get(':pavilionId')

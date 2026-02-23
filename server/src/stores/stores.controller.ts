@@ -9,6 +9,7 @@ import {
   Patch,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { Currency, Permission, Prisma } from '@prisma/client';
@@ -44,9 +45,15 @@ export class StoresController {
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: any,
+    @Query('lite') lite?: string,
+  ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-    return this.service.findOne(id, req.user.id);
+    return this.service.findOne(id, req.user.id, {
+      lite: lite === 'true' || lite === '1',
+    });
   }
 
   @Delete(':id')

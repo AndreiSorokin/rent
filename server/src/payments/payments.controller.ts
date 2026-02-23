@@ -66,9 +66,24 @@ export class PaymentsController {
 
   @Get()
   @Permissions(Permission.VIEW_PAYMENTS)
-  list(@Param('pavilionId', ParseIntPipe) pavilionId: number) {
+  list(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Query('period') period?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('paginated') paginated?: string,
+  ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
-    return this.service.list(pavilionId);
+    return this.service.list(pavilionId, {
+      period: period ? new Date(period) : undefined,
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      paginated: paginated === 'true' || paginated === '1',
+    });
   }
 
   @Get('summary')

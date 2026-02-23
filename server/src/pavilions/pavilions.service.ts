@@ -10,6 +10,13 @@ import { join } from 'path';
 export class PavilionsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private toPavilionStatus(status?: string): PavilionStatus | undefined {
+    if (status === PavilionStatus.AVAILABLE) return PavilionStatus.AVAILABLE;
+    if (status === PavilionStatus.RENTED) return PavilionStatus.RENTED;
+    if (status === PavilionStatus.PREPAID) return PavilionStatus.PREPAID;
+    return undefined;
+  }
+
   async create(storeId: number, dto: CreatePavilionDto) {
     const calculatedRent = dto.squareMeters * dto.pricePerSqM;
     const isPrepaid = dto.status === PavilionStatus.PREPAID;
@@ -31,17 +38,86 @@ export class PavilionsService {
     return created;
   }
 
-  async findAll(storeId: number) {
+  async findAll(
+    storeId: number,
+    options?: {
+      search?: string;
+      status?: string;
+      category?: string;
+      groupId?: number;
+      page?: number;
+      pageSize?: number;
+      paginated?: boolean;
+    },
+  ) {
     await this.syncExpiredPrepayments(storeId);
 
+    const normalizedStatus = this.toPavilionStatus(options?.status);
+    const normalizedSearch = options?.search?.trim();
+    const normalizedCategory = options?.category?.trim();
+    const normalizedGroupId =
+      options?.groupId && Number.isFinite(options.groupId) ? options.groupId : undefined;
+    const page = Math.max(1, Number(options?.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 20)));
+
+    const where: Prisma.PavilionWhereInput = {
+      storeId,
+      ...(normalizedStatus ? { status: normalizedStatus } : {}),
+      ...(normalizedCategory
+        ? { category: { equals: normalizedCategory, mode: 'insensitive' } }
+        : {}),
+      ...(normalizedGroupId
+        ? {
+            groupMemberships: {
+              some: {
+                groupId: normalizedGroupId,
+              },
+            },
+          }
+        : {}),
+      ...(normalizedSearch
+        ? {
+            OR: [
+              { number: { contains: normalizedSearch, mode: 'insensitive' } },
+              { tenantName: { contains: normalizedSearch, mode: 'insensitive' } },
+              { category: { contains: normalizedSearch, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const include = {
+      additionalCharges: true,
+      discounts: true,
+      payments: true,
+      contracts: true,
+    } satisfies Prisma.PavilionInclude;
+
+    if (options?.paginated) {
+      const [items, total] = await Promise.all([
+        this.prisma.pavilion.findMany({
+          where,
+          include,
+          orderBy: [{ id: 'asc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        this.prisma.pavilion.count({ where }),
+      ]);
+
+      return {
+        items,
+        total,
+        page,
+        pageSize,
+        hasMore: page * pageSize < total,
+      };
+    }
+
     return this.prisma.pavilion.findMany({
-      where: { storeId },
-      include: {
-        additionalCharges: true,
-        discounts: true,
-        payments: true,
-        contracts: true,
-      },
+      where,
+      include,
+      orderBy: [{ id: 'asc' }],
     });
   }
 

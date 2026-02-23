@@ -40,12 +40,12 @@ export function CreatePavilionPaymentModal({
       setLoadingCurrent(true);
       try {
         const periodDate = new Date(`${period}-01`);
-        const payments = await apiFetch<any[]>(`/stores/${storeId}/pavilions/${pavilionId}/payments`);
-
-        const matchingPayment = payments.find((p: any) => {
-          const pDate = new Date(p.period);
-          return pDate.getFullYear() === periodDate.getFullYear() && pDate.getMonth() === periodDate.getMonth();
-        });
+        const payments = await apiFetch<any[]>(
+          `/stores/${storeId}/pavilions/${pavilionId}/payments?period=${encodeURIComponent(
+            periodDate.toISOString(),
+          )}`,
+        );
+        const matchingPayment = payments[0];
 
         if (matchingPayment) {
           setCurrentRentPaid(matchingPayment.rentPaid || 0);

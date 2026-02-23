@@ -193,17 +193,13 @@ export function EditPavilionModal({
       setError(null);
       await updatePavilion(storeId, pavilion.id, payload);
       if (form.status === 'PREPAID') {
-        const payments = await apiFetch<any[]>(
-          `/stores/${storeId}/pavilions/${pavilion.id}/payments`,
-        );
         const selectedPeriodDate = new Date(periodIso);
-        const existingForPeriod = payments.find((p) => {
-          const pDate = new Date(p.period);
-          return (
-            pDate.getFullYear() === selectedPeriodDate.getFullYear() &&
-            pDate.getMonth() === selectedPeriodDate.getMonth()
-          );
-        });
+        const payments = await apiFetch<any[]>(
+          `/stores/${storeId}/pavilions/${pavilion.id}/payments?period=${encodeURIComponent(
+            selectedPeriodDate.toISOString(),
+          )}`,
+        );
+        const existingForPeriod = payments[0];
         const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
         const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
         const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);

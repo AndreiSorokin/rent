@@ -206,17 +206,13 @@ export default function PavilionPage() {
     }
 
     try {
-      const payments = await apiFetch<any[]>(
-        `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments`,
-      );
       const periodDate = new Date(periodIso);
-      const existingForPeriod = payments.find((p: any) => {
-        const pDate = new Date(p.period);
-        return (
-          pDate.getFullYear() === periodDate.getFullYear() &&
-          pDate.getMonth() === periodDate.getMonth()
-        );
-      });
+      const payments = await apiFetch<any[]>(
+        `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments?period=${encodeURIComponent(
+          periodDate.toISOString(),
+        )}`,
+      );
+      const existingForPeriod = payments[0];
 
       const currentRentPaid = Number(existingForPeriod?.rentPaid ?? 0);
       const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
@@ -270,17 +266,13 @@ export default function PavilionPage() {
 
     try {
       if (pavilion.prepaidUntil) {
-        const payments = await apiFetch<any[]>(
-          `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments`,
-        );
         const prepaidPeriod = new Date(pavilion.prepaidUntil);
-        const existingForPeriod = payments.find((p: any) => {
-          const pDate = new Date(p.period);
-          return (
-            pDate.getFullYear() === prepaidPeriod.getFullYear() &&
-            pDate.getMonth() === prepaidPeriod.getMonth()
-          );
-        });
+        const payments = await apiFetch<any[]>(
+          `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments?period=${encodeURIComponent(
+            prepaidPeriod.toISOString(),
+          )}`,
+        );
+        const existingForPeriod = payments[0];
 
         if (existingForPeriod?.id) {
           await deletePavilionPaymentEntry(

@@ -112,53 +112,63 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   /**
    * Get one store (only if user belongs to it)
    */
-  async findOne(storeId: number, userId: number) {
+  async findOne(
+    storeId: number,
+    userId: number,
+    options?: { lite?: boolean },
+  ) {
     await this.runMonthlyRolloverForStore(storeId);
 
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      include: {
-        pavilions: {
-          include: {
-            payments: true,
-            additionalCharges: {
+    const include: Prisma.StoreInclude = {
+      ...(options?.lite
+        ? {}
+        : {
+            pavilions: {
               include: {
                 payments: true,
-              },
-            },
-            discounts: true,
-            groupMemberships: {
-              include: {
-                group: {
-                  select: {
-                    id: true,
-                    name: true,
+                additionalCharges: {
+                  include: {
+                    payments: true,
+                  },
+                },
+                discounts: true,
+                groupMemberships: {
+                  include: {
+                    group: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
                   },
                 },
               },
             },
-          },
-        },
-        pavilionGroups: {
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-          include: {
-            pavilions: {
-              select: {
-                pavilionId: true,
-              },
+          }),
+      pavilionGroups: {
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        include: {
+          pavilions: {
+            select: {
+              pavilionId: true,
             },
           },
         },
-        storeUsers: {
-          where: { userId },
-          select: {
-            permissions: true,
-          },
-        },
-        staff: {
-          orderBy: { createdAt: 'desc' },
+      },
+      storeUsers: {
+        where: { userId },
+        select: {
+          permissions: true,
         },
       },
+      staff: {
+        orderBy: { createdAt: 'desc' },
+      },
+    };
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      include,
     });
 
     if (!store || store.storeUsers.length === 0) {

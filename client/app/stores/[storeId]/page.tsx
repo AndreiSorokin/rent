@@ -98,6 +98,12 @@ export default function StorePage() {
     Record<number, string>
   >({});
   const [groupActionLoading, setGroupActionLoading] = useState(false);
+  const [pavilions, setPavilions] = useState<any[]>([]);
+  const [pavilionsTotal, setPavilionsTotal] = useState(0);
+  const [pavilionsPage, setPavilionsPage] = useState(1);
+  const [pavilionsPageSize] = useState(20);
+  const [pavilionsHasMore, setPavilionsHasMore] = useState(false);
+  const [pavilionsLoading, setPavilionsLoading] = useState(false);
   const [orderedPavilionIds, setOrderedPavilionIds] = useState<number[]>([]);
   const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
   const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
@@ -108,12 +114,49 @@ export default function StorePage() {
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
+
+  const fetchPavilions = async (page = 1) => {
+    if (!storeId) return;
+
+    setPavilionsLoading(true);
+    try {
+      const query = new URLSearchParams();
+      query.set('paginated', 'true');
+      query.set('page', String(page));
+      query.set('pageSize', String(pavilionsPageSize));
+      if (pavilionSearch.trim()) query.set('search', pavilionSearch.trim());
+      if (pavilionCategoryFilter) query.set('category', pavilionCategoryFilter);
+      if (pavilionStatusFilter) query.set('status', pavilionStatusFilter);
+      if (pavilionGroupFilter) query.set('groupId', pavilionGroupFilter);
+
+      const response = await apiFetch<{
+        items: any[];
+        total: number;
+        page: number;
+        pageSize: number;
+        hasMore: boolean;
+      }>(`/stores/${storeId}/pavilions?${query.toString()}`);
+
+      setPavilions(response.items || []);
+      setPavilionsTotal(Number(response.total ?? 0));
+      setPavilionsPage(Number(response.page ?? page));
+      setPavilionsHasMore(Boolean(response.hasMore));
+    } catch (err) {
+      console.error(err);
+      setPavilions([]);
+      setPavilionsTotal(0);
+      setPavilionsHasMore(false);
+    } finally {
+      setPavilionsLoading(false);
+    }
+  };
+
   const fetchData = async (withLoader = true) => {
     if (withLoader) {
       setLoading(true);
     }
     try {
-      const storeData = await apiFetch(`/stores/${storeId}`);
+      const storeData = await apiFetch(`/stores/${storeId}?lite=true`);
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
         const [analyticsData, accountingData] = await Promise.all([
           apiFetch<any>(`/stores/${storeId}/analytics`),
@@ -138,6 +181,14 @@ export default function StorePage() {
         setStoreExpenses([]);
       }
 
+      if (hasPermission(storeData.permissions || [], 'VIEW_PAVILIONS')) {
+        await fetchPavilions(1);
+      } else {
+        setPavilions([]);
+        setPavilionsTotal(0);
+        setPavilionsHasMore(false);
+      }
+
       setStore(storeData);
     } catch (err) {
       setError('Не удалось загрузить данные магазина');
@@ -154,11 +205,11 @@ export default function StorePage() {
   }, [storeId]);
 
   useEffect(() => {
-    if (!storeId || !store?.pavilions) {
+    if (!storeId || !pavilions) {
       setOrderedPavilionIds([]);
       return;
     }
-    const ids: number[] = (store.pavilions || []).map((p: any) => Number(p.id));
+    const ids: number[] = (pavilions || []).map((p: any) => Number(p.id));
     const key = `store-page-pavilions-order-${storeId}`;
     try {
       const saved = localStorage.getItem(key);
@@ -178,7 +229,14 @@ export default function StorePage() {
       console.warn('Failed to restore pavilion order on store page', err);
     }
     setOrderedPavilionIds(ids);
-  }, [storeId, store?.pavilions]);
+  }, [storeId, pavilions]);
+
+  useEffect(() => {
+    if (!store) return;
+    if (!hasPermission(store.permissions || [], 'VIEW_PAVILIONS')) return;
+    void fetchPavilions(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pavilionSearch, pavilionCategoryFilter, pavilionStatusFilter, pavilionGroupFilter]);
 
   useEffect(() => {
     if (!storeId || orderedPavilionIds.length === 0) return;
@@ -565,7 +623,7 @@ export default function StorePage() {
   const permissions = store.permissions || [];
   const allCategories: string[] = Array.from(
     new Set<string>([
-      ...(store.pavilions || [])
+      ...(pavilions || [])
         .map((p: any) => (p.category || '').trim())
         .filter((category: string) => category.length > 0),
       ...((store.pavilionCategoryPresets || [])
@@ -574,33 +632,14 @@ export default function StorePage() {
     ]),
   ).sort((a: string, b: string) => a.localeCompare(b));
   const pavilionMap = new Map<number, any>(
-    (store.pavilions || []).map((p: any) => [Number(p.id), p]),
+    (pavilions || []).map((p: any) => [Number(p.id), p]),
   );
   const orderedPavilions =
     orderedPavilionIds.length > 0
       ? orderedPavilionIds
           .map((id) => pavilionMap.get(id))
           .filter((p): p is any => Boolean(p))
-      : (store.pavilions || []);
-
-  const filteredPavilions = orderedPavilions.filter((p: any) => {
-    const byName = p.number
-      ?.toString()
-      .toLowerCase()
-      .includes(pavilionSearch.toLowerCase());
-    const byCategory = pavilionCategoryFilter
-      ? (p.category || '') === pavilionCategoryFilter
-      : true;
-    const byStatus = pavilionStatusFilter
-      ? p.status === pavilionStatusFilter
-      : true;
-    const byGroup = pavilionGroupFilter
-      ? (p.groupMemberships || []).some(
-          (membership: any) => String(membership.group?.id) === pavilionGroupFilter,
-        )
-      : true;
-    return byName && byCategory && byStatus && byGroup;
-  });
+      : (pavilions || []);
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
       acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
@@ -679,7 +718,7 @@ export default function StorePage() {
   const movePavilion = (dragId: number, targetId: number) => {
     if (dragId === targetId) return;
     setOrderedPavilionIds((prev) => {
-      const source = prev.length > 0 ? [...prev] : (store.pavilions || []).map((p: any) => p.id);
+      const source = prev.length > 0 ? [...prev] : (pavilions || []).map((p: any) => p.id);
       const fromIndex = source.indexOf(dragId);
       const toIndex = source.indexOf(targetId);
       if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
@@ -807,9 +846,11 @@ export default function StorePage() {
               </select>
             </div>
 
-            {filteredPavilions.length === 0 ? (
+            {pavilionsLoading ? (
+              <p className="py-8 text-center text-gray-600">Загрузка павильонов...</p>
+            ) : orderedPavilions.length === 0 ? (
               <p className="py-8 text-center text-gray-600">
-                {store.pavilions?.length === 0
+                {pavilionsTotal === 0
                   ? 'В магазине пока нет павильонов'
                   : 'По текущим фильтрам павильоны не найдены'}
               </p>
@@ -842,7 +883,7 @@ export default function StorePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredPavilions.map((p: any) => (
+                    {orderedPavilions.map((p: any) => (
                       <tr
                         key={p.id}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -964,6 +1005,33 @@ export default function StorePage() {
                 </table>
               </div>
             )}
+
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+              <div>
+                Показано {orderedPavilions.length} из {pavilionsTotal}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void fetchPavilions(Math.max(1, pavilionsPage - 1))}
+                  disabled={pavilionsLoading || pavilionsPage <= 1}
+                  className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Назад
+                </button>
+                <span>
+                  Стр. {pavilionsPage}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void fetchPavilions(pavilionsPage + 1)}
+                  disabled={pavilionsLoading || !pavilionsHasMore}
+                  className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Далее
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

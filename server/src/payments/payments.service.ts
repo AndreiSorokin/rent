@@ -380,11 +380,62 @@ async addPayment(
   return payment;
 }
 
-  list(pavilionId: number) {
+  list(
+    pavilionId: number,
+    options?: {
+      period?: Date;
+      from?: Date;
+      to?: Date;
+      page?: number;
+      pageSize?: number;
+      paginated?: boolean;
+    },
+  ) {
+    const page = Math.max(1, Number(options?.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 20)));
+    const normalizedPeriod =
+      options?.period && !Number.isNaN(options.period.getTime())
+        ? startOfMonth(options.period)
+        : undefined;
+    const from =
+      options?.from && !Number.isNaN(options.from.getTime()) ? options.from : undefined;
+    const to = options?.to && !Number.isNaN(options.to.getTime()) ? options.to : undefined;
+
+    const where = {
+      pavilionId,
+      ...(normalizedPeriod ? { period: normalizedPeriod } : {}),
+      ...(!normalizedPeriod && (from || to)
+        ? {
+            period: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
+    };
+
+    if (options?.paginated) {
+      return Promise.all([
+        this.prisma.payment.findMany({
+          where,
+          orderBy: [{ period: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        this.prisma.payment.count({ where }),
+      ]).then(([items, total]) => ({
+        items,
+        total,
+        page,
+        pageSize,
+        hasMore: page * pageSize < total,
+      }));
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     return this.prisma.payment.findMany({
-      where: { pavilionId },
-      orderBy: { createdAt: 'desc' },
+      where,
+      orderBy: [{ period: 'desc' }, { id: 'desc' }],
     });
   }
 
