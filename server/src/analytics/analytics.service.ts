@@ -42,6 +42,7 @@ export class AnalyticsService {
     const prevPeriod = startOfMonth(subMonths(period, 1));
     const prevPeriodStart = startOfMonth(prevPeriod);
     const prevPeriodEnd = endOfMonth(prevPeriod);
+    const trendStart = startOfMonth(subMonths(period, 5));
 
     const pavilions = await this.prisma.pavilion.findMany({
       where: { storeId },
@@ -121,6 +122,26 @@ export class AnalyticsService {
           select: {
             salary: true,
             salaryStatus: true,
+          },
+        },
+      },
+    });
+    const monthlyLedgers = await this.prisma.pavilionMonthlyLedger.findMany({
+      where: {
+        pavilion: {
+          storeId,
+        },
+        period: {
+          gte: trendStart,
+          lte: period,
+        },
+      },
+      select: {
+        period: true,
+        expectedTotal: true,
+        pavilion: {
+          select: {
+            squareMeters: true,
           },
         },
       },
@@ -629,6 +650,63 @@ export class AnalyticsService {
       previousUtilitiesActualByStatus;
 
     const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
+    const months: Date[] = [];
+    for (let i = 5; i >= 0; i -= 1) {
+      months.push(startOfMonth(subMonths(period, i)));
+    }
+
+    const monthlyByKey = new Map<
+      string,
+      {
+        pavilionsRented: number;
+        squareRented: number;
+      }
+    >();
+    for (const monthDate of months) {
+      const key = monthDate.toISOString();
+      monthlyByKey.set(key, {
+        pavilionsRented: 0,
+        squareRented: 0,
+      });
+    }
+
+    for (const ledger of monthlyLedgers) {
+      const monthKey = startOfMonth(ledger.period).toISOString();
+      const bucket = monthlyByKey.get(monthKey);
+      if (!bucket) continue;
+      if (Number(ledger.expectedTotal ?? 0) > 0) {
+        bucket.pavilionsRented += 1;
+        bucket.squareRented += Number(ledger.pavilion.squareMeters ?? 0);
+      }
+    }
+
+    const currentKey = startOfMonth(period).toISOString();
+    monthlyByKey.set(currentKey, {
+      pavilionsRented: pavilions.filter(
+        (p) =>
+          p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
+      ).length,
+      squareRented: areaRented,
+    });
+
+    const monthlyTrend = months.map((monthDate) => {
+      const key = monthDate.toISOString();
+      const monthData = monthlyByKey.get(key) ?? {
+        pavilionsRented: 0,
+        squareRented: 0,
+      };
+      const pavilionsTotal = pavilions.length;
+      const squareTotal = areaTotal;
+      return {
+        period: monthDate,
+        pavilionsTotal,
+        pavilionsRented: monthData.pavilionsRented,
+        pavilionsAvailable: Math.max(0, pavilionsTotal - monthData.pavilionsRented),
+        squareTotal,
+        squareRented: monthData.squareRented,
+        squareAvailable: Math.max(0, squareTotal - monthData.squareRented),
+      };
+    });
 
     return {
       pavilions: {
@@ -797,6 +875,7 @@ export class AnalyticsService {
           squareTotal: areaTotal,
           squareRented: areaRented,
           squareAvailable: areaAvailable,
+          monthlyTrend,
         },
         groupedByPavilionGroups: groupSummaries,
       },

@@ -56,6 +56,187 @@ function ChannelRow({ label, value, total, currency, colorClass }: ChannelRowPro
   );
 }
 
+type MonthlyTradeAreaPoint = {
+  period: string | Date;
+  pavilionsTotal: number;
+  pavilionsRented: number;
+  pavilionsAvailable: number;
+  squareTotal: number;
+  squareRented: number;
+  squareAvailable: number;
+};
+
+type MonthlyLineChartProps = {
+  title: string;
+  items: MonthlyTradeAreaPoint[];
+  valueKey: 'pavilionsRented' | 'squareRented';
+  totalKey: 'pavilionsTotal' | 'squareTotal';
+  valueFormatter?: (value: number) => string;
+};
+
+function MonthlyLineChart({
+  title,
+  items,
+  valueKey,
+  totalKey,
+  valueFormatter = (value: number) => String(value),
+}: MonthlyLineChartProps) {
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    label: string;
+    value: string;
+    total: string;
+  } | null>(null);
+  const maxValue = Math.max(
+    1,
+    ...items.map((item) => Number(item[totalKey] ?? item[valueKey] ?? 0)),
+  );
+  const chartWidth = 1000;
+  const svgHeight = 264;
+  const plotTop = 16;
+  const plotBottom = 196;
+  const plotHeight = plotBottom - plotTop;
+  const plotLeft = 70;
+  const plotRight = 980;
+  const plotWidth = plotRight - plotLeft;
+  const step = items.length > 1 ? plotWidth / (items.length - 1) : plotWidth;
+  const yTicks = [
+    maxValue,
+    Math.round(maxValue * 0.75),
+    Math.round(maxValue * 0.5),
+    Math.round(maxValue * 0.25),
+    0,
+  ];
+  const points = items.map((item, index) => {
+    const value = Number(item[valueKey] ?? 0);
+    const x = items.length > 1 ? plotLeft + index * step : plotLeft + plotWidth / 2;
+    const y = plotBottom - (value / maxValue) * plotHeight;
+    return {
+      x,
+      y,
+      value,
+      total: Number(item[totalKey] ?? 0),
+      period: item.period,
+    };
+  });
+  const polylinePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <p className="text-sm font-semibold text-gray-800">{title}</p>
+      <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
+        <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[21.5rem] w-full">
+          <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
+          {yTicks.map((tick) => {
+            const y = plotBottom - (tick / maxValue) * plotHeight;
+            return (
+              <g key={`tick-${tick}`}>
+                <line
+                  x1={plotLeft}
+                  y1={y}
+                  x2={plotRight}
+                  y2={y}
+                  stroke={tick === 0 ? '#e5e7eb' : '#f3f4f6'}
+                  strokeWidth="1"
+                />
+                <text
+                  x={plotLeft - 1.5}
+                  y={y}
+                  textAnchor="end"
+                  dominantBaseline="middle"
+                  fontSize="9"
+                  fill="#6b7280"
+                >
+                  {Math.max(0, tick)}
+                </text>
+              </g>
+            );
+          })}
+
+          {points.map((point) => (
+            <line
+              key={`${String(point.period)}-x-grid`}
+              x1={point.x}
+              y1={plotTop}
+              x2={point.x}
+              y2={plotBottom}
+              stroke="#f8fafc"
+              strokeWidth="1"
+            />
+          ))}
+
+          <polyline
+            fill="none"
+            stroke="#2563eb"
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            points={polylinePoints}
+          />
+
+          {points.map((point) => (
+            <circle
+              key={`${String(point.period)}-dot`}
+              cx={point.x}
+              cy={point.y}
+              r="3.2"
+              fill="#1d4ed8"
+              className="cursor-pointer"
+              onMouseMove={(event) => {
+                const bounds = event.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                if (!bounds) return;
+                setTooltip({
+                  x: event.clientX - bounds.left + 12,
+                  y: event.clientY - bounds.top + 12,
+                  label: new Date(point.period).toLocaleDateString('ru-RU', {
+                    month: 'long',
+                    year: 'numeric',
+                  }),
+                  value: valueFormatter(point.value),
+                  total: valueFormatter(point.total),
+                });
+              }}
+              onMouseLeave={() => setTooltip(null)}
+            />
+          ))}
+
+          {points.map((point) => (
+            <text
+              key={`${String(point.period)}-label`}
+              x={point.x}
+              y={236}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#6b7280"
+            >
+              {new Date(point.period).toLocaleDateString('ru-RU', {
+                month: 'short',
+              })}
+            </text>
+          ))}
+        </svg>
+        {tooltip ? (
+          <div
+            className="pointer-events-none absolute z-20 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 text-xs shadow-lg"
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            <div className="font-semibold text-gray-900">{tooltip.label}</div>
+            <div className="text-gray-700">Занято: {tooltip.value}</div>
+            <div className="text-gray-500">Из общего: {tooltip.total}</div>
+          </div>
+        ) : null}
+      </div>
+      <div className="mt-2 text-xs text-gray-600">
+        Текущее значение:{' '}
+        <span className="font-medium text-gray-900">
+          {valueFormatter(points[points.length - 1]?.value ?? 0)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function StoreSummaryPage() {
   const params = useParams();
   const router = useRouter();
@@ -288,10 +469,26 @@ export default function StoreSummaryPage() {
             <MetricCard title="Павильонов всего" value={String(data.tradeArea.pavilionsTotal ?? 0)} />
             <MetricCard title="Павильонов занято" value={String(data.tradeArea.pavilionsRented ?? 0)} />
             <MetricCard title="Павильонов свободно" value={String(data.tradeArea.pavilionsAvailable ?? 0)} />
+          </div>
+          <MonthlyLineChart
+            title="Динамика занятых павильонов по месяцам"
+            items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
+            valueKey="pavilionsRented"
+            totalKey="pavilionsTotal"
+          />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard title="Общая площадь" value={`${data.tradeArea.squareTotal ?? 0} м²`} />
             <MetricCard title="Площадь в аренде" value={`${data.tradeArea.squareRented ?? 0} м²`} />
             <MetricCard title="Свободная площадь" value={`${data.tradeArea.squareAvailable ?? 0} м²`} />
           </div>
+          <MonthlyLineChart
+            title="Динамика занятой площади по месяцам"
+            items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
+            valueKey="squareRented"
+            totalKey="squareTotal"
+            valueFormatter={(value) => `${Math.round(value)} м²`}
+          />
         </section>
 
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
