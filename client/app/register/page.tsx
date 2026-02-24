@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -24,26 +24,24 @@ export default function RegisterPage() {
         normalized.includes('letters') &&
         normalized.includes('numbers'))
     ) {
-      return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
+      return 'РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РјРёРЅРёРјСѓРј 6 СЃРёРјРІРѕР»РѕРІ Рё СЃРѕРґРµСЂР¶Р°С‚СЊ Р±СѓРєРІС‹, С†РёС„СЂС‹ Рё СЃРїРµС†РёР°Р»СЊРЅС‹Р№ СЃРёРјРІРѕР»';
     }
     if (
       normalized.includes('verification code is required') ||
       normalized.includes('verification code is invalid') ||
       normalized.includes('invalid or expired')
     ) {
-      return 'Неверный или просроченный код подтверждения';
+      return 'РќРµРІРµСЂРЅС‹Р№ РёР»Рё РїСЂРѕСЃСЂРѕС‡РµРЅРЅС‹Р№ РєРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ';
     }
     if (normalized.includes('verification code sent')) {
-      return 'Код подтверждения отправлен на email';
+      return 'РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РѕС‚РїСЂР°РІР»РµРЅ РЅР° email';
     }
     if (
       normalized.includes('email already registered') ||
-      normalized.includes('already registered') ||
-      normalized.includes('bad request')
-    ) {
-      return 'Пользователь с таким электронным адресом уже зарегистрирован';
+      normalized.includes('already registered') ) {
+      return 'РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ СЃ С‚Р°РєРёРј СЌР»РµРєС‚СЂРѕРЅРЅС‹Рј Р°РґСЂРµСЃРѕРј СѓР¶Рµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ';
     }
-    return 'Не удалось выполнить регистрацию. Попробуйте снова.';
+    return 'РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РїРѕР»РЅРёС‚СЊ СЂРµРіРёСЃС‚СЂР°С†РёСЋ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.';
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -54,17 +52,17 @@ export default function RegisterPage() {
       /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(password);
     if (!isStrongPassword) {
       setError(
-        'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ',
+        'РџР°СЂРѕР»СЊ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РјРёРЅРёРјСѓРј 6 СЃРёРјРІРѕР»РѕРІ Рё СЃРѕРґРµСЂР¶Р°С‚СЊ Р±СѓРєРІС‹, С†РёС„СЂС‹ Рё СЃРїРµС†РёР°Р»СЊРЅС‹Р№ СЃРёРјРІРѕР»',
       );
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
+      setError('РџР°СЂРѕР»Рё РЅРµ СЃРѕРІРїР°РґР°СЋС‚');
       return;
     }
     if (!verificationCode.trim()) {
-      setError('Введите код подтверждения из email');
+      setError('Р’РІРµРґРёС‚Рµ РєРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РёР· email');
       return;
     }
 
@@ -90,7 +88,7 @@ export default function RegisterPage() {
     setError('');
 
     if (!email.trim()) {
-      setError('Введите email для подтверждения');
+      setError('Р’РІРµРґРёС‚Рµ email РґР»СЏ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ');
       return;
     }
 
@@ -101,7 +99,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       setCodeSent(true);
-      alert('Код подтверждения отправлен на ваш email');
+      alert('РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РѕС‚РїСЂР°РІР»РµРЅ РЅР° РІР°С€ email');
     } catch (err: any) {
       console.error('Send code failed:', err);
       setError(mapRegisterError(String(err?.message || '')));
@@ -113,11 +111,11 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <form onSubmit={handleSubmit} className="w-96 space-y-4 rounded border p-6">
-        <h1 className="text-xl font-bold">Регистрация</h1>
+        <h1 className="text-xl font-bold">Р РµРіРёСЃС‚СЂР°С†РёСЏ</h1>
 
         <input
           className="w-full border p-2"
-          placeholder="Имя"
+          placeholder="РРјСЏ"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -134,12 +132,12 @@ export default function RegisterPage() {
           disabled={sendingCode || !email.trim()}
           className="w-full rounded bg-blue-600 p-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {sendingCode ? 'Отправка...' : codeSent ? 'Отправить код повторно' : 'Отправить код подтверждения'}
+          {sendingCode ? 'РћС‚РїСЂР°РІРєР°...' : codeSent ? 'РћС‚РїСЂР°РІРёС‚СЊ РєРѕРґ РїРѕРІС‚РѕСЂРЅРѕ' : 'РћС‚РїСЂР°РІРёС‚СЊ РєРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ'}
         </button>
 
         <input
           className="w-full border p-2"
-          placeholder="Код подтверждения из email"
+          placeholder="РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РёР· email"
           value={verificationCode}
           onChange={(e) => setVerificationCode(e.target.value)}
         />
@@ -147,7 +145,7 @@ export default function RegisterPage() {
         <input
           type="password"
           className="w-full border p-2"
-          placeholder="Пароль"
+          placeholder="РџР°СЂРѕР»СЊ"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -155,26 +153,27 @@ export default function RegisterPage() {
         <input
           type="password"
           className="w-full border p-2"
-          placeholder="Повторите пароль"
+          placeholder="РџРѕРІС‚РѕСЂРёС‚Рµ РїР°СЂРѕР»СЊ"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
         <p className="text-xs text-gray-500">
-          Пароль: минимум 6 символов, буквы, цифры и специальный символ.
+          РџР°СЂРѕР»СЊ: РјРёРЅРёРјСѓРј 6 СЃРёРјРІРѕР»РѕРІ, Р±СѓРєРІС‹, С†РёС„СЂС‹ Рё СЃРїРµС†РёР°Р»СЊРЅС‹Р№ СЃРёРјРІРѕР».
         </p>
 
         {error && <p className="text-red-500">{error}</p>}
 
-        <button className="w-full bg-black p-2 text-white">Зарегистрироваться</button>
+        <button className="w-full bg-black p-2 text-white">Р—Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊСЃСЏ</button>
 
         <p className="text-center text-sm text-gray-600">
-          Уже есть аккаунт?{' '}
+          РЈР¶Рµ РµСЃС‚СЊ Р°РєРєР°СѓРЅС‚?{' '}
           <Link href="/login" className="text-blue-600 hover:underline">
-            Войти
+            Р’РѕР№С‚Рё
           </Link>
         </p>
       </form>
     </div>
   );
 }
+
