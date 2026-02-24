@@ -5,6 +5,12 @@ import { usePathname, useRouter } from 'next/navigation';
 
 const PUBLIC_PATHS = new Set(['/login', '/register']);
 
+function isPublicPath(pathname: string | null) {
+  if (!pathname) return false;
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  return pathname.startsWith('/forgot-password');
+}
+
 function isTokenExpired(token: string) {
   try {
     const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number };
@@ -18,7 +24,7 @@ function isTokenExpired(token: string) {
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isPublic = pathname ? PUBLIC_PATHS.has(pathname) : false;
+  const isPublic = isPublicPath(pathname);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
