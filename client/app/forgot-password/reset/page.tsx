@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { BackButton } from '@/components/BackButton';
 
 function mapError(message: string) {
   const normalized = message.toLowerCase();
@@ -47,6 +47,7 @@ function ForgotPasswordResetForm() {
       setError('Пароли не совпадают');
       return;
     }
+
     const isStrongPassword =
       /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
     if (!isStrongPassword) {
@@ -60,10 +61,7 @@ function ForgotPasswordResetForm() {
       setSaving(true);
       await apiFetch('/auth/forgot-password/reset', {
         method: 'POST',
-        body: JSON.stringify({
-          token,
-          newPassword,
-        }),
+        body: JSON.stringify({ token, newPassword }),
       });
       localStorage.removeItem('token');
       alert('Пароль успешно обновлен. Войдите с новым паролем.');
@@ -78,9 +76,11 @@ function ForgotPasswordResetForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
-        <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          Назад ко входу
-        </Link>
+        <BackButton
+          label="Назад"
+          className="text-sm text-blue-600 hover:underline"
+        />
+
         <h1 className="text-xl font-bold">Создать новый пароль</h1>
 
         <input

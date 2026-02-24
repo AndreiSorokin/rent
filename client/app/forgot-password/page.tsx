@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
+import { BackButton } from '@/components/BackButton';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -37,9 +37,11 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
-        <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          Назад
-        </Link>
+        <BackButton
+          label="Назад"
+          className="text-sm text-blue-600 hover:underline"
+        />
+
         <h1 className="text-xl font-bold">Забыли пароль?</h1>
         <p className="text-sm text-gray-600">
           Введите email, и мы отправим ссылку для создания нового пароля.
@@ -66,4 +68,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

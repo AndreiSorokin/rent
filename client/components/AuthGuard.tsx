@@ -3,12 +3,17 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-const PUBLIC_PATHS = new Set(['/login', '/register']);
+const ANON_ONLY_PATHS = new Set(['/login', '/register']);
 
 function isPublicPath(pathname: string | null) {
   if (!pathname) return false;
-  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (ANON_ONLY_PATHS.has(pathname)) return true;
   return pathname.startsWith('/forgot-password');
+}
+
+function isAnonOnlyPath(pathname: string | null) {
+  if (!pathname) return false;
+  return ANON_ONLY_PATHS.has(pathname);
 }
 
 function isTokenExpired(token: string) {
@@ -25,6 +30,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = isPublicPath(pathname);
+  const isAnonOnly = isAnonOnlyPath(pathname);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -37,7 +43,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isPublic) {
+    if (isAnonOnly) {
       router.replace('/dashboard');
     }
   }, [pathname, router]);
