@@ -343,6 +343,35 @@ export default function PavilionPage() {
 
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
+  const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const currentMonthEnd = new Date(
+    currentMonthStart.getFullYear(),
+    currentMonthStart.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+  const isCurrentMonthPeriod = (value: string | Date) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    return (
+      date.getFullYear() === currentMonthStart.getFullYear() &&
+      date.getMonth() === currentMonthStart.getMonth()
+    );
+  };
+  const currentMonthPayments = (pavilion.payments || []).filter((pay: any) =>
+    isCurrentMonthPeriod(pay.period),
+  );
+  const currentMonthPaymentTransactions = (pavilion.paymentTransactions || []).filter(
+    (entry: any) => isCurrentMonthPeriod(entry.period),
+  );
+  const currentMonthAdditionalCharges = (pavilion.additionalCharges || []).filter(
+    (charge: any) =>
+      new Date(charge.createdAt) >= currentMonthStart &&
+      new Date(charge.createdAt) <= currentMonthEnd,
+  );
   const currentMonthDiscount = getDiscountForPeriod(new Date());
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
   const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
@@ -497,8 +526,8 @@ export default function PavilionPage() {
               )}
           </div>
 
-          {pavilion.payments.length === 0 &&
-          (pavilion.paymentTransactions?.length ?? 0) === 0 ? (
+          {currentMonthPayments.length === 0 &&
+          currentMonthPaymentTransactions.length === 0 ? (
             <p className="text-gray-500">Платежей пока нет</p>
           ) : (
             <div className="space-y-6">
@@ -513,7 +542,7 @@ export default function PavilionPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {pavilion.payments.map((pay: any) => {
+                    {currentMonthPayments.map((pay: any) => {
                       const periodDate = new Date(pay.period);
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
@@ -554,7 +583,7 @@ export default function PavilionPage() {
 
               <div>
                 <h3 className="mb-3 text-sm font-semibold uppercase text-gray-600">История платежей</h3>
-                {(pavilion.paymentTransactions?.length ?? 0) === 0 ? (
+                {currentMonthPaymentTransactions.length === 0 ? (
                   <p className="text-sm text-gray-500">Записей платежей пока нет</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -573,7 +602,7 @@ export default function PavilionPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {(pavilion.paymentTransactions ?? []).map((entry) => (
+                        {currentMonthPaymentTransactions.map((entry: any) => (
                           <tr key={entry.id}>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
                               {new Date(entry.createdAt).toLocaleDateString()}
@@ -769,7 +798,7 @@ export default function PavilionPage() {
             )}
           </div>
 
-          {pavilion.additionalCharges.length === 0 ? (
+          {currentMonthAdditionalCharges.length === 0 ? (
             <p className="text-gray-500">Начислений нет</p>
           ) : (
             <div className="overflow-x-auto">
@@ -789,28 +818,36 @@ export default function PavilionPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {pavilion.additionalCharges.map((charge: any) => {
+                  {currentMonthAdditionalCharges.map((charge: any) => {
+                    const currentMonthChargePayments = (charge.payments || []).filter(
+                      (p: any) =>
+                        new Date(p.paidAt) >= currentMonthStart &&
+                        new Date(p.paidAt) <= currentMonthEnd,
+                    );
                     const totalPaid =
-                      charge.payments?.reduce((sum: number, p: any) => sum + (p.amountPaid ?? 0), 0) ?? 0;
+                      currentMonthChargePayments.reduce(
+                        (sum: number, p: any) => sum + (p.amountPaid ?? 0),
+                        0,
+                      ) ?? 0;
                     const totalBankTransferPaid =
-                      charge.payments?.reduce(
+                      currentMonthChargePayments.reduce(
                         (sum: number, p: any) => sum + (p.bankTransferPaid ?? 0),
                         0,
                       ) ?? 0;
                     const totalCashbox1Paid =
-                      charge.payments?.reduce(
+                      currentMonthChargePayments.reduce(
                         (sum: number, p: any) => sum + (p.cashbox1Paid ?? 0),
                         0,
                       ) ?? 0;
                     const totalCashbox2Paid =
-                      charge.payments?.reduce(
+                      currentMonthChargePayments.reduce(
                         (sum: number, p: any) => sum + (p.cashbox2Paid ?? 0),
                         0,
                       ) ?? 0;
                     const balance = totalPaid - charge.amount;
                     const isPaid = balance >= 0;
                     const isExpanded = expandedCharges.has(charge.id);
-                    const hasPayments = (charge.payments?.length ?? 0) > 0;
+                    const hasPayments = currentMonthChargePayments.length > 0;
 
                     return (
                       <React.Fragment key={charge.id}>
@@ -882,7 +919,7 @@ export default function PavilionPage() {
                         {isExpanded && (
                           <tr className="bg-gray-50">
                             <td colSpan={10} className="px-6 py-3 text-sm text-gray-700">
-                              {charge.payments?.length ? (
+                              {currentMonthChargePayments.length ? (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-gray-500">История оплат</div>
                                   <div className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] gap-3 text-xs font-semibold text-gray-500">
@@ -893,7 +930,7 @@ export default function PavilionPage() {
                                     <span>Касса 2</span>
                                     <span className="text-right">Действия</span>
                                   </div>
-                                  {charge.payments.map((p: any) => (
+                                  {currentMonthChargePayments.map((p: any) => (
                                     <div
                                       key={p.id}
                                       className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] items-center gap-3 rounded bg-white px-2 py-1"
