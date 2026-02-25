@@ -61,18 +61,25 @@ export default function PavilionPage() {
     try {
       const [data, storeData] = await Promise.all([
         getPavilion<Pavilion>(storeIdNum, pavilionIdNum),
-        apiFetch<{ permissions?: string[]; pavilions?: Array<{ category?: string | null }> }>(
+        apiFetch<{
+          permissions?: string[];
+          pavilions?: Array<{ category?: string | null }>;
+          pavilionCategoryPresets?: string[];
+        }>(
           `/stores/${storeIdNum}`,
         ),
       ]);
       setPavilion(data);
       setPermissions(storeData.permissions || []);
       const categories = Array.from(
-        new Set(
-          (storeData.pavilions || [])
+        new Set([
+          ...(storeData.pavilions || [])
             .map((p) => (p.category || '').trim())
             .filter((c) => c.length > 0),
-        ),
+          ...((storeData.pavilionCategoryPresets || [])
+            .map((c) => String(c || '').trim())
+            .filter((c) => c.length > 0)),
+        ]),
       ).sort((a, b) => a.localeCompare(b));
       setExistingCategories(categories);
     } catch (err) {
