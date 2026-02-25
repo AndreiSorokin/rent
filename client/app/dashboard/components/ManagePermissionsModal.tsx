@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 const PERMISSION_LABELS = {
   VIEW_PAVILIONS: 'Просмотр павильонов',
+  VIEW_STAFF: 'Просмотр штатного расписания',
+  MANAGE_STAFF: 'Управление штатным расписанием',
   CREATE_PAVILIONS: 'Создавать павильоны',
   EDIT_PAVILIONS: 'Изменять павильоны',
   DELETE_PAVILIONS: 'Удалять павильоны',
@@ -24,6 +26,43 @@ const PERMISSION_LABELS = {
 } as const;
 
 type Permission = keyof typeof PERMISSION_LABELS;
+
+const PERMISSION_SECTIONS: Array<{
+  title: string;
+  items: Permission[];
+}> = [
+  {
+    title: 'Павильоны и штат',
+    items: [
+      'VIEW_PAVILIONS',
+      'CREATE_PAVILIONS',
+      'EDIT_PAVILIONS',
+      'DELETE_PAVILIONS',
+    ],
+  },
+  {
+    title: 'Оплаты и бухгалтерия',
+    items: [
+      'VIEW_PAYMENTS',
+      'VIEW_SUMMARY',
+      'CREATE_PAYMENTS',
+      'EDIT_PAYMENTS',
+      'CALCULATE_PAYMENTS',
+    ],
+  },
+  {
+    title: 'Начисления',
+    items: ['VIEW_CHARGES', 'CREATE_CHARGES', 'EDIT_CHARGES', 'DELETE_CHARGES'],
+  },
+  {
+    title: 'Документы',
+    items: ['VIEW_CONTRACTS', 'UPLOAD_CONTRACTS', 'DELETE_CONTRACTS'],
+  },
+  {
+    title: 'Пользователи и права',
+    items: ['INVITE_USERS', 'ASSIGN_PERMISSIONS','VIEW_STAFF','MANAGE_STAFF',],
+  },
+];
 
 type ManagePermissionsModalProps = {
   userId: number;
@@ -66,17 +105,24 @@ export function ManagePermissionsModal({
       <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6">
         <h2 className="mb-4 text-xl font-bold">Управление правами доступа для {userEmail}</h2>
 
-        <div className="mb-6 grid grid-cols-1 gap-2 md:grid-cols-2">
-          {Object.entries(PERMISSION_LABELS).map(([value, label]) => (
-            <label key={value} className="flex cursor-pointer items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={selectedPermissions.includes(value)}
-                onChange={() => togglePermission(value)}
-                className="h-5 w-5"
-              />
-              <span className="text-sm">{label}</span>
-            </label>
+        <div className="mb-6 space-y-4">
+          {PERMISSION_SECTIONS.map((section) => (
+            <div key={section.title} className="rounded border border-gray-200 p-3">
+              <h3 className="mb-2 text-sm font-semibold text-gray-800">{section.title}</h3>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {section.items.map((value) => (
+                  <label key={value} className="flex cursor-pointer items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedPermissions.includes(value)}
+                      onChange={() => togglePermission(value)}
+                      className="h-5 w-5"
+                    />
+                    <span className="text-sm">{PERMISSION_LABELS[value]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 

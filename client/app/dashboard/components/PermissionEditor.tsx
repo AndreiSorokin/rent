@@ -2,6 +2,8 @@ import { Permission } from '@/types/store';
 
 const ALL_PERMISSIONS: Permission[] = [
   'VIEW_PAVILIONS',
+  'VIEW_STAFF',
+  'MANAGE_STAFF',
   'CREATE_PAVILIONS',
   'EDIT_PAVILIONS',
   'DELETE_PAVILIONS',

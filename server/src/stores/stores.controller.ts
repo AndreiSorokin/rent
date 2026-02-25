@@ -174,7 +174,7 @@ export class StoresController {
   }
 
   @Post(':storeId/staff')
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  @Permissions(Permission.MANAGE_STAFF)
   createStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body() data: { fullName: string; position: string; salary?: number },
@@ -184,7 +184,7 @@ export class StoresController {
   }
 
   @Patch(':storeId/staff/:staffId')
-  @Permissions(Permission.EDIT_CHARGES)
+  @Permissions(Permission.MANAGE_STAFF)
   updateStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('staffId', ParseIntPipe) staffId: number,
@@ -195,7 +195,7 @@ export class StoresController {
   }
 
   @Delete(':storeId/staff/:staffId')
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  @Permissions(Permission.MANAGE_STAFF)
   deleteStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('staffId', ParseIntPipe) staffId: number,

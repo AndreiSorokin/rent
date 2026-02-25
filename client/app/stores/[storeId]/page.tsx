@@ -1231,44 +1231,46 @@ export default function StorePage() {
           </div>
         )}
 
-        {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+        {hasPermission(permissions, 'VIEW_STAFF') && (
           <div className="rounded-xl bg-white p-6 shadow md:p-8">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
-              <input
-                type="text"
-                value={staffPosition}
-                onChange={(e) => setStaffPosition(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Должность"
-              />
-              <input
-                type="text"
-                value={staffFullName}
-                onChange={(e) => setStaffFullName(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Имя фамилия"
-              />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={staffSalary}
-                onChange={(e) => setStaffSalary(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2"
-                placeholder="Зарплата"
-              />
-              <button
-                onClick={handleAddStaff}
-                disabled={staffSaving}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                Добавить
-              </button>
-            </div>
+            {hasPermission(permissions, 'MANAGE_STAFF') && (
+              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
+                <input
+                  type="text"
+                  value={staffPosition}
+                  onChange={(e) => setStaffPosition(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Должность"
+                />
+                <input
+                  type="text"
+                  value={staffFullName}
+                  onChange={(e) => setStaffFullName(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Имя фамилия"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={staffSalary}
+                  onChange={(e) => setStaffSalary(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  placeholder="Зарплата"
+                />
+                <button
+                  onClick={handleAddStaff}
+                  disabled={staffSaving}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  Добавить
+                </button>
+              </div>
+            )}
 
             {!store.staff || store.staff.length === 0 ? (
               <p className="text-gray-600">Список сотрудников пуст</p>
@@ -1349,22 +1351,24 @@ export default function StorePage() {
                               }
                               className="w-32 rounded border px-2 py-1 text-sm"
                             />
-                            <button
-                              onClick={() => handleUpdateStaffSalary(staff.id)}
-                              disabled={
-                                Boolean(staffSalaryUpdatingById[staff.id]) ||
-                                Number(
-                                  staffSalaryDraftById[staff.id] ?? staff.salary ?? 0,
-                                ) === Number(staff.salary ?? 0)
-                              }
-                              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {staffSalaryUpdatingById[staff.id] ? '...' : 'Сохранить'}
-                            </button>
+                            {hasPermission(permissions, 'MANAGE_STAFF') && (
+                              <button
+                                onClick={() => handleUpdateStaffSalary(staff.id)}
+                                disabled={
+                                  Boolean(staffSalaryUpdatingById[staff.id]) ||
+                                  Number(
+                                    staffSalaryDraftById[staff.id] ?? staff.salary ?? 0,
+                                  ) === Number(staff.salary ?? 0)
+                                }
+                                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {staffSalaryUpdatingById[staff.id] ? '...' : 'Сохранить'}
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                          {hasPermission(permissions, 'MANAGE_STAFF') ? (
                             <select
                               value={staff.salaryStatus ?? 'UNPAID'}
                               onChange={(e) =>
@@ -1385,12 +1389,14 @@ export default function StorePage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
-                          <button
-                            onClick={() => handleDeleteStaff(staff.id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Удалить
-                          </button>
+                          {hasPermission(permissions, 'MANAGE_STAFF') && (
+                            <button
+                              onClick={() => handleDeleteStaff(staff.id)}
+                              className="text-red-600 hover:underline"
+                            >
+                              Удалить
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

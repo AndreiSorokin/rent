@@ -389,8 +389,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Store not found or access denied');
     }
 
-    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
-      throw new ForbiddenException('Only store owner can manage staff');
+    if (
+      !storeUser.permissions.includes(Permission.MANAGE_STAFF) &&
+      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new ForbiddenException('No permission to manage staff');
     }
 
     const fullName = data.fullName.trim();
@@ -589,10 +592,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (
-      !storeUser.permissions.includes(Permission.EDIT_CHARGES) &&
+      !storeUser.permissions.includes(Permission.MANAGE_STAFF) &&
       !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
     ) {
-      throw new ForbiddenException('No permission to update salary status');
+      throw new ForbiddenException('No permission to manage staff');
     }
 
     const staff = await this.prisma.storeStaff.findFirst({
@@ -633,8 +636,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Store not found or access denied');
     }
 
-    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
-      throw new ForbiddenException('Only store owner can manage staff');
+    if (
+      !storeUser.permissions.includes(Permission.MANAGE_STAFF) &&
+      !storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)
+    ) {
+      throw new ForbiddenException('No permission to manage staff');
     }
 
     const staff = await this.prisma.storeStaff.findFirst({
