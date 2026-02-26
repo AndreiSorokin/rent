@@ -718,7 +718,7 @@ export default function StorePage() {
                 href={`/stores/${storeId}/settings`}
                 className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
               >
-                Настройки
+                Управление объектом
               </Link>
             )}
             {hasPermission(permissions, 'VIEW_PAYMENTS') &&

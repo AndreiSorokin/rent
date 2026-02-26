@@ -374,7 +374,7 @@ export default function StoreSettingsPage() {
               Назад к объекту
             </Link>
             <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
-              Настройки: {store.name}
+              Управление объектом: {store.name}
             </h1>
           </div>
         </div>
