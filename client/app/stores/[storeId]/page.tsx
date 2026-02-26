@@ -7,6 +7,21 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit } from '@/lib/finance';
+import {
+  ArrowLeft,
+  BanknoteArrowDown,
+  CheckCheck,
+  CirclePlus,
+  HandCoins,
+  LockKeyhole,
+  Sigma,
+  SlidersHorizontal,
+  Store,
+  Toolbox,
+  Upload,
+  UsersRound,
+  type LucideIcon,
+} from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import {
@@ -104,6 +119,7 @@ export default function StorePage() {
   const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
   const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
   const [draggedStaffId, setDraggedStaffId] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState('pavilions');
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -292,6 +308,39 @@ export default function StorePage() {
       console.warn('Failed to persist staff order on store page', err);
     }
   }, [storeId, orderedStaffIds]);
+
+  useEffect(() => {
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-store-section]'),
+    );
+    if (sections.length === 0) return;
+
+    const updateActiveSection = () => {
+      const scrollY = window.scrollY + 140;
+      let current = sections[0]?.id ?? 'pavilions';
+
+      for (const section of sections) {
+        if (section.offsetTop <= scrollY) {
+          current = section.id;
+        } else {
+          break;
+        }
+      }
+
+      setActiveSection(current);
+    };
+
+    updateActiveSection();
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
+    window.addEventListener('resize', updateActiveSection);
+    window.addEventListener('hashchange', updateActiveSection);
+
+    return () => {
+      window.removeEventListener('scroll', updateActiveSection);
+      window.removeEventListener('resize', updateActiveSection);
+      window.removeEventListener('hashchange', updateActiveSection);
+    };
+  }, [storeId, loading]);
 
   const handlePavilionCreated = () => {
     fetchData(false);
@@ -696,61 +745,157 @@ export default function StorePage() {
     });
   };
 
+  const canManageStore =
+    hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
+    hasPermission(permissions, 'EDIT_PAVILIONS') ||
+    hasPermission(permissions, 'INVITE_USERS');
+  const canOpenUtilities =
+    hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
+  const canImportData = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
+  const canCreatePavilion = hasPermission(permissions, 'CREATE_PAVILIONS');
+
+  const navSections: Array<{
+    id: string;
+    label: string;
+    visible: boolean;
+    icon: LucideIcon;
+  }> = [
+    { id: 'pavilions', label: 'Павильоны', visible: hasPermission(permissions, 'VIEW_PAVILIONS'), icon: Store },
+    { id: 'household', label: 'Хоз расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: Toolbox },
+    { id: 'other-expenses', label: 'Прочие расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: BanknoteArrowDown },
+    { id: 'admin-expenses', label: 'Административные расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: LockKeyhole },
+    { id: 'staff', label: 'Штатное расписание', visible: hasPermission(permissions, 'VIEW_STAFF'), icon: UsersRound },
+    { id: 'finance-overview', label: 'Финансовая панель', visible: hasPermission(permissions, 'VIEW_PAYMENTS') && Boolean(analytics), icon: HandCoins },
+    { id: 'accounting', label: 'Бух таблица', visible: hasPermission(permissions, 'VIEW_PAYMENTS'), icon: CheckCheck },
+    { id: 'summary', label: 'СВОДКА', visible: hasPermission(permissions, 'VIEW_SUMMARY'), icon: Sigma },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <Link href="/dashboard" className="text-sm text-blue-600 hover:underline md:text-base">
-              Назад к объектам
-            </Link>
-            <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">{store.name}</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Валюта магазина: {store.currency} ({getCurrencySymbol(store.currency)})
+    <div className="min-h-screen scroll-smooth bg-slate-100">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-4 md:px-6 md:py-6">
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-violet-100 bg-white p-5 shadow-sm lg:block">
+          <div className="mb-5">
+            <p className="text-xs uppercase tracking-[0.12em] text-violet-400">Объект</p>
+            <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name}</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {(hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
-              hasPermission(permissions, 'EDIT_PAVILIONS') ||
-              hasPermission(permissions, 'INVITE_USERS')) && (
-              <Link
-                href={`/stores/${storeId}/settings`}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
-              >
+          <div className="space-y-2 border-b border-slate-100 pb-4">
+            <Link href="/dashboard" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" />
+              Назад к объектам
+            </Link>
+            {canManageStore && (
+              <Link href={`/stores/${storeId}/settings`} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                <SlidersHorizontal className="h-4 w-4" />
                 Управление объектом
               </Link>
             )}
-            {hasPermission(permissions, 'VIEW_PAYMENTS') &&
-              hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                <Link
-                  href={`/stores/${storeId}/utilities`}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50"
-                >
-                  Начисления
-                </Link>
-              )}
-            {hasPermission(permissions, 'ASSIGN_PERMISSIONS') && (
+            {canOpenUtilities && (
+              <Link href={`/stores/${storeId}/utilities`} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                <HandCoins className="h-4 w-4" />
+                Начисления
+              </Link>
+            )}
+          </div>
+
+          <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
+            {canImportData && (
               <button
                 onClick={() => setShowImportModal(true)}
-                className="rounded-lg bg-indigo-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-indigo-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
               >
+                <Upload className="h-4 w-4" />
                 Загрузить данные
               </button>
             )}
-            {hasPermission(permissions, 'CREATE_PAVILIONS') && (
+            {canCreatePavilion && (
               <button
                 onClick={() => setShowCreatePavilionModal(true)}
-                className="rounded-lg bg-green-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-green-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
-                + Добавить павильон
+                <CirclePlus className="h-4 w-4" />
+                Добавить павильон
               </button>
             )}
           </div>
-        </div>
+
+          <div className="pt-4">
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-violet-400">Навигация</p>
+            <nav className="space-y-1">
+              {navSections.filter((item) => item.visible).map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+                    activeSection === item.id
+                      ? 'bg-violet-50 text-violet-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{item.label}</span>
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 space-y-6">
+          <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm md:p-6 lg:hidden">
+            <h1 className="text-2xl font-bold text-slate-900">{store.name}</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                <ArrowLeft className="h-4 w-4" />
+                Назад к объектам
+              </Link>
+              {canManageStore && (
+                <Link href={`/stores/${storeId}/settings`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Управление объектом
+                </Link>
+              )}
+              {canOpenUtilities && (
+                <Link href={`/stores/${storeId}/utilities`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <HandCoins className="h-4 w-4" />
+                  Начисления
+                </Link>
+              )}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              {canImportData && (
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white"
+                >
+                  <Upload className="h-4 w-4" />
+                  Загрузить данные
+                </button>
+              )}
+              {canCreatePavilion && (
+                <button
+                  onClick={() => setShowCreatePavilionModal(true)}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+                >
+                  <CirclePlus className="h-4 w-4" />
+                  Добавить павильон
+                </button>
+              )}
+            </div>
+          </div>
 
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <section
+            id="pavilions"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
             </div>
@@ -881,7 +1026,17 @@ export default function StorePage() {
                           {p.squareMeters ?? 0}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          {statusLabel[p.status] ?? p.status}
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                              p.status === 'RENTED'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : p.status === 'PREPAID'
+                                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                                  : 'border-amber-200 bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {statusLabel[p.status] ?? p.status}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {p.category || '-'}
@@ -940,19 +1095,23 @@ export default function StorePage() {
                 </button>
               </div>
             </div>
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="text-xl font-semibold md:text-2xl">Хозяйственные расходы</h2>
+          <section
+            id="household"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
+            <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Хозяйственные расходы</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
+              <div className="mb-5 mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
                 <input
                   type="text"
                   value={householdName}
                   onChange={(e) => setHouseholdName(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5"
                   placeholder="Название расхода"
                 />
                 <input
@@ -961,13 +1120,13 @@ export default function StorePage() {
                   min="0"
                   value={householdAmount}
                   onChange={(e) => setHouseholdAmount(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5"
                   placeholder="Сумма"
                 />
                 <button
                   onClick={handleCreateHouseholdExpense}
                   disabled={householdSaving}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-60"
+                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
                 </button>
@@ -975,78 +1134,79 @@ export default function StorePage() {
             )}
 
             {householdExpenses.length === 0 ? (
-              <p className="text-gray-600">Расходов пока нет</p>
+              <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                      {hasPermission(permissions, 'DELETE_CHARGES') && (
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {householdExpenses.map((expense: any) => (
-                      <tr key={expense.id}>
-                        <td className="px-4 py-3 text-sm">{expense.name}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(expense.amount, store.currency)}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                            <select
-                              value={expense.status ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleUpdateHouseholdExpenseStatus(
-                                  expense.id,
-                                  e.target.value as 'UNPAID' | 'PAID',
-                                )
-                              }
-                              className="rounded border px-2 py-1 text-xs"
-                            >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
-                          ) : expense.status === 'PAID' ? (
-                            'Оплачено'
-                          ) : (
-                            'Не оплачено'
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <td className="px-4 py-3 text-right text-sm">
-                            <button
-                              onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          </td>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {householdExpenses.map((expense: any) => (
+                  <article
+                    key={expense.id}
+                    className="min-h-[128px] rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                  >
+                    <div className="mb-6 flex items-start justify-between gap-3">
+                      <p className="text-base font-semibold text-slate-900">{expense.name}</p>
+                      <p className="text-base font-bold text-slate-900">
+                        {formatMoney(expense.amount, store.currency)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                          <select
+                            value={expense.status ?? 'UNPAID'}
+                            onChange={(e) =>
+                              handleUpdateHouseholdExpenseStatus(
+                                expense.id,
+                                e.target.value as 'UNPAID' | 'PAID',
+                              )
+                            }
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                          >
+                            <option value="UNPAID">Не оплачено</option>
+                            <option value="PAID">Оплачено</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              expense.status === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                          </span>
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      </div>
+                      {hasPermission(permissions, 'DELETE_CHARGES') && (
+                        <button
+                          onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
-            <h2 className="mb-3 text-xl font-semibold md:text-2xl">Прочие расходы</h2>
+          <section
+            id="other-expenses"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
+            <h2 className="mb-3 text-xl font-semibold text-slate-900 md:text-2xl">Прочие расходы</h2>
 
             {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
+              <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
                 <input
                   type="text"
                   value={otherExpenseName}
                   onChange={(e) => setOtherExpenseName(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5"
                   placeholder="Название расхода"
                 />
                 <input
@@ -1055,13 +1215,13 @@ export default function StorePage() {
                   min="0"
                   value={otherExpenseAmount}
                   onChange={(e) => setOtherExpenseAmount(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
+                  className="rounded-xl border border-slate-200 px-3 py-2.5"
                   placeholder="Сумма"
                 />
                 <button
                   onClick={handleCreateOtherExpense}
                   disabled={otherExpenseSaving}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-white hover:bg-amber-700 disabled:opacity-60"
+                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
                 </button>
@@ -1069,69 +1229,72 @@ export default function StorePage() {
             )}
 
             {otherExpenses.length === 0 ? (
-              <p className="text-gray-600">Расходов пока нет</p>
+              <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                      {hasPermission(permissions, 'DELETE_CHARGES') && (
-                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {otherExpenses.map((expense: any) => (
-                      <tr key={expense.id}>
-                        <td className="px-4 py-3 text-sm">{expense.note || 'Прочий расход'}</td>
-                        <td className="px-4 py-3 text-sm">{formatMoney(expense.amount, store.currency)}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                            <select
-                              value={expense.status ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleManualExpenseStatusChange(
-                                  expense.id,
-                                  e.target.value as PavilionExpenseStatus,
-                                )
-                              }
-                              className="rounded border px-2 py-1 text-xs"
-                            >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
-                          ) : expense.status === 'PAID' ? (
-                            'Оплачено'
-                          ) : (
-                            'Не оплачено'
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <td className="px-4 py-3 text-right text-sm">
-                            <button
-                              onClick={() => handleDeleteManualExpense(expense.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          </td>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {otherExpenses.map((expense: any) => (
+                  <article
+                    key={expense.id}
+                    className="min-h-[128px] rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                  >
+                    <div className="mb-6 flex items-start justify-between gap-3">
+                      <p className="text-base font-semibold text-slate-900">
+                        {expense.note || 'Прочий расход'}
+                      </p>
+                      <p className="text-base font-bold text-slate-900">
+                        {formatMoney(expense.amount, store.currency)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        {hasPermission(permissions, 'EDIT_CHARGES') ? (
+                          <select
+                            value={expense.status ?? 'UNPAID'}
+                            onChange={(e) =>
+                              handleManualExpenseStatusChange(
+                                expense.id,
+                                e.target.value as PavilionExpenseStatus,
+                              )
+                            }
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                          >
+                            <option value="UNPAID">Не оплачено</option>
+                            <option value="PAID">Оплачено</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              expense.status === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                          </span>
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      </div>
+                      {hasPermission(permissions, 'DELETE_CHARGES') && (
+                        <button
+                          onClick={() => handleDeleteManualExpense(expense.id)}
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <section
+            id="admin-expenses"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Административные расходы</h2>
             </div>
@@ -1228,11 +1391,15 @@ export default function StorePage() {
 
             </div>
 
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_STAFF') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <section
+            id="staff"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
             </div>
@@ -1404,11 +1571,15 @@ export default function StorePage() {
                 </table>
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <section
+            id="finance-overview"
+            data-store-section
+            className="scroll-mt-24 grid grid-cols-1 gap-4 lg:grid-cols-3"
+          >
             <div className="rounded-xl bg-white p-6 shadow">
               <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
               <div className="text-sm text-gray-700">
@@ -1450,11 +1621,15 @@ export default function StorePage() {
                 )}
               </div>
             </div>
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <section
+            id="accounting"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Бух. таблица</h2>
             </div>
@@ -1572,11 +1747,15 @@ export default function StorePage() {
                 </table>
               </div>
             )}
-          </div>
+          </section>
         )}
 
         {hasPermission(permissions, 'VIEW_SUMMARY') && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <section
+            id="summary"
+            data-store-section
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
+          >
             <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
             <p className="mb-4 text-gray-600">
               Основные финансовые показатели магазина на отдельной странице.
@@ -1587,8 +1766,9 @@ export default function StorePage() {
             >
               Открыть СВОДКУ
             </Link>
-          </div>
+          </section>
         )}
+        </main>
       </div>
 
       {showCreatePavilionModal && (

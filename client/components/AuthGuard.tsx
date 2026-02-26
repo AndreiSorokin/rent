@@ -56,7 +56,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!isPublic && (
-        <div className="fixed right-4 top-4 z-50">
+        <div className="fixed right-6 top-6 z-50">
           <button
             onClick={handleLogout}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-100"
