@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { LogoutButton } from '@/components/LogoutButton';
 
 const ANON_ONLY_PATHS = new Set(['/login', '/register']);
 
@@ -46,23 +47,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (isAnonOnly) {
       router.replace('/dashboard');
     }
-  }, [pathname, router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    router.replace('/login');
-  };
+  }, [pathname, router, isAnonOnly, isPublic]);
 
   return (
     <>
       {!isPublic && (
-        <div className="fixed right-6 top-6 z-50">
-          <button
-            onClick={handleLogout}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-100"
-          >
-            Выйти
-          </button>
+        <div className="fixed right-8 top-8 z-50 hidden lg:block">
+          <LogoutButton className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-100" />
         </div>
       )}
       {children}

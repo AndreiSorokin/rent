@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit } from '@/lib/finance';
+import { LogoutButton } from '@/components/LogoutButton';
 import {
   ArrowLeft,
   BanknoteArrowDown,
@@ -14,12 +15,14 @@ import {
   CirclePlus,
   HandCoins,
   LockKeyhole,
+  Menu,
   Sigma,
   SlidersHorizontal,
   Store,
   Toolbox,
   Upload,
   UsersRound,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
@@ -66,6 +69,7 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
   const [staffSalary, setStaffSalary] = useState('');
@@ -772,7 +776,7 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen scroll-smooth bg-slate-100">
-      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-4 md:px-6 md:py-6">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
         <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-violet-100 bg-white p-5 shadow-sm lg:block">
           <div className="mb-5">
             <p className="text-xs uppercase tracking-[0.12em] text-violet-400">Объект</p>
@@ -844,50 +848,139 @@ export default function StorePage() {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 space-y-6">
-          <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm md:p-6 lg:hidden">
-            <h1 className="text-2xl font-bold text-slate-900">{store.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                <ArrowLeft className="h-4 w-4" />
-                Назад к объектам
-              </Link>
-              {canManageStore && (
-                <Link href={`/stores/${storeId}/settings`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Управление объектом
-                </Link>
-              )}
-              {canOpenUtilities && (
-                <Link href={`/stores/${storeId}/utilities`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <HandCoins className="h-4 w-4" />
-                  Начисления
-                </Link>
-              )}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              {canImportData && (
+        <main className="min-w-0 flex-1 space-y-3 pt-12 md:space-y-6 md:pt-0">
+          <div className="fixed right-3 top-3 z-30 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+            >
+              <Menu className="h-4 w-4" />
+              Меню
+            </button>
+          </div>
+
+          <div
+            className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
+              mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+          >
+            <button
+              type="button"
+              aria-label="Закрыть меню"
+              onClick={() => setMobileMenuOpen(false)}
+              className="absolute inset-0 bg-black/35"
+            />
+            <aside
+              className={`relative z-10 h-full w-[88%] max-w-[360px] overflow-y-auto bg-white p-5 shadow-xl transition-transform duration-300 ease-out ${
+                mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <div className="mb-4 flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-violet-400">Объект</p>
+                  <h2 className="text-lg font-bold text-slate-900">{store.name}</h2>
+                  <p className="text-xs text-slate-600">
+                    Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
+                  </p>
+                </div>
                 <button
-                  onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white"
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-slate-200 p-2 text-slate-700"
                 >
-                  <Upload className="h-4 w-4" />
-                  Загрузить данные
+                  <X className="h-4 w-4" />
                 </button>
-              )}
-              {canCreatePavilion && (
-                <button
-                  onClick={() => setShowCreatePavilionModal(true)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+              </div>
+
+              <div className="space-y-2 border-b border-slate-100 pb-4">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
                 >
-                  <CirclePlus className="h-4 w-4" />
-                  Добавить павильон
-                </button>
-              )}
-            </div>
+                  <ArrowLeft className="h-4 w-4" />
+                  Назад к объектам
+                </Link>
+                {canManageStore && (
+                  <Link
+                    href={`/stores/${storeId}/settings`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Управление объектом
+                  </Link>
+                )}
+                {canOpenUtilities && (
+                  <Link
+                    href={`/stores/${storeId}/utilities`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                  >
+                    <HandCoins className="h-4 w-4" />
+                    Начисления
+                  </Link>
+                )}
+              </div>
+
+              <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
+                {canImportData && (
+                  <button
+                    onClick={() => {
+                      setShowImportModal(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Загрузить данные
+                  </button>
+                )}
+                {canCreatePavilion && (
+                  <button
+                    onClick={() => {
+                      setShowCreatePavilionModal(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
+                  >
+                    <CirclePlus className="h-4 w-4" />
+                    Добавить павильон
+                  </button>
+                )}
+              </div>
+
+              <div className="pt-4">
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-violet-400">Навигация</p>
+                <nav className="space-y-1">
+                  {navSections.filter((item) => item.visible).map((item) => (
+                    <a
+                      key={`mobile-${item.id}`}
+                      href={`#${item.id}`}
+                      onClick={() => {
+                        setActiveSection(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+                        activeSection === item.id
+                          ? 'bg-violet-50 text-violet-700'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="font-medium">{item.label}</span>
+                    </a>
+                  ))}
+                </nav>
+              </div>
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <LogoutButton
+                  onLoggedOut={() => setMobileMenuOpen(false)}
+                  className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+                />
+              </div>
+            </aside>
           </div>
 
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
