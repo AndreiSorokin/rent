@@ -121,19 +121,6 @@ export class AnalyticsService {
       },
     });
 
-    const previousStoreMeta = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      select: {
-        utilitiesExpenseStatus: true,
-        householdExpenseStatus: true,
-        staff: {
-          select: {
-            salary: true,
-            salaryStatus: true,
-          },
-        },
-      },
-    });
     const monthlyLedgers = await this.prisma.pavilionMonthlyLedger.findMany({
       where: {
         pavilion: {
@@ -373,9 +360,18 @@ export class AnalyticsService {
       (sum, member) => sum + Number(member.salary ?? 0),
       0,
     );
-    const staffSalariesActual = (storeMeta?.staff ?? [])
+    const salaryExpensesActualCurrent = manualExpenses
+      .filter(
+        (expense) => expense.type === 'SALARIES' && expense.status === 'PAID',
+      )
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
+    const fallbackStaffSalariesActual = (storeMeta?.staff ?? [])
       .filter((member) => member.salaryStatus === 'PAID')
       .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
+    const staffSalariesActual =
+      salaryExpensesActualCurrent > 0
+        ? salaryExpensesActualCurrent
+        : fallbackStaffSalariesActual;
 
     const manualExpensesForecast = manualAdministrativeExpenses.reduce(
       (sum, expense) => sum + expense.amount,
@@ -638,9 +634,11 @@ export class AnalyticsService {
       (sum, expense) => sum + expense.amount,
       0,
     );
-    const previousSalariesActual = (previousStoreMeta?.staff ?? [])
-      .filter((member) => member.salaryStatus === 'PAID')
-      .reduce((sum, member) => sum + Number(member.salary ?? 0), 0);
+    const previousSalariesActual = previousManualExpenses
+      .filter(
+        (expense) => expense.type === 'SALARIES' && expense.status === 'PAID',
+      )
+      .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);
     const previousHouseholdActual = previousHouseholdTypeExpenses
       .filter((expense) => expense.status === 'PAID')
       .reduce((sum, expense) => sum + Number(expense.amount ?? 0), 0);

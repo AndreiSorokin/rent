@@ -43,6 +43,7 @@ export type Pavilion = {
   utilitiesAmount?: number;
   advertisingAmount?: number;
   prepaidUntil?: string | null;
+  prepaymentAmount?: number | null;
   payments: Array<{
     id: number;
     period: string;

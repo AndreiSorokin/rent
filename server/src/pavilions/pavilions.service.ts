@@ -10,6 +10,33 @@ import { join } from 'path';
 export class PavilionsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private calculatePrepaymentAmount(
+    prepaidUntil: Date | null,
+    payments: Array<{
+      period: Date;
+      rentPaid: number | null;
+      rentBankTransferPaid: number | null;
+      rentCashbox1Paid: number | null;
+      rentCashbox2Paid: number | null;
+    }>,
+  ): number | null {
+    if (!prepaidUntil) return null;
+    const targetPeriodTime = startOfMonth(prepaidUntil).getTime();
+
+    return payments
+      .filter((payment) => {
+        return startOfMonth(payment.period).getTime() === targetPeriodTime;
+      })
+      .reduce((sum, payment) => {
+        const rentPaid = Number(payment.rentPaid ?? 0);
+        const rentByChannels =
+          Number(payment.rentBankTransferPaid ?? 0) +
+          Number(payment.rentCashbox1Paid ?? 0) +
+          Number(payment.rentCashbox2Paid ?? 0);
+        return sum + (rentPaid > 0 ? rentPaid : rentByChannels);
+      }, 0);
+  }
+
   private toPavilionStatus(status?: string): PavilionStatus | undefined {
     if (status === PavilionStatus.AVAILABLE) return PavilionStatus.AVAILABLE;
     if (status === PavilionStatus.RENTED) return PavilionStatus.RENTED;
@@ -131,30 +158,46 @@ export class PavilionsService {
     });
   }
 
-async findOne(storeId: number, id: number) {
-  await this.syncExpiredPrepayments(storeId);
+  async findOne(storeId: number, id: number) {
+    await this.syncExpiredPrepayments(storeId);
 
-  return this.prisma.pavilion.findFirst({
-    where: { id, storeId },
-    include: {
-      store: {
-        select: {
-          currency: true,
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id, storeId },
+      include: {
+        store: {
+          select: {
+            currency: true,
+          },
         },
-      },
-      contracts: { orderBy: { uploadedAt: 'desc' } },
-      additionalCharges: {
-        orderBy: { createdAt: 'asc' },
-        include: {
-          payments: { orderBy: { paidAt: 'asc' } },
+        contracts: { orderBy: { uploadedAt: 'desc' } },
+        additionalCharges: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            payments: { orderBy: { paidAt: 'asc' } },
+          },
         },
+        discounts: { orderBy: { createdAt: 'desc' } },
+        payments: { orderBy: { period: 'asc' } },
+        paymentTransactions: { orderBy: { createdAt: 'desc' } },
       },
-      discounts: { orderBy: { createdAt: 'desc' } },
-      payments: { orderBy: { period: 'asc' } },
-      paymentTransactions: { orderBy: { createdAt: 'desc' } },
-    },
-  });
-}
+    });
+
+    if (!pavilion) return null;
+
+    return {
+      ...pavilion,
+      prepaymentAmount: this.calculatePrepaymentAmount(
+        pavilion.prepaidUntil,
+        pavilion.payments.map((payment) => ({
+          period: payment.period,
+          rentPaid: payment.rentPaid,
+          rentBankTransferPaid: payment.rentBankTransferPaid,
+          rentCashbox1Paid: payment.rentCashbox1Paid,
+          rentCashbox2Paid: payment.rentCashbox2Paid,
+        })),
+      ),
+    };
+  }
 
   async update(
     storeId: number,

@@ -8,7 +8,13 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Currency, Permission, PavilionStatus, Prisma } from '@prisma/client';
+import {
+  Currency,
+  Permission,
+  PavilionExpenseType,
+  PavilionStatus,
+  Prisma,
+} from '@prisma/client';
 import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
 
 @Injectable()
@@ -600,7 +606,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     const staff = await this.prisma.storeStaff.findFirst({
       where: { id: staffId, storeId },
-      select: { id: true },
+      select: { id: true, salary: true, salaryStatus: true },
     });
     if (!staff) {
       throw new NotFoundException('Staff record not found');
@@ -618,10 +624,62 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       updateData.salaryStatus = data.salaryStatus;
     }
 
-    return this.prisma.storeStaff.update({
+    const updatedStaff = await this.prisma.storeStaff.update({
       where: { id: staffId },
       data: updateData,
     });
+
+    // Track salary payment as a month-bound expense entry so analytics can
+    // calculate previous-month balance from historical data instead of current staff status.
+    const currentMonthStart = startOfMonth(new Date());
+    const currentMonthEnd = endOfMonth(new Date());
+    const staffMonthExpenseNote = `STAFF:${staffId}:${currentMonthStart.toISOString()}`;
+
+    const existingSalaryExpense = await this.prisma.pavilionExpense.findFirst({
+      where: {
+        storeId,
+        type: PavilionExpenseType.SALARIES,
+        note: staffMonthExpenseNote,
+        createdAt: {
+          gte: currentMonthStart,
+          lte: currentMonthEnd,
+        },
+      },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    });
+
+    const effectiveSalaryStatus = data.salaryStatus ?? updatedStaff.salaryStatus;
+    const effectiveSalaryAmount = Number(updatedStaff.salary ?? 0);
+
+    if (effectiveSalaryStatus === 'PAID') {
+      if (existingSalaryExpense) {
+        await this.prisma.pavilionExpense.update({
+          where: { id: existingSalaryExpense.id },
+          data: {
+            amount: effectiveSalaryAmount,
+            status: 'PAID',
+            note: staffMonthExpenseNote,
+          },
+        });
+      } else {
+        await this.prisma.pavilionExpense.create({
+          data: {
+            storeId,
+            type: PavilionExpenseType.SALARIES,
+            status: 'PAID',
+            amount: effectiveSalaryAmount,
+            note: staffMonthExpenseNote,
+          },
+        });
+      }
+    } else if (existingSalaryExpense) {
+      await this.prisma.pavilionExpense.delete({
+        where: { id: existingSalaryExpense.id },
+      });
+    }
+
+    return updatedStaff;
   }
 
   async deleteStaff(storeId: number, staffId: number, userId: number) {

@@ -375,20 +375,7 @@ export default function PavilionPage() {
   const currentMonthDiscount = getDiscountForPeriod(new Date());
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
   const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
-  const prepaidAmount = (() => {
-    if (!pavilion.prepaidUntil) return null;
-
-    const prepaidPeriod = new Date(pavilion.prepaidUntil);
-    return (pavilion.payments || [])
-      .filter((pay) => {
-        const payPeriod = new Date(pay.period);
-        return (
-          payPeriod.getFullYear() === prepaidPeriod.getFullYear() &&
-          payPeriod.getMonth() === prepaidPeriod.getMonth()
-        );
-      })
-      .reduce((sum, pay) => sum + Number(pay.rentPaid ?? 0), 0);
-  })();
+  const prepaidAmount = pavilion.prepaymentAmount ?? null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -426,6 +413,7 @@ export default function PavilionPage() {
             <div>
               <p className="text-gray-600">Наименование организации</p>
               <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
+              {console.log(pavilion)}
             </div>
             <div>
               <p className="text-gray-600">Статус</p>
