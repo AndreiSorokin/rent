@@ -379,15 +379,15 @@ export default function PavilionPage() {
     if (!pavilion.prepaidUntil) return null;
 
     const prepaidPeriod = new Date(pavilion.prepaidUntil);
-    const paymentForPrepaidMonth = (pavilion.payments || []).find((pay) => {
-      const payPeriod = new Date(pay.period);
-      return (
-        payPeriod.getFullYear() === prepaidPeriod.getFullYear() &&
-        payPeriod.getMonth() === prepaidPeriod.getMonth()
-      );
-    });
-
-    return Number(paymentForPrepaidMonth?.rentPaid ?? 0);
+    return (pavilion.payments || [])
+      .filter((pay) => {
+        const payPeriod = new Date(pay.period);
+        return (
+          payPeriod.getFullYear() === prepaidPeriod.getFullYear() &&
+          payPeriod.getMonth() === prepaidPeriod.getMonth()
+        );
+      })
+      .reduce((sum, pay) => sum + Number(pay.rentPaid ?? 0), 0);
   })();
 
   return (
