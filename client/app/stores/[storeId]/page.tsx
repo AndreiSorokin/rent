@@ -216,6 +216,14 @@ export default function StorePage() {
     }
   };
 
+  const runKeepingScroll = async (action: () => Promise<void>) => {
+    const scrollY = window.scrollY;
+    await action();
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY });
+    });
+  };
+
   useEffect(() => {
     if (storeId) fetchData(true);
   }, [storeId]);
@@ -404,11 +412,13 @@ export default function StorePage() {
     salaryStatus: 'UNPAID' | 'PAID',
   ) => {
     try {
-      await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ salaryStatus }),
+      await runKeepingScroll(async () => {
+        await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ salaryStatus }),
+        });
+        await fetchData(false);
       });
-      await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус зарплаты');
@@ -536,8 +546,10 @@ export default function StorePage() {
     status: 'UNPAID' | 'PAID',
   ) => {
     try {
-      await updateHouseholdExpenseStatus(storeId, expenseId, status);
-      await fetchData(false);
+      await runKeepingScroll(async () => {
+        await updateHouseholdExpenseStatus(storeId, expenseId, status);
+        await fetchData(false);
+      });
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус хоз. расхода');
@@ -614,8 +626,10 @@ export default function StorePage() {
     status: PavilionExpenseStatus,
   ) => {
     try {
-      await updatePavilionExpenseStatus(storeId, expenseId, status);
-      await fetchData(false);
+      await runKeepingScroll(async () => {
+        await updatePavilionExpenseStatus(storeId, expenseId, status);
+        await fetchData(false);
+      });
     } catch (err) {
       console.error(err);
       alert('Не удалось изменить статус расхода');
@@ -1169,7 +1183,11 @@ export default function StorePage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => void fetchPavilions(Math.max(1, pavilionsPage - 1))}
+                  onClick={() =>
+                    void runKeepingScroll(async () => {
+                      await fetchPavilions(Math.max(1, pavilionsPage - 1));
+                    })
+                  }
                   disabled={pavilionsLoading || pavilionsPage <= 1}
                   className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -1180,7 +1198,11 @@ export default function StorePage() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => void fetchPavilions(pavilionsPage + 1)}
+                  onClick={() =>
+                    void runKeepingScroll(async () => {
+                      await fetchPavilions(pavilionsPage + 1);
+                    })
+                  }
                   disabled={pavilionsLoading || !pavilionsHasMore}
                   className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
                 >
