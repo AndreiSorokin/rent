@@ -413,7 +413,6 @@ export default function PavilionPage() {
             <div>
               <p className="text-gray-600">Наименование организации</p>
               <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
-              {console.log(pavilion)}
             </div>
             <div>
               <p className="text-gray-600">Статус</p>

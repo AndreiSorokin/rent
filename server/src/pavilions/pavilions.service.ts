@@ -10,6 +10,100 @@ import { join } from 'path';
 export class PavilionsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private enrichPavilionPaymentStatus<T extends {
+    status: PavilionStatus;
+    squareMeters: number;
+    pricePerSqM: number;
+    rentAmount: number | null;
+    utilitiesAmount: number | null;
+    advertisingAmount: number | null;
+    payments: Array<{
+      period: Date;
+      rentPaid: number | null;
+      utilitiesPaid: number | null;
+      advertisingPaid: number | null;
+    }>;
+    discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>;
+    additionalCharges: Array<{
+      amount: number;
+      createdAt: Date;
+      payments: Array<{ amountPaid: number; paidAt: Date }>;
+    }>;
+  }>(pavilion: T) {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const monthStartTime = monthStart.getTime();
+
+    const currentPayment = pavilion.payments.find(
+      (payment) => startOfMonth(payment.period).getTime() === monthStartTime,
+    );
+
+    const baseRent =
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
+    const discount = this.getMonthlyDiscountTotal(
+      pavilion.discounts,
+      pavilion.squareMeters,
+      now,
+    );
+
+    const expectedRent =
+      pavilion.status === PavilionStatus.AVAILABLE
+        ? 0
+        : pavilion.status === PavilionStatus.PREPAID
+          ? baseRent
+          : Math.max(baseRent - discount, 0);
+    const expectedUtilities =
+      pavilion.status === PavilionStatus.RENTED
+        ? Number(pavilion.utilitiesAmount ?? 0)
+        : 0;
+    const expectedAdvertising =
+      pavilion.status === PavilionStatus.RENTED
+        ? Number(pavilion.advertisingAmount ?? 0)
+        : 0;
+
+    const currentMonthCharges = pavilion.additionalCharges.filter(
+      (charge) => charge.createdAt >= monthStart && charge.createdAt <= monthEnd,
+    );
+    const expectedAdditional = currentMonthCharges.reduce(
+      (sum, charge) => sum + Number(charge.amount ?? 0),
+      0,
+    );
+
+    const paidBase =
+      Number(currentPayment?.rentPaid ?? 0) +
+      Number(currentPayment?.utilitiesPaid ?? 0) +
+      Number(currentPayment?.advertisingPaid ?? 0);
+    const paidAdditional = currentMonthCharges.reduce(
+      (sum, charge) =>
+        sum +
+        charge.payments.reduce((inner, payment) => {
+          if (payment.paidAt < monthStart || payment.paidAt > monthEnd) return inner;
+          return inner + Number(payment.amountPaid ?? 0);
+        }, 0),
+      0,
+    );
+
+    const expectedTotal =
+      expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
+    const paidTotal = paidBase + paidAdditional;
+
+    let paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' = 'PAID';
+    if (expectedTotal > 0.01) {
+      if (paidTotal <= 0.01) paymentStatus = 'UNPAID';
+      else if (paidTotal + 0.01 >= expectedTotal) paymentStatus = 'PAID';
+      else paymentStatus = 'PARTIAL';
+    }
+
+    return {
+      ...pavilion,
+      paymentStatus,
+      paymentExpectedTotal: expectedTotal,
+      paymentPaidTotal: paidTotal,
+      paymentBalance: paidTotal - expectedTotal,
+    };
+  }
+
   private calculatePrepaymentAmount(
     prepaidUntil: Date | null,
     payments: Array<{
@@ -114,7 +208,11 @@ export class PavilionsService {
     };
 
     const include = {
-      additionalCharges: true,
+      additionalCharges: {
+        include: {
+          payments: true,
+        },
+      },
       discounts: true,
       payments: true,
       contracts: true,
@@ -143,7 +241,7 @@ export class PavilionsService {
       ]);
 
       return {
-        items,
+        items: items.map((item) => this.enrichPavilionPaymentStatus(item)),
         total,
         page,
         pageSize,
@@ -151,11 +249,13 @@ export class PavilionsService {
       };
     }
 
-    return this.prisma.pavilion.findMany({
+    const items = await this.prisma.pavilion.findMany({
       where,
       include,
       orderBy: [{ id: 'asc' }],
     });
+
+    return items.map((item) => this.enrichPavilionPaymentStatus(item));
   }
 
   async findOne(storeId: number, id: number) {

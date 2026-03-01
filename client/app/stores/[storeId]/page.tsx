@@ -131,6 +131,61 @@ export default function StorePage() {
     PREPAID: 'ПРЕДОПЛАТА',
   };
 
+  const getPavilionPaymentStatus = (pavilion: any) => {
+    if (pavilion.paymentStatus) {
+      if (pavilion.paymentStatus === 'PAID') {
+        return {
+          label: 'Оплачено',
+          className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        };
+      }
+      if (pavilion.paymentStatus === 'PARTIAL') {
+        return {
+          label: 'Частично оплачено',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+        };
+      }
+      return {
+        label: 'Не оплачено',
+        className: 'border-rose-200 bg-rose-50 text-rose-700',
+      };
+    }
+
+    const now = new Date();
+    const currentMonthPayment = (pavilion.payments || []).find((payment: any) => {
+      const period = new Date(payment.period);
+      return (
+        period.getUTCFullYear() === now.getUTCFullYear() &&
+        period.getUTCMonth() === now.getUTCMonth()
+      );
+    });
+
+    const rentExpected = Number(
+      pavilion.rentAmount ?? Number(pavilion.squareMeters ?? 0) * Number(pavilion.pricePerSqM ?? 0),
+    );
+    const utilitiesExpected =
+      pavilion.status === 'RENTED' ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+    const advertisingExpected =
+      pavilion.status === 'RENTED' ? Number(pavilion.advertisingAmount ?? 0) : 0;
+
+    const expectedTotal =
+      pavilion.status === 'AVAILABLE' ? 0 : rentExpected + utilitiesExpected + advertisingExpected;
+    const paidTotal =
+      Number(currentMonthPayment?.rentPaid ?? 0) +
+      Number(currentMonthPayment?.utilitiesPaid ?? 0) +
+      Number(currentMonthPayment?.advertisingPaid ?? 0);
+
+    if (expectedTotal <= 0.01 || paidTotal + 0.01 >= expectedTotal) {
+      return { label: 'Оплачено', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+    }
+
+    if (paidTotal <= 0.01) {
+      return { label: 'Не оплачено', className: 'border-rose-200 bg-rose-50 text-rose-700' };
+    }
+
+    return { label: 'Частично оплачено', className: 'border-amber-200 bg-amber-50 text-amber-700' };
+  };
+
   const fetchPavilions = async (page = 1) => {
     if (!storeId) return;
 
@@ -1077,6 +1132,9 @@ export default function StorePage() {
                         Статус
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Оплата
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Категория
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -1089,6 +1147,9 @@ export default function StorePage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {orderedPavilions.map((p: any) => (
+                      (() => {
+                        const paymentStatus = getPavilionPaymentStatus(p);
+                        return (
                       <tr
                         key={p.id}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
@@ -1146,6 +1207,13 @@ export default function StorePage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
+                          >
+                            {paymentStatus.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           {p.category || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
@@ -1173,6 +1241,8 @@ export default function StorePage() {
                           </div>
                         </td>
                       </tr>
+                        );
+                      })()
                     ))}
                   </tbody>
                 </table>
