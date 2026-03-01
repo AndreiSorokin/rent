@@ -53,3 +53,34 @@ export const deleteAdditionalCharge = (
   apiFetch(`/pavilions/${pavilionId}/additional-charges/${chargeId}`, {
     method: 'DELETE',
   });
+
+export const updateAdditionalChargePayment = (
+  pavilionId: number,
+  chargeId: number,
+  paymentId: number,
+  data: {
+    amountPaid?: number;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  },
+) =>
+  apiFetch(
+    `/pavilions/${pavilionId}/additional-charges/${chargeId}/payments/${paymentId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    },
+  );
+
+export const deleteAdditionalChargePayment = (
+  pavilionId: number,
+  chargeId: number,
+  paymentId: number,
+) =>
+  apiFetch(
+    `/pavilions/${pavilionId}/additional-charges/${chargeId}/payments/${paymentId}`,
+    {
+      method: 'DELETE',
+    },
+  );

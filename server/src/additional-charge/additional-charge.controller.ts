@@ -89,4 +89,21 @@ export class AdditionalChargeController {
   ) {
     return this.service.deletePayment(pavilionId, chargeId, paymentId);
   }
+
+  @Patch(':chargeId/payments/:paymentId')
+  @Permissions(Permission.EDIT_CHARGES)
+  updatePayment(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('chargeId', ParseIntPipe) chargeId: number,
+    @Param('paymentId', ParseIntPipe) paymentId: number,
+    @Body()
+    body: {
+      amountPaid?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
+    return this.service.updatePayment(pavilionId, chargeId, paymentId, body);
+  }
 }

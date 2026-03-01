@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   Body,
@@ -6,6 +7,7 @@ import {
   Delete,
   Param,
   ParseIntPipe,
+  Patch,
   UseGuards,
   Query,
 } from '@nestjs/common';
@@ -102,5 +104,38 @@ export class PaymentsController {
     @Param('entryId', ParseIntPipe) entryId: number,
   ) {
     return this.service.deleteEntry(pavilionId, entryId);
+  }
+
+  @Patch('entries/:entryId')
+  @Permissions(Permission.EDIT_PAYMENTS)
+  updateEntry(
+    @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Param('entryId', ParseIntPipe) entryId: number,
+    @Body()
+    body: {
+      rentPaid?: number;
+      utilitiesPaid?: number;
+      advertisingPaid?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      rentBankTransferPaid?: number;
+      rentCashbox1Paid?: number;
+      rentCashbox2Paid?: number;
+      utilitiesBankTransferPaid?: number;
+      utilitiesCashbox1Paid?: number;
+      utilitiesCashbox2Paid?: number;
+      advertisingBankTransferPaid?: number;
+      advertisingCashbox1Paid?: number;
+      advertisingCashbox2Paid?: number;
+    },
+  ) {
+    const hasAnyField =
+      Object.keys(body).length > 0 &&
+      Object.values(body).some((value) => value !== undefined);
+    if (!hasAnyField) {
+      throw new BadRequestException('No fields provided for update');
+    }
+    return this.service.updateEntry(pavilionId, entryId, body);
   }
 }

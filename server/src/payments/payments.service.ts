@@ -7,6 +7,16 @@ import { PavilionStatus } from '@prisma/client';
 export class PaymentsService {
   constructor(private prisma: PrismaService) {}
 
+  private toNumber(value: number | null | undefined) {
+    return Number(value ?? 0);
+  }
+
+  private validateNonNegative(values: number[]) {
+    if (values.some((value) => Number.isNaN(value) || value < 0)) {
+      throw new BadRequestException('Payment amounts must be non-negative');
+    }
+  }
+
   async getMonthlySummary(pavilionId: number, period: Date) {
     const normalizedPeriod = startOfMonth(period);
     const start = startOfMonth(normalizedPeriod);
@@ -554,6 +564,201 @@ async addPayment(
 
     const normalizedPeriod = startOfMonth(result.period);
     await this.refreshMonthlyLedger(pavilionId, normalizedPeriod);
+    return { success: true };
+  }
+
+  async updateEntry(
+    pavilionId: number,
+    entryId: number,
+    data: {
+      rentPaid?: number;
+      utilitiesPaid?: number;
+      advertisingPaid?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      rentBankTransferPaid?: number;
+      rentCashbox1Paid?: number;
+      rentCashbox2Paid?: number;
+      utilitiesBankTransferPaid?: number;
+      utilitiesCashbox1Paid?: number;
+      utilitiesCashbox2Paid?: number;
+      advertisingBankTransferPaid?: number;
+      advertisingCashbox1Paid?: number;
+      advertisingCashbox2Paid?: number;
+    },
+  ) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const entry = await tx.paymentTransaction.findFirst({
+        where: { id: entryId, pavilionId },
+      });
+      if (!entry) {
+        throw new NotFoundException('Payment entry not found');
+      }
+
+      const payment = await tx.payment.findUnique({
+        where: {
+          pavilionId_period: { pavilionId, period: entry.period },
+        },
+      });
+      if (!payment) {
+        throw new NotFoundException('Payment aggregate not found');
+      }
+
+      const nextEntry = {
+        rentPaid: data.rentPaid ?? this.toNumber(entry.rentPaid),
+        utilitiesPaid: data.utilitiesPaid ?? this.toNumber(entry.utilitiesPaid),
+        advertisingPaid:
+          data.advertisingPaid ?? this.toNumber(entry.advertisingPaid),
+        bankTransferPaid:
+          data.bankTransferPaid ?? this.toNumber(entry.bankTransferPaid),
+        cashbox1Paid: data.cashbox1Paid ?? this.toNumber(entry.cashbox1Paid),
+        cashbox2Paid: data.cashbox2Paid ?? this.toNumber(entry.cashbox2Paid),
+        rentBankTransferPaid:
+          data.rentBankTransferPaid ?? this.toNumber(entry.rentBankTransferPaid),
+        rentCashbox1Paid:
+          data.rentCashbox1Paid ?? this.toNumber(entry.rentCashbox1Paid),
+        rentCashbox2Paid:
+          data.rentCashbox2Paid ?? this.toNumber(entry.rentCashbox2Paid),
+        utilitiesBankTransferPaid:
+          data.utilitiesBankTransferPaid ??
+          this.toNumber(entry.utilitiesBankTransferPaid),
+        utilitiesCashbox1Paid:
+          data.utilitiesCashbox1Paid ?? this.toNumber(entry.utilitiesCashbox1Paid),
+        utilitiesCashbox2Paid:
+          data.utilitiesCashbox2Paid ?? this.toNumber(entry.utilitiesCashbox2Paid),
+        advertisingBankTransferPaid:
+          data.advertisingBankTransferPaid ??
+          this.toNumber(entry.advertisingBankTransferPaid),
+        advertisingCashbox1Paid:
+          data.advertisingCashbox1Paid ??
+          this.toNumber(entry.advertisingCashbox1Paid),
+        advertisingCashbox2Paid:
+          data.advertisingCashbox2Paid ??
+          this.toNumber(entry.advertisingCashbox2Paid),
+      };
+
+      this.validateNonNegative(Object.values(nextEntry));
+
+      const rentChannels =
+        nextEntry.rentBankTransferPaid +
+        nextEntry.rentCashbox1Paid +
+        nextEntry.rentCashbox2Paid;
+      const utilitiesChannels =
+        nextEntry.utilitiesBankTransferPaid +
+        nextEntry.utilitiesCashbox1Paid +
+        nextEntry.utilitiesCashbox2Paid;
+      const advertisingChannels =
+        nextEntry.advertisingBankTransferPaid +
+        nextEntry.advertisingCashbox1Paid +
+        nextEntry.advertisingCashbox2Paid;
+      const allChannels =
+        nextEntry.bankTransferPaid +
+        nextEntry.cashbox1Paid +
+        nextEntry.cashbox2Paid;
+      const allExpected = rentChannels + utilitiesChannels + advertisingChannels;
+      if (Math.abs(allChannels - allExpected) > 0.01) {
+        throw new BadRequestException(
+          'Total payment channels must equal channels distribution by entities',
+        );
+      }
+
+      const updatedEntry = await tx.paymentTransaction.update({
+        where: { id: entry.id },
+        data: nextEntry,
+      });
+
+      const previousEntry = {
+        rentPaid: this.toNumber(entry.rentPaid),
+        utilitiesPaid: this.toNumber(entry.utilitiesPaid),
+        advertisingPaid: this.toNumber(entry.advertisingPaid),
+        bankTransferPaid: this.toNumber(entry.bankTransferPaid),
+        cashbox1Paid: this.toNumber(entry.cashbox1Paid),
+        cashbox2Paid: this.toNumber(entry.cashbox2Paid),
+        rentBankTransferPaid: this.toNumber(entry.rentBankTransferPaid),
+        rentCashbox1Paid: this.toNumber(entry.rentCashbox1Paid),
+        rentCashbox2Paid: this.toNumber(entry.rentCashbox2Paid),
+        utilitiesBankTransferPaid: this.toNumber(entry.utilitiesBankTransferPaid),
+        utilitiesCashbox1Paid: this.toNumber(entry.utilitiesCashbox1Paid),
+        utilitiesCashbox2Paid: this.toNumber(entry.utilitiesCashbox2Paid),
+        advertisingBankTransferPaid: this.toNumber(
+          entry.advertisingBankTransferPaid,
+        ),
+        advertisingCashbox1Paid: this.toNumber(entry.advertisingCashbox1Paid),
+        advertisingCashbox2Paid: this.toNumber(entry.advertisingCashbox2Paid),
+      };
+
+      const nextPayment = {
+        rentPaid: this.toNumber(payment.rentPaid) - previousEntry.rentPaid + nextEntry.rentPaid,
+        utilitiesPaid:
+          this.toNumber(payment.utilitiesPaid) -
+          previousEntry.utilitiesPaid +
+          nextEntry.utilitiesPaid,
+        advertisingPaid:
+          this.toNumber(payment.advertisingPaid) -
+          previousEntry.advertisingPaid +
+          nextEntry.advertisingPaid,
+        bankTransferPaid:
+          this.toNumber(payment.bankTransferPaid) -
+          previousEntry.bankTransferPaid +
+          nextEntry.bankTransferPaid,
+        cashbox1Paid:
+          this.toNumber(payment.cashbox1Paid) -
+          previousEntry.cashbox1Paid +
+          nextEntry.cashbox1Paid,
+        cashbox2Paid:
+          this.toNumber(payment.cashbox2Paid) -
+          previousEntry.cashbox2Paid +
+          nextEntry.cashbox2Paid,
+        rentBankTransferPaid:
+          this.toNumber(payment.rentBankTransferPaid) -
+          previousEntry.rentBankTransferPaid +
+          nextEntry.rentBankTransferPaid,
+        rentCashbox1Paid:
+          this.toNumber(payment.rentCashbox1Paid) -
+          previousEntry.rentCashbox1Paid +
+          nextEntry.rentCashbox1Paid,
+        rentCashbox2Paid:
+          this.toNumber(payment.rentCashbox2Paid) -
+          previousEntry.rentCashbox2Paid +
+          nextEntry.rentCashbox2Paid,
+        utilitiesBankTransferPaid:
+          this.toNumber(payment.utilitiesBankTransferPaid) -
+          previousEntry.utilitiesBankTransferPaid +
+          nextEntry.utilitiesBankTransferPaid,
+        utilitiesCashbox1Paid:
+          this.toNumber(payment.utilitiesCashbox1Paid) -
+          previousEntry.utilitiesCashbox1Paid +
+          nextEntry.utilitiesCashbox1Paid,
+        utilitiesCashbox2Paid:
+          this.toNumber(payment.utilitiesCashbox2Paid) -
+          previousEntry.utilitiesCashbox2Paid +
+          nextEntry.utilitiesCashbox2Paid,
+        advertisingBankTransferPaid:
+          this.toNumber(payment.advertisingBankTransferPaid) -
+          previousEntry.advertisingBankTransferPaid +
+          nextEntry.advertisingBankTransferPaid,
+        advertisingCashbox1Paid:
+          this.toNumber(payment.advertisingCashbox1Paid) -
+          previousEntry.advertisingCashbox1Paid +
+          nextEntry.advertisingCashbox1Paid,
+        advertisingCashbox2Paid:
+          this.toNumber(payment.advertisingCashbox2Paid) -
+          previousEntry.advertisingCashbox2Paid +
+          nextEntry.advertisingCashbox2Paid,
+      };
+
+      this.validateNonNegative(Object.values(nextPayment));
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: nextPayment,
+      });
+
+      return { period: updatedEntry.period };
+    });
+
+    await this.refreshMonthlyLedger(pavilionId, startOfMonth(result.period));
     return { success: true };
   }
 
