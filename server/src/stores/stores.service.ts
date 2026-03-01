@@ -755,6 +755,177 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private parseMonthPeriod(period?: string) {
+    if (!period) {
+      return startOfMonth(new Date());
+    }
+
+    const match = /^(\d{4})-(\d{2})$/.exec(period.trim());
+    if (!match) {
+      throw new BadRequestException('period must be in YYYY-MM format');
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      throw new BadRequestException('period must be in YYYY-MM format');
+    }
+
+    return startOfMonth(new Date(year, month - 1, 1));
+  }
+
+  private normalizeExtraIncomeInput(data: {
+    name?: string;
+    amount?: number;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+    period?: string;
+    paidAt?: string;
+  }) {
+    const name = String(data.name ?? '').trim();
+    const amount = Number(data.amount ?? 0);
+    const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
+    const paidAt = data.paidAt ? new Date(data.paidAt) : new Date();
+    const period = this.parseMonthPeriod(data.period);
+
+    if (!name) {
+      throw new BadRequestException('name is required');
+    }
+    if (
+      Number.isNaN(amount) ||
+      Number.isNaN(bankTransferPaid) ||
+      Number.isNaN(cashbox1Paid) ||
+      Number.isNaN(cashbox2Paid) ||
+      amount < 0 ||
+      bankTransferPaid < 0 ||
+      cashbox1Paid < 0 ||
+      cashbox2Paid < 0
+    ) {
+      throw new BadRequestException('Amounts must be non-negative');
+    }
+    if (Number.isNaN(paidAt.getTime())) {
+      throw new BadRequestException('Invalid paidAt');
+    }
+    const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+    if (Math.abs(amount - channelsTotal) > 0.01) {
+      throw new BadRequestException(
+        'Amount must equal sum of payment channels',
+      );
+    }
+
+    return {
+      name,
+      amount,
+      bankTransferPaid,
+      cashbox1Paid,
+      cashbox2Paid,
+      period,
+      paidAt,
+    };
+  }
+
+  async listStoreExtraIncome(storeId: number, period?: string) {
+    const normalizedPeriod = this.parseMonthPeriod(period);
+    return (this.prisma as any).storeExtraIncome.findMany({
+      where: {
+        storeId,
+        period: normalizedPeriod,
+      },
+      orderBy: [{ paidAt: 'desc' }, { id: 'desc' }],
+    });
+  }
+
+  async createStoreExtraIncome(
+    storeId: number,
+    data: {
+      name: string;
+      amount: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      period?: string;
+      paidAt?: string;
+    },
+  ) {
+    const payload = this.normalizeExtraIncomeInput(data);
+    return (this.prisma as any).storeExtraIncome.create({
+      data: {
+        storeId,
+        name: payload.name,
+        amount: payload.amount,
+        bankTransferPaid: payload.bankTransferPaid,
+        cashbox1Paid: payload.cashbox1Paid,
+        cashbox2Paid: payload.cashbox2Paid,
+        period: payload.period,
+        paidAt: payload.paidAt,
+      },
+    });
+  }
+
+  async updateStoreExtraIncome(
+    storeId: number,
+    incomeId: number,
+    data: {
+      name?: string;
+      amount?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      period?: string;
+      paidAt?: string;
+    },
+  ) {
+    const existing = await (this.prisma as any).storeExtraIncome.findFirst({
+      where: { id: incomeId, storeId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Store extra income not found');
+    }
+
+    const payload = this.normalizeExtraIncomeInput({
+      name: data.name ?? existing.name,
+      amount: data.amount ?? existing.amount,
+      bankTransferPaid: data.bankTransferPaid ?? existing.bankTransferPaid,
+      cashbox1Paid: data.cashbox1Paid ?? existing.cashbox1Paid,
+      cashbox2Paid: data.cashbox2Paid ?? existing.cashbox2Paid,
+      period:
+        data.period ??
+        `${existing.period.getFullYear()}-${String(
+          existing.period.getMonth() + 1,
+        ).padStart(2, '0')}`,
+      paidAt: data.paidAt ?? existing.paidAt.toISOString(),
+    });
+
+    return (this.prisma as any).storeExtraIncome.update({
+      where: { id: incomeId },
+      data: {
+        name: payload.name,
+        amount: payload.amount,
+        bankTransferPaid: payload.bankTransferPaid,
+        cashbox1Paid: payload.cashbox1Paid,
+        cashbox2Paid: payload.cashbox2Paid,
+        period: payload.period,
+        paidAt: payload.paidAt,
+      },
+    });
+  }
+
+  async deleteStoreExtraIncome(storeId: number, incomeId: number) {
+    const existing = await (this.prisma as any).storeExtraIncome.findFirst({
+      where: { id: incomeId, storeId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Store extra income not found');
+    }
+    return (this.prisma as any).storeExtraIncome.delete({
+      where: { id: incomeId },
+    });
+  }
+
   async listAccountingTable(storeId: number) {
     await this.cleanupOldAccountingRecords(storeId);
 
@@ -818,7 +989,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   private async getActualAccountingByDay(storeId: number, dayStart: Date) {
     const dayEnd = endOfDay(dayStart);
-    const [pavilionPayments, additionalChargePayments] = await Promise.all([
+    const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
         where: {
           pavilion: { storeId },
@@ -851,17 +1023,42 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           cashbox2Paid: true,
         },
       }),
+      storeExtraIncomeRepo?.aggregate
+        ? storeExtraIncomeRepo.aggregate({
+            where: {
+              storeId,
+              paidAt: {
+                gte: dayStart,
+                lte: dayEnd,
+              },
+            },
+            _sum: {
+              bankTransferPaid: true,
+              cashbox1Paid: true,
+              cashbox2Paid: true,
+            },
+          })
+        : Promise.resolve({
+            _sum: {
+              bankTransferPaid: 0,
+              cashbox1Paid: 0,
+              cashbox2Paid: 0,
+            },
+          }),
     ]);
 
     const bankTransferPaid =
       (pavilionPayments._sum.bankTransferPaid ?? 0) +
-      (additionalChargePayments._sum.bankTransferPaid ?? 0);
+      (additionalChargePayments._sum.bankTransferPaid ?? 0) +
+      (storeExtraIncomePayments._sum.bankTransferPaid ?? 0);
     const cashbox1Paid =
       (pavilionPayments._sum.cashbox1Paid ?? 0) +
-      (additionalChargePayments._sum.cashbox1Paid ?? 0);
+      (additionalChargePayments._sum.cashbox1Paid ?? 0) +
+      (storeExtraIncomePayments._sum.cashbox1Paid ?? 0);
     const cashbox2Paid =
       (pavilionPayments._sum.cashbox2Paid ?? 0) +
-      (additionalChargePayments._sum.cashbox2Paid ?? 0);
+      (additionalChargePayments._sum.cashbox2Paid ?? 0) +
+      (storeExtraIncomePayments._sum.cashbox2Paid ?? 0);
 
     return {
       bankTransferPaid,

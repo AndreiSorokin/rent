@@ -248,6 +248,61 @@ export class StoresController {
     return this.service.deleteAccountingRecord(storeId, recordId);
   }
 
+  @Get(':storeId/extra-income')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  listStoreExtraIncome(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('period') period?: string,
+  ) {
+    return this.service.listStoreExtraIncome(storeId, period);
+  }
+
+  @Post(':storeId/extra-income')
+  @Permissions(Permission.CREATE_PAYMENTS)
+  createStoreExtraIncome(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      name: string;
+      amount: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      period?: string;
+      paidAt?: string;
+    },
+  ) {
+    return this.service.createStoreExtraIncome(storeId, data);
+  }
+
+  @Patch(':storeId/extra-income/:incomeId')
+  @Permissions(Permission.EDIT_PAYMENTS)
+  updateStoreExtraIncome(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('incomeId', ParseIntPipe) incomeId: number,
+    @Body()
+    data: {
+      name?: string;
+      amount?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      period?: string;
+      paidAt?: string;
+    },
+  ) {
+    return this.service.updateStoreExtraIncome(storeId, incomeId, data);
+  }
+
+  @Delete(':storeId/extra-income/:incomeId')
+  @Permissions(Permission.EDIT_PAYMENTS)
+  deleteStoreExtraIncome(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('incomeId', ParseIntPipe) incomeId: number,
+  ) {
+    return this.service.deleteStoreExtraIncome(storeId, incomeId);
+  }
+
   @Get(':storeId/accounting-reconciliation')
   @Permissions(Permission.VIEW_PAYMENTS)
   getAccountingReconciliation(

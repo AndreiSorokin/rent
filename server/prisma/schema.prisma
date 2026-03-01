@@ -72,9 +72,28 @@ model Store {
   invitations Invitation[]
   staff       StoreStaff[]
   accountingRecords StoreAccountingRecord[]
+  extraIncomes StoreExtraIncome[]
   householdExpenses HouseholdExpense[]
   pavilionExpenses PavilionExpense[]
   pavilionGroups PavilionGroup[]
+}
+
+model StoreExtraIncome {
+  id Int @id @default(autoincrement())
+
+  storeId Int
+  store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  name String
+  amount Float
+  bankTransferPaid Float @default(0)
+  cashbox1Paid Float @default(0)
+  cashbox2Paid Float @default(0)
+  period DateTime
+  paidAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([storeId, period, paidAt])
 }
 
 model StoreAccountingRecord {

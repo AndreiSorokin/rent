@@ -166,6 +166,41 @@ export class AnalyticsService {
           },
         }),
       ]);
+    const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
+    const [storeExtraIncomeCurrent, storeExtraIncomePrevious, storeExtraIncomeTrend] =
+      await Promise.all([
+        storeExtraIncomeRepo?.findMany
+          ? storeExtraIncomeRepo.findMany({
+              where: {
+                storeId,
+                period,
+              },
+            })
+          : Promise.resolve([]),
+        storeExtraIncomeRepo?.findMany
+          ? storeExtraIncomeRepo.findMany({
+              where: {
+                storeId,
+                period: prevPeriod,
+              },
+            })
+          : Promise.resolve([]),
+        storeExtraIncomeRepo?.findMany
+          ? storeExtraIncomeRepo.findMany({
+              where: {
+                storeId,
+                period: {
+                  gte: trendStart,
+                  lte: period,
+                },
+              },
+              select: {
+                period: true,
+                amount: true,
+              },
+            })
+          : Promise.resolve([]),
+      ]);
 
     const incomePavilions = pavilions.filter(
       (p) => p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
@@ -175,11 +210,13 @@ export class AnalyticsService {
     let forecastUtilities = 0;
     let forecastAdvertising = 0;
     let forecastAdditional = 0;
+    let forecastStoreExtra = 0;
 
     let actualRent = 0;
     let actualUtilities = 0;
     let actualAdvertising = 0;
     let actualAdditional = 0;
+    let actualStoreExtra = 0;
 
     for (const p of incomePavilions) {
       const currentLedger = p.monthlyLedgers[0];
@@ -220,19 +257,38 @@ export class AnalyticsService {
       }
     }
 
+    forecastStoreExtra = storeExtraIncomeCurrent.reduce(
+      (sum, item) => sum + Number(item.amount ?? 0),
+      0,
+    );
     const forecastTotal =
-      forecastRent + forecastUtilities + forecastAdvertising + forecastAdditional;
-    const actualTotal = actualRent + actualUtilities + actualAdvertising + actualAdditional;
+      forecastRent +
+      forecastUtilities +
+      forecastAdvertising +
+      forecastAdditional +
+      forecastStoreExtra;
+    actualStoreExtra = storeExtraIncomeCurrent.reduce(
+      (sum, item) => sum + Number(item.amount ?? 0),
+      0,
+    );
+    const actualTotal =
+      actualRent +
+      actualUtilities +
+      actualAdvertising +
+      actualAdditional +
+      actualStoreExtra;
 
     let incomeForecastRent = 0;
     let incomeForecastUtilities = 0;
     let incomeForecastAdvertising = 0;
     let incomeForecastAdditional = 0;
+    let incomeForecastStoreExtra = 0;
 
     let incomeActualRent = 0;
     let incomeActualUtilities = 0;
     let incomeActualAdvertising = 0;
     let incomeActualAdditional = 0;
+    let incomeActualStoreExtra = 0;
 
     for (const p of incomePavilions) {
       const currentLedger = p.monthlyLedgers[0];
@@ -273,16 +329,20 @@ export class AnalyticsService {
       }
     }
 
+    incomeForecastStoreExtra = forecastStoreExtra;
     const incomeForecastTotal =
       incomeForecastRent +
       incomeForecastUtilities +
       incomeForecastAdvertising +
-      incomeForecastAdditional;
+      incomeForecastAdditional +
+      incomeForecastStoreExtra;
+    incomeActualStoreExtra = actualStoreExtra;
     const incomeActualTotal =
       incomeActualRent +
       incomeActualUtilities +
       incomeActualAdvertising +
-      incomeActualAdditional;
+      incomeActualAdditional +
+      incomeActualStoreExtra;
 
     let expensesTotalForecast = 0;
     let expensesTotalActual = 0;
@@ -327,6 +387,9 @@ export class AnalyticsService {
     let additionalChannelsBankTransfer = 0;
     let additionalChannelsCashbox1 = 0;
     let additionalChannelsCashbox2 = 0;
+    let storeExtraChannelsBankTransfer = 0;
+    let storeExtraChannelsCashbox1 = 0;
+    let storeExtraChannelsCashbox2 = 0;
 
     const nonSalaryManualExpenses = manualExpenses.filter(
       (expense) => expense.type !== 'SALARIES',
@@ -472,21 +535,29 @@ export class AnalyticsService {
         }
       }
     }
+    for (const incomeItem of storeExtraIncomeCurrent) {
+      storeExtraChannelsBankTransfer += Number(incomeItem.bankTransferPaid ?? 0);
+      storeExtraChannelsCashbox1 += Number(incomeItem.cashbox1Paid ?? 0);
+      storeExtraChannelsCashbox2 += Number(incomeItem.cashbox2Paid ?? 0);
+    }
     channelsBankTransfer =
       rentChannelsBankTransfer +
       facilitiesChannelsBankTransfer +
       advertisingChannelsBankTransfer +
-      additionalChannelsBankTransfer;
+      additionalChannelsBankTransfer +
+      storeExtraChannelsBankTransfer;
     channelsCashbox1 =
       rentChannelsCashbox1 +
       facilitiesChannelsCashbox1 +
       advertisingChannelsCashbox1 +
-      additionalChannelsCashbox1;
+      additionalChannelsCashbox1 +
+      storeExtraChannelsCashbox1;
     channelsCashbox2 =
       rentChannelsCashbox2 +
       facilitiesChannelsCashbox2 +
       advertisingChannelsCashbox2 +
-      additionalChannelsCashbox2;
+      additionalChannelsCashbox2 +
+      storeExtraChannelsCashbox2;
 
     const areaTotal = pavilions.reduce((sum, p) => sum + p.squareMeters, 0);
     const areaRented = pavilions
@@ -626,6 +697,10 @@ export class AnalyticsService {
         );
       }
     }
+    previousIncomeTotal += storeExtraIncomePrevious.reduce(
+      (sum, item) => sum + Number(item.amount ?? 0),
+      0,
+    );
 
     const previousManualExpensesActual = previousManualAdministrativeExpenses
       .filter((expense) => expense.status === 'PAID')
@@ -755,6 +830,12 @@ export class AnalyticsService {
       bucket.incomeForecast += Number(ledger.expectedTotal ?? 0);
       bucket.incomeActual += Number(ledger.actualTotal ?? 0);
     }
+    for (const storeIncome of storeExtraIncomeTrend) {
+      const monthKey = startOfMonth(storeIncome.period).toISOString();
+      const bucket = monthlyFinanceMap.get(monthKey);
+      if (!bucket) continue;
+      bucket.incomeActual += Number(storeIncome.amount ?? 0);
+    }
 
     for (const expense of manualExpensesForTrend) {
       const monthKey = startOfMonth(expense.createdAt).toISOString();
@@ -807,6 +888,7 @@ export class AnalyticsService {
         utilities: forecastUtilities,
         advertising: forecastAdvertising,
         additional: forecastAdditional,
+        storeExtra: forecastStoreExtra,
         total: forecastTotal,
       },
       actualIncome: {
@@ -821,6 +903,7 @@ export class AnalyticsService {
         utilities: forecastUtilities,
         advertising: forecastAdvertising,
         additional: forecastAdditional,
+        storeExtra: forecastStoreExtra,
         total: forecastTotal,
       },
       paid: {
@@ -828,6 +911,7 @@ export class AnalyticsService {
         utilities: actualUtilities,
         advertising: actualAdvertising,
         additional: actualAdditional,
+        storeExtra: actualStoreExtra,
         total: actualTotal,
       },
       debt: forecastTotal - actualTotal,
@@ -837,6 +921,7 @@ export class AnalyticsService {
           utilities: incomeForecastUtilities,
           advertising: incomeForecastAdvertising,
           additional: incomeForecastAdditional,
+          storeExtra: incomeForecastStoreExtra,
           total: incomeForecastTotal,
         },
         actual: {
@@ -844,6 +929,7 @@ export class AnalyticsService {
           utilities: incomeActualUtilities,
           advertising: incomeActualAdvertising,
           additional: incomeActualAdditional,
+          storeExtra: incomeActualStoreExtra,
           total: incomeActualTotal,
         },
       },
@@ -859,6 +945,7 @@ export class AnalyticsService {
           facilities: actualUtilities,
           advertising: actualAdvertising,
           additional: actualAdditional,
+          storeExtra: incomeActualStoreExtra,
           total: overallIncomeTotal,
           previousMonthBalance,
           channels: {
@@ -901,6 +988,15 @@ export class AnalyticsService {
                 additionalChannelsBankTransfer +
                 additionalChannelsCashbox1 +
                 additionalChannelsCashbox2,
+            },
+            storeExtra: {
+              bankTransfer: storeExtraChannelsBankTransfer,
+              cashbox1: storeExtraChannelsCashbox1,
+              cashbox2: storeExtraChannelsCashbox2,
+              total:
+                storeExtraChannelsBankTransfer +
+                storeExtraChannelsCashbox1 +
+                storeExtraChannelsCashbox2,
             },
           },
         },
@@ -989,6 +1085,16 @@ export class AnalyticsService {
     const period = this.parsePeriod(periodInput);
     const periodStart = startOfMonth(period);
     const periodEnd = endOfMonth(period);
+    const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
+    const storeExtraIncome = storeExtraIncomeRepo?.findMany
+      ? await storeExtraIncomeRepo.findMany({
+          where: {
+            storeId,
+            period,
+          },
+          orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
+        })
+      : [];
 
     const pavilions = await this.prisma.pavilion.findMany({
       where: { storeId },
@@ -1078,14 +1184,28 @@ export class AnalyticsService {
         utilities: 0,
         advertising: 0,
         additional: 0,
+        storeExtra: 0,
         total: 0,
       },
     );
+    const storeItems = storeExtraIncome.map((income) => ({
+      id: income.id,
+      name: income.name,
+      amount: Number(income.amount ?? 0),
+      bankTransferPaid: Number(income.bankTransferPaid ?? 0),
+      cashbox1Paid: Number(income.cashbox1Paid ?? 0),
+      cashbox2Paid: Number(income.cashbox2Paid ?? 0),
+      paidAt: income.paidAt,
+    }));
+    const storeExtraTotal = storeItems.reduce((sum, item) => sum + item.amount, 0);
+    totals.storeExtra = storeExtraTotal;
+    totals.total += storeExtraTotal;
 
     return {
       period,
       totals,
       items,
+      storeItems,
     };
   }
 

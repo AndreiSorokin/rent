@@ -14,6 +14,7 @@ type ForecastBreakdownResponse = {
     utilities: number;
     advertising: number;
     additional: number;
+    storeExtra: number;
     total: number;
   };
   items: Array<{
@@ -26,6 +27,15 @@ type ForecastBreakdownResponse = {
     advertising: number;
     additional: number;
     total: number;
+  }>;
+  storeItems?: Array<{
+    id: number;
+    name: string;
+    amount: number;
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+    paidAt: string;
   }>;
 };
 
@@ -145,6 +155,7 @@ export default function IncomeForecastBreakdownPage() {
             <div>Коммуналка: {formatMoney(data?.totals.utilities ?? 0, currency)}</div>
             <div>Реклама: {formatMoney(data?.totals.advertising ?? 0, currency)}</div>
             <div>Доп. начисления: {formatMoney(data?.totals.additional ?? 0, currency)}</div>
+            <div>Доп приход: {formatMoney(data?.totals.storeExtra ?? 0, currency)}</div>
             <div className="font-semibold md:col-span-2">
               Итого прогноз: {formatMoney(data?.totals.total ?? 0, currency)}
             </div>
@@ -183,6 +194,40 @@ export default function IncomeForecastBreakdownPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {(data?.storeItems || []).length > 0 && (
+            <div className="mt-5">
+              <h2 className="mb-2 text-base font-semibold text-gray-800">Доходы уровня объекта</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Безнал</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {(data?.storeItems || []).map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-4 py-2 text-sm">
+                          {new Date(item.paidAt).toLocaleDateString('ru-RU')}
+                        </td>
+                        <td className="px-4 py-2 text-sm">{item.name}</td>
+                        <td className="px-4 py-2 text-sm">{formatMoney(item.amount, currency)}</td>
+                        <td className="px-4 py-2 text-sm">{formatMoney(item.bankTransferPaid, currency)}</td>
+                        <td className="px-4 py-2 text-sm">{formatMoney(item.cashbox1Paid, currency)}</td>
+                        <td className="px-4 py-2 text-sm">{formatMoney(item.cashbox2Paid, currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

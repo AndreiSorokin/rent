@@ -94,6 +94,7 @@ export class AnalyticsController {
     line('Коммунальные', money(income?.facilities));
     line('Реклама', money(income?.advertising));
     line('Дополнительные начисления', money(income?.additional));
+    line('Доп приход', money(income?.storeExtra));
     line('Итого доход', money(income?.total));
     line('Безналичные', money(income?.channels?.bankTransfer));
     line('Наличные касса 1', money(income?.channels?.cashbox1));

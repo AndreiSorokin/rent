@@ -752,6 +752,10 @@ export default function StoreSummaryPage() {
                   <p className="text-xs uppercase text-gray-500">Доп. начисления</p>
                   <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.additional?.total ?? 0, data.currency)}</p>
                 </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                  <p className="text-xs uppercase text-gray-500">Доп приход</p>
+                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.storeExtra?.total ?? 0, data.currency)}</p>
+                </div>
               </div>
             </div>
           </div>
