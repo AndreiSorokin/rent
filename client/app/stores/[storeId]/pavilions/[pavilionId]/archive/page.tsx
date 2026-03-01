@@ -110,7 +110,7 @@ function buildArchiveMonths(pavilion: Pavilion): ArchiveMonth[] {
   };
 
   for (const payment of pavilion.paymentTransactions || []) {
-    const paymentDate = new Date(payment.createdAt || payment.period);
+    const paymentDate = new Date(payment.period || payment.createdAt);
     const monthKey = getMonthKey(paymentDate);
     if (monthKey >= currentMonthKey) continue;
 
