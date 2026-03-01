@@ -2027,7 +2027,14 @@ export default function StorePage() {
                     <div className="text-xs text-gray-500">Ожидаемое закрытие</div>
                     <div className="font-medium">
                       {dayReconciliation.expectedClose
-                        ? formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)
+                        ? (
+                            <Link
+                              href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
+                              className="text-blue-700 hover:underline"
+                            >
+                              {formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)}
+                            </Link>
+                          )
                         : '-'}
                     </div>
                   </div>
@@ -2338,6 +2345,7 @@ export default function StorePage() {
         isOpen={showExtraIncomeModal}
         canCreate={hasPermission(permissions, 'CREATE_PAYMENTS')}
         canDelete={hasPermission(permissions, 'EDIT_PAYMENTS')}
+        defaultPaidAtDate={accountingDate}
         onClose={() => setShowExtraIncomeModal(false)}
         onChanged={() => fetchData(false)}
       />

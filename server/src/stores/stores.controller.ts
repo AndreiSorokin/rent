@@ -312,6 +312,15 @@ export class StoresController {
     return this.service.getAccountingDayReconciliation(storeId, date);
   }
 
+  @Get(':storeId/accounting-reconciliation/expected-close-details')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  getAccountingExpectedCloseDetails(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('date') date?: string,
+  ) {
+    return this.service.getAccountingExpectedCloseDetails(storeId, date);
+  }
+
   @Post(':storeId/accounting-reconciliation/open')
   @Permissions(Permission.CREATE_PAYMENTS)
   openAccountingDay(

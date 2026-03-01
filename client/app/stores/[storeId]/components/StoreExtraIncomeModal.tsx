@@ -14,6 +14,7 @@ type Props = {
   isOpen: boolean;
   canCreate: boolean;
   canDelete: boolean;
+  defaultPaidAtDate?: string;
   onClose: () => void;
   onChanged?: () => Promise<void> | void;
 };
@@ -29,6 +30,7 @@ export function StoreExtraIncomeModal({
   isOpen,
   canCreate,
   canDelete,
+  defaultPaidAtDate,
   onClose,
   onChanged,
 }: Props) {
@@ -41,6 +43,9 @@ export function StoreExtraIncomeModal({
   const [bank, setBank] = useState('');
   const [cash1, setCash1] = useState('');
   const [cash2, setCash2] = useState('');
+  const [paidAtDate, setPaidAtDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  );
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
@@ -63,9 +68,12 @@ export function StoreExtraIncomeModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (defaultPaidAtDate) {
+      setPaidAtDate(defaultPaidAtDate);
+    }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, period, storeId]);
+  }, [isOpen, period, storeId, defaultPaidAtDate]);
 
   const handleCreate = async () => {
     const cleanName = name.trim();
@@ -100,6 +108,7 @@ export function StoreExtraIncomeModal({
         cashbox1Paid: parsedCash1,
         cashbox2Paid: parsedCash2,
         period,
+        paidAt: paidAtDate,
       });
       setName('');
       setAmount('');
@@ -175,6 +184,12 @@ export function StoreExtraIncomeModal({
                 onChange={(e) => setName(e.target.value)}
                 className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
                 placeholder="Название"
+              />
+              <input
+                type="date"
+                value={paidAtDate}
+                onChange={(e) => setPaidAtDate(e.target.value)}
+                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
               />
               <input
                 type="number"

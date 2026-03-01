@@ -1143,6 +1143,235 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  async getAccountingExpectedCloseDetails(storeId: number, date?: string) {
+    const dayStart = this.parseAccountingDay(date);
+    const dayEnd = endOfDay(dayStart);
+
+    const records = await this.prisma.storeAccountingRecord.findMany({
+      where: {
+        storeId,
+        recordDate: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+
+    const openRecord = records[0] ?? null;
+    const opening = openRecord
+      ? {
+          bankTransferPaid: openRecord.bankTransferPaid,
+          cashbox1Paid: openRecord.cashbox1Paid,
+          cashbox2Paid: openRecord.cashbox2Paid,
+          total:
+            openRecord.bankTransferPaid +
+            openRecord.cashbox1Paid +
+            openRecord.cashbox2Paid,
+        }
+      : null;
+
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomeItems] =
+      await Promise.all([
+        this.prisma.paymentTransaction.findMany({
+          where: {
+            pavilion: { storeId },
+            createdAt: {
+              gte: dayStart,
+              lte: dayEnd,
+            },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            createdAt: true,
+            rentPaid: true,
+            utilitiesPaid: true,
+            advertisingPaid: true,
+            bankTransferPaid: true,
+            cashbox1Paid: true,
+            cashbox2Paid: true,
+            pavilion: {
+              select: {
+                id: true,
+                number: true,
+              },
+            },
+          },
+        }),
+        this.prisma.additionalChargePayment.findMany({
+          where: {
+            additionalCharge: {
+              pavilion: { storeId },
+            },
+            paidAt: {
+              gte: dayStart,
+              lte: dayEnd,
+            },
+          },
+          orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            paidAt: true,
+            amountPaid: true,
+            bankTransferPaid: true,
+            cashbox1Paid: true,
+            cashbox2Paid: true,
+            additionalCharge: {
+              select: {
+                id: true,
+                name: true,
+                pavilion: {
+                  select: {
+                    id: true,
+                    number: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        (this.prisma as any).storeExtraIncome?.findMany
+          ? (this.prisma as any).storeExtraIncome.findMany({
+              where: {
+                storeId,
+                paidAt: {
+                  gte: dayStart,
+                  lte: dayEnd,
+                },
+              },
+              orderBy: [{ paidAt: 'asc' }, { id: 'asc' }],
+              select: {
+                id: true,
+                name: true,
+                amount: true,
+                bankTransferPaid: true,
+                cashbox1Paid: true,
+                cashbox2Paid: true,
+                paidAt: true,
+              },
+            })
+          : Promise.resolve([]),
+      ]);
+
+    const pavilionItems = pavilionPayments.map((payment) => ({
+      id: payment.id,
+      paidAt: payment.createdAt,
+      pavilionId: payment.pavilion.id,
+      pavilionNumber: payment.pavilion.number,
+      rentPaid: Number(payment.rentPaid ?? 0),
+      utilitiesPaid: Number(payment.utilitiesPaid ?? 0),
+      advertisingPaid: Number(payment.advertisingPaid ?? 0),
+      bankTransferPaid: Number(payment.bankTransferPaid ?? 0),
+      cashbox1Paid: Number(payment.cashbox1Paid ?? 0),
+      cashbox2Paid: Number(payment.cashbox2Paid ?? 0),
+      total:
+        Number(payment.rentPaid ?? 0) +
+        Number(payment.utilitiesPaid ?? 0) +
+        Number(payment.advertisingPaid ?? 0),
+    }));
+
+    const additionalItems = additionalChargePayments.map((payment) => ({
+      id: payment.id,
+      paidAt: payment.paidAt,
+      additionalChargeId: payment.additionalCharge.id,
+      additionalChargeName: payment.additionalCharge.name,
+      pavilionId: payment.additionalCharge.pavilion.id,
+      pavilionNumber: payment.additionalCharge.pavilion.number,
+      amountPaid: Number(payment.amountPaid ?? 0),
+      bankTransferPaid: Number(payment.bankTransferPaid ?? 0),
+      cashbox1Paid: Number(payment.cashbox1Paid ?? 0),
+      cashbox2Paid: Number(payment.cashbox2Paid ?? 0),
+    }));
+
+    const extraIncomeItems = (storeExtraIncomeItems || []).map((item: any) => ({
+      id: item.id,
+      paidAt: item.paidAt,
+      name: item.name,
+      amount: Number(item.amount ?? 0),
+      bankTransferPaid: Number(item.bankTransferPaid ?? 0),
+      cashbox1Paid: Number(item.cashbox1Paid ?? 0),
+      cashbox2Paid: Number(item.cashbox2Paid ?? 0),
+    }));
+
+    const sumByChannels = (
+      items: Array<{
+        bankTransferPaid: number;
+        cashbox1Paid: number;
+        cashbox2Paid: number;
+      }>,
+    ) => {
+      const bankTransferPaid = items.reduce(
+        (sum, item) => sum + Number(item.bankTransferPaid ?? 0),
+        0,
+      );
+      const cashbox1Paid = items.reduce(
+        (sum, item) => sum + Number(item.cashbox1Paid ?? 0),
+        0,
+      );
+      const cashbox2Paid = items.reduce(
+        (sum, item) => sum + Number(item.cashbox2Paid ?? 0),
+        0,
+      );
+      return {
+        bankTransferPaid,
+        cashbox1Paid,
+        cashbox2Paid,
+        total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+      };
+    };
+
+    const pavilionTotals = sumByChannels(pavilionItems);
+    const additionalTotals = sumByChannels(additionalItems);
+    const extraIncomeTotals = sumByChannels(extraIncomeItems);
+    const actual = {
+      bankTransferPaid:
+        pavilionTotals.bankTransferPaid +
+        additionalTotals.bankTransferPaid +
+        extraIncomeTotals.bankTransferPaid,
+      cashbox1Paid:
+        pavilionTotals.cashbox1Paid +
+        additionalTotals.cashbox1Paid +
+        extraIncomeTotals.cashbox1Paid,
+      cashbox2Paid:
+        pavilionTotals.cashbox2Paid +
+        additionalTotals.cashbox2Paid +
+        extraIncomeTotals.cashbox2Paid,
+    };
+    const actualTotals = {
+      ...actual,
+      total: actual.bankTransferPaid + actual.cashbox1Paid + actual.cashbox2Paid,
+    };
+
+    const expectedClose = opening
+      ? {
+          bankTransferPaid: opening.bankTransferPaid + actualTotals.bankTransferPaid,
+          cashbox1Paid: opening.cashbox1Paid + actualTotals.cashbox1Paid,
+          cashbox2Paid: opening.cashbox2Paid + actualTotals.cashbox2Paid,
+          total: opening.total + actualTotals.total,
+        }
+      : null;
+
+    return {
+      date: dayStart,
+      opening,
+      actual: {
+        totals: actualTotals,
+        sources: {
+          pavilionPayments: pavilionTotals,
+          additionalCharges: additionalTotals,
+          storeExtraIncome: extraIncomeTotals,
+        },
+      },
+      expectedClose,
+      items: {
+        pavilionPayments: pavilionItems,
+        additionalCharges: additionalItems,
+        storeExtraIncome: extraIncomeItems,
+      },
+    };
+  }
+
   async openAccountingDay(
     storeId: number,
     data: {

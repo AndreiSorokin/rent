@@ -1,0 +1,356 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
+import { formatMoney } from '@/lib/currency';
+import { hasPermission } from '@/lib/permissions';
+
+type ChannelTotals = {
+  bankTransferPaid: number;
+  cashbox1Paid: number;
+  cashbox2Paid: number;
+  total: number;
+};
+
+type DetailsResponse = {
+  date: string;
+  opening: ChannelTotals | null;
+  actual: {
+    totals: ChannelTotals;
+    sources: {
+      pavilionPayments: ChannelTotals;
+      additionalCharges: ChannelTotals;
+      storeExtraIncome: ChannelTotals;
+    };
+  };
+  expectedClose: ChannelTotals | null;
+  items: {
+    pavilionPayments: Array<{
+      id: number;
+      paidAt: string;
+      pavilionId: number;
+      pavilionNumber: string;
+      rentPaid: number;
+      utilitiesPaid: number;
+      advertisingPaid: number;
+      bankTransferPaid: number;
+      cashbox1Paid: number;
+      cashbox2Paid: number;
+      total: number;
+    }>;
+    additionalCharges: Array<{
+      id: number;
+      paidAt: string;
+      additionalChargeId: number;
+      additionalChargeName: string;
+      pavilionId: number;
+      pavilionNumber: string;
+      amountPaid: number;
+      bankTransferPaid: number;
+      cashbox1Paid: number;
+      cashbox2Paid: number;
+    }>;
+    storeExtraIncome: Array<{
+      id: number;
+      paidAt: string;
+      name: string;
+      amount: number;
+      bankTransferPaid: number;
+      cashbox1Paid: number;
+      cashbox2Paid: number;
+    }>;
+  };
+};
+
+function toDateInput(value?: string | null) {
+  if (!value) return new Date().toISOString().slice(0, 10);
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return new Date().toISOString().slice(0, 10);
+  return parsed.toISOString().slice(0, 10);
+}
+
+export default function AccountingExpectedClosePage() {
+  const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const storeId = Number(params.storeId);
+
+  const initialDate = useMemo(
+    () => toDateInput(searchParams.get('date')),
+    [searchParams],
+  );
+
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<'RUB' | 'KZT'>('RUB');
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [storeName, setStoreName] = useState('');
+  const [details, setDetails] = useState<DetailsResponse | null>(null);
+
+  useEffect(() => {
+    setSelectedDate(initialDate);
+  }, [initialDate]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [store, data] = await Promise.all([
+          apiFetch<{ name?: string; currency?: 'RUB' | 'KZT'; permissions?: string[] }>(
+            `/stores/${storeId}`,
+          ),
+          apiFetch<DetailsResponse>(
+            `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(
+              selectedDate,
+            )}`,
+          ),
+        ]);
+
+        const userPermissions = store.permissions || [];
+        if (!hasPermission(userPermissions, 'VIEW_PAYMENTS')) {
+          router.replace(`/stores/${storeId}`);
+          return;
+        }
+
+        setPermissions(userPermissions);
+        setStoreName(store.name || `Объект #${storeId}`);
+        setCurrency(store.currency || 'RUB');
+        setDetails(data);
+      } catch (err) {
+        console.error(err);
+        setError('Не удалось загрузить расшифровку ожидаемого закрытия');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (storeId && selectedDate) {
+      void load();
+    }
+  }, [router, selectedDate, storeId]);
+
+  const updateDate = (value: string) => {
+    setSelectedDate(value);
+    router.replace(
+      `/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(value)}`,
+    );
+  };
+
+  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
+
+  const opening = details?.opening;
+  const expectedClose = details?.expectedClose;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
+        <div className="space-y-2">
+          <Link href={`/stores/${storeId}`} className="text-blue-600 hover:underline">
+            Назад к объекту
+          </Link>
+          <h1 className="text-2xl font-bold md:text-3xl">Ожидаемое закрытие дня</h1>
+          <p className="text-sm text-gray-600">{storeName}</p>
+        </div>
+
+        <div className="rounded-xl bg-white p-4 shadow md:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm text-gray-700">
+              Дата: <span className="font-medium">{selectedDate}</span>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-gray-600">Выбрать дату:</span>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => updateDate(e.target.value)}
+                className="rounded border border-gray-300 px-3 py-1.5"
+              />
+            </label>
+          </div>
+
+          <div className="mb-5 grid grid-cols-1 gap-3 rounded-lg bg-gray-50 p-3 md:grid-cols-3">
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">Открытие дня</div>
+              <div className="mt-1 font-semibold">
+                {opening ? formatMoney(opening.total, currency) : 'День не открыт'}
+              </div>
+            </div>
+            <div className="rounded border border-gray-200 bg-white p-3">
+              <div className="text-xs uppercase text-gray-500">Операции за день</div>
+              <div className="mt-1 font-semibold">
+                {formatMoney(details?.actual?.totals?.total ?? 0, currency)}
+              </div>
+            </div>
+            <div className="rounded border border-indigo-200 bg-indigo-50 p-3">
+              <div className="text-xs uppercase text-indigo-600">Ожидаемое закрытие</div>
+              <div className="mt-1 font-semibold text-indigo-900">
+                {expectedClose ? formatMoney(expectedClose.total, currency) : '-'}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-5 overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Источник
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Безналичные
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Касса 1
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Касса 2
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Итого
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                <tr>
+                  <td className="px-4 py-2 text-sm">Платежи павильонов</td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.pavilionPayments?.bankTransferPaid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.pavilionPayments?.cashbox1Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.pavilionPayments?.cashbox2Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-medium">
+                    {formatMoney(details?.actual?.sources?.pavilionPayments?.total ?? 0, currency)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-sm">Доп. начисления</td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.additionalCharges?.bankTransferPaid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.additionalCharges?.cashbox1Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.additionalCharges?.cashbox2Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-medium">
+                    {formatMoney(details?.actual?.sources?.additionalCharges?.total ?? 0, currency)}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2 text-sm">Доп. приход объекта</td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.storeExtraIncome?.bankTransferPaid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.storeExtraIncome?.cashbox1Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    {formatMoney(details?.actual?.sources?.storeExtraIncome?.cashbox2Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-medium">
+                    {formatMoney(details?.actual?.sources?.storeExtraIncome?.total ?? 0, currency)}
+                  </td>
+                </tr>
+                <tr className="bg-gray-50">
+                  <td className="px-4 py-2 text-sm font-semibold">Операции за день (итого)</td>
+                  <td className="px-4 py-2 text-sm font-semibold">
+                    {formatMoney(details?.actual?.totals?.bankTransferPaid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-semibold">
+                    {formatMoney(details?.actual?.totals?.cashbox1Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-semibold">
+                    {formatMoney(details?.actual?.totals?.cashbox2Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-semibold">
+                    {formatMoney(details?.actual?.totals?.total ?? 0, currency)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-lg border border-gray-200 p-3">
+              <h2 className="mb-2 text-sm font-semibold text-gray-800">Платежи павильонов</h2>
+              {!details?.items?.pavilionPayments?.length ? (
+                <p className="text-sm text-gray-500">Записей нет</p>
+              ) : (
+                <div className="space-y-2">
+                  {details.items.pavilionPayments.map((item) => (
+                    <div key={item.id} className="rounded border border-gray-100 bg-gray-50 p-2 text-sm">
+                      <div className="font-medium">{item.pavilionNumber}</div>
+                      <div className="text-xs text-gray-600">
+                        {new Date(item.paidAt).toLocaleString('ru-RU')}
+                      </div>
+                      <div className="text-xs text-gray-700">
+                        Аренда: {formatMoney(item.rentPaid, currency)} | Коммуналка:{' '}
+                        {formatMoney(item.utilitiesPaid, currency)} | Реклама:{' '}
+                        {formatMoney(item.advertisingPaid, currency)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 p-3">
+              <h2 className="mb-2 text-sm font-semibold text-gray-800">Доп. начисления</h2>
+              {!details?.items?.additionalCharges?.length ? (
+                <p className="text-sm text-gray-500">Записей нет</p>
+              ) : (
+                <div className="space-y-2">
+                  {details.items.additionalCharges.map((item) => (
+                    <div key={item.id} className="rounded border border-gray-100 bg-gray-50 p-2 text-sm">
+                      <div className="font-medium">
+                        {item.pavilionNumber}: {item.additionalChargeName}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {new Date(item.paidAt).toLocaleString('ru-RU')}
+                      </div>
+                      <div className="text-xs text-gray-700">
+                        Сумма: {formatMoney(item.amountPaid, currency)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-gray-200 p-3">
+            <h2 className="mb-2 text-sm font-semibold text-gray-800">Доп. приход объекта</h2>
+            {!details?.items?.storeExtraIncome?.length ? (
+              <p className="text-sm text-gray-500">Записей нет</p>
+            ) : (
+              <div className="space-y-2">
+                {details.items.storeExtraIncome.map((item) => (
+                  <div key={item.id} className="rounded border border-gray-100 bg-gray-50 p-2 text-sm">
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-xs text-gray-600">
+                      {new Date(item.paidAt).toLocaleString('ru-RU')}
+                    </div>
+                    <div className="text-xs text-gray-700">
+                      Сумма: {formatMoney(item.amount, currency)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
