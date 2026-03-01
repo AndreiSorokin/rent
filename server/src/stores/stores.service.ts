@@ -1008,16 +1008,19 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     const openingRecord = records[0];
     const actual = await this.getActualAccountingByDay(storeId, dayStart);
-    const expectedCloseTotal =
-      openingRecord.bankTransferPaid +
-      openingRecord.cashbox1Paid +
-      openingRecord.cashbox2Paid +
-      actual.total;
-    const enteredCloseTotal =
-      amounts.bankTransferPaid + amounts.cashbox1Paid + amounts.cashbox2Paid;
-    const totalDifference = enteredCloseTotal - expectedCloseTotal;
+    const expectedCloseBank =
+      openingRecord.bankTransferPaid + actual.bankTransferPaid;
+    const expectedCloseCash1 = openingRecord.cashbox1Paid + actual.cashbox1Paid;
+    const expectedCloseCash2 = openingRecord.cashbox2Paid + actual.cashbox2Paid;
+    const diffBank = amounts.bankTransferPaid - expectedCloseBank;
+    const diffCash1 = amounts.cashbox1Paid - expectedCloseCash1;
+    const diffCash2 = amounts.cashbox2Paid - expectedCloseCash2;
+    const hasMismatch =
+      Math.abs(diffBank) > 0.01 ||
+      Math.abs(diffCash1) > 0.01 ||
+      Math.abs(diffCash2) > 0.01;
 
-    if (Math.abs(totalDifference) > 0.01 && !data.forceClose) {
+    if (hasMismatch && !data.forceClose) {
       throw new BadRequestException(
         'Вы уверены что хотите закрыть день с не схождением?',
       );

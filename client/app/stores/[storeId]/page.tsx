@@ -595,9 +595,13 @@ export default function StorePage() {
     }
 
     const expected = dayReconciliation?.expectedClose;
-    const enteredTotal = bank + cash1 + cash2;
-    const expectedTotal = Number(expected?.total ?? enteredTotal);
-    const isMismatch = Math.abs(enteredTotal - expectedTotal) > 0.01;
+    const expectedBank = Number(expected?.bankTransferPaid ?? bank);
+    const expectedCash1 = Number(expected?.cashbox1Paid ?? cash1);
+    const expectedCash2 = Number(expected?.cashbox2Paid ?? cash2);
+    const isMismatch =
+      Math.abs(bank - expectedBank) > 0.01 ||
+      Math.abs(cash1 - expectedCash1) > 0.01 ||
+      Math.abs(cash2 - expectedCash2) > 0.01;
 
     if (isMismatch) {
       const confirmed = confirm(
