@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
+import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -41,11 +42,6 @@ import {
   PavilionExpenseType,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
-import {
-  createStoreExtraIncome,
-  deleteStoreExtraIncome,
-  listStoreExtraIncome,
-} from '@/lib/storeExtraIncome';
 
 type ManualExpenseType = Exclude<PavilionExpenseType, 'SALARIES'>;
 type CardExpenseType = Exclude<ManualExpenseType, 'OTHER'>;
@@ -74,6 +70,7 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showExtraIncomeModal, setShowExtraIncomeModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [staffFullName, setStaffFullName] = useState('');
   const [staffPosition, setStaffPosition] = useState('');
@@ -105,13 +102,6 @@ export default function StorePage() {
   const [otherExpenseAmount, setOtherExpenseAmount] = useState('');
   const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
-  const [storeExtraIncome, setStoreExtraIncome] = useState<any[]>([]);
-  const [extraIncomeName, setExtraIncomeName] = useState('');
-  const [extraIncomeAmount, setExtraIncomeAmount] = useState('');
-  const [extraIncomeBank, setExtraIncomeBank] = useState('');
-  const [extraIncomeCash1, setExtraIncomeCash1] = useState('');
-  const [extraIncomeCash2, setExtraIncomeCash2] = useState('');
-  const [extraIncomeSaving, setExtraIncomeSaving] = useState(false);
   const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
     Record<ManualExpenseType, string>
   >({
@@ -245,18 +235,12 @@ export default function StorePage() {
     try {
       const storeData = await apiFetch(`/stores/${storeId}?lite=true`);
       if (hasPermission(storeData.permissions || [], 'VIEW_PAYMENTS')) {
-        const currentMonthPeriod = (() => {
-          const now = new Date();
-          return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        })();
-        const [analyticsData, accountingData, extraIncomeData] = await Promise.all([
+        const [analyticsData, accountingData] = await Promise.all([
           apiFetch<any>(`/stores/${storeId}/analytics`),
           apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
-          listStoreExtraIncome(storeId, currentMonthPeriod),
         ]);
         setAnalytics(analyticsData);
         setAccountingRows(accountingData || []);
-        setStoreExtraIncome(extraIncomeData || []);
         const dayData = await apiFetch<any>(
           `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
         );
@@ -265,7 +249,6 @@ export default function StorePage() {
         setAnalytics(null);
         setAccountingRows([]);
         setDayReconciliation(null);
-        setStoreExtraIncome([]);
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_CHARGES')) {
@@ -569,67 +552,6 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить запись');
-    }
-  };
-
-  const handleCreateExtraIncome = async () => {
-    const name = extraIncomeName.trim();
-    const amount = Number(extraIncomeAmount || 0);
-    const bankTransferPaid = Number(extraIncomeBank || 0);
-    const cashbox1Paid = Number(extraIncomeCash1 || 0);
-    const cashbox2Paid = Number(extraIncomeCash2 || 0);
-
-    if (!name) {
-      alert('Введите название доп. прихода');
-      return;
-    }
-    if (
-      [amount, bankTransferPaid, cashbox1Paid, cashbox2Paid].some(
-        (value) => Number.isNaN(value) || value < 0,
-      )
-    ) {
-      alert('Суммы должны быть неотрицательными');
-      return;
-    }
-    if (Math.abs(amount - (bankTransferPaid + cashbox1Paid + cashbox2Paid)) > 0.01) {
-      alert('Сумма доп. прихода должна равняться сумме по каналам');
-      return;
-    }
-
-    const now = new Date();
-    const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    try {
-      setExtraIncomeSaving(true);
-      await createStoreExtraIncome(storeId, {
-        name,
-        amount,
-        bankTransferPaid,
-        cashbox1Paid,
-        cashbox2Paid,
-        period,
-      });
-      setExtraIncomeName('');
-      setExtraIncomeAmount('');
-      setExtraIncomeBank('');
-      setExtraIncomeCash1('');
-      setExtraIncomeCash2('');
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить доп. приход');
-    } finally {
-      setExtraIncomeSaving(false);
-    }
-  };
-
-  const handleDeleteExtraIncome = async (incomeId: number) => {
-    if (!confirm('Удалить этот доп. приход?')) return;
-    try {
-      await deleteStoreExtraIncome(storeId, incomeId);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить доп. приход');
     }
   };
 
@@ -969,10 +891,6 @@ export default function StorePage() {
     staffSalariesActualTotal +
     householdExpensesActual +
     utilitiesExpenseActual;
-  const storeExtraIncomeTotal = (storeExtraIncome || []).reduce(
-    (sum: number, item: any) => sum + Number(item.amount ?? 0),
-    0,
-  );
 
   const staffMap = new Map<number, any>(
     (store.staff || []).map((staff: any) => [Number(staff.id), staff]),
@@ -1087,6 +1005,15 @@ export default function StorePage() {
                 <HandCoins className="h-4 w-4" />
                 Начисления
               </Link>
+            )}
+            {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+              <button
+                onClick={() => setShowExtraIncomeModal(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <BanknoteArrowDown className="h-4 w-4" />
+                Доп приход
+              </button>
             )}
           </div>
 
@@ -1206,6 +1133,18 @@ export default function StorePage() {
                     <HandCoins className="h-4 w-4" />
                     Начисления
                   </Link>
+                )}
+                {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+                  <button
+                    onClick={() => {
+                      setShowExtraIncomeModal(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                  >
+                    <BanknoteArrowDown className="h-4 w-4" />
+                    Доп приход
+                  </button>
                 )}
               </div>
 
@@ -1996,105 +1935,6 @@ export default function StorePage() {
               <div className="text-sm text-gray-700">
                 Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
               </div>
-              <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-indigo-900">Доп приход (объект)</p>
-                  <span className="text-sm font-medium text-indigo-800">
-                    {formatMoney(storeExtraIncomeTotal, store.currency)}
-                  </span>
-                </div>
-                {hasPermission(permissions, 'CREATE_PAYMENTS') && (
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <input
-                      type="text"
-                      value={extraIncomeName}
-                      onChange={(e) => setExtraIncomeName(e.target.value)}
-                      className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
-                      placeholder="Название доп. прихода"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={extraIncomeAmount}
-                      onChange={(e) => setExtraIncomeAmount(e.target.value)}
-                      className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
-                      placeholder="Сумма"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={extraIncomeBank}
-                      onChange={(e) => setExtraIncomeBank(e.target.value)}
-                      className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
-                      placeholder="Безналичные"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={extraIncomeCash1}
-                      onChange={(e) => setExtraIncomeCash1(e.target.value)}
-                      className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
-                      placeholder="Наличные касса 1"
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={extraIncomeCash2}
-                      onChange={(e) => setExtraIncomeCash2(e.target.value)}
-                      className="rounded border border-indigo-200 px-2 py-1.5 text-sm md:col-span-2"
-                      placeholder="Наличные касса 2"
-                    />
-                  </div>
-                )}
-                {hasPermission(permissions, 'CREATE_PAYMENTS') && (
-                  <button
-                    onClick={handleCreateExtraIncome}
-                    disabled={extraIncomeSaving}
-                    className="mt-2 rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    Добавить доп приход
-                  </button>
-                )}
-
-                {(storeExtraIncome || []).length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {(storeExtraIncome || []).map((item: any) => (
-                      <div
-                        key={item.id}
-                        className="rounded border border-indigo-100 bg-white px-2 py-1.5 text-xs"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-medium text-slate-800">{item.name}</div>
-                          <div className="text-slate-900">
-                            {formatMoney(Number(item.amount ?? 0), store.currency)}
-                          </div>
-                        </div>
-                        <div className="mt-1 text-[11px] text-slate-600">
-                          Безнал: {formatMoney(Number(item.bankTransferPaid ?? 0), store.currency)} | Касса 1:{' '}
-                          {formatMoney(Number(item.cashbox1Paid ?? 0), store.currency)} | Касса 2:{' '}
-                          {formatMoney(Number(item.cashbox2Paid ?? 0), store.currency)}
-                        </div>
-                        {hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                          <div className="mt-1 text-right">
-                            <button
-                              onClick={() => handleDeleteExtraIncome(item.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-gray-500">Пока нет записей по доп. приходу.</p>
-                )}
-              </div>
             </div>
             <div className="rounded-xl bg-white p-6 shadow">
               <h3 className="mb-3 text-lg font-semibold">Расходы</h3>
@@ -2492,6 +2332,15 @@ export default function StorePage() {
           }}
         />
       )}
+      <StoreExtraIncomeModal
+        storeId={storeId}
+        currency={store.currency}
+        isOpen={showExtraIncomeModal}
+        canCreate={hasPermission(permissions, 'CREATE_PAYMENTS')}
+        canDelete={hasPermission(permissions, 'EDIT_PAYMENTS')}
+        onClose={() => setShowExtraIncomeModal(false)}
+        onChanged={() => fetchData(false)}
+      />
     </div>
   );
 }
