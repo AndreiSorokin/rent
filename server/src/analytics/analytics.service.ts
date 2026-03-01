@@ -971,6 +971,124 @@ export class AnalyticsService {
     };
   }
 
+  async getIncomeForecastBreakdown(storeId: number, periodInput?: string) {
+    await this.prisma.pavilion.updateMany({
+      where: {
+        storeId,
+        status: PavilionStatus.PREPAID,
+        prepaidUntil: {
+          lt: startOfMonth(new Date()),
+        },
+      },
+      data: {
+        status: PavilionStatus.RENTED,
+        prepaidUntil: null,
+      },
+    });
+
+    const period = this.parsePeriod(periodInput);
+    const periodStart = startOfMonth(period);
+    const periodEnd = endOfMonth(period);
+
+    const pavilions = await this.prisma.pavilion.findMany({
+      where: { storeId },
+      include: {
+        monthlyLedgers: {
+          where: { period },
+          take: 1,
+        },
+        discounts: true,
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: periodStart,
+              lte: periodEnd,
+            },
+          },
+        },
+      },
+      orderBy: [{ number: 'asc' }, { id: 'asc' }],
+    });
+
+    const incomePavilions = pavilions.filter(
+      (p) => p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
+    );
+
+    const items = incomePavilions.map((pavilion) => {
+      const currentLedger = pavilion.monthlyLedgers[0];
+      if (currentLedger) {
+        const rent = Number(currentLedger.expectedRent ?? 0);
+        const utilities = Number(currentLedger.expectedUtilities ?? 0);
+        const advertising = Number(currentLedger.expectedAdvertising ?? 0);
+        const additional = Number(currentLedger.expectedAdditional ?? 0);
+        return {
+          pavilionId: pavilion.id,
+          number: pavilion.number,
+          tenantName: pavilion.tenantName,
+          status: pavilion.status,
+          rent,
+          utilities,
+          advertising,
+          additional,
+          total: rent + utilities + advertising + additional,
+        };
+      }
+
+      const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+      const monthlyDiscount =
+        pavilion.status === PavilionStatus.PREPAID
+          ? 0
+          : this.getMonthlyDiscountTotal(pavilion.discounts, pavilion.squareMeters, period);
+      const rent =
+        pavilion.status === PavilionStatus.PREPAID
+          ? baseRent
+          : Math.max(baseRent - monthlyDiscount, 0);
+      const utilities = pavilion.status === PavilionStatus.RENTED ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+      const advertising =
+        pavilion.status === PavilionStatus.RENTED ? Number(pavilion.advertisingAmount ?? 0) : 0;
+      const additional =
+        pavilion.status === PavilionStatus.RENTED
+          ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
+          : 0;
+
+      return {
+        pavilionId: pavilion.id,
+        number: pavilion.number,
+        tenantName: pavilion.tenantName,
+        status: pavilion.status,
+        rent,
+        utilities,
+        advertising,
+        additional,
+        total: rent + utilities + advertising + additional,
+      };
+    });
+
+    const totals = items.reduce(
+      (acc, item) => {
+        acc.rent += item.rent;
+        acc.utilities += item.utilities;
+        acc.advertising += item.advertising;
+        acc.additional += item.additional;
+        acc.total += item.total;
+        return acc;
+      },
+      {
+        rent: 0,
+        utilities: 0,
+        advertising: 0,
+        additional: 0,
+        total: 0,
+      },
+    );
+
+    return {
+      period,
+      totals,
+      items,
+    };
+  }
+
   private parsePeriod(periodInput?: string) {
     if (!periodInput) {
       return startOfMonth(new Date());

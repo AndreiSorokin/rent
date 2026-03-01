@@ -40,6 +40,15 @@ export class AnalyticsController {
     return this.service.getStoreAnalytics(storeId, period);
   }
 
+  @Get('income-forecast-breakdown')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  getIncomeForecastBreakdown(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('period') period?: string,
+  ) {
+    return this.service.getIncomeForecastBreakdown(storeId, period);
+  }
+
   @Get('summary-view/pdf')
   @Permissions('VIEW_SUMMARY' as Permission)
   async downloadSummaryPdf(

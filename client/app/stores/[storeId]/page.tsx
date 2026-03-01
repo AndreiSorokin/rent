@@ -799,6 +799,13 @@ export default function StorePage() {
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
   const permissions = store.permissions || [];
+  const analyticsPeriodDate = analytics?.period ? new Date(analytics.period) : new Date();
+  const safeAnalyticsPeriodDate = Number.isNaN(analyticsPeriodDate.getTime())
+    ? new Date()
+    : analyticsPeriodDate;
+  const forecastPeriodParam = `${safeAnalyticsPeriodDate.getFullYear()}-${String(
+    safeAnalyticsPeriodDate.getMonth() + 1,
+  ).padStart(2, '0')}`;
   const allCategories: string[] = Array.from(
     new Set<string>([
       ...(pavilions || [])
@@ -1893,7 +1900,14 @@ export default function StorePage() {
             <div className="rounded-xl bg-white p-6 shadow">
               <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
               <div className="text-sm text-gray-700">
-                Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
+                <Link
+                  href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(
+                    forecastPeriodParam,
+                  )}`}
+                  className="text-blue-700 hover:underline"
+                >
+                  Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
+                </Link>
               </div>
               <div className="text-sm text-gray-700">
                 Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
