@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { AddAdditionalChargeModal } from '@/app/dashboard/components/AddAdditionalChargeModal';
 import { CreateDiscountModal } from '@/app/dashboard/components/CreateDiscountModal';
 import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
 import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
@@ -31,7 +30,6 @@ export default function PavilionPage() {
   const [expandedCharges, setExpandedCharges] = useState<Set<number>>(new Set());
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showAddChargeModal, setShowAddChargeModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
@@ -372,6 +370,20 @@ export default function PavilionPage() {
       new Date(charge.createdAt) >= currentMonthStart &&
       new Date(charge.createdAt) <= currentMonthEnd,
   );
+  const currentMonthAdditionalExpected = currentMonthAdditionalCharges.reduce(
+    (sum: number, charge: any) => sum + Number(charge.amount ?? 0),
+    0,
+  );
+  const currentMonthAdditionalPaid = currentMonthAdditionalCharges.reduce(
+    (sum: number, charge: any) =>
+      sum +
+      (charge.payments || []).reduce((paymentSum: number, payment: any) => {
+        const paidAt = new Date(payment.paidAt);
+        if (paidAt < currentMonthStart || paidAt > currentMonthEnd) return paymentSum;
+        return paymentSum + Number(payment.amountPaid ?? 0);
+      }, 0),
+    0,
+  );
   const currentMonthDiscount = getDiscountForPeriod(new Date());
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
   const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
@@ -539,8 +551,16 @@ export default function PavilionPage() {
                         pavilion.status === 'PREPAID'
                           ? baseRent
                           : Math.max(baseRent - periodDiscount, 0);
-                      const expected = expectedRent + expectedUtilities + expectedAdvertising;
-                      const paid = (pay.rentPaid || 0) + (pay.utilitiesPaid || 0) + (pay.advertisingPaid || 0);
+                      const expected =
+                        expectedRent +
+                        expectedUtilities +
+                        expectedAdvertising +
+                        currentMonthAdditionalExpected;
+                      const paid =
+                        (pay.rentPaid || 0) +
+                        (pay.utilitiesPaid || 0) +
+                        (pay.advertisingPaid || 0) +
+                        currentMonthAdditionalPaid;
                       const balance = paid - expected;
 
                       return (
@@ -775,18 +795,12 @@ export default function PavilionPage() {
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
-            {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <button
-                onClick={() => setShowAddChargeModal(true)}
-                className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-              >
-                + Новое начисление
-              </button>
-            )}
           </div>
 
           {currentMonthAdditionalCharges.length === 0 ? (
-            <p className="text-gray-500">Начислений нет</p>
+            <p className="text-gray-500">
+              Начислений нет. Добавьте их через кнопку «Редактировать» в основной информации.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -963,14 +977,6 @@ export default function PavilionPage() {
           />
         )}
 
-        {showAddChargeModal && (
-          <AddAdditionalChargeModal
-            pavilionId={pavilionIdNum}
-            onClose={() => setShowAddChargeModal(false)}
-            onSaved={handleActionSuccess}
-          />
-        )}
-
         {showDiscountModal && (
           <CreateDiscountModal
             storeId={storeIdNum}
@@ -1063,6 +1069,10 @@ export default function PavilionPage() {
             storeId={storeIdNum}
             pavilion={editingPavilion}
             existingCategories={existingCategories}
+            canManageAdditionalCharges={
+              hasPermission(permissions, 'CREATE_CHARGES') ||
+              hasPermission(permissions, 'DELETE_CHARGES')
+            }
             onClose={() => setEditingPavilion(null)}
             onSaved={handleActionSuccess}
           />

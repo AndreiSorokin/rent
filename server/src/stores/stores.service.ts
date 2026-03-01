@@ -765,27 +765,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     return Promise.all(
       records.map(async (record) => {
-        const dayStart = startOfDay(record.recordDate);
-        const dayEnd = endOfDay(record.recordDate);
-
-        const actual = await this.prisma.paymentTransaction.aggregate({
-          where: {
-            pavilion: { storeId },
-            createdAt: {
-              gte: dayStart,
-              lte: dayEnd,
-            },
-          },
-          _sum: {
-            bankTransferPaid: true,
-            cashbox1Paid: true,
-            cashbox2Paid: true,
-          },
-        });
-
-        const actualBank = actual._sum.bankTransferPaid ?? 0;
-        const actualCashbox1 = actual._sum.cashbox1Paid ?? 0;
-        const actualCashbox2 = actual._sum.cashbox2Paid ?? 0;
+        const actual = await this.getActualAccountingByDay(
+          storeId,
+          startOfDay(record.recordDate),
+        );
+        const actualBank = actual.bankTransferPaid;
+        const actualCashbox1 = actual.cashbox1Paid;
+        const actualCashbox2 = actual.cashbox2Paid;
         const actualTotal = actualBank + actualCashbox1 + actualCashbox2;
         const manualTotal =
           record.bankTransferPaid + record.cashbox1Paid + record.cashbox2Paid;
@@ -832,24 +818,50 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   private async getActualAccountingByDay(storeId: number, dayStart: Date) {
     const dayEnd = endOfDay(dayStart);
-    const actual = await this.prisma.paymentTransaction.aggregate({
-      where: {
-        pavilion: { storeId },
-        createdAt: {
-          gte: dayStart,
-          lte: dayEnd,
+    const [pavilionPayments, additionalChargePayments] = await Promise.all([
+      this.prisma.paymentTransaction.aggregate({
+        where: {
+          pavilion: { storeId },
+          createdAt: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
         },
-      },
-      _sum: {
-        bankTransferPaid: true,
-        cashbox1Paid: true,
-        cashbox2Paid: true,
-      },
-    });
+        _sum: {
+          bankTransferPaid: true,
+          cashbox1Paid: true,
+          cashbox2Paid: true,
+        },
+      }),
+      this.prisma.additionalChargePayment.aggregate({
+        where: {
+          additionalCharge: {
+            pavilion: {
+              storeId,
+            },
+          },
+          paidAt: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
+        },
+        _sum: {
+          bankTransferPaid: true,
+          cashbox1Paid: true,
+          cashbox2Paid: true,
+        },
+      }),
+    ]);
 
-    const bankTransferPaid = actual._sum.bankTransferPaid ?? 0;
-    const cashbox1Paid = actual._sum.cashbox1Paid ?? 0;
-    const cashbox2Paid = actual._sum.cashbox2Paid ?? 0;
+    const bankTransferPaid =
+      (pavilionPayments._sum.bankTransferPaid ?? 0) +
+      (additionalChargePayments._sum.bankTransferPaid ?? 0);
+    const cashbox1Paid =
+      (pavilionPayments._sum.cashbox1Paid ?? 0) +
+      (additionalChargePayments._sum.cashbox1Paid ?? 0);
+    const cashbox2Paid =
+      (pavilionPayments._sum.cashbox2Paid ?? 0) +
+      (additionalChargePayments._sum.cashbox2Paid ?? 0);
 
     return {
       bankTransferPaid,

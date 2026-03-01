@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
+import { createAdditionalCharge, deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { createPavilionPayment } from '@/lib/payments';
 import { updatePavilion } from '@/lib/pavilions';
 
@@ -17,6 +18,11 @@ type PavilionLike = {
   tenantName?: string | null;
   utilitiesAmount?: number | null;
   advertisingAmount?: number | null;
+  additionalCharges?: Array<{
+    id: number;
+    name: string;
+    amount: number;
+  }>;
 };
 
 const STATUS_OPTIONS: Array<{ value: PavilionStatus; label: string }> = [
@@ -29,12 +35,14 @@ export function EditPavilionModal({
   storeId,
   pavilion,
   existingCategories,
+  canManageAdditionalCharges = false,
   onClose,
   onSaved,
 }: {
   storeId: number;
   pavilion: PavilionLike;
   existingCategories?: string[];
+  canManageAdditionalCharges?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -79,6 +87,12 @@ export function EditPavilionModal({
     useState('');
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
+  const [additionalCharges, setAdditionalCharges] = useState<
+    Array<{ id: number; name: string; amount: number }>
+  >(() => [...(pavilion.additionalCharges || [])]);
+  const [newChargeName, setNewChargeName] = useState('');
+  const [newChargeAmount, setNewChargeAmount] = useState('');
+  const [chargeSaving, setChargeSaving] = useState(false);
 
   const resolvedCategory = (newCategory.trim() || selectedCategory || '').trim();
   const squareMeters = Number(form.squareMeters || 0);
@@ -242,6 +256,58 @@ export function EditPavilionModal({
       setError(message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAddAdditionalCharge = async () => {
+    const name = newChargeName.trim();
+    const amount = Number(newChargeAmount);
+
+    if (!name || !newChargeAmount) {
+      setError('Введите название и сумму дополнительного начисления');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError('Сумма дополнительного начисления должна быть неотрицательной');
+      return;
+    }
+
+    try {
+      setChargeSaving(true);
+      setError(null);
+      const created = await createAdditionalCharge(pavilion.id, { name, amount });
+      setAdditionalCharges((prev) => [...prev, created as any]);
+      setNewChargeName('');
+      setNewChargeAmount('');
+      onSaved();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Не удалось добавить дополнительное начисление';
+      setError(message);
+    } finally {
+      setChargeSaving(false);
+    }
+  };
+
+  const handleDeleteAdditionalCharge = async (chargeId: number) => {
+    if (!confirm('Удалить это дополнительное начисление?')) return;
+
+    try {
+      setChargeSaving(true);
+      setError(null);
+      await deleteAdditionalCharge(pavilion.id, chargeId);
+      setAdditionalCharges((prev) => prev.filter((item) => item.id !== chargeId));
+      onSaved();
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Не удалось удалить дополнительное начисление';
+      setError(message);
+    } finally {
+      setChargeSaving(false);
     }
   };
 
@@ -419,6 +485,66 @@ export function EditPavilionModal({
                     onChange={handleChange}
                     className="input"
                   />
+                </div>
+                <div className="mb-3 rounded border p-3">
+                  <p className="mb-2 text-sm font-medium text-gray-700">
+                    Дополнительные начисления
+                  </p>
+                  {additionalCharges.length === 0 ? (
+                    <p className="mb-2 text-xs text-gray-500">Начислений пока нет</p>
+                  ) : (
+                    <div className="mb-3 space-y-2">
+                      {additionalCharges.map((charge) => (
+                        <div
+                          key={charge.id}
+                          className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-medium">{charge.name}</span>
+                            <span className="ml-2 text-gray-600">{charge.amount.toFixed(2)}</span>
+                          </div>
+                          {canManageAdditionalCharges && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAdditionalCharge(charge.id)}
+                              disabled={chargeSaving}
+                              className="text-xs text-red-600 hover:underline disabled:opacity-60"
+                            >
+                              Удалить
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {canManageAdditionalCharges && (
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_auto]">
+                      <input
+                        value={newChargeName}
+                        onChange={(e) => setNewChargeName(e.target.value)}
+                        className="input"
+                        placeholder="Название начисления"
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={newChargeAmount}
+                        onChange={(e) => setNewChargeAmount(e.target.value)}
+                        className="input"
+                        placeholder="Сумма"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddAdditionalCharge}
+                        disabled={chargeSaving}
+                        className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                      >
+                        Добавить
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
