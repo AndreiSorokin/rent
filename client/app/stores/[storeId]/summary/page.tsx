@@ -565,13 +565,24 @@ export default function StoreSummaryPage() {
           return fallback;
         })();
 
+    const previousMonthBalance = Number(income.previousMonthBalance ?? 0);
+    const incomeTotalRaw = Number(income.total ?? 0);
+    const incomeTotalWithPrevious = incomeTotalRaw + previousMonthBalance;
+    const incomeWithAdjustedTotal = {
+      ...income,
+      totalWithPrevious: incomeTotalWithPrevious,
+    };
+
     const storeLevelTotals = calcStoreLevelExpensesTotals(storeLevelExpenses);
-    const totalMoney = calcSummaryTotalMoney(income.total, expenses.totals?.actual);
-    const saldo = calcProfit(income.total, expenses.totals?.actual);
+    const totalMoney = calcSummaryTotalMoney(
+      incomeTotalWithPrevious,
+      expenses.totals?.actual,
+    );
+    const saldo = calcProfit(incomeTotalWithPrevious, expenses.totals?.actual);
 
     return {
       currency,
-      income,
+      income: incomeWithAdjustedTotal,
       channelsByEntity,
       expenses,
       expenseByType,
@@ -689,8 +700,9 @@ export default function StoreSummaryPage() {
               tone="neutral"
             />
             <MetricCard
-              title="Итого доход"
-              value={formatMoney(data.income.total ?? 0, data.currency)}
+              title="Итого приход"
+              value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+              subtitle="С учетом остатка с прошлого месяца"
               tone="success"
             />
           </div>
@@ -805,7 +817,7 @@ export default function StoreSummaryPage() {
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
             <MetricCard
               title="Общий доход"
-              value={formatMoney(data.income.total ?? 0, data.currency)}
+              value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
               tone="success"
             />
             <MetricCard
