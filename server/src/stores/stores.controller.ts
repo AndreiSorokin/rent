@@ -248,6 +248,46 @@ export class StoresController {
     return this.service.deleteAccountingRecord(storeId, recordId);
   }
 
+  @Get(':storeId/accounting-reconciliation')
+  @Permissions(Permission.VIEW_PAYMENTS)
+  getAccountingReconciliation(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query('date') date?: string,
+  ) {
+    return this.service.getAccountingDayReconciliation(storeId, date);
+  }
+
+  @Post(':storeId/accounting-reconciliation/open')
+  @Permissions(Permission.CREATE_PAYMENTS)
+  openAccountingDay(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      date?: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
+    return this.service.openAccountingDay(storeId, data);
+  }
+
+  @Post(':storeId/accounting-reconciliation/close')
+  @Permissions(Permission.CREATE_PAYMENTS)
+  closeAccountingDay(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      date?: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      forceClose?: boolean;
+    },
+  ) {
+    return this.service.closeAccountingDay(storeId, data);
+  }
+
   @Post(':storeId/import-data')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   importData(

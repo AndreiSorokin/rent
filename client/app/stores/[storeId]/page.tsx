@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -84,10 +84,14 @@ export default function StorePage() {
   const [accountingDate, setAccountingDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
-  const [accountingBank, setAccountingBank] = useState('');
-  const [accountingCash1, setAccountingCash1] = useState('');
-  const [accountingCash2, setAccountingCash2] = useState('');
-  const [accountingSaving, setAccountingSaving] = useState(false);
+  const [dayReconciliation, setDayReconciliation] = useState<any>(null);
+  const [dayOpenBank, setDayOpenBank] = useState('');
+  const [dayOpenCash1, setDayOpenCash1] = useState('');
+  const [dayOpenCash2, setDayOpenCash2] = useState('');
+  const [dayCloseBank, setDayCloseBank] = useState('');
+  const [dayCloseCash1, setDayCloseCash1] = useState('');
+  const [dayCloseCash2, setDayCloseCash2] = useState('');
+  const [dayActionSaving, setDayActionSaving] = useState(false);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [householdName, setHouseholdName] = useState('');
   const [householdAmount, setHouseholdAmount] = useState('');
@@ -235,9 +239,14 @@ export default function StorePage() {
         ]);
         setAnalytics(analyticsData);
         setAccountingRows(accountingData || []);
+        const dayData = await apiFetch<any>(
+          `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
+        );
+        setDayReconciliation(dayData);
       } else {
         setAnalytics(null);
         setAccountingRows([]);
+        setDayReconciliation(null);
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_CHARGES')) {
@@ -268,6 +277,20 @@ export default function StorePage() {
       if (withLoader) {
         setLoading(false);
       }
+    }
+  };
+
+  const fetchDayReconciliation = async (date?: string) => {
+    if (!storeId) return;
+    try {
+      const dayData = await apiFetch<any>(
+        `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(
+          date || accountingDate,
+        )}`,
+      );
+      setDayReconciliation(dayData);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -375,6 +398,14 @@ export default function StorePage() {
       console.warn('Failed to persist staff order on store page', err);
     }
   }, [storeId, orderedStaffIds]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    if (!store) return;
+    if (!hasPermission(store.permissions || [], 'VIEW_PAYMENTS')) return;
+    void fetchDayReconciliation(accountingDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId, accountingDate, store?.id]);
 
   useEffect(() => {
     const sections = Array.from(
@@ -508,39 +539,6 @@ export default function StorePage() {
     }
   };
 
-  const handleCreateAccountingRecord = async () => {
-    const bank = accountingBank ? Number(accountingBank) : 0;
-    const cash1 = accountingCash1 ? Number(accountingCash1) : 0;
-    const cash2 = accountingCash2 ? Number(accountingCash2) : 0;
-
-    if (bank < 0 || cash1 < 0 || cash2 < 0) {
-      alert('Суммы не могут быть отрицательными');
-      return;
-    }
-
-    try {
-      setAccountingSaving(true);
-      await apiFetch(`/stores/${storeId}/accounting-table`, {
-        method: 'POST',
-        body: JSON.stringify({
-          recordDate: accountingDate,
-          bankTransferPaid: bank,
-          cashbox1Paid: cash1,
-          cashbox2Paid: cash2,
-        }),
-      });
-      setAccountingBank('');
-      setAccountingCash1('');
-      setAccountingCash2('');
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить запись в бух. таблицу');
-    } finally {
-      setAccountingSaving(false);
-    }
-  };
-
   const handleDeleteAccountingRecord = async (recordId: number) => {
     if (!confirm('Удалить эту запись из бух. таблицы?')) return;
 
@@ -552,6 +550,107 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить запись');
+    }
+  };
+
+  const handleOpenDay = async () => {
+    const bank = dayOpenBank ? Number(dayOpenBank) : 0;
+    const cash1 = dayOpenCash1 ? Number(dayOpenCash1) : 0;
+    const cash2 = dayOpenCash2 ? Number(dayOpenCash2) : 0;
+
+    if (bank < 0 || cash1 < 0 || cash2 < 0) {
+      alert('Суммы не могут быть отрицательными');
+      return;
+    }
+
+    try {
+      setDayActionSaving(true);
+      const data = await apiFetch<any>(`/stores/${storeId}/accounting-reconciliation/open`, {
+        method: 'POST',
+        body: JSON.stringify({
+          date: accountingDate,
+          bankTransferPaid: bank,
+          cashbox1Paid: cash1,
+          cashbox2Paid: cash2,
+        }),
+      });
+      setDayReconciliation(data);
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось открыть день');
+    } finally {
+      setDayActionSaving(false);
+    }
+  };
+
+  const handleCloseDay = async () => {
+    const bank = dayCloseBank ? Number(dayCloseBank) : 0;
+    const cash1 = dayCloseCash1 ? Number(dayCloseCash1) : 0;
+    const cash2 = dayCloseCash2 ? Number(dayCloseCash2) : 0;
+
+    if (bank < 0 || cash1 < 0 || cash2 < 0) {
+      alert('Суммы не могут быть отрицательными');
+      return;
+    }
+
+    const expected = dayReconciliation?.expectedClose;
+    const enteredTotal = bank + cash1 + cash2;
+    const expectedTotal = Number(expected?.total ?? enteredTotal);
+    const isMismatch = Math.abs(enteredTotal - expectedTotal) > 0.01;
+
+    if (isMismatch) {
+      const confirmed = confirm(
+        'Вы уверены что хотите закрыть день с не схождением?',
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      setDayActionSaving(true);
+      const data = await apiFetch<any>(`/stores/${storeId}/accounting-reconciliation/close`, {
+        method: 'POST',
+        body: JSON.stringify({
+          date: accountingDate,
+          bankTransferPaid: bank,
+          cashbox1Paid: cash1,
+          cashbox2Paid: cash2,
+          forceClose: isMismatch,
+        }),
+      });
+      setDayReconciliation(data);
+      await fetchData(false);
+    } catch (err: any) {
+      console.error(err);
+      if (
+        typeof err?.message === 'string' &&
+        err.message.includes('не схождением')
+      ) {
+        const confirmed = confirm(err.message);
+        if (!confirmed) return;
+        try {
+          setDayActionSaving(true);
+          const data = await apiFetch<any>(`/stores/${storeId}/accounting-reconciliation/close`, {
+            method: 'POST',
+            body: JSON.stringify({
+              date: accountingDate,
+              bankTransferPaid: bank,
+              cashbox1Paid: cash1,
+              cashbox2Paid: cash2,
+              forceClose: true,
+            }),
+          });
+          setDayReconciliation(data);
+          await fetchData(false);
+        } catch (innerErr: any) {
+          console.error(innerErr);
+          alert(innerErr?.message || 'Не удалось закрыть день');
+        }
+      } else {
+        alert(err?.message || 'Не удалось закрыть день');
+      }
+    } finally {
+      setDayActionSaving(false);
     }
   };
 
@@ -789,6 +888,28 @@ export default function StorePage() {
           .map((id) => staffMap.get(id))
           .filter((staff): staff is any => Boolean(staff))
       : (store.staff || []);
+  const accountingDayEntries = Array.from(
+    (accountingRows || []).reduce((map, row: any) => {
+      const dayKey = new Date(row.recordDate).toISOString().slice(0, 10);
+      const list = map.get(dayKey) ?? [];
+      list.push(row);
+      map.set(dayKey, list);
+      return map;
+    }, new Map<string, any[]>()),
+  ) as Array<[string, any[]]>;
+
+  const accountingDays = accountingDayEntries
+    .map(([dayKey, rows]) => {
+      const sorted = [...rows].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+      return {
+        dayKey,
+        opening: sorted[0] ?? null,
+        closing: sorted.length > 1 ? sorted[sorted.length - 1] : null,
+      };
+    })
+    .sort((a, b) => new Date(b.dayKey).getTime() - new Date(a.dayKey).getTime());
 
   const movePavilion = (dragId: number, targetId: number) => {
     if (dragId === targetId) return;
@@ -1831,52 +1952,223 @@ export default function StorePage() {
               </div>
             )}
 
-            {hasPermission(permissions, 'CREATE_PAYMENTS') && (
-              <div className="mb-5 grid grid-cols-1 gap-3 lg:grid-cols-5">
-                <input
-                  type="date"
-                  value={accountingDate}
-                  onChange={(e) => setAccountingDate(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={accountingBank}
-                  onChange={(e) => setAccountingBank(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Безналичные"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={accountingCash1}
-                  onChange={(e) => setAccountingCash1(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Наличные касса 1"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={accountingCash2}
-                  onChange={(e) => setAccountingCash2(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Наличные касса 2"
-                />
-                <button
-                  onClick={handleCreateAccountingRecord}
-                  disabled={accountingSaving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  Добавить
-                </button>
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-base font-semibold text-slate-900">Сверка по дням</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600">Дата:</span>
+                  <input
+                    type="date"
+                    value={accountingDate}
+                    onChange={(e) => setAccountingDate(e.target.value)}
+                    className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                  />
+                </div>
               </div>
-            )}
 
-            {accountingRows.length === 0 ? (
+              {dayReconciliation ? (
+                <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                  <div className="rounded-lg bg-white p-3">
+                    <div className="text-xs text-gray-500">Открытие дня</div>
+                    <div className="font-medium">
+                      {dayReconciliation.opening
+                        ? formatMoney(dayReconciliation.opening.total ?? 0, store.currency)
+                        : 'День не открыт'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <div className="text-xs text-gray-500">Операции за день (факт)</div>
+                    <div className="font-medium">
+                      {formatMoney(dayReconciliation.actual?.total ?? 0, store.currency)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <div className="text-xs text-gray-500">Ожидаемое закрытие</div>
+                    <div className="font-medium">
+                      {dayReconciliation.expectedClose
+                        ? formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)
+                        : '-'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-3">
+                    <div className="text-xs text-gray-500">Фактическое закрытие</div>
+                    <div className="font-medium">
+                      {dayReconciliation.closing
+                        ? formatMoney(dayReconciliation.closing.total ?? 0, store.currency)
+                        : '-'}
+                    </div>
+                  </div>
+                  {dayReconciliation.difference && (
+                    <div className="rounded-lg bg-white p-3 md:col-span-2">
+                      <div className="text-xs text-gray-500">Схождение при закрытии</div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+                        <div className="rounded border border-slate-200 p-2">
+                          <div className="text-xs text-gray-500">Безналичные</div>
+                          <div
+                            className={`font-semibold ${
+                              dayReconciliation.difference.bankTransferPaid > 0
+                                ? 'text-green-600'
+                                : dayReconciliation.difference.bankTransferPaid < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-700'
+                            }`}
+                          >
+                            {dayReconciliation.difference.bankTransferPaid > 0 ? '+' : ''}
+                            {formatMoney(
+                              dayReconciliation.difference.bankTransferPaid ?? 0,
+                              store.currency,
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded border border-slate-200 p-2">
+                          <div className="text-xs text-gray-500">Наличные касса 1</div>
+                          <div
+                            className={`font-semibold ${
+                              dayReconciliation.difference.cashbox1Paid > 0
+                                ? 'text-green-600'
+                                : dayReconciliation.difference.cashbox1Paid < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-700'
+                            }`}
+                          >
+                            {dayReconciliation.difference.cashbox1Paid > 0 ? '+' : ''}
+                            {formatMoney(
+                              dayReconciliation.difference.cashbox1Paid ?? 0,
+                              store.currency,
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded border border-slate-200 p-2">
+                          <div className="text-xs text-gray-500">Наличные касса 2</div>
+                          <div
+                            className={`font-semibold ${
+                              dayReconciliation.difference.cashbox2Paid > 0
+                                ? 'text-green-600'
+                                : dayReconciliation.difference.cashbox2Paid < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-700'
+                            }`}
+                          >
+                            {dayReconciliation.difference.cashbox2Paid > 0 ? '+' : ''}
+                            {formatMoney(
+                              dayReconciliation.difference.cashbox2Paid ?? 0,
+                              store.currency,
+                            )}
+                          </div>
+                        </div>
+                        <div className="rounded border border-slate-200 p-2">
+                          <div className="text-xs text-gray-500">Итого</div>
+                          <div
+                            className={`font-semibold ${
+                              dayReconciliation.difference.total > 0
+                                ? 'text-green-600'
+                                : dayReconciliation.difference.total < 0
+                                  ? 'text-red-600'
+                                  : 'text-gray-700'
+                            }`}
+                          >
+                            {dayReconciliation.difference.total > 0 ? '+' : ''}
+                            {formatMoney(dayReconciliation.difference.total ?? 0, store.currency)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">Загрузка сверки...</p>
+              )}
+
+              {hasPermission(permissions, 'CREATE_PAYMENTS') && dayReconciliation && (
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {!dayReconciliation.isOpened && (
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <p className="mb-2 text-sm font-medium text-slate-800">Открыть день</p>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayOpenBank}
+                          onChange={(e) => setDayOpenBank(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Безналичные"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayOpenCash1}
+                          onChange={(e) => setDayOpenCash1(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Касса 1"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayOpenCash2}
+                          onChange={(e) => setDayOpenCash2(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Касса 2"
+                        />
+                      </div>
+                      <button
+                        onClick={handleOpenDay}
+                        disabled={dayActionSaving}
+                        className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        Открыть день
+                      </button>
+                    </div>
+                  )}
+
+                  {dayReconciliation.isOpened && !dayReconciliation.isClosed && (
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <p className="mb-2 text-sm font-medium text-slate-800">Закрыть день</p>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayCloseBank}
+                          onChange={(e) => setDayCloseBank(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Безналичные"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayCloseCash1}
+                          onChange={(e) => setDayCloseCash1(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Касса 1"
+                        />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={dayCloseCash2}
+                          onChange={(e) => setDayCloseCash2(e.target.value)}
+                          className="rounded-lg border border-gray-300 px-3 py-2"
+                          placeholder="Касса 2"
+                        />
+                      </div>
+                      <button
+                        onClick={handleCloseDay}
+                        disabled={dayActionSaving}
+                        className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        Закрыть день
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {accountingDays.length === 0 ? (
               <p className="text-gray-600">Записей пока нет</p>
             ) : (
               <div className="overflow-x-auto">
@@ -1884,49 +2176,74 @@ export default function StorePage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ручной ввод (итого)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено по павильонам (итого)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип записи</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичные</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Наличные касса 1</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Наличные касса 2</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Итого</th>
                       {hasPermission(permissions, 'EDIT_PAYMENTS') && (
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
                       )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {accountingRows.map((row: any) => (
-                      <tr key={row.id}>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(row.recordDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(row.manualTotal, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(row.actual?.total ?? 0, store.currency)}
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-sm font-medium ${
-                            row.difference > 0
-                              ? 'text-green-600'
-                              : row.difference < 0
-                                ? 'text-red-600'
-                                : 'text-gray-700'
-                          }`}
-                        >
-                          {row.difference > 0 ? '+' : ''}
-                          {formatMoney(row.difference, store.currency)}
-                        </td>
-                        {hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                          <td className="px-4 py-3 text-right text-sm">
-                            <button
-                              onClick={() => handleDeleteAccountingRecord(row.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          </td>
+                    {accountingDays.map((day: any) => (
+                      <Fragment key={day.dayKey}>
+                        {day.opening && (
+                          <tr>
+                            <td className="px-4 py-3 text-sm">{new Date(day.dayKey).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-emerald-700">Открытие дня</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.opening.bankTransferPaid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.opening.cashbox1Paid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.opening.cashbox2Paid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm font-medium">
+                              {formatMoney(
+                                Number(day.opening.bankTransferPaid ?? 0) +
+                                  Number(day.opening.cashbox1Paid ?? 0) +
+                                  Number(day.opening.cashbox2Paid ?? 0),
+                                store.currency,
+                              )}
+                            </td>
+                            {hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                              <td className="px-4 py-3 text-right text-sm">
+                                <button
+                                  onClick={() => handleDeleteAccountingRecord(day.opening.id)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Удалить
+                                </button>
+                              </td>
+                            )}
+                          </tr>
                         )}
-                      </tr>
+                        {day.closing && (
+                          <tr className="bg-slate-50/40">
+                            <td className="px-4 py-3 text-sm">{new Date(day.dayKey).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm font-medium text-indigo-700">Закрытие дня</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.closing.bankTransferPaid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.closing.cashbox1Paid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm">{formatMoney(day.closing.cashbox2Paid ?? 0, store.currency)}</td>
+                            <td className="px-4 py-3 text-sm font-medium">
+                              {formatMoney(
+                                Number(day.closing.bankTransferPaid ?? 0) +
+                                  Number(day.closing.cashbox1Paid ?? 0) +
+                                  Number(day.closing.cashbox2Paid ?? 0),
+                                store.currency,
+                              )}
+                            </td>
+                            {hasPermission(permissions, 'EDIT_PAYMENTS') && (
+                              <td className="px-4 py-3 text-right text-sm">
+                                <button
+                                  onClick={() => handleDeleteAccountingRecord(day.closing.id)}
+                                  className="text-red-600 hover:underline"
+                                >
+                                  Удалить
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

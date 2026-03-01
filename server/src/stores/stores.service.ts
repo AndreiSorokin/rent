@@ -805,6 +805,237 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  private parseAccountingDay(date?: string) {
+    if (!date) return startOfDay(new Date());
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    return startOfDay(parsedDate);
+  }
+
+  private normalizeAccountingAmounts(data: {
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  }) {
+    const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
+
+    if (bankTransferPaid < 0 || cashbox1Paid < 0 || cashbox2Paid < 0) {
+      throw new BadRequestException('Amounts must be non-negative');
+    }
+
+    return { bankTransferPaid, cashbox1Paid, cashbox2Paid };
+  }
+
+  private async getActualAccountingByDay(storeId: number, dayStart: Date) {
+    const dayEnd = endOfDay(dayStart);
+    const actual = await this.prisma.paymentTransaction.aggregate({
+      where: {
+        pavilion: { storeId },
+        createdAt: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+      _sum: {
+        bankTransferPaid: true,
+        cashbox1Paid: true,
+        cashbox2Paid: true,
+      },
+    });
+
+    const bankTransferPaid = actual._sum.bankTransferPaid ?? 0;
+    const cashbox1Paid = actual._sum.cashbox1Paid ?? 0;
+    const cashbox2Paid = actual._sum.cashbox2Paid ?? 0;
+
+    return {
+      bankTransferPaid,
+      cashbox1Paid,
+      cashbox2Paid,
+      total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+    };
+  }
+
+  async getAccountingDayReconciliation(storeId: number, date?: string) {
+    const dayStart = this.parseAccountingDay(date);
+    const dayEnd = endOfDay(dayStart);
+
+    const records = await this.prisma.storeAccountingRecord.findMany({
+      where: {
+        storeId,
+        recordDate: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+
+    const openRecord = records[0] ?? null;
+    const closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    const actual = await this.getActualAccountingByDay(storeId, dayStart);
+
+    const opening = openRecord
+      ? {
+          bankTransferPaid: openRecord.bankTransferPaid,
+          cashbox1Paid: openRecord.cashbox1Paid,
+          cashbox2Paid: openRecord.cashbox2Paid,
+          total:
+            openRecord.bankTransferPaid +
+            openRecord.cashbox1Paid +
+            openRecord.cashbox2Paid,
+        }
+      : null;
+
+    const expectedClose = opening
+      ? {
+          bankTransferPaid: opening.bankTransferPaid + actual.bankTransferPaid,
+          cashbox1Paid: opening.cashbox1Paid + actual.cashbox1Paid,
+          cashbox2Paid: opening.cashbox2Paid + actual.cashbox2Paid,
+          total: opening.total + actual.total,
+        }
+      : null;
+
+    const closing = closeRecord
+      ? {
+          bankTransferPaid: closeRecord.bankTransferPaid,
+          cashbox1Paid: closeRecord.cashbox1Paid,
+          cashbox2Paid: closeRecord.cashbox2Paid,
+          total:
+            closeRecord.bankTransferPaid +
+            closeRecord.cashbox1Paid +
+            closeRecord.cashbox2Paid,
+        }
+      : null;
+
+    const difference =
+      closing && expectedClose
+        ? {
+            bankTransferPaid:
+              closing.bankTransferPaid - expectedClose.bankTransferPaid,
+            cashbox1Paid: closing.cashbox1Paid - expectedClose.cashbox1Paid,
+            cashbox2Paid: closing.cashbox2Paid - expectedClose.cashbox2Paid,
+            total: closing.total - expectedClose.total,
+          }
+        : null;
+
+    return {
+      date: dayStart,
+      isOpened: Boolean(openRecord),
+      isClosed: Boolean(closeRecord),
+      opening,
+      actual,
+      expectedClose,
+      closing,
+      difference,
+    };
+  }
+
+  async openAccountingDay(
+    storeId: number,
+    data: {
+      date?: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    },
+  ) {
+    const dayStart = this.parseAccountingDay(data.date);
+    const dayEnd = endOfDay(dayStart);
+    const amounts = this.normalizeAccountingAmounts(data);
+
+    const existing = await this.prisma.storeAccountingRecord.count({
+      where: {
+        storeId,
+        recordDate: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+    });
+
+    if (existing > 0) {
+      throw new BadRequestException('День уже открыт');
+    }
+
+    await this.prisma.storeAccountingRecord.create({
+      data: {
+        storeId,
+        recordDate: dayStart,
+        bankTransferPaid: amounts.bankTransferPaid,
+        cashbox1Paid: amounts.cashbox1Paid,
+        cashbox2Paid: amounts.cashbox2Paid,
+      },
+    });
+
+    return this.getAccountingDayReconciliation(storeId, dayStart.toISOString());
+  }
+
+  async closeAccountingDay(
+    storeId: number,
+    data: {
+      date?: string;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      forceClose?: boolean;
+    },
+  ) {
+    const dayStart = this.parseAccountingDay(data.date);
+    const dayEnd = endOfDay(dayStart);
+    const amounts = this.normalizeAccountingAmounts(data);
+
+    const records = await this.prisma.storeAccountingRecord.findMany({
+      where: {
+        storeId,
+        recordDate: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+      orderBy: [{ createdAt: 'asc' }],
+    });
+
+    if (records.length === 0) {
+      throw new BadRequestException('Сначала откройте день');
+    }
+    if (records.length > 1) {
+      throw new BadRequestException('День уже закрыт');
+    }
+
+    const openingRecord = records[0];
+    const actual = await this.getActualAccountingByDay(storeId, dayStart);
+    const expectedCloseTotal =
+      openingRecord.bankTransferPaid +
+      openingRecord.cashbox1Paid +
+      openingRecord.cashbox2Paid +
+      actual.total;
+    const enteredCloseTotal =
+      amounts.bankTransferPaid + amounts.cashbox1Paid + amounts.cashbox2Paid;
+    const totalDifference = enteredCloseTotal - expectedCloseTotal;
+
+    if (Math.abs(totalDifference) > 0.01 && !data.forceClose) {
+      throw new BadRequestException(
+        'Вы уверены что хотите закрыть день с не схождением?',
+      );
+    }
+
+    await this.prisma.storeAccountingRecord.create({
+      data: {
+        storeId,
+        recordDate: dayStart,
+        bankTransferPaid: amounts.bankTransferPaid,
+        cashbox1Paid: amounts.cashbox1Paid,
+        cashbox2Paid: amounts.cashbox2Paid,
+      },
+    });
+
+    return this.getAccountingDayReconciliation(storeId, dayStart.toISOString());
+  }
+
   async createAccountingRecord(
     storeId: number,
     data: {
