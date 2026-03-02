@@ -830,8 +830,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Staff record not found');
     }
 
-    return this.prisma.storeStaff.delete({
-      where: { id: staffId },
+    return this.prisma.$transaction(async (tx) => {
+      // Remove salary expense entries generated from this staff member,
+      // so summary/accounting no longer includes deleted salary.
+      await tx.pavilionExpense.deleteMany({
+        where: {
+          storeId,
+          type: PavilionExpenseType.SALARIES,
+          note: {
+            startsWith: `STAFF:${staffId}:`,
+          },
+        },
+      });
+
+      return tx.storeStaff.delete({
+        where: { id: staffId },
+      });
     });
   }
 
