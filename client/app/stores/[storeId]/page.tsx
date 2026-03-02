@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
-import { calcProfit } from '@/lib/finance';
 import { LogoutButton } from '@/components/LogoutButton';
 import {
   ArrowLeft,
@@ -20,13 +19,11 @@ import {
   SlidersHorizontal,
   Store,
   Toolbox,
-  Upload,
   UsersRound,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
-import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
 import { AddExpenseModal } from './components/AddExpenseModal';
 import {
@@ -139,7 +136,6 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [showExtraIncomeModal, setShowExtraIncomeModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [addStaffModal, setAddStaffModal] = useState<{
@@ -797,13 +793,6 @@ export default function StorePage() {
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
   const permissions = store.permissions || [];
-  const analyticsPeriodDate = analytics?.period ? new Date(analytics.period) : new Date();
-  const safeAnalyticsPeriodDate = Number.isNaN(analyticsPeriodDate.getTime())
-    ? new Date()
-    : analyticsPeriodDate;
-  const forecastPeriodParam = `${safeAnalyticsPeriodDate.getFullYear()}-${String(
-    safeAnalyticsPeriodDate.getMonth() + 1,
-  ).padStart(2, '0')}`;
   const allCategories: string[] = Array.from(
     new Set<string>([
       ...(pavilions || [])
@@ -932,7 +921,6 @@ export default function StorePage() {
     hasPermission(permissions, 'INVITE_USERS');
   const canOpenUtilities =
     hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
-  const canImportData = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canCreatePavilion = hasPermission(permissions, 'CREATE_PAVILIONS');
   const buildStoreReturnTo = () => {
     const query = new URLSearchParams();
@@ -959,8 +947,6 @@ export default function StorePage() {
     { id: 'other-expenses', label: 'Прочие расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: BanknoteArrowDown },
     { id: 'admin-expenses', label: 'Административные расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: LockKeyhole },
     { id: 'staff', label: 'Штатное расписание', visible: hasPermission(permissions, 'VIEW_STAFF'), icon: UsersRound },
-    { id: 'finance-overview', label: 'Финансовая панель', visible: hasPermission(permissions, 'VIEW_PAYMENTS') && Boolean(analytics), icon: HandCoins },
-    { id: 'summary', label: 'СВОДКА', visible: hasPermission(permissions, 'VIEW_SUMMARY'), icon: Sigma },
   ];
 
   return (
@@ -980,12 +966,6 @@ export default function StorePage() {
               <ArrowLeft className="h-4 w-4" />
               Назад к объектам
             </Link>
-            {canManageStore && (
-              <Link href={`/stores/${storeId}/settings`} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                <SlidersHorizontal className="h-4 w-4" />
-                Управление объектом
-              </Link>
-            )}
             {canOpenUtilities && (
               <Link href={`/stores/${storeId}/utilities`} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
                 <HandCoins className="h-4 w-4" />
@@ -1013,14 +993,14 @@ export default function StorePage() {
           </div>
 
           <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
-            {canImportData && (
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+            {hasPermission(permissions, 'VIEW_SUMMARY') && (
+              <Link
+                href={`/stores/${storeId}/summary`}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
-                <Upload className="h-4 w-4" />
-                Загрузить данные
-              </button>
+                <Sigma className="h-4 w-4" />
+                СВОДКА
+              </Link>
             )}
             {canCreatePavilion && (
               <button
@@ -1052,6 +1032,17 @@ export default function StorePage() {
                 </a>
               ))}
             </nav>
+            {canManageStore && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <Link
+                  href={`/stores/${storeId}/settings`}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Управление объектом
+                </Link>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -1109,16 +1100,6 @@ export default function StorePage() {
                   <ArrowLeft className="h-4 w-4" />
                   Назад к объектам
                 </Link>
-                {canManageStore && (
-                  <Link
-                    href={`/stores/${storeId}/settings`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Управление объектом
-                  </Link>
-                )}
                 {canOpenUtilities && (
                   <Link
                     href={`/stores/${storeId}/utilities`}
@@ -1154,17 +1135,15 @@ export default function StorePage() {
               </div>
 
               <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
-                {canImportData && (
-                  <button
-                    onClick={() => {
-                      setShowImportModal(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white"
+                {hasPermission(permissions, 'VIEW_SUMMARY') && (
+                  <Link
+                    href={`/stores/${storeId}/summary`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
                   >
-                    <Upload className="h-4 w-4" />
-                    Загрузить данные
-                  </button>
+                    <Sigma className="h-4 w-4" />
+                    СВОДКА
+                  </Link>
                 )}
                 {canCreatePavilion && (
                   <button
@@ -1202,6 +1181,18 @@ export default function StorePage() {
                     </a>
                   ))}
                 </nav>
+                {canManageStore && (
+                  <div className="mt-3 border-t border-slate-100 pt-3">
+                    <Link
+                      href={`/stores/${storeId}/settings`}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Управление объектом
+                    </Link>
+                  </div>
+                )}
               </div>
               <div className="mt-4 border-t border-slate-100 pt-4">
                 <LogoutButton
@@ -1222,7 +1213,7 @@ export default function StorePage() {
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px_220px_240px]">
+            <div className="mb-4 space-y-3">
               <input
                 type="text"
                 value={pavilionSearch}
@@ -1230,9 +1221,10 @@ export default function StorePage() {
                   setPavilionSearch(e.target.value);
                   setPavilionsPage(1);
                 }}
-                className="rounded-lg border border-gray-300 px-3 py-2"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
                 placeholder="Поиск по имени павильона"
               />
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <select
                 value={pavilionCategoryFilter}
                 onChange={(e) => {
@@ -1293,6 +1285,7 @@ export default function StorePage() {
                 <option value="PARTIAL">Частично оплачено</option>
                 <option value="UNPAID">Не оплачено</option>
               </select>
+              </div>
             </div>
 
             {pavilionsLoading ? (
@@ -1514,22 +1507,24 @@ export default function StorePage() {
             {householdExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
                 {householdExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="min-h-[128px] rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                    className="flex min-h-[104px] w-full md:max-w-[400px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
-                    <div className="mb-6 flex items-start justify-between gap-3">
-                      <p className="text-base font-semibold text-slate-900">{expense.name}</p>
-                      <p className="text-base font-bold text-slate-900">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
+                        {expense.name}
+                      </p>
+                      <p className="shrink-0 text-sm font-bold text-slate-900">
                         {formatMoney(expense.amount, store.currency)}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <select
                               value={expense.status ?? 'UNPAID'}
                               onChange={(e) =>
@@ -1545,7 +1540,7 @@ export default function StorePage() {
                               <option value="PAID">Оплачено</option>
                             </select>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
-                              <span className="text-xs text-slate-600">
+                              <span className="truncate text-[11px] text-slate-600">
                                 {expensePaymentLabel(expense, store.currency)}
                               </span>
                             )}
@@ -1567,7 +1562,7 @@ export default function StorePage() {
                       {hasPermission(permissions, 'DELETE_CHARGES') && (
                         <button
                           onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                         >
                           Удалить
                         </button>
@@ -1608,24 +1603,24 @@ export default function StorePage() {
             {otherExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
                 {otherExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="min-h-[128px] rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+                    className="flex min-h-[104px] w-full md:max-w-[400px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
-                    <div className="mb-6 flex items-start justify-between gap-3">
-                      <p className="text-base font-semibold text-slate-900">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
                         {expense.note || 'Прочий расход'}
                       </p>
-                      <p className="text-base font-bold text-slate-900">
+                      <p className="shrink-0 text-sm font-bold text-slate-900">
                         {formatMoney(expense.amount, store.currency)}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <select
                               value={expense.status ?? 'UNPAID'}
                               onChange={(e) =>
@@ -1641,7 +1636,7 @@ export default function StorePage() {
                               <option value="PAID">Оплачено</option>
                             </select>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
-                              <span className="text-xs text-slate-600">
+                              <span className="truncate text-[11px] text-slate-600">
                                 {expensePaymentLabel(expense, store.currency)}
                               </span>
                             )}
@@ -1663,7 +1658,7 @@ export default function StorePage() {
                       {hasPermission(permissions, 'DELETE_CHARGES') && (
                         <button
                           onClick={() => handleDeleteManualExpense(expense.id)}
-                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                         >
                           Удалить
                         </button>
@@ -1962,81 +1957,6 @@ export default function StorePage() {
           </section>
         )}
 
-        {hasPermission(permissions, 'VIEW_PAYMENTS') && analytics && (
-          <section
-            id="finance-overview"
-            data-store-section
-            className="scroll-mt-24 grid grid-cols-1 gap-4 lg:grid-cols-3"
-          >
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Доходы</h3>
-              <div className="text-sm text-gray-700">
-                <Link
-                  href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(
-                    forecastPeriodParam,
-                  )}`}
-                  className="text-blue-700 hover:underline"
-                >
-                  Прогноз: {formatMoney(analytics?.income?.forecast?.total ?? 0, store.currency)}
-                </Link>
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт: {formatMoney(analytics?.income?.actual?.total ?? 0, store.currency)}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Расходы</h3>
-              <div className="text-sm text-gray-700">
-                Прогноз: {formatMoney(analytics?.expenses?.total?.forecast ?? 0, store.currency)}
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт: {formatMoney(analytics?.expenses?.total?.actual ?? 0, store.currency)}
-              </div>
-            </div>
-            <div className="rounded-xl bg-white p-6 shadow">
-              <h3 className="mb-3 text-lg font-semibold">Прибыль</h3>
-              <div className="text-sm text-gray-700">
-                Прогноз:{' '}
-                {formatMoney(
-                  calcProfit(
-                    analytics?.income?.forecast?.total,
-                    analytics?.expenses?.total?.forecast,
-                  ),
-                  store.currency,
-                )}
-              </div>
-              <div className="text-sm text-gray-700">
-                Факт:{' '}
-                {formatMoney(
-                  calcProfit(
-                    analytics?.income?.actual?.total,
-                    analytics?.expenses?.total?.actual,
-                  ),
-                  store.currency,
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {hasPermission(permissions, 'VIEW_SUMMARY') && (
-          <section
-            id="summary"
-            data-store-section
-            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
-          >
-            <h2 className="mb-4 text-xl font-semibold md:text-2xl">СВОДКА</h2>
-            <p className="mb-4 text-gray-600">
-              Основные финансовые показатели магазина на отдельной странице.
-            </p>
-            <Link
-              href={`/stores/${storeId}/summary`}
-              className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
-            >
-              Открыть СВОДКУ
-            </Link>
-          </section>
-        )}
         </main>
       </div>
 
@@ -2161,16 +2081,6 @@ export default function StorePage() {
           existingCategories={allCategories}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
-        />
-      )}
-      {showImportModal && (
-        <ImportStoreDataModal
-          storeId={storeId}
-          onClose={() => setShowImportModal(false)}
-          onImported={() => {
-            setShowImportModal(false);
-            fetchData(false);
-          }}
         />
       )}
       <AddExpenseModal

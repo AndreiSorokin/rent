@@ -16,7 +16,7 @@ const PERMISSION_LABELS = {
   CALCULATE_PAYMENTS: 'Рассчитывать оплаты',
   VIEW_CHARGES: 'Просмотр начислений',
   CREATE_CHARGES: 'Создавать начисления',
-  EDIT_CHARGES: 'Изменять начисления',
+  EDIT_CHARGES: 'Изменять статус начислений',
   DELETE_CHARGES: 'Удалять начисления',
   VIEW_CONTRACTS: 'Просмотр контрактов',
   UPLOAD_CONTRACTS: 'Загружать контракты',

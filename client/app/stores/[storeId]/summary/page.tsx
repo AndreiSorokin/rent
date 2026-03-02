@@ -691,6 +691,55 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Доходы</h2>
+            <div className="space-y-1 text-sm text-slate-700">
+              <div>
+                <Link
+                  href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(selectedMonth)}`}
+                  className="text-blue-700 hover:underline"
+                >
+                  Прогноз: {formatMoney(data.income.forecast?.total ?? 0, data.currency)}
+                </Link>
+              </div>
+              <div>Факт: {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}</div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Расходы</h2>
+            <div className="space-y-1 text-sm text-slate-700">
+              <div>Прогноз: {formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}</div>
+              <div>Факт: {formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}</div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-slate-900">Прибыль</h2>
+            <div className="space-y-1 text-sm text-slate-700">
+              <div>
+                Прогноз:{' '}
+                {formatMoney(
+                  calcProfit(
+                    Number(data.income.forecast?.total ?? 0),
+                    Number(data.expenses.totals?.forecast ?? 0),
+                  ),
+                  data.currency,
+                )}
+              </div>
+              <div>
+                Факт:{' '}
+                {formatMoney(
+                  calcProfit(
+                    Number(data.income.totalWithPrevious ?? 0),
+                    Number(data.expenses.totals?.actual ?? 0),
+                  ),
+                  data.currency,
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
           <h2 className="text-xl font-semibold text-gray-900">1. Общий доход</h2>
 

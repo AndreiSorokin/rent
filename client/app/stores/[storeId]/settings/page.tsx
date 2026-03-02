@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
+import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 
 export default function StoreSettingsPage() {
   const params = useParams();
@@ -24,6 +25,7 @@ export default function StoreSettingsPage() {
   const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(false);
   const [deleteStoreInput, setDeleteStoreInput] = useState('');
   const [deletingStore, setDeletingStore] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
@@ -377,6 +379,14 @@ export default function StoreSettingsPage() {
               Управление объектом: {store.name}
             </h1>
           </div>
+          {canManageStore && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+            >
+              Загрузить данные
+            </button>
+          )}
         </div>
 
         {canManageStore && (
@@ -661,6 +671,17 @@ export default function StoreSettingsPage() {
         )}
       </div>
 
+      {showImportModal && (
+        <ImportStoreDataModal
+          storeId={storeId}
+          onClose={() => setShowImportModal(false)}
+          onImported={() => {
+            setShowImportModal(false);
+            void fetchStore(false);
+          }}
+        />
+      )}
+
       {showDeleteStoreModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
@@ -699,3 +720,6 @@ export default function StoreSettingsPage() {
     </div>
   );
 }
+
+
+

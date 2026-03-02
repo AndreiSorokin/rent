@@ -367,7 +367,7 @@ export function ImportStoreDataModal({
       );
       const imported = result?.imported ?? {};
       alert(
-        `Импорт завершен: павильоны ${imported.pavilions ?? 0}, хоз. расходы ${imported.householdExpenses ?? 0}, расходы ${imported.expenses ?? 0}, бух. таблица ${imported.accounting ?? 0}, сотрудники ${imported.staff ?? 0}.`,
+        `Импорт завершен: павильоны ${imported.pavilions ?? 0}`,
       );
       onImported();
     } catch (e) {
