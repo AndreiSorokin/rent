@@ -25,6 +25,7 @@ export class AnalyticsService {
           select: {
             salary: true,
             salaryStatus: true,
+            salaryPaymentMethod: true,
           },
         },
       },
@@ -390,6 +391,9 @@ export class AnalyticsService {
     let storeExtraChannelsBankTransfer = 0;
     let storeExtraChannelsCashbox1 = 0;
     let storeExtraChannelsCashbox2 = 0;
+    let expenseChannelsBankTransfer = 0;
+    let expenseChannelsCashbox1 = 0;
+    let expenseChannelsCashbox2 = 0;
 
     const nonSalaryManualExpenses = manualExpenses.filter(
       (expense) => expense.type !== 'SALARIES',
@@ -486,6 +490,83 @@ export class AnalyticsService {
       staffSalariesActual +
       householdActual +
       utilitiesActualByStatus;
+
+    const addExpenseByMethod = (
+      amount: number,
+      method?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null,
+    ) => {
+      const safeAmount = Number(amount ?? 0);
+      if (safeAmount <= 0) return;
+      if (method === 'CASHBOX1') {
+        expenseChannelsCashbox1 += safeAmount;
+        return;
+      }
+      if (method === 'CASHBOX2') {
+        expenseChannelsCashbox2 += safeAmount;
+        return;
+      }
+      expenseChannelsBankTransfer += safeAmount;
+    };
+    const addExpenseByChannelsOrMethod = (
+      expense: any,
+      fallbackAmount: number,
+      fallbackMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null,
+    ) => {
+      const bank = Number(expense?.bankTransferPaid ?? 0);
+      const cash1 = Number(expense?.cashbox1Paid ?? 0);
+      const cash2 = Number(expense?.cashbox2Paid ?? 0);
+      const channelsTotal = bank + cash1 + cash2;
+      if (channelsTotal > 0) {
+        expenseChannelsBankTransfer += bank;
+        expenseChannelsCashbox1 += cash1;
+        expenseChannelsCashbox2 += cash2;
+        return;
+      }
+
+      addExpenseByMethod(fallbackAmount, fallbackMethod);
+    };
+
+    for (const expense of nonSalaryManualExpenses) {
+      if (expense.status !== 'PAID') continue;
+      addExpenseByChannelsOrMethod(
+        expense,
+        Number(expense.amount ?? 0),
+        (expense as any).paymentMethod as
+          | 'BANK_TRANSFER'
+          | 'CASHBOX1'
+          | 'CASHBOX2'
+          | null,
+      );
+    }
+
+    if (salaryExpensesActualCurrent > 0) {
+      const paidSalaryEntries = manualExpenses.filter(
+        (expense) => expense.type === 'SALARIES' && expense.status === 'PAID',
+      );
+      for (const expense of paidSalaryEntries) {
+        addExpenseByChannelsOrMethod(
+          expense,
+          Number(expense.amount ?? 0),
+          (expense as any).paymentMethod as
+            | 'BANK_TRANSFER'
+            | 'CASHBOX1'
+            | 'CASHBOX2'
+            | null,
+        );
+      }
+    } else {
+      for (const member of storeMeta?.staff ?? []) {
+        if (member.salaryStatus !== 'PAID') continue;
+        addExpenseByMethod(
+          Number(member.salary ?? 0),
+          (member as any).salaryPaymentMethod as
+            | 'BANK_TRANSFER'
+            | 'CASHBOX1'
+            | 'CASHBOX2'
+            | null,
+        );
+      }
+    }
 
     for (const pavilion of incomePavilions) {
       for (const pay of pavilion.payments) {
@@ -1049,8 +1130,29 @@ export class AnalyticsService {
             forecast: expensesTotalForecast,
             actual: expensesTotalActual,
           },
+          channels: {
+            bankTransfer: expenseChannelsBankTransfer,
+            cashbox1: expenseChannelsCashbox1,
+            cashbox2: expenseChannelsCashbox2,
+            total:
+              expenseChannelsBankTransfer +
+              expenseChannelsCashbox1 +
+              expenseChannelsCashbox2,
+          },
         },
         saldo,
+        saldoChannels: {
+          bankTransfer: channelsBankTransfer - expenseChannelsBankTransfer,
+          cashbox1: channelsCashbox1 - expenseChannelsCashbox1,
+          cashbox2: channelsCashbox2 - expenseChannelsCashbox2,
+          total:
+            channelsBankTransfer +
+            channelsCashbox1 +
+            channelsCashbox2 -
+            (expenseChannelsBankTransfer +
+              expenseChannelsCashbox1 +
+              expenseChannelsCashbox2),
+        },
         tradeArea: {
           pavilionsTotal: pavilions.length,
           pavilionsRented: pavilions.filter((p) => p.status === PavilionStatus.RENTED).length,

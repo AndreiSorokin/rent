@@ -584,7 +584,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     storeId: number,
     staffId: number,
     userId: number,
-    data: { salary?: number; salaryStatus?: 'UNPAID' | 'PAID' },
+    data: {
+      salary?: number;
+      salaryStatus?: 'UNPAID' | 'PAID';
+      salaryPaymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+    },
   ) {
     const storeUser = await this.prisma.storeUser.findUnique({
       where: {
@@ -604,15 +608,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('No permission to manage staff');
     }
 
-    const staff = await this.prisma.storeStaff.findFirst({
+    const staff = await (this.prisma.storeStaff as any).findFirst({
       where: { id: staffId, storeId },
-      select: { id: true, salary: true, salaryStatus: true },
+      select: {
+        id: true,
+        salary: true,
+        salaryStatus: true,
+        salaryPaymentMethod: true,
+      },
     });
     if (!staff) {
       throw new NotFoundException('Staff record not found');
     }
 
-    const updateData: Prisma.StoreStaffUpdateInput = {};
+    const updateData: any = {};
     if (data.salary !== undefined) {
       const salary = Number(data.salary);
       if (Number.isNaN(salary) || salary < 0) {
@@ -620,11 +629,32 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }
       updateData.salary = salary;
     }
-    if (data.salaryStatus !== undefined) {
-      updateData.salaryStatus = data.salaryStatus;
+    if (
+      data.salaryPaymentMethod !== undefined &&
+      data.salaryPaymentMethod !== 'BANK_TRANSFER' &&
+      data.salaryPaymentMethod !== 'CASHBOX1' &&
+      data.salaryPaymentMethod !== 'CASHBOX2'
+    ) {
+      throw new BadRequestException('Invalid salaryPaymentMethod');
     }
 
-    const updatedStaff = await this.prisma.storeStaff.update({
+    if (data.salaryStatus !== undefined) {
+      updateData.salaryStatus = data.salaryStatus;
+      updateData.salaryPaymentMethod =
+        data.salaryStatus === 'PAID'
+          ? data.salaryPaymentMethod ??
+            staff.salaryPaymentMethod ??
+            'BANK_TRANSFER'
+          : null;
+    } else if (data.salaryPaymentMethod !== undefined) {
+      if (staff.salaryStatus === 'PAID') {
+        updateData.salaryPaymentMethod = data.salaryPaymentMethod;
+      } else {
+        updateData.salaryPaymentMethod = null;
+      }
+    }
+
+    const updatedStaff = await (this.prisma.storeStaff as any).update({
       where: { id: staffId },
       data: updateData,
     });
@@ -651,6 +681,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     const effectiveSalaryStatus = data.salaryStatus ?? updatedStaff.salaryStatus;
     const effectiveSalaryAmount = Number(updatedStaff.salary ?? 0);
+    const effectiveSalaryPaymentMethod =
+      effectiveSalaryStatus === 'PAID'
+        ? data.salaryPaymentMethod ??
+          updatedStaff.salaryPaymentMethod ??
+          'BANK_TRANSFER'
+        : null;
 
     if (effectiveSalaryStatus === 'PAID') {
       if (existingSalaryExpense) {
@@ -660,6 +696,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             amount: effectiveSalaryAmount,
             status: 'PAID',
             note: staffMonthExpenseNote,
+            paymentMethod: effectiveSalaryPaymentMethod,
           },
         });
       } else {
@@ -670,6 +707,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             status: 'PAID',
             amount: effectiveSalaryAmount,
             note: staffMonthExpenseNote,
+            paymentMethod: effectiveSalaryPaymentMethod,
           },
         });
       }

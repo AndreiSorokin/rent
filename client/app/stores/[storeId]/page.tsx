@@ -28,8 +28,8 @@ import {
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
+import { AddExpenseModal } from './components/AddExpenseModal';
 import {
-  createHouseholdExpense,
   deleteHouseholdExpense,
   getHouseholdExpenses,
   updateHouseholdExpenseStatus,
@@ -38,6 +38,7 @@ import {
   createPavilionExpense,
   deletePavilionExpense,
   listPavilionExpenses,
+  PaymentMethod,
   PavilionExpenseStatus,
   PavilionExpenseType,
   updatePavilionExpenseStatus,
@@ -58,6 +59,41 @@ const MANUAL_EXPENSE_CATEGORIES: Array<{
   { type: 'LAND_RENT', label: 'Аренда земли' },
   { type: 'STORE_FACILITIES', label: 'Коммуналка объекта' },
 ];
+
+const PAYMENT_METHOD_OPTIONS: Array<{ value: PaymentMethod; label: string }> = [
+  { value: 'BANK_TRANSFER', label: 'Безналичные' },
+  { value: 'CASHBOX1', label: 'Наличные касса 1' },
+  { value: 'CASHBOX2', label: 'Наличные касса 2' },
+];
+
+const paymentMethodLabel = (value?: PaymentMethod | null) =>
+  PAYMENT_METHOD_OPTIONS.find((option) => option.value === value)?.label ??
+  'Безналичные';
+
+const expensePaymentLabel = (expense: {
+  paymentMethod?: PaymentMethod | null;
+  bankTransferPaid?: number | null;
+  cashbox1Paid?: number | null;
+  cashbox2Paid?: number | null;
+}) => {
+  const bank = Number(expense.bankTransferPaid ?? 0);
+  const cash1 = Number(expense.cashbox1Paid ?? 0);
+  const cash2 = Number(expense.cashbox2Paid ?? 0);
+  const nonZero = [bank > 0, cash1 > 0, cash2 > 0].filter(Boolean).length;
+
+  if (nonZero > 1) return 'Смешанно';
+  if (bank > 0) return 'Безналичные';
+  if (cash1 > 0) return 'Наличные касса 1';
+  if (cash2 > 0) return 'Наличные касса 2';
+
+  return paymentMethodLabel(expense.paymentMethod as PaymentMethod);
+};
+
+type ExpenseCreateContext = {
+  type: PavilionExpenseType;
+  title: string;
+  defaultName: string;
+};
 
 export default function StorePage() {
   const params = useParams();
@@ -83,26 +119,9 @@ export default function StorePage() {
     Record<number, boolean>
   >({});
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
-  const [householdName, setHouseholdName] = useState('');
-  const [householdAmount, setHouseholdAmount] = useState('');
-  const [householdSaving, setHouseholdSaving] = useState(false);
-  const [otherExpenseName, setOtherExpenseName] = useState('');
-  const [otherExpenseAmount, setOtherExpenseAmount] = useState('');
-  const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
-  const [manualExpenseAmountByType, setManualExpenseAmountByType] = useState<
-    Record<ManualExpenseType, string>
-  >({
-    HOUSEHOLD: '',
-    STORE_FACILITIES: '',
-    PAYROLL_TAX: '',
-    PROFIT_TAX: '',
-    DIVIDENDS: '',
-    BANK_SERVICES: '',
-    VAT: '',
-    LAND_RENT: '',
-    OTHER: '',
-  });
+  const [expenseCreateContext, setExpenseCreateContext] =
+    useState<ExpenseCreateContext | null>(null);
   const [pavilionSearch, setPavilionSearch] = useState('');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
   const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
@@ -454,12 +473,16 @@ export default function StorePage() {
   const handleUpdateStaffSalaryStatus = async (
     staffId: number,
     salaryStatus: 'UNPAID' | 'PAID',
+    salaryPaymentMethod?: PaymentMethod,
   ) => {
     try {
       await runKeepingScroll(async () => {
         await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ salaryStatus }),
+          body: JSON.stringify({
+            salaryStatus,
+            salaryPaymentMethod,
+          }),
         });
         await fetchData(false);
       });
@@ -497,35 +520,6 @@ export default function StorePage() {
     }
   };
 
-  const handleCreateHouseholdExpense = async () => {
-    if (!householdName.trim() || !householdAmount) {
-      alert('Введите название и сумму расхода');
-      return;
-    }
-
-    const amount = Number(householdAmount);
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Некорректная сумма');
-      return;
-    }
-
-    try {
-      setHouseholdSaving(true);
-      await createHouseholdExpense(storeId, {
-        name: householdName.trim(),
-        amount,
-      });
-      setHouseholdName('');
-      setHouseholdAmount('');
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить расход');
-    } finally {
-      setHouseholdSaving(false);
-    }
-  };
-
   const handleDeleteHouseholdExpense = async (expenseId: number) => {
     if (!confirm('Удалить этот расход?')) return;
 
@@ -541,10 +535,16 @@ export default function StorePage() {
   const handleUpdateHouseholdExpenseStatus = async (
     expenseId: number,
     status: 'UNPAID' | 'PAID',
+    paymentMethod?: PaymentMethod,
   ) => {
     try {
       await runKeepingScroll(async () => {
-        await updateHouseholdExpenseStatus(storeId, expenseId, status);
+        await updateHouseholdExpenseStatus(
+          storeId,
+          expenseId,
+          status,
+          paymentMethod,
+        );
         await fetchData(false);
       });
     } catch (err) {
@@ -553,56 +553,53 @@ export default function StorePage() {
     }
   };
 
-  const handleCreateManualExpense = async (type: ManualExpenseType) => {
-    const raw = manualExpenseAmountByType[type];
-    if (!raw) {
-      alert('Введите сумму');
-      return;
-    }
-
-    const amount = Number(raw);
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Некорректная сумма');
-      return;
-    }
-
-    try {
-      await createPavilionExpense(storeId, { type, amount });
-      setManualExpenseAmountByType((prev) => ({ ...prev, [type]: '' }));
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить расход');
-    }
+  const openExpenseCreateModal = (context: ExpenseCreateContext) => {
+    setExpenseCreateContext(context);
   };
 
-  const handleCreateOtherExpense = async () => {
-    if (!otherExpenseName.trim() || !otherExpenseAmount) {
-      alert('Введите название и сумму расхода');
-      return;
-    }
+  const handleCreateExpenseFromModal = async (payload: {
+    name: string;
+    amount: number;
+    bankTransfer: number;
+    cashbox1: number;
+    cashbox2: number;
+  }) => {
+    if (!expenseCreateContext) return;
 
-    const amount = Number(otherExpenseAmount);
+    const bankTransferPaid = Number(payload.bankTransfer ?? 0);
+    const cashbox1Paid = Number(payload.cashbox1 ?? 0);
+    const cashbox2Paid = Number(payload.cashbox2 ?? 0);
+    const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+    const amount = Number(payload.amount ?? 0);
+
     if (Number.isNaN(amount) || amount < 0) {
       alert('Некорректная сумма');
       return;
     }
+    if (channelsTotal > 0 && Math.abs(channelsTotal - amount) > 0.01) {
+      alert('Сумма должна совпадать с суммой каналов оплаты');
+      return;
+    }
+
+    const baseData = {
+      type: expenseCreateContext.type,
+      note: payload.name,
+    };
 
     try {
-      setOtherExpenseSaving(true);
       await createPavilionExpense(storeId, {
-        type: 'OTHER',
+        ...baseData,
         amount,
-        note: otherExpenseName.trim(),
+        status: channelsTotal > 0 ? 'PAID' : 'UNPAID',
+        bankTransferPaid,
+        cashbox1Paid,
+        cashbox2Paid,
       });
-      setOtherExpenseName('');
-      setOtherExpenseAmount('');
+      setExpenseCreateContext(null);
       await fetchData(false);
     } catch (err) {
       console.error(err);
       alert('Не удалось добавить расход');
-    } finally {
-      setOtherExpenseSaving(false);
     }
   };
 
@@ -621,10 +618,16 @@ export default function StorePage() {
   const handleManualExpenseStatusChange = async (
     expenseId: number,
     status: PavilionExpenseStatus,
+    paymentMethod?: PaymentMethod,
   ) => {
     try {
       await runKeepingScroll(async () => {
-        await updatePavilionExpenseStatus(storeId, expenseId, status);
+        await updatePavilionExpenseStatus(
+          storeId,
+          expenseId,
+          status,
+          paymentMethod,
+        );
         await fetchData(false);
       });
     } catch (err) {
@@ -1278,26 +1281,15 @@ export default function StorePage() {
           >
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Хозяйственные расходы</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <div className="mb-5 mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
-                <input
-                  type="text"
-                  value={householdName}
-                  onChange={(e) => setHouseholdName(e.target.value)}
-                  className="rounded-xl border border-slate-200 px-3 py-2.5"
-                  placeholder="Название расхода"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={householdAmount}
-                  onChange={(e) => setHouseholdAmount(e.target.value)}
-                  className="rounded-xl border border-slate-200 px-3 py-2.5"
-                  placeholder="Сумма"
-                />
+              <div className="mb-5 mt-4">
                 <button
-                  onClick={handleCreateHouseholdExpense}
-                  disabled={householdSaving}
+                  onClick={() =>
+                    openExpenseCreateModal({
+                      type: 'HOUSEHOLD',
+                      title: 'Новый хозяйственный расход',
+                      defaultName: '',
+                    })
+                  }
                   className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
@@ -1323,19 +1315,27 @@ export default function StorePage() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <select
-                            value={expense.status ?? 'UNPAID'}
-                            onChange={(e) =>
-                              handleUpdateHouseholdExpenseStatus(
-                                expense.id,
-                                e.target.value as 'UNPAID' | 'PAID',
-                              )
-                            }
-                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                          >
-                            <option value="UNPAID">Не оплачено</option>
-                            <option value="PAID">Оплачено</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={expense.status ?? 'UNPAID'}
+                              onChange={(e) =>
+                                handleUpdateHouseholdExpenseStatus(
+                                  expense.id,
+                                  e.target.value as 'UNPAID' | 'PAID',
+                                  (expense.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
+                                )
+                              }
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                            {(expense.status ?? 'UNPAID') === 'PAID' && (
+                              <span className="text-xs text-slate-600">
+                                {expensePaymentLabel(expense)}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -1344,7 +1344,9 @@ export default function StorePage() {
                                 : 'bg-amber-100 text-amber-700'
                             }`}
                           >
-                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                            {expense.status === 'PAID'
+                              ? `Оплачено (${expensePaymentLabel(expense)})`
+                              : 'Не оплачено'}
                           </span>
                         )}
                       </div>
@@ -1373,26 +1375,15 @@ export default function StorePage() {
             <h2 className="mb-3 text-xl font-semibold text-slate-900 md:text-2xl">Прочие расходы</h2>
 
             {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_auto]">
-                <input
-                  type="text"
-                  value={otherExpenseName}
-                  onChange={(e) => setOtherExpenseName(e.target.value)}
-                  className="rounded-xl border border-slate-200 px-3 py-2.5"
-                  placeholder="Название расхода"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={otherExpenseAmount}
-                  onChange={(e) => setOtherExpenseAmount(e.target.value)}
-                  className="rounded-xl border border-slate-200 px-3 py-2.5"
-                  placeholder="Сумма"
-                />
+              <div className="mb-5">
                 <button
-                  onClick={handleCreateOtherExpense}
-                  disabled={otherExpenseSaving}
+                  onClick={() =>
+                    openExpenseCreateModal({
+                      type: 'OTHER',
+                      title: 'Новый прочий расход',
+                      defaultName: '',
+                    })
+                  }
                   className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
@@ -1420,19 +1411,27 @@ export default function StorePage() {
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <select
-                            value={expense.status ?? 'UNPAID'}
-                            onChange={(e) =>
-                              handleManualExpenseStatusChange(
-                                expense.id,
-                                e.target.value as PavilionExpenseStatus,
-                              )
-                            }
-                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
-                          >
-                            <option value="UNPAID">Не оплачено</option>
-                            <option value="PAID">Оплачено</option>
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={expense.status ?? 'UNPAID'}
+                              onChange={(e) =>
+                                handleManualExpenseStatusChange(
+                                  expense.id,
+                                  e.target.value as PavilionExpenseStatus,
+                                  (expense.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
+                                )
+                              }
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                            >
+                              <option value="UNPAID">Не оплачено</option>
+                              <option value="PAID">Оплачено</option>
+                            </select>
+                            {(expense.status ?? 'UNPAID') === 'PAID' && (
+                              <span className="text-xs text-slate-600">
+                                {expensePaymentLabel(expense)}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -1441,7 +1440,9 @@ export default function StorePage() {
                                 : 'bg-amber-100 text-amber-700'
                             }`}
                           >
-                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                            {expense.status === 'PAID'
+                              ? `Оплачено (${expensePaymentLabel(expense)})`
+                              : 'Не оплачено'}
                           </span>
                         )}
                       </div>
@@ -1489,26 +1490,18 @@ export default function StorePage() {
                     </div>
 
                     {hasPermission(permissions, 'CREATE_CHARGES') && (
-                      <div className="mb-2 flex gap-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={manualExpenseAmountByType[category.type]}
-                          onChange={(e) =>
-                            setManualExpenseAmountByType((prev) => ({
-                              ...prev,
-                              [category.type]: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded border px-2 py-1 text-sm"
-                          placeholder="Сумма"
-                        />
+                      <div className="mb-2">
                         <button
-                          onClick={() => handleCreateManualExpense(category.type)}
-                          className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
+                          onClick={() =>
+                            openExpenseCreateModal({
+                              type: category.type,
+                              title: `${category.label}: новый расход`,
+                              defaultName: category.label,
+                            })
+                          }
+                          className="w-full rounded bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700"
                         >
-                          +
+                          Добавить
                         </button>
                       </div>
                     )}
@@ -1528,19 +1521,27 @@ export default function StorePage() {
                             </span>
                             <div className="ml-2 flex items-center gap-2">
                               {hasPermission(permissions, 'EDIT_CHARGES') && (
-                                <select
-                                  value={item.status}
-                                  onChange={(e) =>
-                                    handleManualExpenseStatusChange(
-                                      item.id,
-                                      e.target.value as PavilionExpenseStatus,
-                                    )
-                                  }
-                                  className="rounded border px-1 py-0.5 text-[10px]"
-                                >
-                                  <option value="UNPAID">Не оплачено</option>
-                                  <option value="PAID">Оплачено</option>
-                                </select>
+                                <div className="flex items-center gap-1">
+                                  <select
+                                    value={item.status}
+                                    onChange={(e) =>
+                                      handleManualExpenseStatusChange(
+                                        item.id,
+                                        e.target.value as PavilionExpenseStatus,
+                                        (item.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
+                                      )
+                                    }
+                                    className="rounded border px-1 py-0.5 text-[10px]"
+                                  >
+                                    <option value="UNPAID">Не оплачено</option>
+                                    <option value="PAID">Оплачено</option>
+                                  </select>
+                                  {(item.status ?? 'UNPAID') === 'PAID' && (
+                                    <span className="text-[10px] text-gray-600">
+                                      {expensePaymentLabel(item)}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                               {hasPermission(permissions, 'DELETE_CHARGES') && (
                                 <button
@@ -1708,21 +1709,45 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {hasPermission(permissions, 'MANAGE_STAFF') ? (
-                            <select
-                              value={staff.salaryStatus ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleUpdateStaffSalaryStatus(
-                                  staff.id,
-                                  e.target.value as 'UNPAID' | 'PAID',
-                                )
-                              }
-                              className="rounded border px-2 py-1 text-xs"
-                            >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={staff.salaryStatus ?? 'UNPAID'}
+                                onChange={(e) =>
+                                  handleUpdateStaffSalaryStatus(
+                                    staff.id,
+                                    e.target.value as 'UNPAID' | 'PAID',
+                                    (staff.salaryPaymentMethod as PaymentMethod) ??
+                                      'BANK_TRANSFER',
+                                  )
+                                }
+                                className="rounded border px-2 py-1 text-xs"
+                              >
+                                <option value="UNPAID">Не оплачено</option>
+                                <option value="PAID">Оплачено</option>
+                              </select>
+                              <select
+                                value={
+                                  (staff.salaryPaymentMethod as PaymentMethod) ?? 'BANK_TRANSFER'
+                                }
+                                onChange={(e) =>
+                                  handleUpdateStaffSalaryStatus(
+                                    staff.id,
+                                    (staff.salaryStatus ?? 'UNPAID') as 'UNPAID' | 'PAID',
+                                    e.target.value as PaymentMethod,
+                                  )
+                                }
+                                disabled={(staff.salaryStatus ?? 'UNPAID') !== 'PAID'}
+                                className="rounded border px-2 py-1 text-xs disabled:opacity-60"
+                              >
+                                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                           ) : staff.salaryStatus === 'PAID' ? (
-                            'Оплачено'
+                            `Оплачено (${paymentMethodLabel(staff.salaryPaymentMethod as PaymentMethod)})`
                           ) : (
                             'Не оплачено'
                           )}
@@ -1842,6 +1867,14 @@ export default function StorePage() {
           }}
         />
       )}
+      <AddExpenseModal
+        isOpen={Boolean(expenseCreateContext)}
+        title={expenseCreateContext?.title ?? 'Новый расход'}
+        currency={store.currency}
+        defaultName={expenseCreateContext?.defaultName ?? ''}
+        onClose={() => setExpenseCreateContext(null)}
+        onSubmit={handleCreateExpenseFromModal}
+      />
       <StoreExtraIncomeModal
         storeId={storeId}
         currency={store.currency}

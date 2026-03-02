@@ -188,7 +188,12 @@ export class StoresController {
   updateStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('staffId', ParseIntPipe) staffId: number,
-    @Body() data: { salary?: number; salaryStatus?: 'UNPAID' | 'PAID' },
+    @Body()
+    data: {
+      salary?: number;
+      salaryStatus?: 'UNPAID' | 'PAID';
+      salaryPaymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+    },
     @Req() req: any,
   ) {
     return this.service.updateStaff(storeId, staffId, req.user.id, data);

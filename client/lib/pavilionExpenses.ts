@@ -13,12 +13,17 @@ export type PavilionExpenseType =
   | 'OTHER';
 
 export type PavilionExpenseStatus = 'UNPAID' | 'PAID';
+export type PaymentMethod = 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
 
 export type PavilionExpense = {
   id: number;
   type: PavilionExpenseType;
   status: PavilionExpenseStatus;
+  paymentMethod?: PaymentMethod | null;
   amount: number;
+  bankTransferPaid?: number;
+  cashbox1Paid?: number;
+  cashbox2Paid?: number;
   note?: string | null;
   storeId?: number | null;
   pavilionId?: number | null;
@@ -36,6 +41,10 @@ export function createPavilionExpense(
     amount: number;
     note?: string | null;
     status?: PavilionExpenseStatus;
+    paymentMethod?: PaymentMethod;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
   },
 ) {
   return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses`, {
@@ -48,10 +57,11 @@ export function updatePavilionExpenseStatus(
   storeId: number,
   expenseId: number,
   status: PavilionExpenseStatus,
+  paymentMethod?: PaymentMethod,
 ) {
   return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses/${expenseId}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, paymentMethod }),
   });
 }
 

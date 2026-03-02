@@ -36,6 +36,10 @@ export class PavilionExpensesController {
       amount: number;
       note?: string | null;
       status?: PavilionExpenseStatus;
+      paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
     },
   ) {
     return this.service.create(storeId, data);
@@ -46,9 +50,18 @@ export class PavilionExpensesController {
   updateStatus(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('expenseId', ParseIntPipe) expenseId: number,
-    @Body() data: { status: PavilionExpenseStatus },
+    @Body()
+    data: {
+      status: PavilionExpenseStatus;
+      paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+    },
   ) {
-    return this.service.updateStatus(storeId, expenseId, data.status);
+    return this.service.updateStatus(
+      storeId,
+      expenseId,
+      data.status,
+      data.paymentMethod,
+    );
   }
 
   @Delete(':expenseId')

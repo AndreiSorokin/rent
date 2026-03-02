@@ -518,6 +518,7 @@ export default function StoreSummaryPage() {
     const income = summary.income || {};
     const channelsByEntity = income.channelsByEntity || {};
     const expenses = summary.expenses || {};
+    const expenseChannels = expenses.channels || {};
     const expenseByType = expenses.byType || {};
     const storeLevelExpenses = expenses.storeLevel || {};
     const tradeArea = summary.tradeArea || {};
@@ -579,12 +580,22 @@ export default function StoreSummaryPage() {
       expenses.totals?.actual,
     );
     const saldo = calcProfit(incomeTotalWithPrevious, expenses.totals?.actual);
+    const saldoChannels = summary.saldoChannels || {
+      bankTransfer: Number(income.channels?.bankTransfer ?? 0) - Number(expenseChannels.bankTransfer ?? 0),
+      cashbox1: Number(income.channels?.cashbox1 ?? 0) - Number(expenseChannels.cashbox1 ?? 0),
+      cashbox2: Number(income.channels?.cashbox2 ?? 0) - Number(expenseChannels.cashbox2 ?? 0),
+      total:
+        Number(income.channels?.total ?? 0) -
+        Number(expenseChannels.total ?? 0),
+    };
 
     return {
       currency,
       income: incomeWithAdjustedTotal,
       channelsByEntity,
       expenses,
+      expenseChannels,
+      saldoChannels,
       expenseByType,
       tradeArea: {
         ...tradeArea,
@@ -687,75 +698,81 @@ export default function StoreSummaryPage() {
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
           <h2 className="text-xl font-semibold text-gray-900">1. Общий доход</h2>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <MetricCard
-              title="Остаток с прошлого месяца"
-              value={formatMoney(data.income.previousMonthBalance ?? 0, data.currency)}
-              tone="primary"
-            />
-            <MetricCard
-              title="Итого по каналам"
-              value={formatMoney(data.income.channels?.total ?? 0, data.currency)}
-              subtitle="Безнал + касса 1 + касса 2"
-              tone="neutral"
-            />
-            <MetricCard
-              title="Итого приход"
-              value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
-              subtitle="С учетом остатка с прошлого месяца"
-              tone="success"
-            />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <MetricCard
+                  title="Итого доход (прогноз)"
+                  value={formatMoney(data.income.forecast?.total ?? 0, data.currency)}
+                  tone="primary"
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <MetricCard
+                  title="Остаток с прошлого месяца"
+                  value={formatMoney(data.income.previousMonthBalance ?? 0, data.currency)}
+                  tone="primary"
+                />
+                <MetricCard
+                  title="Итого приход"
+                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+                  subtitle="С учетом остатка"
+                  tone="success"
+                />
+              </div>
+              <div className="mt-3 space-y-3">
+                <p className="text-sm font-semibold text-gray-800">Распределение по каналам оплаты</p>
+                <ChannelRow
+                  label="Безналичные"
+                  value={data.income.channels?.bankTransfer ?? 0}
+                  total={data.income.channels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-blue-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 1"
+                  value={data.income.channels?.cashbox1 ?? 0}
+                  total={data.income.channels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-emerald-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 2"
+                  value={data.income.channels?.cashbox2 ?? 0}
+                  total={data.income.channels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-amber-500"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 rounded-xl border border-gray-200 bg-gray-50 p-4 lg:grid-cols-2">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-800">Распределение по каналам оплаты</p>
-              <ChannelRow
-                label="Безналичные"
-                value={data.income.channels?.bankTransfer ?? 0}
-                total={data.income.channels?.total ?? 0}
-                currency={data.currency}
-                colorClass="bg-blue-500"
-              />
-              <ChannelRow
-                label="Наличные касса 1"
-                value={data.income.channels?.cashbox1 ?? 0}
-                total={data.income.channels?.total ?? 0}
-                currency={data.currency}
-                colorClass="bg-emerald-500"
-              />
-              <ChannelRow
-                label="Наличные касса 2"
-                value={data.income.channels?.cashbox2 ?? 0}
-                total={data.income.channels?.total ?? 0}
-                currency={data.currency}
-                colorClass="bg-amber-500"
-              />
-            </div>
-
-            <div>
-              <p className="mb-3 text-sm font-semibold text-gray-800">По сущностям</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs uppercase text-gray-500">Аренда</p>
-                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.rent?.total ?? 0, data.currency)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs uppercase text-gray-500">Коммунальные</p>
-                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.facilities?.total ?? 0, data.currency)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs uppercase text-gray-500">Реклама</p>
-                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.advertising?.total ?? 0, data.currency)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs uppercase text-gray-500">Доп. начисления</p>
-                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.additional?.total ?? 0, data.currency)}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="text-xs uppercase text-gray-500">Доп приход</p>
-                  <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.storeExtra?.total ?? 0, data.currency)}</p>
-                </div>
+          <div>
+            <p className="mb-3 text-sm font-semibold text-gray-800">По сущностям</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-xs uppercase text-gray-500">Аренда</p>
+                <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.rent?.total ?? 0, data.currency)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-xs uppercase text-gray-500">Коммунальные</p>
+                <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.facilities?.total ?? 0, data.currency)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-xs uppercase text-gray-500">Реклама</p>
+                <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.advertising?.total ?? 0, data.currency)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-xs uppercase text-gray-500">Доп. начисления</p>
+                <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.additional?.total ?? 0, data.currency)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white p-3">
+                <p className="text-xs uppercase text-gray-500">Доп приход</p>
+                <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.storeExtra?.total ?? 0, data.currency)}</p>
               </div>
             </div>
           </div>
@@ -771,15 +788,59 @@ export default function StoreSummaryPage() {
         <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
           <h2 className="text-xl font-semibold text-gray-900">2. Общий расход</h2>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <MetricCard
-              title="Расходы уровня объекта (прогноз)"
-              value={formatMoney(data.storeLevelTotals.forecast, data.currency)}
-            />
-            <MetricCard
-              title="Расходы уровня объекта (факт)"
-              value={formatMoney(data.storeLevelTotals.actual, data.currency)}
-            />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <MetricCard
+                  title="Расходы уровня объекта"
+                  value={formatMoney(data.storeLevelTotals.forecast, data.currency)}
+                />
+                <MetricCard
+                  title="Итого расход (прогноз)"
+                  value={formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}
+                  tone="danger"
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Факт</p>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <MetricCard
+                  title="Расходы уровня объекта"
+                  value={formatMoney(data.storeLevelTotals.actual, data.currency)}
+                />
+                <MetricCard
+                  title="Итого расход (факт)"
+                  value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
+                  tone="danger"
+                />
+              </div>
+              <div className="mt-3 space-y-3">
+                <p className="text-sm font-semibold text-gray-800">Каналы оплаты расходов (факт)</p>
+                <ChannelRow
+                  label="Безналичные"
+                  value={data.expenseChannels?.bankTransfer ?? 0}
+                  total={data.expenseChannels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-blue-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 1"
+                  value={data.expenseChannels?.cashbox1 ?? 0}
+                  total={data.expenseChannels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-emerald-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 2"
+                  value={data.expenseChannels?.cashbox2 ?? 0}
+                  total={data.expenseChannels?.total ?? 0}
+                  currency={data.currency}
+                  colorClass="bg-amber-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
@@ -795,18 +856,6 @@ export default function StoreSummaryPage() {
             <div>Прочие: <span className="font-medium">{formatMoney(data.expenseByType.other ?? 0, data.currency)}</span></div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <MetricCard
-              title="Итого расход (прогноз)"
-              value={formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}
-              tone="danger"
-            />
-            <MetricCard
-              title="Итого расход (факт)"
-              value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
-              tone="danger"
-            />
-          </div>
           <FinanceTrendChart
             title="Тренд расхода по месяцам"
             items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
@@ -818,22 +867,68 @@ export default function StoreSummaryPage() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
           <h2 className="text-xl font-semibold text-gray-900">3. Остаток</h2>
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-            <MetricCard
-              title="Общий приход (факт) с учетом остатка прошлого месяца"
-              value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
-              tone="success"
-            />
-            <MetricCard
-              title="Общий расход (факт)"
-              value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
-              tone="danger"
-            />
-            <MetricCard
-              title="Остаток текущего месяца (приход минус расход)"
-              value={formatMoney(data.saldo, data.currency)}
-              tone={data.saldo >= 0 ? 'success' : 'danger'}
-            />
+
+          <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                <MetricCard
+                  title="Остаток (прогноз)"
+                  value={formatMoney(
+                    calcProfit(
+                      data.income.forecast?.total ?? 0,
+                      data.expenses.totals?.forecast ?? 0,
+                    ),
+                    data.currency,
+                  )}
+                  tone="primary"
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                <MetricCard
+                  title="Общий приход"
+                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+                  tone="success"
+                />
+                <MetricCard
+                  title="Общий расход"
+                  value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
+                  tone="danger"
+                />
+                <MetricCard
+                  title="Остаток"
+                  value={formatMoney(data.saldo, data.currency)}
+                  tone={data.saldo >= 0 ? 'success' : 'danger'}
+                />
+              </div>
+              <div className="mt-3 space-y-3">
+                <p className="text-sm font-semibold text-gray-800">Каналы остатка (факт)</p>
+                <ChannelRow
+                  label="Безналичные"
+                  value={data.saldoChannels?.bankTransfer ?? 0}
+                  total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
+                  currency={data.currency}
+                  colorClass="bg-blue-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 1"
+                  value={data.saldoChannels?.cashbox1 ?? 0}
+                  total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
+                  currency={data.currency}
+                  colorClass="bg-emerald-500"
+                />
+                <ChannelRow
+                  label="Наличные касса 2"
+                  value={data.saldoChannels?.cashbox2 ?? 0}
+                  total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
+                  currency={data.currency}
+                  colorClass="bg-amber-500"
+                />
+              </div>
+            </div>
           </div>
           <div className="mt-4">
             <FinanceTrendChart

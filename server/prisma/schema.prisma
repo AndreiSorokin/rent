@@ -117,6 +117,7 @@ model StoreStaff {
   position String
   salary   Float  @default(0)
   salaryStatus PavilionExpenseStatus @default(UNPAID)
+  salaryPaymentMethod PaymentMethod?
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -278,7 +279,11 @@ model PavilionExpense {
   id     Int                @id @default(autoincrement())
   type   PavilionExpenseType
   status PavilionExpenseStatus @default(UNPAID)
+  paymentMethod PaymentMethod?
   amount Float
+  bankTransferPaid Float @default(0)
+  cashbox1Paid Float @default(0)
+  cashbox2Paid Float @default(0)
   note   String?
 
   storeId Int?
@@ -428,4 +433,10 @@ enum Permission {
 
   INVITE_USERS
   ASSIGN_PERMISSIONS
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASHBOX1
+  CASHBOX2
 }

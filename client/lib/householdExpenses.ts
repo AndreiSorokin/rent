@@ -5,6 +5,10 @@ export type HouseholdExpense = {
   name: string;
   amount: number;
   status: 'UNPAID' | 'PAID';
+  paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null;
+  bankTransferPaid?: number;
+  cashbox1Paid?: number;
+  cashbox2Paid?: number;
   storeId?: number | null;
   pavilionId?: number | null;
   createdAt: string;
@@ -34,12 +38,13 @@ export function updateHouseholdExpenseStatus(
   storeId: number,
   expenseId: number,
   status: 'UNPAID' | 'PAID',
+  paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
 ) {
   return apiFetch<HouseholdExpense>(
     `/stores/${storeId}/household-expenses/${expenseId}/status`,
     {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, paymentMethod }),
     },
   );
 }
