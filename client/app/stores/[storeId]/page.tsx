@@ -142,11 +142,27 @@ export default function StorePage() {
     fullName: string;
     position: string;
     salary: string;
+  } | null>(null);
+  const [staffSaving, setStaffSaving] = useState(false);
+  const [payStaffSaving, setPayStaffSaving] = useState(false);
+  const [payStaffSalaryModal, setPayStaffSalaryModal] = useState<{
+    id: number;
+    fullName: string;
+    salary: number;
     bankTransfer: string;
     cashbox1: string;
     cashbox2: string;
   } | null>(null);
-  const [staffSaving, setStaffSaving] = useState(false);
+  const [editStaffSalaryModal, setEditStaffSalaryModal] = useState<{
+    id: number;
+    fullName: string;
+    salary: string;
+    salaryStatus: 'UNPAID' | 'PAID';
+    salaryBankTransferPaid: number;
+    salaryCashbox1Paid: number;
+    salaryCashbox2Paid: number;
+    salaryPaymentMethod?: PaymentMethod | null;
+  } | null>(null);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [expenseCreateContext, setExpenseCreateContext] =
@@ -578,29 +594,9 @@ export default function StorePage() {
       return;
     }
 
-    const bank = Number(addStaffModal.bankTransfer || 0);
-    const cash1 = Number(addStaffModal.cashbox1 || 0);
-    const cash2 = Number(addStaffModal.cashbox2 || 0);
-    const channelsTotal = bank + cash1 + cash2;
-    if (
-      Number.isNaN(bank) ||
-      Number.isNaN(cash1) ||
-      Number.isNaN(cash2) ||
-      bank < 0 ||
-      cash1 < 0 ||
-      cash2 < 0
-    ) {
-      alert('Каналы оплаты должны быть неотрицательными');
-      return;
-    }
-    if (channelsTotal > 0 && Math.abs(channelsTotal - salary) > 0.01) {
-      alert('Сумма каналов оплаты должна быть равна зарплате');
-      return;
-    }
-
     try {
       setStaffSaving(true);
-      const created = await apiFetch<any>(`/stores/${storeId}/staff`, {
+      await apiFetch<any>(`/stores/${storeId}/staff`, {
         method: 'POST',
         body: JSON.stringify({
           fullName: addStaffModal.fullName.trim(),
@@ -608,18 +604,6 @@ export default function StorePage() {
           salary,
         }),
       });
-
-      if (channelsTotal > 0) {
-        await apiFetch(`/stores/${storeId}/staff/${created.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            salaryStatus: 'PAID',
-            salaryBankTransferPaid: bank,
-            salaryCashbox1Paid: cash1,
-            salaryCashbox2Paid: cash2,
-          }),
-        });
-      }
 
       setAddStaffModal(null);
       await fetchData(false);
@@ -669,6 +653,122 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус зарплаты');
+    }
+  };
+
+  const handlePayStaffSalary = async () => {
+    if (!payStaffSalaryModal) return;
+
+    const salary = Number(payStaffSalaryModal.salary ?? 0);
+    const bank = Number(payStaffSalaryModal.bankTransfer || 0);
+    const cash1 = Number(payStaffSalaryModal.cashbox1 || 0);
+    const cash2 = Number(payStaffSalaryModal.cashbox2 || 0);
+    const channelsTotal = bank + cash1 + cash2;
+
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+
+    if (Math.abs(channelsTotal - salary) > 0.01) {
+      alert('Сумма каналов оплаты должна быть равна зарплате');
+      return;
+    }
+
+    try {
+      setPayStaffSaving(true);
+      await runKeepingScroll(async () => {
+        await apiFetch(`/stores/${storeId}/staff/${payStaffSalaryModal.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            salaryStatus: 'PAID',
+            salaryBankTransferPaid: bank,
+            salaryCashbox1Paid: cash1,
+            salaryCashbox2Paid: cash2,
+          }),
+        });
+        await fetchData(false);
+      });
+      setPayStaffSalaryModal(null);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить статус зарплаты');
+    } finally {
+      setPayStaffSaving(false);
+    }
+  };
+
+  const handleSaveEditedStaffSalary = async () => {
+    if (!editStaffSalaryModal) return;
+
+    const nextSalary = Number(editStaffSalaryModal.salary);
+    if (Number.isNaN(nextSalary) || nextSalary < 0) {
+      alert('Зарплата должна быть неотрицательной');
+      return;
+    }
+
+    const payload: {
+      salary: number;
+      salaryStatus?: 'UNPAID' | 'PAID';
+      salaryBankTransferPaid?: number;
+      salaryCashbox1Paid?: number;
+      salaryCashbox2Paid?: number;
+      salaryPaymentMethod?: PaymentMethod;
+    } = {
+      salary: nextSalary,
+    };
+
+    if (editStaffSalaryModal.salaryStatus === 'PAID') {
+      const bank = Number(editStaffSalaryModal.salaryBankTransferPaid ?? 0);
+      const cash1 = Number(editStaffSalaryModal.salaryCashbox1Paid ?? 0);
+      const cash2 = Number(editStaffSalaryModal.salaryCashbox2Paid ?? 0);
+      const channelsTotal = bank + cash1 + cash2;
+
+      if (
+        Number.isNaN(bank) ||
+        Number.isNaN(cash1) ||
+        Number.isNaN(cash2) ||
+        bank < 0 ||
+        cash1 < 0 ||
+        cash2 < 0
+      ) {
+        alert('Каналы оплаты должны быть неотрицательными');
+        return;
+      }
+
+      if (Math.abs(channelsTotal - nextSalary) > 0.01) {
+        alert('Сумма каналов оплаты должна быть равна зарплате');
+        return;
+      }
+
+      payload.salaryStatus = 'PAID';
+      payload.salaryBankTransferPaid = bank;
+      payload.salaryCashbox1Paid = cash1;
+      payload.salaryCashbox2Paid = cash2;
+    } else {
+      payload.salaryStatus = 'UNPAID';
+    }
+
+    try {
+      setStaffSaving(true);
+      await apiFetch(`/stores/${storeId}/staff/${editStaffSalaryModal.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      setEditStaffSalaryModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить зарплату');
+    } finally {
+      setStaffSaving(false);
     }
   };
 
@@ -1794,9 +1894,6 @@ export default function StorePage() {
                       fullName: '',
                       position: '',
                       salary: '',
-                      bankTransfer: '',
-                      cashbox1: '',
-                      cashbox2: '',
                     })
                   }
                   className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
@@ -1877,6 +1974,24 @@ export default function StorePage() {
                                 value={staff.salaryStatus ?? 'UNPAID'}
                                 onChange={(e) => {
                                   const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                                  if (nextStatus === 'PAID') {
+                                    const salary = Number(staff.salary ?? 0);
+                                    const bank = Number(staff.salaryBankTransferPaid ?? 0);
+                                    const cash1 = Number(staff.salaryCashbox1Paid ?? 0);
+                                    const cash2 = Number(staff.salaryCashbox2Paid ?? 0);
+                                    const hasChannels = bank + cash1 + cash2 > 0;
+
+                                    setPayStaffSalaryModal({
+                                      id: Number(staff.id),
+                                      fullName: String(staff.fullName ?? 'Сотрудник'),
+                                      salary,
+                                      bankTransfer: hasChannels ? String(bank || '') : String(salary),
+                                      cashbox1: hasChannels ? String(cash1 || '') : '',
+                                      cashbox2: hasChannels ? String(cash2 || '') : '',
+                                    });
+                                    return;
+                                  }
+
                                   void handleUpdateStaffSalaryStatus(staff.id, nextStatus);
                                 }}
                                 className="rounded border px-2 py-1 text-xs"
@@ -1940,12 +2055,35 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
                           {hasPermission(permissions, 'MANAGE_STAFF') && (
-                            <button
-                              onClick={() => handleDeleteStaff(staff.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
+                            <div className="flex justify-end gap-3">
+                              <button
+                                onClick={() =>
+                                  setEditStaffSalaryModal({
+                                    id: Number(staff.id),
+                                    fullName: String(staff.fullName ?? 'Сотрудник'),
+                                    salary: String(Number(staff.salary ?? 0)),
+                                    salaryStatus:
+                                      (staff.salaryStatus as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                    salaryBankTransferPaid: Number(
+                                      staff.salaryBankTransferPaid ?? 0,
+                                    ),
+                                    salaryCashbox1Paid: Number(staff.salaryCashbox1Paid ?? 0),
+                                    salaryCashbox2Paid: Number(staff.salaryCashbox2Paid ?? 0),
+                                    salaryPaymentMethod:
+                                      (staff.salaryPaymentMethod as PaymentMethod | null) ?? null,
+                                  })
+                                }
+                                className="text-blue-600 hover:underline"
+                              >
+                                Изменить зарплату
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStaff(staff.id)}
+                                className="text-red-600 hover:underline"
+                              >
+                                Удалить
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -1963,10 +2101,7 @@ export default function StorePage() {
       {addStaffModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
-            <h3 className="text-lg font-semibold text-slate-900">Новый сотрудник</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Заполните данные и укажите статус оплаты.
-            </p>
+            <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
               <div>
@@ -2004,53 +2139,6 @@ export default function StorePage() {
                   className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={addStaffModal.bankTransfer}
-                    onChange={(e) =>
-                      setAddStaffModal((prev) =>
-                        prev ? { ...prev, bankTransfer: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={addStaffModal.cashbox1}
-                    onChange={(e) =>
-                      setAddStaffModal((prev) =>
-                        prev ? { ...prev, cashbox1: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={addStaffModal.cashbox2}
-                    onChange={(e) =>
-                      setAddStaffModal((prev) =>
-                        prev ? { ...prev, cashbox2: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
@@ -2075,6 +2163,84 @@ export default function StorePage() {
         </div>
       )}
 
+      {payStaffSalaryModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Оплата зарплаты</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {payStaffSalaryModal.fullName}. Сумма: {formatMoney(payStaffSalaryModal.salary, store?.currency)}
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={payStaffSalaryModal.bankTransfer}
+                  onChange={(e) =>
+                    setPayStaffSalaryModal((prev) =>
+                      prev ? { ...prev, bankTransfer: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={payStaffSalaryModal.cashbox1}
+                  onChange={(e) =>
+                    setPayStaffSalaryModal((prev) =>
+                      prev ? { ...prev, cashbox1: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={payStaffSalaryModal.cashbox2}
+                  onChange={(e) =>
+                    setPayStaffSalaryModal((prev) =>
+                      prev ? { ...prev, cashbox2: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPayStaffSalaryModal(null)}
+                disabled={payStaffSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handlePayStaffSalary}
+                disabled={payStaffSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {payStaffSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCreatePavilionModal && (
         <CreatePavilionModal
           storeId={storeId}
@@ -2082,6 +2248,161 @@ export default function StorePage() {
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
         />
+      )}
+
+      {editStaffSalaryModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Изменить зарплату</h3>
+            <p className="mt-1 text-sm text-slate-600">{editStaffSalaryModal.fullName}</p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <label className="mb-1 block text-sm font-medium text-slate-700">Новая зарплата</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editStaffSalaryModal.salary}
+                onChange={(e) =>
+                  setEditStaffSalaryModal((prev) =>
+                    prev ? { ...prev, salary: e.target.value } : prev,
+                  )
+                }
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+              />
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Статус оплаты
+                </label>
+                <select
+                  value={editStaffSalaryModal.salaryStatus}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                    setEditStaffSalaryModal((prev) => {
+                      if (!prev) return prev;
+                      if (nextStatus === 'UNPAID') {
+                        return { ...prev, salaryStatus: 'UNPAID' };
+                      }
+
+                      const nextSalary = Number(prev.salary || 0);
+                      const oldTotal =
+                        Number(prev.salaryBankTransferPaid ?? 0) +
+                        Number(prev.salaryCashbox1Paid ?? 0) +
+                        Number(prev.salaryCashbox2Paid ?? 0);
+
+                      if (oldTotal > 0) {
+                        return { ...prev, salaryStatus: 'PAID' };
+                      }
+
+                      return {
+                        ...prev,
+                        salaryStatus: 'PAID',
+                        salaryBankTransferPaid: nextSalary,
+                        salaryCashbox1Paid: 0,
+                        salaryCashbox2Paid: 0,
+                      };
+                    });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                >
+                  <option value="UNPAID">Не оплачено</option>
+                  <option value="PAID">Оплачено</option>
+                </select>
+              </div>
+
+              {editStaffSalaryModal.salaryStatus === 'PAID' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Безналичные
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editStaffSalaryModal.salaryBankTransferPaid}
+                      onChange={(e) =>
+                        setEditStaffSalaryModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                salaryBankTransferPaid: Number(e.target.value || 0),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 1
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editStaffSalaryModal.salaryCashbox1Paid}
+                      onChange={(e) =>
+                        setEditStaffSalaryModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                salaryCashbox1Paid: Number(e.target.value || 0),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 2
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editStaffSalaryModal.salaryCashbox2Paid}
+                      onChange={(e) =>
+                        setEditStaffSalaryModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                salaryCashbox2Paid: Number(e.target.value || 0),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditStaffSalaryModal(null)}
+                disabled={staffSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditedStaffSalary}
+                disabled={staffSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {staffSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <AddExpenseModal
         isOpen={Boolean(expenseCreateContext)}
