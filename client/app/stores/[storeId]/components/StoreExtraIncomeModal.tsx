@@ -224,7 +224,7 @@ export function StoreExtraIncomeModal({
                 min="0"
                 value={cash2}
                 onChange={(e) => setCash2(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm md:col-span-2"
+                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
                 placeholder="Наличные касса 2"
               />
             </div>
