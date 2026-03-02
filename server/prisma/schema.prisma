@@ -118,6 +118,9 @@ model StoreStaff {
   salary   Float  @default(0)
   salaryStatus PavilionExpenseStatus @default(UNPAID)
   salaryPaymentMethod PaymentMethod?
+  salaryBankTransferPaid Float @default(0)
+  salaryCashbox1Paid Float @default(0)
+  salaryCashbox2Paid Float @default(0)
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)

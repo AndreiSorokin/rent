@@ -588,6 +588,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       salary?: number;
       salaryStatus?: 'UNPAID' | 'PAID';
       salaryPaymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+      salaryBankTransferPaid?: number;
+      salaryCashbox1Paid?: number;
+      salaryCashbox2Paid?: number;
     },
   ) {
     const storeUser = await this.prisma.storeUser.findUnique({
@@ -615,6 +618,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         salary: true,
         salaryStatus: true,
         salaryPaymentMethod: true,
+        salaryBankTransferPaid: true,
+        salaryCashbox1Paid: true,
+        salaryCashbox2Paid: true,
       },
     });
     if (!staff) {
@@ -638,20 +644,92 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Invalid salaryPaymentMethod');
     }
 
-    if (data.salaryStatus !== undefined) {
-      updateData.salaryStatus = data.salaryStatus;
-      updateData.salaryPaymentMethod =
-        data.salaryStatus === 'PAID'
-          ? data.salaryPaymentMethod ??
-            staff.salaryPaymentMethod ??
-            'BANK_TRANSFER'
-          : null;
-    } else if (data.salaryPaymentMethod !== undefined) {
-      if (staff.salaryStatus === 'PAID') {
-        updateData.salaryPaymentMethod = data.salaryPaymentMethod;
-      } else {
-        updateData.salaryPaymentMethod = null;
+    const deriveSingleMethod = (
+      bankTransferPaid: number,
+      cashbox1Paid: number,
+      cashbox2Paid: number,
+    ): 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null => {
+      const nonZero = [
+        bankTransferPaid > 0,
+        cashbox1Paid > 0,
+        cashbox2Paid > 0,
+      ].filter(Boolean).length;
+      if (nonZero !== 1) return null;
+      if (bankTransferPaid > 0) return 'BANK_TRANSFER';
+      if (cashbox1Paid > 0) return 'CASHBOX1';
+      if (cashbox2Paid > 0) return 'CASHBOX2';
+      return null;
+    };
+
+    const effectiveSalaryAmount = Number(
+      data.salary !== undefined ? data.salary : staff.salary ?? 0,
+    );
+    const hasAnySalaryChannelsInput =
+      data.salaryBankTransferPaid !== undefined ||
+      data.salaryCashbox1Paid !== undefined ||
+      data.salaryCashbox2Paid !== undefined;
+    const requestedStatus =
+      data.salaryStatus ?? (hasAnySalaryChannelsInput ? 'PAID' : staff.salaryStatus);
+
+    if (requestedStatus === 'UNPAID') {
+      updateData.salaryStatus = 'UNPAID';
+      updateData.salaryPaymentMethod = null;
+      updateData.salaryBankTransferPaid = 0;
+      updateData.salaryCashbox1Paid = 0;
+      updateData.salaryCashbox2Paid = 0;
+    } else {
+      const bankTransferPaid = Number(
+        data.salaryBankTransferPaid !== undefined
+          ? data.salaryBankTransferPaid
+          : staff.salaryBankTransferPaid ?? 0,
+      );
+      const cashbox1Paid = Number(
+        data.salaryCashbox1Paid !== undefined
+          ? data.salaryCashbox1Paid
+          : staff.salaryCashbox1Paid ?? 0,
+      );
+      const cashbox2Paid = Number(
+        data.salaryCashbox2Paid !== undefined
+          ? data.salaryCashbox2Paid
+          : staff.salaryCashbox2Paid ?? 0,
+      );
+      const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+      const hasAnyPaidChannels = channelsTotal > 0;
+
+      if (
+        Number.isNaN(bankTransferPaid) ||
+        Number.isNaN(cashbox1Paid) ||
+        Number.isNaN(cashbox2Paid) ||
+        bankTransferPaid < 0 ||
+        cashbox1Paid < 0 ||
+        cashbox2Paid < 0
+      ) {
+        throw new BadRequestException('Salary payment channels must be non-negative');
       }
+
+      let nextBank = bankTransferPaid;
+      let nextCash1 = cashbox1Paid;
+      let nextCash2 = cashbox2Paid;
+      if (!hasAnyPaidChannels) {
+        const method =
+          data.salaryPaymentMethod ?? staff.salaryPaymentMethod ?? 'BANK_TRANSFER';
+        nextBank = method === 'BANK_TRANSFER' ? effectiveSalaryAmount : 0;
+        nextCash1 = method === 'CASHBOX1' ? effectiveSalaryAmount : 0;
+        nextCash2 = method === 'CASHBOX2' ? effectiveSalaryAmount : 0;
+      }
+
+      const nextChannelsTotal = nextBank + nextCash1 + nextCash2;
+      if (Math.abs(nextChannelsTotal - effectiveSalaryAmount) > 0.01) {
+        throw new BadRequestException(
+          'Salary amount must equal selected payment channels total',
+        );
+      }
+
+      updateData.salaryStatus = 'PAID';
+      updateData.salaryBankTransferPaid = nextBank;
+      updateData.salaryCashbox1Paid = nextCash1;
+      updateData.salaryCashbox2Paid = nextCash2;
+      updateData.salaryPaymentMethod = deriveSingleMethod(nextBank, nextCash1, nextCash2);
     }
 
     const updatedStaff = await (this.prisma.storeStaff as any).update({
@@ -680,12 +758,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
 
     const effectiveSalaryStatus = data.salaryStatus ?? updatedStaff.salaryStatus;
-    const effectiveSalaryAmount = Number(updatedStaff.salary ?? 0);
+    const effectiveSalaryAmountForExpense = Number(updatedStaff.salary ?? 0);
     const effectiveSalaryPaymentMethod =
       effectiveSalaryStatus === 'PAID'
-        ? data.salaryPaymentMethod ??
-          updatedStaff.salaryPaymentMethod ??
-          'BANK_TRANSFER'
+        ? updatedStaff.salaryPaymentMethod ?? null
         : null;
 
     if (effectiveSalaryStatus === 'PAID') {
@@ -693,10 +769,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         await this.prisma.pavilionExpense.update({
           where: { id: existingSalaryExpense.id },
           data: {
-            amount: effectiveSalaryAmount,
+            amount: effectiveSalaryAmountForExpense,
             status: 'PAID',
             note: staffMonthExpenseNote,
             paymentMethod: effectiveSalaryPaymentMethod,
+            bankTransferPaid: Number(updatedStaff.salaryBankTransferPaid ?? 0),
+            cashbox1Paid: Number(updatedStaff.salaryCashbox1Paid ?? 0),
+            cashbox2Paid: Number(updatedStaff.salaryCashbox2Paid ?? 0),
           },
         });
       } else {
@@ -705,9 +784,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             storeId,
             type: PavilionExpenseType.SALARIES,
             status: 'PAID',
-            amount: effectiveSalaryAmount,
+            amount: effectiveSalaryAmountForExpense,
             note: staffMonthExpenseNote,
             paymentMethod: effectiveSalaryPaymentMethod,
+            bankTransferPaid: Number(updatedStaff.salaryBankTransferPaid ?? 0),
+            cashbox1Paid: Number(updatedStaff.salaryCashbox1Paid ?? 0),
+            cashbox2Paid: Number(updatedStaff.salaryCashbox2Paid ?? 0),
           },
         });
       }

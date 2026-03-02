@@ -193,6 +193,9 @@ export class StoresController {
       salary?: number;
       salaryStatus?: 'UNPAID' | 'PAID';
       salaryPaymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+      salaryBankTransferPaid?: number;
+      salaryCashbox1Paid?: number;
+      salaryCashbox2Paid?: number;
     },
     @Req() req: any,
   ) {

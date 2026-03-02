@@ -26,6 +26,9 @@ export class AnalyticsService {
             salary: true,
             salaryStatus: true,
             salaryPaymentMethod: true,
+            salaryBankTransferPaid: true,
+            salaryCashbox1Paid: true,
+            salaryCashbox2Paid: true,
           },
         },
       },
@@ -557,14 +560,24 @@ export class AnalyticsService {
     } else {
       for (const member of storeMeta?.staff ?? []) {
         if (member.salaryStatus !== 'PAID') continue;
-        addExpenseByMethod(
-          Number(member.salary ?? 0),
-          (member as any).salaryPaymentMethod as
-            | 'BANK_TRANSFER'
-            | 'CASHBOX1'
-            | 'CASHBOX2'
-            | null,
-        );
+        const bank = Number((member as any).salaryBankTransferPaid ?? 0);
+        const cash1 = Number((member as any).salaryCashbox1Paid ?? 0);
+        const cash2 = Number((member as any).salaryCashbox2Paid ?? 0);
+        const total = bank + cash1 + cash2;
+        if (total > 0) {
+          expenseChannelsBankTransfer += bank;
+          expenseChannelsCashbox1 += cash1;
+          expenseChannelsCashbox2 += cash2;
+        } else {
+          addExpenseByMethod(
+            Number(member.salary ?? 0),
+            (member as any).salaryPaymentMethod as
+              | 'BANK_TRANSFER'
+              | 'CASHBOX1'
+              | 'CASHBOX2'
+              | null,
+          );
+        }
       }
     }
 

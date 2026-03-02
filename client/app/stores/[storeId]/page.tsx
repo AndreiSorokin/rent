@@ -70,21 +70,48 @@ const paymentMethodLabel = (value?: PaymentMethod | null) =>
   PAYMENT_METHOD_OPTIONS.find((option) => option.value === value)?.label ??
   'Безналичные';
 
+const paymentChannelsLabel = (
+  bankTransferPaid?: number | null,
+  cashbox1Paid?: number | null,
+  cashbox2Paid?: number | null,
+  currency?: string,
+) => {
+  const labels: string[] = [];
+  const bank = Number(bankTransferPaid ?? 0);
+  const cash1 = Number(cashbox1Paid ?? 0);
+  const cash2 = Number(cashbox2Paid ?? 0);
+
+  if (bank > 0) {
+    labels.push(
+      `Безналичные: ${currency ? formatMoney(bank, currency) : bank.toFixed(2)}`,
+    );
+  }
+  if (cash1 > 0) {
+    labels.push(
+      `Наличные касса 1: ${currency ? formatMoney(cash1, currency) : cash1.toFixed(2)}`,
+    );
+  }
+  if (cash2 > 0) {
+    labels.push(
+      `Наличные касса 2: ${currency ? formatMoney(cash2, currency) : cash2.toFixed(2)}`,
+    );
+  }
+  return labels.join(' + ');
+};
+
 const expensePaymentLabel = (expense: {
   paymentMethod?: PaymentMethod | null;
   bankTransferPaid?: number | null;
   cashbox1Paid?: number | null;
   cashbox2Paid?: number | null;
-}) => {
-  const bank = Number(expense.bankTransferPaid ?? 0);
-  const cash1 = Number(expense.cashbox1Paid ?? 0);
-  const cash2 = Number(expense.cashbox2Paid ?? 0);
-  const nonZero = [bank > 0, cash1 > 0, cash2 > 0].filter(Boolean).length;
-
-  if (nonZero > 1) return 'Смешанно';
-  if (bank > 0) return 'Безналичные';
-  if (cash1 > 0) return 'Наличные касса 1';
-  if (cash2 > 0) return 'Наличные касса 2';
+}, currency: string) => {
+  const channels = paymentChannelsLabel(
+    expense.bankTransferPaid,
+    expense.cashbox1Paid,
+    expense.cashbox2Paid,
+    currency,
+  );
+  if (channels) return channels;
 
   return paymentMethodLabel(expense.paymentMethod as PaymentMethod);
 };
@@ -108,16 +135,15 @@ export default function StorePage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExtraIncomeModal, setShowExtraIncomeModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [staffFullName, setStaffFullName] = useState('');
-  const [staffPosition, setStaffPosition] = useState('');
-  const [staffSalary, setStaffSalary] = useState('');
+  const [addStaffModal, setAddStaffModal] = useState<{
+    fullName: string;
+    position: string;
+    salary: string;
+    bankTransfer: string;
+    cashbox1: string;
+    cashbox2: string;
+  } | null>(null);
   const [staffSaving, setStaffSaving] = useState(false);
-  const [staffSalaryDraftById, setStaffSalaryDraftById] = useState<
-    Record<number, string>
-  >({});
-  const [staffSalaryUpdatingById, setStaffSalaryUpdatingById] = useState<
-    Record<number, boolean>
-  >({});
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [expenseCreateContext, setExpenseCreateContext] =
@@ -365,14 +391,6 @@ export default function StorePage() {
   }, [storeId, store?.staff]);
 
   useEffect(() => {
-    const nextDrafts: Record<number, string> = {};
-    for (const staffMember of store?.staff || []) {
-      nextDrafts[staffMember.id] = String(staffMember.salary ?? 0);
-    }
-    setStaffSalaryDraftById(nextDrafts);
-  }, [store?.staff]);
-
-  useEffect(() => {
     if (!storeId || orderedStaffIds.length === 0) return;
     try {
       localStorage.setItem(
@@ -423,30 +441,62 @@ export default function StorePage() {
   };
 
   const handleAddStaff = async () => {
-    if (!staffFullName.trim() || !staffPosition.trim() || !staffSalary) {
+    if (!addStaffModal) return;
+    if (!addStaffModal.fullName.trim() || !addStaffModal.position.trim() || !addStaffModal.salary) {
       alert('Заполните поля "Имя фамилия", "Должность" и "Зарплата"');
       return;
     }
 
-    const salary = Number(staffSalary);
+    const salary = Number(addStaffModal.salary);
     if (Number.isNaN(salary) || salary < 0) {
       alert('Зарплата должна быть неотрицательной');
       return;
     }
 
+    const bank = Number(addStaffModal.bankTransfer || 0);
+    const cash1 = Number(addStaffModal.cashbox1 || 0);
+    const cash2 = Number(addStaffModal.cashbox2 || 0);
+    const channelsTotal = bank + cash1 + cash2;
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (channelsTotal > 0 && Math.abs(channelsTotal - salary) > 0.01) {
+      alert('Сумма каналов оплаты должна быть равна зарплате');
+      return;
+    }
+
     try {
       setStaffSaving(true);
-      await apiFetch(`/stores/${storeId}/staff`, {
+      const created = await apiFetch<any>(`/stores/${storeId}/staff`, {
         method: 'POST',
         body: JSON.stringify({
-          fullName: staffFullName.trim(),
-          position: staffPosition.trim(),
+          fullName: addStaffModal.fullName.trim(),
+          position: addStaffModal.position.trim(),
           salary,
         }),
       });
-      setStaffFullName('');
-      setStaffPosition('');
-      setStaffSalary('');
+
+      if (channelsTotal > 0) {
+        await apiFetch(`/stores/${storeId}/staff/${created.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            salaryStatus: 'PAID',
+            salaryBankTransferPaid: bank,
+            salaryCashbox1Paid: cash1,
+            salaryCashbox2Paid: cash2,
+          }),
+        });
+      }
+
+      setAddStaffModal(null);
       await fetchData(false);
     } catch (err) {
       console.error(err);
@@ -473,7 +523,12 @@ export default function StorePage() {
   const handleUpdateStaffSalaryStatus = async (
     staffId: number,
     salaryStatus: 'UNPAID' | 'PAID',
-    salaryPaymentMethod?: PaymentMethod,
+    payload?: {
+      salaryPaymentMethod?: PaymentMethod;
+      salaryBankTransferPaid?: number;
+      salaryCashbox1Paid?: number;
+      salaryCashbox2Paid?: number;
+    },
   ) => {
     try {
       await runKeepingScroll(async () => {
@@ -481,7 +536,7 @@ export default function StorePage() {
           method: 'PATCH',
           body: JSON.stringify({
             salaryStatus,
-            salaryPaymentMethod,
+            ...payload,
           }),
         });
         await fetchData(false);
@@ -489,34 +544,6 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить статус зарплаты');
-    }
-  };
-
-  const handleUpdateStaffSalary = async (staffId: number) => {
-    const rawSalary = staffSalaryDraftById[staffId];
-    const salary = Number(rawSalary);
-
-    if (rawSalary === undefined || rawSalary === '') {
-      alert('Введите зарплату');
-      return;
-    }
-    if (Number.isNaN(salary) || salary < 0) {
-      alert('Зарплата должна быть неотрицательной');
-      return;
-    }
-
-    try {
-      setStaffSalaryUpdatingById((prev) => ({ ...prev, [staffId]: true }));
-      await apiFetch(`/stores/${storeId}/staff/${staffId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ salary }),
-      });
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось обновить зарплату');
-    } finally {
-      setStaffSalaryUpdatingById((prev) => ({ ...prev, [staffId]: false }));
     }
   };
 
@@ -1332,7 +1359,7 @@ export default function StorePage() {
                             </select>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
                               <span className="text-xs text-slate-600">
-                                {expensePaymentLabel(expense)}
+                                {expensePaymentLabel(expense, store.currency)}
                               </span>
                             )}
                           </div>
@@ -1345,7 +1372,7 @@ export default function StorePage() {
                             }`}
                           >
                             {expense.status === 'PAID'
-                              ? `Оплачено (${expensePaymentLabel(expense)})`
+                              ? `Оплачено (${expensePaymentLabel(expense, store.currency)})`
                               : 'Не оплачено'}
                           </span>
                         )}
@@ -1428,7 +1455,7 @@ export default function StorePage() {
                             </select>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
                               <span className="text-xs text-slate-600">
-                                {expensePaymentLabel(expense)}
+                                {expensePaymentLabel(expense, store.currency)}
                               </span>
                             )}
                           </div>
@@ -1441,7 +1468,7 @@ export default function StorePage() {
                             }`}
                           >
                             {expense.status === 'PAID'
-                              ? `Оплачено (${expensePaymentLabel(expense)})`
+                              ? `Оплачено (${expensePaymentLabel(expense, store.currency)})`
                               : 'Не оплачено'}
                           </span>
                         )}
@@ -1538,7 +1565,7 @@ export default function StorePage() {
                                   </select>
                                   {(item.status ?? 'UNPAID') === 'PAID' && (
                                     <span className="text-[10px] text-gray-600">
-                                      {expensePaymentLabel(item)}
+                                      {expensePaymentLabel(item, store.currency)}
                                     </span>
                                   )}
                                 </div>
@@ -1578,33 +1605,18 @@ export default function StorePage() {
             </div>
 
             {hasPermission(permissions, 'MANAGE_STAFF') && (
-              <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_180px_auto]">
-                <input
-                  type="text"
-                  value={staffPosition}
-                  onChange={(e) => setStaffPosition(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Должность"
-                />
-                <input
-                  type="text"
-                  value={staffFullName}
-                  onChange={(e) => setStaffFullName(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Имя фамилия"
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={staffSalary}
-                  onChange={(e) => setStaffSalary(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-2"
-                  placeholder="Зарплата"
-                />
+              <div className="mb-4">
                 <button
-                  onClick={handleAddStaff}
-                  disabled={staffSaving}
+                  onClick={() =>
+                    setAddStaffModal({
+                      fullName: '',
+                      position: '',
+                      salary: '',
+                      bankTransfer: '',
+                      cashbox1: '',
+                      cashbox2: '',
+                    })
+                  }
                   className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   Добавить
@@ -1674,80 +1686,72 @@ export default function StorePage() {
                         <td className="px-4 py-3 text-sm">{staff.position}</td>
                         <td className="px-4 py-3 text-sm">{staff.fullName}</td>
                         <td className="px-4 py-3 text-sm">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={
-                                staffSalaryDraftById[staff.id] ??
-                                String(staff.salary ?? 0)
-                              }
-                              onChange={(e) =>
-                                setStaffSalaryDraftById((prev) => ({
-                                  ...prev,
-                                  [staff.id]: e.target.value,
-                                }))
-                              }
-                              className="w-32 rounded border px-2 py-1 text-sm"
-                            />
-                            {hasPermission(permissions, 'MANAGE_STAFF') && (
-                              <button
-                                onClick={() => handleUpdateStaffSalary(staff.id)}
-                                disabled={
-                                  Boolean(staffSalaryUpdatingById[staff.id]) ||
-                                  Number(
-                                    staffSalaryDraftById[staff.id] ?? staff.salary ?? 0,
-                                  ) === Number(staff.salary ?? 0)
-                                }
-                                className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {staffSalaryUpdatingById[staff.id] ? '...' : 'Сохранить'}
-                              </button>
-                            )}
-                          </div>
+                          {formatMoney(Number(staff.salary ?? 0), store.currency)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           {hasPermission(permissions, 'MANAGE_STAFF') ? (
                             <div className="flex items-center gap-2">
                               <select
                                 value={staff.salaryStatus ?? 'UNPAID'}
-                                onChange={(e) =>
-                                  handleUpdateStaffSalaryStatus(
-                                    staff.id,
-                                    e.target.value as 'UNPAID' | 'PAID',
-                                    (staff.salaryPaymentMethod as PaymentMethod) ??
-                                      'BANK_TRANSFER',
-                                  )
-                                }
+                                onChange={(e) => {
+                                  const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                                  void handleUpdateStaffSalaryStatus(staff.id, nextStatus);
+                                }}
                                 className="rounded border px-2 py-1 text-xs"
                               >
                                 <option value="UNPAID">Не оплачено</option>
                                 <option value="PAID">Оплачено</option>
                               </select>
-                              <select
-                                value={
-                                  (staff.salaryPaymentMethod as PaymentMethod) ?? 'BANK_TRANSFER'
-                                }
-                                onChange={(e) =>
-                                  handleUpdateStaffSalaryStatus(
-                                    staff.id,
-                                    (staff.salaryStatus ?? 'UNPAID') as 'UNPAID' | 'PAID',
-                                    e.target.value as PaymentMethod,
-                                  )
-                                }
-                                disabled={(staff.salaryStatus ?? 'UNPAID') !== 'PAID'}
-                                className="rounded border px-2 py-1 text-xs disabled:opacity-60"
-                              >
-                                {PAYMENT_METHOD_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
+                              {(staff.salaryStatus ?? 'UNPAID') === 'PAID' && (
+                                <div className="space-y-0.5 text-[11px] text-slate-600">
+                                  <div>
+                                    Безналичные:{' '}
+                                    {formatMoney(
+                                      Number(staff.salaryBankTransferPaid ?? 0),
+                                      store.currency,
+                                    )}
+                                  </div>
+                                  <div>
+                                    Наличные касса 1:{' '}
+                                    {formatMoney(
+                                      Number(staff.salaryCashbox1Paid ?? 0),
+                                      store.currency,
+                                    )}
+                                  </div>
+                                  <div>
+                                    Наличные касса 2:{' '}
+                                    {formatMoney(
+                                      Number(staff.salaryCashbox2Paid ?? 0),
+                                      store.currency,
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ) : staff.salaryStatus === 'PAID' ? (
-                            `Оплачено (${paymentMethodLabel(staff.salaryPaymentMethod as PaymentMethod)})`
+                            <div className="space-y-0.5 text-[11px] text-slate-600">
+                              <div>
+                                Безналичные:{' '}
+                                {formatMoney(
+                                  Number(staff.salaryBankTransferPaid ?? 0),
+                                  store.currency,
+                                )}
+                              </div>
+                              <div>
+                                Наличные касса 1:{' '}
+                                {formatMoney(
+                                  Number(staff.salaryCashbox1Paid ?? 0),
+                                  store.currency,
+                                )}
+                              </div>
+                              <div>
+                                Наличные касса 2:{' '}
+                                {formatMoney(
+                                  Number(staff.salaryCashbox2Paid ?? 0),
+                                  store.currency,
+                                )}
+                              </div>
+                            </div>
                           ) : (
                             'Не оплачено'
                           )}
@@ -1848,6 +1852,121 @@ export default function StorePage() {
         )}
         </main>
       </div>
+
+      {addStaffModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Новый сотрудник</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Заполните данные и укажите статус оплаты.
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Должность</label>
+                <input
+                  type="text"
+                  value={addStaffModal.position}
+                  onChange={(e) =>
+                    setAddStaffModal((prev) => (prev ? { ...prev, position: e.target.value } : prev))
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Имя фамилия</label>
+                <input
+                  type="text"
+                  value={addStaffModal.fullName}
+                  onChange={(e) =>
+                    setAddStaffModal((prev) => (prev ? { ...prev, fullName: e.target.value } : prev))
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Зарплата</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={addStaffModal.salary}
+                  onChange={(e) =>
+                    setAddStaffModal((prev) => (prev ? { ...prev, salary: e.target.value } : prev))
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={addStaffModal.bankTransfer}
+                    onChange={(e) =>
+                      setAddStaffModal((prev) =>
+                        prev ? { ...prev, bankTransfer: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={addStaffModal.cashbox1}
+                    onChange={(e) =>
+                      setAddStaffModal((prev) =>
+                        prev ? { ...prev, cashbox1: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={addStaffModal.cashbox2}
+                    onChange={(e) =>
+                      setAddStaffModal((prev) =>
+                        prev ? { ...prev, cashbox2: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setAddStaffModal(null)}
+                disabled={staffSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleAddStaff}
+                disabled={staffSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {staffSaving ? 'Сохранение...' : 'Добавить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCreatePavilionModal && (
         <CreatePavilionModal
