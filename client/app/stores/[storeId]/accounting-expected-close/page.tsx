@@ -23,6 +23,7 @@ type DetailsResponse = {
       pavilionPayments: ChannelTotals;
       additionalCharges: ChannelTotals;
       storeExtraIncome: ChannelTotals;
+      expenses: ChannelTotals;
     };
   };
   expectedClose: ChannelTotals | null;
@@ -60,6 +61,19 @@ type DetailsResponse = {
       bankTransferPaid: number;
       cashbox1Paid: number;
       cashbox2Paid: number;
+    }>;
+    expenses: Array<{
+      id: number;
+      paidAt: string;
+      type: string;
+      note: string | null;
+      amount: number;
+      pavilionId: number | null;
+      pavilionNumber: string | null;
+      bankTransferPaid: number;
+      cashbox1Paid: number;
+      cashbox2Paid: number;
+      total: number;
     }>;
   };
 };
@@ -262,6 +276,21 @@ export default function AccountingExpectedClosePage() {
                     {formatMoney(details?.actual?.sources?.storeExtraIncome?.total ?? 0, currency)}
                   </td>
                 </tr>
+                <tr>
+                  <td className="px-4 py-2 text-sm">Расходы</td>
+                  <td className="px-4 py-2 text-sm text-rose-700">
+                    -{formatMoney(details?.actual?.sources?.expenses?.bankTransferPaid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-rose-700">
+                    -{formatMoney(details?.actual?.sources?.expenses?.cashbox1Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-rose-700">
+                    -{formatMoney(details?.actual?.sources?.expenses?.cashbox2Paid ?? 0, currency)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-medium text-rose-700">
+                    -{formatMoney(details?.actual?.sources?.expenses?.total ?? 0, currency)}
+                  </td>
+                </tr>
                 <tr className="bg-gray-50">
                   <td className="px-4 py-2 text-sm font-semibold">Операции за день (итого)</td>
                   <td className="px-4 py-2 text-sm font-semibold">
@@ -343,6 +372,29 @@ export default function AccountingExpectedClosePage() {
                     </div>
                     <div className="text-xs text-gray-700">
                       Сумма: {formatMoney(item.amount, currency)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 rounded-lg border border-gray-200 p-3">
+            <h2 className="mb-2 text-sm font-semibold text-gray-800">Расходы</h2>
+            {!details?.items?.expenses?.length ? (
+              <p className="text-sm text-gray-500">Записей нет</p>
+            ) : (
+              <div className="space-y-2">
+                {details.items.expenses.map((item) => (
+                  <div key={item.id} className="rounded border border-gray-100 bg-gray-50 p-2 text-sm">
+                    <div className="font-medium">
+                      {item.pavilionNumber ? `${item.pavilionNumber}: ` : ''}
+                      {item.note || item.type}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {new Date(item.paidAt).toLocaleString('ru-RU')}
+                    </div>
+                    <div className="text-xs text-rose-700">
+                      Сумма: -{formatMoney(item.total, currency)}
                     </div>
                   </div>
                 ))}

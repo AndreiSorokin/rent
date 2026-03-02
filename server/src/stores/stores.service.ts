@@ -1107,10 +1107,76 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return { bankTransferPaid, cashbox1Paid, cashbox2Paid };
   }
 
+  private mapExpenseToChannels(expense: {
+    amount: number;
+    paymentMethod: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null;
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+  }) {
+    const bankTransferPaid = Number(expense.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(expense.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(expense.cashbox2Paid ?? 0);
+    const explicitTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+    if (explicitTotal > 0) {
+      return {
+        bankTransferPaid,
+        cashbox1Paid,
+        cashbox2Paid,
+        total: explicitTotal,
+      };
+    }
+
+    const amount = Number(expense.amount ?? 0);
+    if (amount <= 0) {
+      return {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        total: 0,
+      };
+    }
+
+    const method = expense.paymentMethod ?? 'BANK_TRANSFER';
+    return {
+      bankTransferPaid: method === 'BANK_TRANSFER' ? amount : 0,
+      cashbox1Paid: method === 'CASHBOX1' ? amount : 0,
+      cashbox2Paid: method === 'CASHBOX2' ? amount : 0,
+      total: amount,
+    };
+  }
+
+  private sumExpenseChannels(
+    expenses: Array<{
+      amount: number;
+      paymentMethod: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null;
+      bankTransferPaid: number;
+      cashbox1Paid: number;
+      cashbox2Paid: number;
+    }>,
+  ) {
+    return expenses.reduce(
+      (acc, expense) => {
+        const channels = this.mapExpenseToChannels(expense);
+        acc.bankTransferPaid += channels.bankTransferPaid;
+        acc.cashbox1Paid += channels.cashbox1Paid;
+        acc.cashbox2Paid += channels.cashbox2Paid;
+        acc.total += channels.total;
+        return acc;
+      },
+      {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        total: 0,
+      },
+    );
+  }
+
   private async getActualAccountingByDay(storeId: number, dayStart: Date) {
     const dayEnd = endOfDay(dayStart);
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
-    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments] = await Promise.all([
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, paidExpenses] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
         where: {
           pavilion: { storeId },
@@ -1165,20 +1231,50 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               cashbox2Paid: 0,
             },
           }),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          status: 'PAID' as any,
+          createdAt: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
+          OR: [{ storeId }, { pavilion: { storeId } }],
+        },
+        select: {
+          amount: true,
+          paymentMethod: true,
+          bankTransferPaid: true,
+          cashbox1Paid: true,
+          cashbox2Paid: true,
+        },
+      }),
     ]);
+
+    const expenseTotals = this.sumExpenseChannels(
+      paidExpenses.map((expense) => ({
+        amount: Number(expense.amount ?? 0),
+        paymentMethod: (expense.paymentMethod as any) ?? null,
+        bankTransferPaid: Number(expense.bankTransferPaid ?? 0),
+        cashbox1Paid: Number(expense.cashbox1Paid ?? 0),
+        cashbox2Paid: Number(expense.cashbox2Paid ?? 0),
+      })),
+    );
 
     const bankTransferPaid =
       (pavilionPayments._sum.bankTransferPaid ?? 0) +
       (additionalChargePayments._sum.bankTransferPaid ?? 0) +
-      (storeExtraIncomePayments._sum.bankTransferPaid ?? 0);
+      (storeExtraIncomePayments._sum.bankTransferPaid ?? 0) -
+      expenseTotals.bankTransferPaid;
     const cashbox1Paid =
       (pavilionPayments._sum.cashbox1Paid ?? 0) +
       (additionalChargePayments._sum.cashbox1Paid ?? 0) +
-      (storeExtraIncomePayments._sum.cashbox1Paid ?? 0);
+      (storeExtraIncomePayments._sum.cashbox1Paid ?? 0) -
+      expenseTotals.cashbox1Paid;
     const cashbox2Paid =
       (pavilionPayments._sum.cashbox2Paid ?? 0) +
       (additionalChargePayments._sum.cashbox2Paid ?? 0) +
-      (storeExtraIncomePayments._sum.cashbox2Paid ?? 0);
+      (storeExtraIncomePayments._sum.cashbox2Paid ?? 0) -
+      expenseTotals.cashbox2Paid;
 
     return {
       bankTransferPaid,
@@ -1291,7 +1387,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         }
       : null;
 
-    const [pavilionPayments, additionalChargePayments, storeExtraIncomeItems] =
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomeItems, paidExpenses] =
       await Promise.all([
         this.prisma.paymentTransaction.findMany({
           where: {
@@ -1372,6 +1468,34 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               },
             })
           : Promise.resolve([]),
+        this.prisma.pavilionExpense.findMany({
+          where: {
+            status: 'PAID' as any,
+            createdAt: {
+              gte: dayStart,
+              lte: dayEnd,
+            },
+            OR: [{ storeId }, { pavilion: { storeId } }],
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            createdAt: true,
+            type: true,
+            amount: true,
+            note: true,
+            paymentMethod: true,
+            bankTransferPaid: true,
+            cashbox1Paid: true,
+            cashbox2Paid: true,
+            pavilion: {
+              select: {
+                id: true,
+                number: true,
+              },
+            },
+          },
+        }),
       ]);
 
     const pavilionItems = pavilionPayments.map((payment) => ({
@@ -1414,6 +1538,29 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid: Number(item.cashbox2Paid ?? 0),
     }));
 
+    const expenseItems = paidExpenses.map((expense) => {
+      const channels = this.mapExpenseToChannels({
+        amount: Number(expense.amount ?? 0),
+        paymentMethod: (expense.paymentMethod as any) ?? null,
+        bankTransferPaid: Number(expense.bankTransferPaid ?? 0),
+        cashbox1Paid: Number(expense.cashbox1Paid ?? 0),
+        cashbox2Paid: Number(expense.cashbox2Paid ?? 0),
+      });
+      return {
+        id: expense.id,
+        paidAt: expense.createdAt,
+        type: expense.type,
+        note: expense.note,
+        amount: Number(expense.amount ?? 0),
+        pavilionId: expense.pavilion?.id ?? null,
+        pavilionNumber: expense.pavilion?.number ?? null,
+        bankTransferPaid: channels.bankTransferPaid,
+        cashbox1Paid: channels.cashbox1Paid,
+        cashbox2Paid: channels.cashbox2Paid,
+        total: channels.total,
+      };
+    });
+
     const sumByChannels = (
       items: Array<{
         bankTransferPaid: number;
@@ -1444,19 +1591,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const pavilionTotals = sumByChannels(pavilionItems);
     const additionalTotals = sumByChannels(additionalItems);
     const extraIncomeTotals = sumByChannels(extraIncomeItems);
+    const expenseTotals = sumByChannels(expenseItems);
     const actual = {
       bankTransferPaid:
         pavilionTotals.bankTransferPaid +
         additionalTotals.bankTransferPaid +
-        extraIncomeTotals.bankTransferPaid,
+        extraIncomeTotals.bankTransferPaid -
+        expenseTotals.bankTransferPaid,
       cashbox1Paid:
         pavilionTotals.cashbox1Paid +
         additionalTotals.cashbox1Paid +
-        extraIncomeTotals.cashbox1Paid,
+        extraIncomeTotals.cashbox1Paid -
+        expenseTotals.cashbox1Paid,
       cashbox2Paid:
         pavilionTotals.cashbox2Paid +
         additionalTotals.cashbox2Paid +
-        extraIncomeTotals.cashbox2Paid,
+        extraIncomeTotals.cashbox2Paid -
+        expenseTotals.cashbox2Paid,
     };
     const actualTotals = {
       ...actual,
@@ -1481,6 +1632,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           pavilionPayments: pavilionTotals,
           additionalCharges: additionalTotals,
           storeExtraIncome: extraIncomeTotals,
+          expenses: expenseTotals,
         },
       },
       expectedClose,
@@ -1488,6 +1640,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         pavilionPayments: pavilionItems,
         additionalCharges: additionalItems,
         storeExtraIncome: extraIncomeItems,
+        expenses: expenseItems,
       },
     };
   }

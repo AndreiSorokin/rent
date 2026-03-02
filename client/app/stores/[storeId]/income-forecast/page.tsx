@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -127,7 +127,7 @@ export default function IncomeForecastBreakdownPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
         <div className="space-y-2">
-          <Link href={`/stores/${storeId}`} className="text-blue-600 hover:underline">
+          <Link href={`/stores/${storeId}/summary`} className="text-blue-600 hover:underline">
             Назад к объекту
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">Расшифровка прогноза доходов</h1>
@@ -235,3 +235,5 @@ export default function IncomeForecastBreakdownPage() {
     </div>
   );
 }
+
+
