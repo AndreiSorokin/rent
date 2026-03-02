@@ -500,7 +500,7 @@ export function EditPavilionModal({
                           className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0">
-                            <span className="font-medium">{charge.name}</span>
+                            <span className="font-medium">{charge.name}: </span>
                             <span className="ml-2 text-gray-600">{charge.amount.toFixed(2)}</span>
                           </div>
                           {canManageAdditionalCharges && (
@@ -519,6 +519,8 @@ export function EditPavilionModal({
                   )}
 
                   {canManageAdditionalCharges && (
+                    <div>
+                      <div>Новое начисление:</div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
                       <input
                         value={newChargeName}
@@ -543,6 +545,7 @@ export function EditPavilionModal({
                       >
                         Добавить
                       </button>
+                    </div>
                     </div>
                   )}
                 </div>

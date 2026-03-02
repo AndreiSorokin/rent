@@ -7,6 +7,7 @@ import { CreateDiscountModal } from '@/app/dashboard/components/CreateDiscountMo
 import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
 import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
 import { PayAdditionalChargeModal } from '@/app/dashboard/components/PayAdditionalChargeModal';
+import { AddAdditionalChargeModal } from '@/app/dashboard/components/AddAdditionalChargeModal';
 import { apiFetch } from '@/lib/api';
 import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { deletePavilionDiscount } from '@/lib/discounts';
@@ -36,6 +37,7 @@ export default function PavilionPage() {
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [showAddAdditionalChargeModal, setShowAddAdditionalChargeModal] = useState(false);
   const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
   const [payingCharge, setPayingCharge] = useState<{
@@ -800,11 +802,19 @@ export default function PavilionPage() {
         <div className="rounded-xl bg-white p-6 shadow">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
+            {hasPermission(permissions, 'CREATE_CHARGES') && (
+              <button
+                onClick={() => setShowAddAdditionalChargeModal(true)}
+                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                + Новое начисление
+              </button>
+            )}
           </div>
 
           {currentMonthAdditionalCharges.length === 0 ? (
             <p className="text-gray-500">
-              Начислений нет. Добавьте их через кнопку «Редактировать» в основной информации.
+              Начислений нет.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -1090,6 +1100,14 @@ export default function PavilionPage() {
             chargeName={payingCharge.name}
             expectedAmount={payingCharge.amount}
             onClose={() => setPayingCharge(null)}
+            onSaved={handleActionSuccess}
+          />
+        )}
+
+        {showAddAdditionalChargeModal && (
+          <AddAdditionalChargeModal
+            pavilionId={pavilionIdNum}
+            onClose={() => setShowAddAdditionalChargeModal(false)}
             onSaved={handleActionSuccess}
           />
         )}

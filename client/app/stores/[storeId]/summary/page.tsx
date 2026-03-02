@@ -748,7 +748,7 @@ export default function StoreSummaryPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Итого доход (прогноз)"
+                  title="Итого приход (прогноз)"
                   value={formatMoney(data.income.forecast?.total ?? 0, data.currency)}
                   tone="primary"
                 />

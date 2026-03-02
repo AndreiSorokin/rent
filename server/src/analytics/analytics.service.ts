@@ -55,6 +55,29 @@ export class AnalyticsService {
     const prevPeriodStart = startOfMonth(prevPeriod);
     const prevPeriodEnd = endOfMonth(prevPeriod);
     const trendStart = startOfMonth(subMonths(period, 5));
+    const additionalChargesForecastRows = await this.prisma.additionalCharge.findMany({
+      where: {
+        createdAt: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+        pavilion: {
+          storeId,
+        },
+      },
+      select: {
+        pavilionId: true,
+        amount: true,
+      },
+    });
+    const additionalForecastByPavilion = additionalChargesForecastRows.reduce(
+      (map, row) => {
+        const pavilionKey = Number(row.pavilionId);
+        map.set(pavilionKey, (map.get(pavilionKey) ?? 0) + Number(row.amount ?? 0));
+        return map;
+      },
+      new Map<number, number>(),
+    );
 
     const pavilions = await this.prisma.pavilion.findMany({
       where: { storeId },
@@ -224,11 +247,15 @@ export class AnalyticsService {
 
     for (const p of incomePavilions) {
       const currentLedger = p.monthlyLedgers[0];
+      const currentAdditionalForecast =
+        p.status === PavilionStatus.RENTED
+          ? Number(additionalForecastByPavilion.get(Number(p.id)) ?? 0)
+          : 0;
       if (currentLedger) {
         forecastRent += Number(currentLedger.expectedRent ?? 0);
         forecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
         forecastAdvertising += Number(currentLedger.expectedAdvertising ?? 0);
-        forecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
+        forecastAdditional += currentAdditionalForecast;
       } else {
         const baseRent = p.squareMeters * p.pricePerSqM;
         const monthlyDiscount =
@@ -241,10 +268,7 @@ export class AnalyticsService {
             : Math.max(baseRent - monthlyDiscount, 0);
         forecastUtilities += p.utilitiesAmount ?? 0;
         forecastAdvertising += p.status === PavilionStatus.RENTED ? (p.advertisingAmount ?? 0) : 0;
-        forecastAdditional += p.additionalCharges.reduce(
-          (sum, charge) => sum + charge.amount,
-          0,
-        );
+        forecastAdditional += currentAdditionalForecast;
       }
 
       for (const pay of p.payments) {
@@ -296,11 +320,15 @@ export class AnalyticsService {
 
     for (const p of incomePavilions) {
       const currentLedger = p.monthlyLedgers[0];
+      const currentAdditionalForecast =
+        p.status === PavilionStatus.RENTED
+          ? Number(additionalForecastByPavilion.get(Number(p.id)) ?? 0)
+          : 0;
       if (currentLedger) {
         incomeForecastRent += Number(currentLedger.expectedRent ?? 0);
         incomeForecastUtilities += Number(currentLedger.expectedUtilities ?? 0);
         incomeForecastAdvertising += Number(currentLedger.expectedAdvertising ?? 0);
-        incomeForecastAdditional += Number(currentLedger.expectedAdditional ?? 0);
+        incomeForecastAdditional += currentAdditionalForecast;
       } else {
         const baseRent = p.squareMeters * p.pricePerSqM;
         const monthlyDiscount =
@@ -313,10 +341,7 @@ export class AnalyticsService {
             : Math.max(baseRent - monthlyDiscount, 0);
         incomeForecastUtilities += p.utilitiesAmount ?? 0;
         incomeForecastAdvertising += p.status === PavilionStatus.RENTED ? (p.advertisingAmount ?? 0) : 0;
-        incomeForecastAdditional += p.additionalCharges.reduce(
-          (sum, charge) => sum + charge.amount,
-          0,
-        );
+        incomeForecastAdditional += currentAdditionalForecast;
       }
 
       for (const pay of p.payments) {
@@ -1087,6 +1112,14 @@ export class AnalyticsService {
       },
       summaryPage: {
         income: {
+          forecast: {
+            rent: incomeForecastRent,
+            facilities: incomeForecastUtilities,
+            advertising: incomeForecastAdvertising,
+            additional: incomeForecastAdditional,
+            storeExtra: incomeForecastStoreExtra,
+            total: incomeForecastTotal,
+          },
           rent: actualRent,
           facilities: actualUtilities,
           advertising: actualAdvertising,
@@ -1324,6 +1357,29 @@ export class AnalyticsService {
     const period = this.parsePeriod(periodInput);
     const periodStart = startOfMonth(period);
     const periodEnd = endOfMonth(period);
+    const additionalChargesForecastRows = await this.prisma.additionalCharge.findMany({
+      where: {
+        createdAt: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+        pavilion: {
+          storeId,
+        },
+      },
+      select: {
+        pavilionId: true,
+        amount: true,
+      },
+    });
+    const additionalForecastByPavilion = additionalChargesForecastRows.reduce(
+      (map, row) => {
+        const pavilionKey = Number(row.pavilionId);
+        map.set(pavilionKey, (map.get(pavilionKey) ?? 0) + Number(row.amount ?? 0));
+        return map;
+      },
+      new Map<number, number>(),
+    );
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
     const storeExtraIncome = storeExtraIncomeRepo?.findMany
       ? await storeExtraIncomeRepo.findMany({
@@ -1361,11 +1417,15 @@ export class AnalyticsService {
 
     const items = incomePavilions.map((pavilion) => {
       const currentLedger = pavilion.monthlyLedgers[0];
+      const currentAdditionalForecast =
+        pavilion.status === PavilionStatus.RENTED
+          ? Number(additionalForecastByPavilion.get(Number(pavilion.id)) ?? 0)
+          : 0;
       if (currentLedger) {
         const rent = Number(currentLedger.expectedRent ?? 0);
         const utilities = Number(currentLedger.expectedUtilities ?? 0);
         const advertising = Number(currentLedger.expectedAdvertising ?? 0);
-        const additional = Number(currentLedger.expectedAdditional ?? 0);
+        const additional = currentAdditionalForecast;
         return {
           pavilionId: pavilion.id,
           number: pavilion.number,
@@ -1392,9 +1452,7 @@ export class AnalyticsService {
       const advertising =
         pavilion.status === PavilionStatus.RENTED ? Number(pavilion.advertisingAmount ?? 0) : 0;
       const additional =
-        pavilion.status === PavilionStatus.RENTED
-          ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
-          : 0;
+        currentAdditionalForecast;
 
       return {
         pavilionId: pavilion.id,
