@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
-import { AddExpenseModal } from './components/AddExpenseModal';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -40,7 +39,6 @@ import {
   PavilionExpenseStatus,
   PavilionExpenseType,
   updatePavilionExpense,
-  updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
 
 type ManualExpenseType = Exclude<PavilionExpenseType, 'SALARIES'>;
@@ -115,12 +113,6 @@ const expensePaymentLabel = (expense: {
   return paymentMethodLabel(expense.paymentMethod as PaymentMethod);
 };
 
-type ExpenseCreateContext = {
-  type: PavilionExpenseType;
-  title: string;
-  defaultName: string;
-};
-
 export default function StorePage() {
   const params = useParams();
   const router = useRouter();
@@ -193,10 +185,26 @@ export default function StorePage() {
     cashbox2Paid: number;
   } | null>(null);
   const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
+  const [createAdminExpenseModal, setCreateAdminExpenseModal] = useState<{
+    type: CardExpenseType;
+    label: string;
+    note: string;
+    amount: string;
+  } | null>(null);
+  const [editAdminExpenseModal, setEditAdminExpenseModal] = useState<{
+    id: number;
+    type: CardExpenseType;
+    label: string;
+    note: string;
+    amount: string;
+    status: 'UNPAID' | 'PAID';
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+  } | null>(null);
+  const [adminExpenseSaving, setAdminExpenseSaving] = useState(false);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
-  const [expenseCreateContext, setExpenseCreateContext] =
-    useState<ExpenseCreateContext | null>(null);
   const [pavilionSearch, setPavilionSearch] = useState(searchParams.get('q') ?? '');
   const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState(
     searchParams.get('category') ?? '',
@@ -909,56 +917,6 @@ export default function StorePage() {
     }
   };
 
-  const openExpenseCreateModal = (context: ExpenseCreateContext) => {
-    setExpenseCreateContext(context);
-  };
-
-  const handleCreateExpenseFromModal = async (payload: {
-    name: string;
-    amount: number;
-    bankTransfer: number;
-    cashbox1: number;
-    cashbox2: number;
-  }) => {
-    if (!expenseCreateContext) return;
-
-    const bankTransferPaid = Number(payload.bankTransfer ?? 0);
-    const cashbox1Paid = Number(payload.cashbox1 ?? 0);
-    const cashbox2Paid = Number(payload.cashbox2 ?? 0);
-    const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
-    const amount = Number(payload.amount ?? 0);
-
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Некорректная сумма');
-      return;
-    }
-    if (channelsTotal > 0 && Math.abs(channelsTotal - amount) > 0.01) {
-      alert('Сумма должна совпадать с суммой каналов оплаты');
-      return;
-    }
-
-    const baseData = {
-      type: expenseCreateContext.type,
-      note: payload.name,
-    };
-
-    try {
-      await createPavilionExpense(storeId, {
-        ...baseData,
-        amount,
-        status: channelsTotal > 0 ? 'PAID' : 'UNPAID',
-        bankTransferPaid,
-        cashbox1Paid,
-        cashbox2Paid,
-      });
-      setExpenseCreateContext(null);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось добавить расход');
-    }
-  };
-
   const handleDeleteManualExpense = async (expenseId: number) => {
     if (!confirm('Удалить этот расход?')) return;
 
@@ -968,6 +926,107 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить расход');
+    }
+  };
+
+  const handleCreateAdminExpense = async () => {
+    if (!createAdminExpenseModal) return;
+    const note = createAdminExpenseModal.note.trim();
+    const amount = Number(createAdminExpenseModal.amount);
+
+    if (!note) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
+    try {
+      setAdminExpenseSaving(true);
+      await createPavilionExpense(storeId, {
+        type: createAdminExpenseModal.type,
+        note,
+        amount,
+        status: 'UNPAID',
+      });
+      setCreateAdminExpenseModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить расход');
+    } finally {
+      setAdminExpenseSaving(false);
+    }
+  };
+
+  const handleSaveEditedAdminExpense = async () => {
+    if (!editAdminExpenseModal) return;
+    const note = editAdminExpenseModal.note.trim();
+    const amount = Number(editAdminExpenseModal.amount);
+
+    if (!note) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
+    const payload: {
+      note: string;
+      amount: number;
+      status: PavilionExpenseStatus;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    } = {
+      note,
+      amount,
+      status: editAdminExpenseModal.status,
+    };
+
+    if (editAdminExpenseModal.status === 'PAID') {
+      const bank = Number(editAdminExpenseModal.bankTransferPaid ?? 0);
+      const cash1 = Number(editAdminExpenseModal.cashbox1Paid ?? 0);
+      const cash2 = Number(editAdminExpenseModal.cashbox2Paid ?? 0);
+      const total = bank + cash1 + cash2;
+
+      if (
+        Number.isNaN(bank) ||
+        Number.isNaN(cash1) ||
+        Number.isNaN(cash2) ||
+        bank < 0 ||
+        cash1 < 0 ||
+        cash2 < 0
+      ) {
+        alert('Каналы оплаты должны быть неотрицательными');
+        return;
+      }
+      if (Math.abs(total - amount) > 0.01) {
+        alert('Сумма каналов оплаты должна быть равна сумме расхода');
+        return;
+      }
+
+      payload.bankTransferPaid = bank;
+      payload.cashbox1Paid = cash1;
+      payload.cashbox2Paid = cash2;
+    }
+
+    try {
+      setAdminExpenseSaving(true);
+      await runKeepingScroll(async () => {
+        await updatePavilionExpense(storeId, editAdminExpenseModal.id, payload);
+        await fetchData(false);
+      });
+      setEditAdminExpenseModal(null);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить расход');
+    } finally {
+      setAdminExpenseSaving(false);
     }
   };
 
@@ -1069,27 +1128,6 @@ export default function StorePage() {
       alert('Не удалось обновить прочий расход');
     } finally {
       setOtherExpenseSaving(false);
-    }
-  };
-
-  const handleManualExpenseStatusChange = async (
-    expenseId: number,
-    status: PavilionExpenseStatus,
-    paymentMethod?: PaymentMethod,
-  ) => {
-    try {
-      await runKeepingScroll(async () => {
-        await updatePavilionExpenseStatus(
-          storeId,
-          expenseId,
-          status,
-          paymentMethod,
-        );
-        await fetchData(false);
-      });
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось изменить статус расхода');
     }
   };
 
@@ -2023,10 +2061,11 @@ export default function StorePage() {
                       <div className="mb-2">
                         <button
                           onClick={() =>
-                            openExpenseCreateModal({
+                            setCreateAdminExpenseModal({
                               type: category.type,
-                              title: `${category.label}: новый расход`,
-                              defaultName: category.label,
+                              label: category.label,
+                              note: category.label,
+                              amount: '',
                             })
                           }
                           className="w-full rounded bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700"
@@ -2043,8 +2082,8 @@ export default function StorePage() {
                             key={item.id}
                             className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
                           >
-                            <span>
-                              {formatMoney(item.amount, store.currency)}{' '}
+                            <span className="max-w-[60%] truncate">
+                              {item.note || category.label}: {formatMoney(item.amount, store.currency)}{' '}
                               <span className="text-gray-500">
                                 ({new Date(item.createdAt).toLocaleDateString()})
                               </span>
@@ -2052,20 +2091,35 @@ export default function StorePage() {
                             <div className="ml-2 flex items-center gap-2">
                               {hasPermission(permissions, 'EDIT_CHARGES') && (
                                 <div className="flex items-center gap-1">
-                                  <select
-                                    value={item.status}
-                                    onChange={(e) =>
-                                      handleManualExpenseStatusChange(
-                                        item.id,
-                                        e.target.value as PavilionExpenseStatus,
-                                        (item.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
-                                      )
-                                    }
-                                    className="rounded border px-1 py-0.5 text-[10px]"
+                                  <button
+                                    onClick={() => {
+                                      const amount = Number(item.amount ?? 0);
+                                      const bank = Number(item.bankTransferPaid ?? 0);
+                                      const cash1 = Number(item.cashbox1Paid ?? 0);
+                                      const cash2 = Number(item.cashbox2Paid ?? 0);
+                                      const hasChannels = bank + cash1 + cash2 > 0;
+
+                                      setEditAdminExpenseModal({
+                                        id: Number(item.id),
+                                        type: category.type,
+                                        label: category.label,
+                                        note: String(item.note ?? category.label),
+                                        amount: String(amount),
+                                        status: (item.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                        bankTransferPaid:
+                                          (item.status as 'UNPAID' | 'PAID') === 'PAID'
+                                            ? hasChannels
+                                              ? bank
+                                              : amount
+                                            : bank,
+                                        cashbox1Paid: cash1,
+                                        cashbox2Paid: cash2,
+                                      });
+                                    }}
+                                    className="rounded border px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
                                   >
-                                    <option value="UNPAID">Не оплачено</option>
-                                    <option value="PAID">Оплачено</option>
-                                  </select>
+                                    Оплатить/Изменить
+                                  </button>
                                   {(item.status ?? 'UNPAID') === 'PAID' && (
                                     <span className="text-[10px] text-gray-600">
                                       {expensePaymentLabel(item, store.currency)}
@@ -2888,6 +2942,223 @@ export default function StorePage() {
         </div>
       )}
 
+      {createAdminExpenseModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">
+              {createAdminExpenseModal.label}: новый расход
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Расход создается со статусом «Не оплачено».
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={createAdminExpenseModal.note}
+                  onChange={(e) =>
+                    setCreateAdminExpenseModal((prev) =>
+                      prev ? { ...prev, note: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={createAdminExpenseModal.amount}
+                  onChange={(e) =>
+                    setCreateAdminExpenseModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateAdminExpenseModal(null)}
+                disabled={adminExpenseSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateAdminExpense}
+                disabled={adminExpenseSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editAdminExpenseModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">
+              {editAdminExpenseModal.label}: изменить расход
+            </h3>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={editAdminExpenseModal.note}
+                  onChange={(e) =>
+                    setEditAdminExpenseModal((prev) =>
+                      prev ? { ...prev, note: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editAdminExpenseModal.amount}
+                  onChange={(e) =>
+                    setEditAdminExpenseModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Статус оплаты
+                </label>
+                <select
+                  value={editAdminExpenseModal.status}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                    setEditAdminExpenseModal((prev) => {
+                      if (!prev) return prev;
+                      if (nextStatus === 'UNPAID') return { ...prev, status: 'UNPAID' };
+                      const amount = Number(prev.amount || 0);
+                      const hasChannels =
+                        Number(prev.bankTransferPaid ?? 0) +
+                          Number(prev.cashbox1Paid ?? 0) +
+                          Number(prev.cashbox2Paid ?? 0) >
+                        0;
+                      return {
+                        ...prev,
+                        status: 'PAID',
+                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
+                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
+                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
+                      };
+                    });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                >
+                  <option value="UNPAID">Не оплачено</option>
+                  <option value="PAID">Оплачено</option>
+                </select>
+              </div>
+
+              {editAdminExpenseModal.status === 'PAID' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Безналичные
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editAdminExpenseModal.bankTransferPaid}
+                      onChange={(e) =>
+                        setEditAdminExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 1
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editAdminExpenseModal.cashbox1Paid}
+                      onChange={(e) =>
+                        setEditAdminExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, cashbox1Paid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 2
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editAdminExpenseModal.cashbox2Paid}
+                      onChange={(e) =>
+                        setEditAdminExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, cashbox2Paid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditAdminExpenseModal(null)}
+                disabled={adminExpenseSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditedAdminExpense}
+                disabled={adminExpenseSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCreatePavilionModal && (
         <CreatePavilionModal
           storeId={storeId}
@@ -3051,14 +3322,6 @@ export default function StorePage() {
           </div>
         </div>
       )}
-      <AddExpenseModal
-        isOpen={Boolean(expenseCreateContext)}
-        title={expenseCreateContext?.title ?? 'Новый расход'}
-        currency={store.currency}
-        defaultName={expenseCreateContext?.defaultName ?? ''}
-        onClose={() => setExpenseCreateContext(null)}
-        onSubmit={handleCreateExpenseFromModal}
-      />
       <StoreExtraIncomeModal
         storeId={storeId}
         currency={store.currency}
