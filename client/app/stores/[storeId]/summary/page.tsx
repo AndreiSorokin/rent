@@ -688,12 +688,6 @@ export default function StoreSummaryPage() {
                 </button>
               </div>
             </div>
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Общая сумма денег</p>
-              <p className="mt-1 text-2xl font-semibold text-blue-900">
-                {formatMoney(data.totalMoney, data.currency)}
-              </p>
-            </div>
           </div>
         </section>
 
@@ -820,10 +814,6 @@ export default function StoreSummaryPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Расходы уровня объекта"
-                  value={formatMoney(data.storeLevelTotals.forecast, data.currency)}
-                />
-                <MetricCard
                   title="Итого расход (прогноз)"
                   value={formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}
                   tone="danger"
@@ -833,10 +823,6 @@ export default function StoreSummaryPage() {
             <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Факт</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
-                <MetricCard
-                  title="Расходы уровня объекта"
-                  value={formatMoney(data.storeLevelTotals.actual, data.currency)}
-                />
                 <MetricCard
                   title="Итого расход (факт)"
                   value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
