@@ -96,6 +96,35 @@ const paymentChannelsLabel = (
   return labels.join(' + ');
 };
 
+const paymentChannelsLines = (
+  bankTransferPaid?: number | null,
+  cashbox1Paid?: number | null,
+  cashbox2Paid?: number | null,
+  currency?: string,
+) => {
+  const lines: string[] = [];
+  const bank = Number(bankTransferPaid ?? 0);
+  const cash1 = Number(cashbox1Paid ?? 0);
+  const cash2 = Number(cashbox2Paid ?? 0);
+
+  if (bank > 0) {
+    lines.push(
+      `Безналичные: ${currency ? formatMoney(bank, currency) : bank.toFixed(2)}`,
+    );
+  }
+  if (cash1 > 0) {
+    lines.push(
+      `Наличные касса 1: ${currency ? formatMoney(cash1, currency) : cash1.toFixed(2)}`,
+    );
+  }
+  if (cash2 > 0) {
+    lines.push(
+      `Наличные касса 2: ${currency ? formatMoney(cash2, currency) : cash2.toFixed(2)}`,
+    );
+  }
+  return lines;
+};
+
 const expensePaymentLabel = (expense: {
   paymentMethod?: PaymentMethod | null;
   bankTransferPaid?: number | null;
@@ -1848,7 +1877,7 @@ export default function StorePage() {
                 {householdExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="flex min-h-[104px] w-full md:max-w-[400px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
@@ -1859,65 +1888,68 @@ export default function StorePage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const amount = Number(expense.amount ?? 0);
-                                const bank = Number(expense.bankTransferPaid ?? 0);
-                                const cash1 = Number(expense.cashbox1Paid ?? 0);
-                                const cash2 = Number(expense.cashbox2Paid ?? 0);
-                                const hasChannels = bank + cash1 + cash2 > 0;
+                      <div className="min-w-0 space-y-1">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            expense.status === 'PAID'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                        </span>
+                        <div className="text-[11px] text-slate-600">
+                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
+                            paymentChannelsLines(
+                              expense.bankTransferPaid,
+                              expense.cashbox1Paid,
+                              expense.cashbox2Paid,
+                              store.currency,
+                            ).map((line) => <div key={line}>{line}</div>)
+                          ) : (
+                            <div>Каналы оплаты не заданы</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {hasPermission(permissions, 'EDIT_CHARGES') && (
+                          <button
+                            onClick={() => {
+                              const amount = Number(expense.amount ?? 0);
+                              const bank = Number(expense.bankTransferPaid ?? 0);
+                              const cash1 = Number(expense.cashbox1Paid ?? 0);
+                              const cash2 = Number(expense.cashbox2Paid ?? 0);
+                              const hasChannels = bank + cash1 + cash2 > 0;
 
-                                setEditHouseholdModal({
-                                  id: Number(expense.id),
-                                  name: String(expense.name ?? ''),
-                                  amount: String(amount),
-                                  status:
-                                    (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                  bankTransferPaid:
-                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                      ? hasChannels
-                                        ? bank
-                                        : amount
-                                      : bank,
-                                  cashbox1Paid: cash1,
-                                  cashbox2Paid: cash2,
-                                });
-                              }}
-                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-100"
-                            >
-                              Добавить/изменить оплату
-                            </button>
-                            {(expense.status ?? 'UNPAID') === 'PAID' && (
-                              <span className="truncate text-[11px] text-slate-600">
-                                {expensePaymentLabel(expense, store.currency)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              expense.status === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
+                              setEditHouseholdModal({
+                                id: Number(expense.id),
+                                name: String(expense.name ?? ''),
+                                amount: String(amount),
+                                status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                bankTransferPaid:
+                                  (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                    ? hasChannels
+                                      ? bank
+                                      : amount
+                                    : bank,
+                                cashbox1Paid: cash1,
+                                cashbox2Paid: cash2,
+                              });
+                            }}
+                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
-                            {expense.status === 'PAID'
-                              ? `Оплачено (${expensePaymentLabel(expense, store.currency)})`
-                              : 'Не оплачено'}
-                          </span>
+                            Оплатить/Изменить
+                          </button>
+                        )}
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <button
+                            onClick={() => handleDeleteHouseholdExpense(expense.id)}
+                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                          >
+                            Удалить
+                          </button>
                         )}
                       </div>
-                      {hasPermission(permissions, 'DELETE_CHARGES') && (
-                        <button
-                          onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                          className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                        >
-                          Удалить
-                        </button>
-                      )}
                     </div>
                   </article>
                 ))}
@@ -1952,7 +1984,7 @@ export default function StorePage() {
                 {otherExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="flex min-h-[104px] w-full md:max-w-[400px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
@@ -1963,65 +1995,68 @@ export default function StorePage() {
                       </p>
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        {hasPermission(permissions, 'EDIT_CHARGES') ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              onClick={() => {
-                                const amount = Number(expense.amount ?? 0);
-                                const bank = Number(expense.bankTransferPaid ?? 0);
-                                const cash1 = Number(expense.cashbox1Paid ?? 0);
-                                const cash2 = Number(expense.cashbox2Paid ?? 0);
-                                const hasChannels = bank + cash1 + cash2 > 0;
+                      <div className="min-w-0 space-y-1">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            expense.status === 'PAID'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                        </span>
+                        <div className="text-[11px] text-slate-600">
+                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
+                            paymentChannelsLines(
+                              expense.bankTransferPaid,
+                              expense.cashbox1Paid,
+                              expense.cashbox2Paid,
+                              store.currency,
+                            ).map((line) => <div key={line}>{line}</div>)
+                          ) : (
+                            <div>Каналы оплаты не заданы</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {hasPermission(permissions, 'EDIT_CHARGES') && (
+                          <button
+                            onClick={() => {
+                              const amount = Number(expense.amount ?? 0);
+                              const bank = Number(expense.bankTransferPaid ?? 0);
+                              const cash1 = Number(expense.cashbox1Paid ?? 0);
+                              const cash2 = Number(expense.cashbox2Paid ?? 0);
+                              const hasChannels = bank + cash1 + cash2 > 0;
 
-                                setEditOtherExpenseModal({
-                                  id: Number(expense.id),
-                                  note: String(expense.note ?? ''),
-                                  amount: String(amount),
-                                  status:
-                                    (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                  bankTransferPaid:
-                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                      ? hasChannels
-                                        ? bank
-                                        : amount
-                                      : bank,
-                                  cashbox1Paid: cash1,
-                                  cashbox2Paid: cash2,
-                                });
-                              }}
-                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-100"
-                            >
-                              Добавить/изменить оплату
-                            </button>
-                            {(expense.status ?? 'UNPAID') === 'PAID' && (
-                              <span className="truncate text-[11px] text-slate-600">
-                                {expensePaymentLabel(expense, store.currency)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                              expense.status === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
+                              setEditOtherExpenseModal({
+                                id: Number(expense.id),
+                                note: String(expense.note ?? ''),
+                                amount: String(amount),
+                                status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                bankTransferPaid:
+                                  (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                    ? hasChannels
+                                      ? bank
+                                      : amount
+                                    : bank,
+                                cashbox1Paid: cash1,
+                                cashbox2Paid: cash2,
+                              });
+                            }}
+                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
-                            {expense.status === 'PAID'
-                              ? `Оплачено (${expensePaymentLabel(expense, store.currency)})`
-                              : 'Не оплачено'}
-                          </span>
+                            Оплатить/Изменить
+                          </button>
+                        )}
+                        {hasPermission(permissions, 'DELETE_CHARGES') && (
+                          <button
+                            onClick={() => handleDeleteManualExpense(expense.id)}
+                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                          >
+                            Удалить
+                          </button>
                         )}
                       </div>
-                      {hasPermission(permissions, 'DELETE_CHARGES') && (
-                        <button
-                          onClick={() => handleDeleteManualExpense(expense.id)}
-                          className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                        >
-                          Удалить
-                        </button>
-                      )}
                     </div>
                   </article>
                 ))}
@@ -2064,7 +2099,7 @@ export default function StorePage() {
                             setCreateAdminExpenseModal({
                               type: category.type,
                               label: category.label,
-                              note: category.label,
+                              note: '',
                               amount: '',
                             })
                           }
@@ -2076,21 +2111,48 @@ export default function StorePage() {
                     )}
 
                     {categoryItems.length > 0 ? (
-                      <div className="max-h-28 space-y-1 overflow-auto">
+                      <div className="max-h-80 space-y-2 overflow-auto pr-1">
                         {categoryItems.map((item: any) => (
-                          <div
+                          <article
                             key={item.id}
-                            className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                            className="flex min-h-[108px] w-full flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3"
                           >
-                            <span className="max-w-[60%] truncate">
-                              {item.note || category.label}: {formatMoney(item.amount, store.currency)}{' '}
-                              <span className="text-gray-500">
-                                ({new Date(item.createdAt).toLocaleDateString()})
-                              </span>
-                            </span>
-                            <div className="ml-2 flex items-center gap-2">
-                              {hasPermission(permissions, 'EDIT_CHARGES') && (
-                                <div className="flex items-center gap-1">
+                            <div className="mb-2 flex items-start justify-between gap-3">
+                              <p className="pr-2 text-xs font-semibold leading-5 text-slate-900">
+                                {item.note || category.label}
+                              </p>
+                              <p className="shrink-0 text-xs font-bold text-slate-900">
+                                {formatMoney(item.amount, store.currency)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0 space-y-1">
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                    item.status === 'PAID'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}
+                                >
+                                  {item.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                                </span>
+                                <div className="text-[11px] text-slate-600">
+                                  {(item.status ?? 'UNPAID') === 'PAID' ? (
+                                    paymentChannelsLines(
+                                      item.bankTransferPaid,
+                                      item.cashbox1Paid,
+                                      item.cashbox2Paid,
+                                      store.currency,
+                                    ).map((line) => <div key={line}>{line}</div>)
+                                  ) : (
+                                    <div>Каналы оплаты не заданы</div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-2">
+                                {hasPermission(permissions, 'EDIT_CHARGES') && (
                                   <button
                                     onClick={() => {
                                       const amount = Number(item.amount ?? 0);
@@ -2116,27 +2178,22 @@ export default function StorePage() {
                                         cashbox2Paid: cash2,
                                       });
                                     }}
-                                    className="rounded border px-1.5 py-0.5 text-[10px] hover:bg-gray-100"
+                                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                                   >
                                     Оплатить/Изменить
                                   </button>
-                                  {(item.status ?? 'UNPAID') === 'PAID' && (
-                                    <span className="text-[10px] text-gray-600">
-                                      {expensePaymentLabel(item, store.currency)}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              {hasPermission(permissions, 'DELETE_CHARGES') && (
-                                <button
-                                  onClick={() => handleDeleteManualExpense(item.id)}
-                                  className="text-red-600 hover:underline"
-                                >
-                                  x
-                                </button>
-                              )}
+                                )}
+                                {hasPermission(permissions, 'DELETE_CHARGES') && (
+                                  <button
+                                    onClick={() => handleDeleteManualExpense(item.id)}
+                                    className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                                  >
+                                    Удалить
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </article>
                         ))}
                       </div>
                     ) : (
