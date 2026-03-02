@@ -39,6 +39,7 @@ import {
   PaymentMethod,
   PavilionExpenseStatus,
   PavilionExpenseType,
+  updatePavilionExpense,
   updatePavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
 
@@ -178,6 +179,20 @@ export default function StorePage() {
     cashbox2Paid: number;
   } | null>(null);
   const [householdSaving, setHouseholdSaving] = useState(false);
+  const [createOtherExpenseModal, setCreateOtherExpenseModal] = useState<{
+    note: string;
+    amount: string;
+  } | null>(null);
+  const [editOtherExpenseModal, setEditOtherExpenseModal] = useState<{
+    id: number;
+    note: string;
+    amount: string;
+    status: 'UNPAID' | 'PAID';
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+  } | null>(null);
+  const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [expenseCreateContext, setExpenseCreateContext] =
@@ -953,6 +968,107 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить расход');
+    }
+  };
+
+  const handleCreateOtherExpense = async () => {
+    if (!createOtherExpenseModal) return;
+    const note = createOtherExpenseModal.note.trim();
+    const amount = Number(createOtherExpenseModal.amount);
+
+    if (!note) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
+    try {
+      setOtherExpenseSaving(true);
+      await createPavilionExpense(storeId, {
+        type: 'OTHER',
+        note,
+        amount,
+        status: 'UNPAID',
+      });
+      setCreateOtherExpenseModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось добавить прочий расход');
+    } finally {
+      setOtherExpenseSaving(false);
+    }
+  };
+
+  const handleSaveEditedOtherExpense = async () => {
+    if (!editOtherExpenseModal) return;
+    const note = editOtherExpenseModal.note.trim();
+    const amount = Number(editOtherExpenseModal.amount);
+
+    if (!note) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
+    const payload: {
+      note: string;
+      amount: number;
+      status: PavilionExpenseStatus;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    } = {
+      note,
+      amount,
+      status: editOtherExpenseModal.status,
+    };
+
+    if (editOtherExpenseModal.status === 'PAID') {
+      const bank = Number(editOtherExpenseModal.bankTransferPaid ?? 0);
+      const cash1 = Number(editOtherExpenseModal.cashbox1Paid ?? 0);
+      const cash2 = Number(editOtherExpenseModal.cashbox2Paid ?? 0);
+      const total = bank + cash1 + cash2;
+
+      if (
+        Number.isNaN(bank) ||
+        Number.isNaN(cash1) ||
+        Number.isNaN(cash2) ||
+        bank < 0 ||
+        cash1 < 0 ||
+        cash2 < 0
+      ) {
+        alert('Каналы оплаты должны быть неотрицательными');
+        return;
+      }
+      if (Math.abs(total - amount) > 0.01) {
+        alert('Сумма каналов оплаты должна быть равна сумме расхода');
+        return;
+      }
+
+      payload.bankTransferPaid = bank;
+      payload.cashbox1Paid = cash1;
+      payload.cashbox2Paid = cash2;
+    }
+
+    try {
+      setOtherExpenseSaving(true);
+      await runKeepingScroll(async () => {
+        await updatePavilionExpense(storeId, editOtherExpenseModal.id, payload);
+        await fetchData(false);
+      });
+      setEditOtherExpenseModal(null);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить прочий расход');
+    } finally {
+      setOtherExpenseSaving(false);
     }
   };
 
@@ -1783,13 +1899,7 @@ export default function StorePage() {
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5">
                 <button
-                  onClick={() =>
-                    openExpenseCreateModal({
-                      type: 'OTHER',
-                      title: 'Новый прочий расход',
-                      defaultName: '',
-                    })
-                  }
+                  onClick={() => setCreateOtherExpenseModal({ note: '', amount: '' })}
                   className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
@@ -1818,20 +1928,34 @@ export default function StorePage() {
                       <div className="min-w-0">
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
                           <div className="flex flex-wrap items-center gap-2">
-                            <select
-                              value={expense.status ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleManualExpenseStatusChange(
-                                  expense.id,
-                                  e.target.value as PavilionExpenseStatus,
-                                  (expense.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
-                                )
-                              }
-                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                            <button
+                              onClick={() => {
+                                const amount = Number(expense.amount ?? 0);
+                                const bank = Number(expense.bankTransferPaid ?? 0);
+                                const cash1 = Number(expense.cashbox1Paid ?? 0);
+                                const cash2 = Number(expense.cashbox2Paid ?? 0);
+                                const hasChannels = bank + cash1 + cash2 > 0;
+
+                                setEditOtherExpenseModal({
+                                  id: Number(expense.id),
+                                  note: String(expense.note ?? ''),
+                                  amount: String(amount),
+                                  status:
+                                    (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                  bankTransferPaid:
+                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                      ? hasChannels
+                                        ? bank
+                                        : amount
+                                      : bank,
+                                  cashbox1Paid: cash1,
+                                  cashbox2Paid: cash2,
+                                });
+                              }}
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-100"
                             >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
+                              Добавить/изменить оплату
+                            </button>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
                               <span className="truncate text-[11px] text-slate-600">
                                 {expensePaymentLabel(expense, store.currency)}
@@ -2543,6 +2667,221 @@ export default function StorePage() {
                 className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {householdSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {createOtherExpenseModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Расход создается со статусом «Не оплачено».
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={createOtherExpenseModal.note}
+                  onChange={(e) =>
+                    setCreateOtherExpenseModal((prev) =>
+                      prev ? { ...prev, note: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={createOtherExpenseModal.amount}
+                  onChange={(e) =>
+                    setCreateOtherExpenseModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateOtherExpenseModal(null)}
+                disabled={otherExpenseSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateOtherExpense}
+                disabled={otherExpenseSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editOtherExpenseModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Изменить прочий расход</h3>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={editOtherExpenseModal.note}
+                  onChange={(e) =>
+                    setEditOtherExpenseModal((prev) =>
+                      prev ? { ...prev, note: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editOtherExpenseModal.amount}
+                  onChange={(e) =>
+                    setEditOtherExpenseModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Статус оплаты
+                </label>
+                <select
+                  value={editOtherExpenseModal.status}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                    setEditOtherExpenseModal((prev) => {
+                      if (!prev) return prev;
+                      if (nextStatus === 'UNPAID') {
+                        return { ...prev, status: 'UNPAID' };
+                      }
+                      const amount = Number(prev.amount || 0);
+                      const hasChannels =
+                        Number(prev.bankTransferPaid ?? 0) +
+                          Number(prev.cashbox1Paid ?? 0) +
+                          Number(prev.cashbox2Paid ?? 0) >
+                        0;
+                      return {
+                        ...prev,
+                        status: 'PAID',
+                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
+                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
+                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
+                      };
+                    });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                >
+                  <option value="UNPAID">Не оплачено</option>
+                  <option value="PAID">Оплачено</option>
+                </select>
+              </div>
+
+              {editOtherExpenseModal.status === 'PAID' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Безналичные
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editOtherExpenseModal.bankTransferPaid}
+                      onChange={(e) =>
+                        setEditOtherExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 1
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editOtherExpenseModal.cashbox1Paid}
+                      onChange={(e) =>
+                        setEditOtherExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, cashbox1Paid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 2
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editOtherExpenseModal.cashbox2Paid}
+                      onChange={(e) =>
+                        setEditOtherExpenseModal((prev) =>
+                          prev
+                            ? { ...prev, cashbox2Paid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditOtherExpenseModal(null)}
+                disabled={otherExpenseSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditedOtherExpense}
+                disabled={otherExpenseSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
           </div>

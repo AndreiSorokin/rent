@@ -65,6 +65,26 @@ export function updatePavilionExpenseStatus(
   });
 }
 
+export function updatePavilionExpense(
+  storeId: number,
+  expenseId: number,
+  data: {
+    type?: PavilionExpenseType;
+    amount?: number;
+    note?: string | null;
+    status?: PavilionExpenseStatus;
+    paymentMethod?: PaymentMethod;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  },
+) {
+  return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses/${expenseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export function deletePavilionExpense(storeId: number, expenseId: number) {
   return apiFetch(`/stores/${storeId}/expenses/${expenseId}`, {
     method: 'DELETE',
