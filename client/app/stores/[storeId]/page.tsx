@@ -27,9 +27,10 @@ import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionMo
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
 import { AddExpenseModal } from './components/AddExpenseModal';
 import {
+  createHouseholdExpense,
   deleteHouseholdExpense,
   getHouseholdExpenses,
-  updateHouseholdExpenseStatus,
+  updateHouseholdExpense,
 } from '@/lib/householdExpenses';
 import {
   createPavilionExpense,
@@ -163,6 +164,20 @@ export default function StorePage() {
     salaryCashbox2Paid: number;
     salaryPaymentMethod?: PaymentMethod | null;
   } | null>(null);
+  const [createHouseholdModal, setCreateHouseholdModal] = useState<{
+    name: string;
+    amount: string;
+  } | null>(null);
+  const [editHouseholdModal, setEditHouseholdModal] = useState<{
+    id: number;
+    name: string;
+    amount: string;
+    status: 'UNPAID' | 'PAID';
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+  } | null>(null);
+  const [householdSaving, setHouseholdSaving] = useState(false);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [expenseCreateContext, setExpenseCreateContext] =
@@ -784,24 +799,98 @@ export default function StorePage() {
     }
   };
 
-  const handleUpdateHouseholdExpenseStatus = async (
-    expenseId: number,
-    status: 'UNPAID' | 'PAID',
-    paymentMethod?: PaymentMethod,
-  ) => {
+  const handleCreateHouseholdExpense = async () => {
+    if (!createHouseholdModal) return;
+    const name = createHouseholdModal.name.trim();
+    const amount = Number(createHouseholdModal.amount);
+    if (!name) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
     try {
-      await runKeepingScroll(async () => {
-        await updateHouseholdExpenseStatus(
-          storeId,
-          expenseId,
-          status,
-          paymentMethod,
-        );
-        await fetchData(false);
-      });
+      setHouseholdSaving(true);
+      await createHouseholdExpense(storeId, { name, amount });
+      setCreateHouseholdModal(null);
+      await fetchData(false);
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить статус хоз. расхода');
+      alert('Не удалось добавить хоз. расход');
+    } finally {
+      setHouseholdSaving(false);
+    }
+  };
+
+  const handleSaveEditedHouseholdExpense = async () => {
+    if (!editHouseholdModal) return;
+
+    const name = editHouseholdModal.name.trim();
+    const amount = Number(editHouseholdModal.amount);
+    if (!name) {
+      alert('Введите название');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 0) {
+      alert('Сумма должна быть неотрицательной');
+      return;
+    }
+
+    const payload: {
+      name: string;
+      amount: number;
+      status: 'UNPAID' | 'PAID';
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+    } = {
+      name,
+      amount,
+      status: editHouseholdModal.status,
+    };
+
+    if (editHouseholdModal.status === 'PAID') {
+      const bank = Number(editHouseholdModal.bankTransferPaid ?? 0);
+      const cash1 = Number(editHouseholdModal.cashbox1Paid ?? 0);
+      const cash2 = Number(editHouseholdModal.cashbox2Paid ?? 0);
+      const total = bank + cash1 + cash2;
+
+      if (
+        Number.isNaN(bank) ||
+        Number.isNaN(cash1) ||
+        Number.isNaN(cash2) ||
+        bank < 0 ||
+        cash1 < 0 ||
+        cash2 < 0
+      ) {
+        alert('Каналы оплаты должны быть неотрицательными');
+        return;
+      }
+      if (Math.abs(total - amount) > 0.01) {
+        alert('Сумма каналов оплаты должна быть равна сумме расхода');
+        return;
+      }
+
+      payload.bankTransferPaid = bank;
+      payload.cashbox1Paid = cash1;
+      payload.cashbox2Paid = cash2;
+    }
+
+    try {
+      setHouseholdSaving(true);
+      await runKeepingScroll(async () => {
+        await updateHouseholdExpense(storeId, editHouseholdModal.id, payload);
+        await fetchData(false);
+      });
+      setEditHouseholdModal(null);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обновить хоз. расход');
+    } finally {
+      setHouseholdSaving(false);
     }
   };
 
@@ -1590,13 +1679,7 @@ export default function StorePage() {
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5 mt-4">
                 <button
-                  onClick={() =>
-                    openExpenseCreateModal({
-                      type: 'HOUSEHOLD',
-                      title: 'Новый хозяйственный расход',
-                      defaultName: '',
-                    })
-                  }
+                  onClick={() => setCreateHouseholdModal({ name: '', amount: '' })}
                   className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
@@ -1625,20 +1708,34 @@ export default function StorePage() {
                       <div className="min-w-0">
                         {hasPermission(permissions, 'EDIT_CHARGES') ? (
                           <div className="flex flex-wrap items-center gap-2">
-                            <select
-                              value={expense.status ?? 'UNPAID'}
-                              onChange={(e) =>
-                                handleUpdateHouseholdExpenseStatus(
-                                  expense.id,
-                                  e.target.value as 'UNPAID' | 'PAID',
-                                  (expense.paymentMethod as PaymentMethod) ?? 'BANK_TRANSFER',
-                                )
-                              }
-                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"
+                            <button
+                              onClick={() => {
+                                const amount = Number(expense.amount ?? 0);
+                                const bank = Number(expense.bankTransferPaid ?? 0);
+                                const cash1 = Number(expense.cashbox1Paid ?? 0);
+                                const cash2 = Number(expense.cashbox2Paid ?? 0);
+                                const hasChannels = bank + cash1 + cash2 > 0;
+
+                                setEditHouseholdModal({
+                                  id: Number(expense.id),
+                                  name: String(expense.name ?? ''),
+                                  amount: String(amount),
+                                  status:
+                                    (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                  bankTransferPaid:
+                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                      ? hasChannels
+                                        ? bank
+                                        : amount
+                                      : bank,
+                                  cashbox1Paid: cash1,
+                                  cashbox2Paid: cash2,
+                                });
+                              }}
+                              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs hover:bg-slate-100"
                             >
-                              <option value="UNPAID">Не оплачено</option>
-                              <option value="PAID">Оплачено</option>
-                            </select>
+                              Добавить/изменить оплату
+                            </button>
                             {(expense.status ?? 'UNPAID') === 'PAID' && (
                               <span className="truncate text-[11px] text-slate-600">
                                 {expensePaymentLabel(expense, store.currency)}
@@ -2235,6 +2332,217 @@ export default function StorePage() {
                 className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {payStaffSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {createHouseholdModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Расход создается со статусом «Не оплачено».
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={createHouseholdModal.name}
+                  onChange={(e) =>
+                    setCreateHouseholdModal((prev) =>
+                      prev ? { ...prev, name: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={createHouseholdModal.amount}
+                  onChange={(e) =>
+                    setCreateHouseholdModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateHouseholdModal(null)}
+                disabled={householdSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateHouseholdExpense}
+                disabled={householdSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {householdSaving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editHouseholdModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+            <h3 className="text-lg font-semibold text-slate-900">Изменить хозяйственный расход</h3>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
+                <input
+                  type="text"
+                  value={editHouseholdModal.name}
+                  onChange={(e) =>
+                    setEditHouseholdModal((prev) =>
+                      prev ? { ...prev, name: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editHouseholdModal.amount}
+                  onChange={(e) =>
+                    setEditHouseholdModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Статус оплаты
+                </label>
+                <select
+                  value={editHouseholdModal.status}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                    setEditHouseholdModal((prev) => {
+                      if (!prev) return prev;
+                      if (nextStatus === 'UNPAID') {
+                        return { ...prev, status: 'UNPAID' };
+                      }
+                      const amount = Number(prev.amount || 0);
+                      const hasChannels =
+                        Number(prev.bankTransferPaid ?? 0) +
+                          Number(prev.cashbox1Paid ?? 0) +
+                          Number(prev.cashbox2Paid ?? 0) >
+                        0;
+                      return {
+                        ...prev,
+                        status: 'PAID',
+                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
+                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
+                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
+                      };
+                    });
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                >
+                  <option value="UNPAID">Не оплачено</option>
+                  <option value="PAID">Оплачено</option>
+                </select>
+              </div>
+
+              {editHouseholdModal.status === 'PAID' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Безналичные
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editHouseholdModal.bankTransferPaid}
+                      onChange={(e) =>
+                        setEditHouseholdModal((prev) =>
+                          prev
+                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 1
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editHouseholdModal.cashbox1Paid}
+                      onChange={(e) =>
+                        setEditHouseholdModal((prev) =>
+                          prev ? { ...prev, cashbox1Paid: Number(e.target.value || 0) } : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                      Наличные касса 2
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editHouseholdModal.cashbox2Paid}
+                      onChange={(e) =>
+                        setEditHouseholdModal((prev) =>
+                          prev ? { ...prev, cashbox2Paid: Number(e.target.value || 0) } : prev,
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEditHouseholdModal(null)}
+                disabled={householdSaving}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditedHouseholdExpense}
+                disabled={householdSaving}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+              >
+                {householdSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
           </div>

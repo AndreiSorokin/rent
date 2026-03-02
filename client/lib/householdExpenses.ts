@@ -48,3 +48,22 @@ export function updateHouseholdExpenseStatus(
     },
   );
 }
+
+export function updateHouseholdExpense(
+  storeId: number,
+  expenseId: number,
+  data: {
+    name?: string;
+    amount?: number;
+    status?: 'UNPAID' | 'PAID';
+    paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  },
+) {
+  return apiFetch<HouseholdExpense>(`/stores/${storeId}/household-expenses/${expenseId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
