@@ -486,7 +486,7 @@ export function EditPavilionModal({
                     className="input"
                   />
                 </div>
-                <div className="mb-3 rounded border p-3">
+                <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="mb-2 text-sm font-medium text-gray-700">
                     Дополнительные начисления
                   </p>
@@ -497,7 +497,7 @@ export function EditPavilionModal({
                       {additionalCharges.map((charge) => (
                         <div
                           key={charge.id}
-                          className="flex items-center justify-between gap-2 rounded border px-2 py-1.5 text-sm"
+                          className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0">
                             <span className="font-medium">{charge.name}</span>
@@ -508,7 +508,7 @@ export function EditPavilionModal({
                               type="button"
                               onClick={() => handleDeleteAdditionalCharge(charge.id)}
                               disabled={chargeSaving}
-                              className="text-xs text-red-600 hover:underline disabled:opacity-60"
+                              className="self-start rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60 sm:self-auto"
                             >
                               Удалить
                             </button>
@@ -519,7 +519,7 @@ export function EditPavilionModal({
                   )}
 
                   {canManageAdditionalCharges && (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_140px_auto]">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
                       <input
                         value={newChargeName}
                         onChange={(e) => setNewChargeName(e.target.value)}
@@ -539,7 +539,7 @@ export function EditPavilionModal({
                         type="button"
                         onClick={handleAddAdditionalCharge}
                         disabled={chargeSaving}
-                        className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                        className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                       >
                         Добавить
                       </button>

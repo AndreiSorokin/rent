@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { CreateDiscountModal } from '@/app/dashboard/components/CreateDiscountModal';
 import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
 import { EditPavilionModal } from '@/app/dashboard/components/EditPavilionModal';
@@ -19,9 +19,14 @@ import { Discount, Pavilion } from './pavilion.types';
 
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
+  const searchParams = useSearchParams();
   const storeIdNum = Number(storeId);
   const pavilionIdNum = Number(pavilionId);
   const router = useRouter();
+  const returnTo = searchParams.get('returnTo') || '';
+  const backToStoreHref = returnTo.startsWith(`/stores/${storeIdNum}`)
+    ? returnTo
+    : `/stores/${storeIdNum}`;
 
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [loading, setLoading] = useState(true);
@@ -394,7 +399,7 @@ export default function PavilionPage() {
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <Link href={`/stores/${storeId}`} className="mb-2 inline-block text-blue-600 hover:underline">
+            <Link href={backToStoreHref} className="mb-2 inline-block text-blue-600 hover:underline">
               Назад к объекту
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>

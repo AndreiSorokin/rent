@@ -169,6 +169,10 @@ export class PavilionsService {
       page?: number;
       pageSize?: number;
       paginated?: boolean;
+      sortBy?: 'paymentStatus';
+      sortDir?: 'asc' | 'desc';
+      paymentStatusFirst?: 'PAID' | 'PARTIAL' | 'UNPAID';
+      paymentStatus?: 'PAID' | 'PARTIAL' | 'UNPAID';
     },
   ) {
     await this.syncExpiredPrepayments(storeId);
@@ -180,6 +184,10 @@ export class PavilionsService {
       options?.groupId && Number.isFinite(options.groupId) ? options.groupId : undefined;
     const page = Math.max(1, Number(options?.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 20)));
+    const sortBy = options?.sortBy;
+    const sortDir = options?.sortDir === 'desc' ? 'desc' : 'asc';
+    const paymentStatusFirst = options?.paymentStatusFirst;
+    const paymentStatus = options?.paymentStatus;
 
     const where: Prisma.PavilionWhereInput = {
       storeId,
@@ -229,6 +237,51 @@ export class PavilionsService {
     } satisfies Prisma.PavilionInclude;
 
     if (options?.paginated) {
+      if (sortBy === 'paymentStatus' || paymentStatus) {
+        const items = await this.prisma.pavilion.findMany({
+          where,
+          include,
+          orderBy: [{ id: 'asc' }],
+        });
+
+        let enriched = items.map((item) => this.enrichPavilionPaymentStatus(item));
+        if (paymentStatus) {
+          enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
+        }
+        const getRank = (
+          status: 'PAID' | 'PARTIAL' | 'UNPAID',
+        ): number => {
+          if (paymentStatusFirst) {
+            if (status === paymentStatusFirst) return 0;
+            if (status === 'PARTIAL') return 1;
+            if (status === 'UNPAID') return 2;
+            return 3;
+          }
+          if (status === 'UNPAID') return 0;
+          if (status === 'PARTIAL') return 1;
+          return 2;
+        };
+
+        enriched.sort((a, b) => {
+          const diff = getRank(a.paymentStatus) - getRank(b.paymentStatus);
+          if (diff !== 0) return sortDir === 'asc' ? diff : -diff;
+          const aNumber = String(a.number ?? '').trim();
+          const bNumber = String(b.number ?? '').trim();
+          return aNumber.localeCompare(bNumber, 'ru');
+        });
+
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const total = enriched.length;
+        return {
+          items: enriched.slice(start, end),
+          total,
+          page,
+          pageSize,
+          hasMore: page * pageSize < total,
+        };
+      }
+
       const [items, total] = await Promise.all([
         this.prisma.pavilion.findMany({
           where,
@@ -254,8 +307,31 @@ export class PavilionsService {
       include,
       orderBy: [{ id: 'asc' }],
     });
-
-    return items.map((item) => this.enrichPavilionPaymentStatus(item));
+    let enriched = items.map((item) => this.enrichPavilionPaymentStatus(item));
+    if (paymentStatus) {
+      enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
+    }
+    if (sortBy === 'paymentStatus') {
+      const getRank = (status: 'PAID' | 'PARTIAL' | 'UNPAID'): number => {
+        if (paymentStatusFirst) {
+          if (status === paymentStatusFirst) return 0;
+          if (status === 'PARTIAL') return 1;
+          if (status === 'UNPAID') return 2;
+          return 3;
+        }
+        if (status === 'UNPAID') return 0;
+        if (status === 'PARTIAL') return 1;
+        return 2;
+      };
+      enriched.sort((a, b) => {
+        const diff = getRank(a.paymentStatus) - getRank(b.paymentStatus);
+        if (diff !== 0) return sortDir === 'asc' ? diff : -diff;
+        const aNumber = String(a.number ?? '').trim();
+        const bNumber = String(b.number ?? '').trim();
+        return aNumber.localeCompare(bNumber, 'ru');
+      });
+    }
+    return enriched;
   }
 
   async findOne(storeId: number, id: number) {

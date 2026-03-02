@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
@@ -125,7 +125,14 @@ type ExpenseCreateContext = {
 export default function StorePage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const storeId = Number(params.storeId);
+  const initialPavilionsPage = Number(searchParams.get('page') ?? 1);
+  const safeInitialPavilionsPage =
+    Number.isFinite(initialPavilionsPage) && initialPavilionsPage > 0
+      ? initialPavilionsPage
+      : 1;
 
   const [store, setStore] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -148,13 +155,28 @@ export default function StorePage() {
   const [storeExpenses, setStoreExpenses] = useState<any[]>([]);
   const [expenseCreateContext, setExpenseCreateContext] =
     useState<ExpenseCreateContext | null>(null);
-  const [pavilionSearch, setPavilionSearch] = useState('');
-  const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState('');
-  const [pavilionStatusFilter, setPavilionStatusFilter] = useState('');
-  const [pavilionGroupFilter, setPavilionGroupFilter] = useState('');
+  const [pavilionSearch, setPavilionSearch] = useState(searchParams.get('q') ?? '');
+  const [pavilionCategoryFilter, setPavilionCategoryFilter] = useState(
+    searchParams.get('category') ?? '',
+  );
+  const [pavilionStatusFilter, setPavilionStatusFilter] = useState(
+    searchParams.get('status') ?? '',
+  );
+  const [pavilionGroupFilter, setPavilionGroupFilter] = useState(
+    searchParams.get('groupId') ?? '',
+  );
+  const [pavilionPaymentStatusFilter, setPavilionPaymentStatusFilter] = useState<
+    '' | 'PAID' | 'PARTIAL' | 'UNPAID'
+  >(
+    searchParams.get('paymentStatus') === 'PAID' ||
+      searchParams.get('paymentStatus') === 'PARTIAL' ||
+      searchParams.get('paymentStatus') === 'UNPAID'
+      ? (searchParams.get('paymentStatus') as 'PAID' | 'PARTIAL' | 'UNPAID')
+      : '',
+  );
   const [pavilions, setPavilions] = useState<any[]>([]);
   const [pavilionsTotal, setPavilionsTotal] = useState(0);
-  const [pavilionsPage, setPavilionsPage] = useState(1);
+  const [pavilionsPage, setPavilionsPage] = useState(safeInitialPavilionsPage);
   const [pavilionsPageSize] = useState(20);
   const [pavilionsHasMore, setPavilionsHasMore] = useState(false);
   const [pavilionsLoading, setPavilionsLoading] = useState(false);
@@ -163,6 +185,52 @@ export default function StorePage() {
   const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
   const [draggedStaffId, setDraggedStaffId] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState('pavilions');
+
+  useEffect(() => {
+    if (!storeId) return;
+    const hasUrlFilters =
+      Boolean(searchParams.get('q')) ||
+      Boolean(searchParams.get('category')) ||
+      Boolean(searchParams.get('status')) ||
+      Boolean(searchParams.get('groupId')) ||
+      Boolean(searchParams.get('paymentStatus')) ||
+      Boolean(searchParams.get('page'));
+    if (hasUrlFilters) return;
+
+    const storageKey = `store-page-filters-${storeId}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        q?: string;
+        category?: string;
+        status?: string;
+        groupId?: string;
+        paymentStatus?: '' | 'PAID' | 'PARTIAL' | 'UNPAID';
+        page?: number;
+      };
+
+      setPavilionSearch(parsed.q ?? '');
+      setPavilionCategoryFilter(parsed.category ?? '');
+      setPavilionStatusFilter(parsed.status ?? '');
+      setPavilionGroupFilter(parsed.groupId ?? '');
+      setPavilionPaymentStatusFilter(
+        parsed.paymentStatus === 'PAID' ||
+          parsed.paymentStatus === 'PARTIAL' ||
+          parsed.paymentStatus === 'UNPAID'
+          ? parsed.paymentStatus
+          : '',
+      );
+      setPavilionsPage(
+        Number.isFinite(Number(parsed.page)) && Number(parsed.page) > 0
+          ? Number(parsed.page)
+          : 1,
+      );
+    } catch (err) {
+      console.warn('Failed to restore pavilion filters on store page', err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeId]);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -238,6 +306,9 @@ export default function StorePage() {
       if (pavilionCategoryFilter) query.set('category', pavilionCategoryFilter);
       if (pavilionStatusFilter) query.set('status', pavilionStatusFilter);
       if (pavilionGroupFilter) query.set('groupId', pavilionGroupFilter);
+      if (pavilionPaymentStatusFilter) {
+        query.set('paymentStatus', pavilionPaymentStatusFilter);
+      }
 
       const response = await apiFetch<{
         items: any[];
@@ -287,7 +358,7 @@ export default function StorePage() {
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_PAVILIONS')) {
-        await fetchPavilions(1);
+        await fetchPavilions(pavilionsPage);
       } else {
         setPavilions([]);
         setPavilionsTotal(0);
@@ -347,9 +418,67 @@ export default function StorePage() {
   useEffect(() => {
     if (!store) return;
     if (!hasPermission(store.permissions || [], 'VIEW_PAVILIONS')) return;
-    void fetchPavilions(1);
+    void fetchPavilions(pavilionsPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pavilionSearch, pavilionCategoryFilter, pavilionStatusFilter, pavilionGroupFilter]);
+  }, [
+    pavilionSearch,
+    pavilionCategoryFilter,
+    pavilionStatusFilter,
+    pavilionGroupFilter,
+    pavilionPaymentStatusFilter,
+  ]);
+
+  useEffect(() => {
+    const query = new URLSearchParams();
+    if (pavilionSearch.trim()) query.set('q', pavilionSearch.trim());
+    if (pavilionCategoryFilter) query.set('category', pavilionCategoryFilter);
+    if (pavilionStatusFilter) query.set('status', pavilionStatusFilter);
+    if (pavilionGroupFilter) query.set('groupId', pavilionGroupFilter);
+    if (pavilionPaymentStatusFilter) {
+      query.set('paymentStatus', pavilionPaymentStatusFilter);
+    }
+    if (pavilionsPage > 1) query.set('page', String(pavilionsPage));
+
+    const next = query.toString() ? `${pathname}?${query.toString()}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [
+    pathname,
+    router,
+    pavilionSearch,
+    pavilionCategoryFilter,
+    pavilionStatusFilter,
+    pavilionGroupFilter,
+    pavilionPaymentStatusFilter,
+    pavilionsPage,
+  ]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    const storageKey = `store-page-filters-${storeId}`;
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          q: pavilionSearch.trim(),
+          category: pavilionCategoryFilter,
+          status: pavilionStatusFilter,
+          groupId: pavilionGroupFilter,
+          paymentStatus: pavilionPaymentStatusFilter,
+          page: pavilionsPage,
+        }),
+      );
+    } catch (err) {
+      console.warn('Failed to persist pavilion filters on store page', err);
+    }
+  }, [
+    storeId,
+    pavilionSearch,
+    pavilionCategoryFilter,
+    pavilionStatusFilter,
+    pavilionGroupFilter,
+    pavilionPaymentStatusFilter,
+    pavilionsPage,
+  ]);
 
   useEffect(() => {
     if (!storeId || orderedPavilionIds.length === 0) return;
@@ -694,6 +823,7 @@ export default function StorePage() {
           .map((id) => pavilionMap.get(id))
           .filter((p): p is any => Boolean(p))
       : (pavilions || []);
+  const canReorderPavilions = true;
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
       acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
@@ -804,6 +934,19 @@ export default function StorePage() {
     hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
   const canImportData = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canCreatePavilion = hasPermission(permissions, 'CREATE_PAVILIONS');
+  const buildStoreReturnTo = () => {
+    const query = new URLSearchParams();
+    if (pavilionSearch.trim()) query.set('q', pavilionSearch.trim());
+    if (pavilionCategoryFilter) query.set('category', pavilionCategoryFilter);
+    if (pavilionStatusFilter) query.set('status', pavilionStatusFilter);
+    if (pavilionGroupFilter) query.set('groupId', pavilionGroupFilter);
+    if (pavilionPaymentStatusFilter) {
+      query.set('paymentStatus', pavilionPaymentStatusFilter);
+    }
+    if (pavilionsPage > 1) query.set('page', String(pavilionsPage));
+    const qs = query.toString();
+    return qs ? `${pathname}?${qs}` : pathname;
+  };
 
   const navSections: Array<{
     id: string;
@@ -1079,17 +1222,23 @@ export default function StorePage() {
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
             </div>
 
-            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px_220px]">
+            <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px_220px_220px_240px]">
               <input
                 type="text"
                 value={pavilionSearch}
-                onChange={(e) => setPavilionSearch(e.target.value)}
+                onChange={(e) => {
+                  setPavilionSearch(e.target.value);
+                  setPavilionsPage(1);
+                }}
                 className="rounded-lg border border-gray-300 px-3 py-2"
                 placeholder="Поиск по имени павильона"
               />
               <select
                 value={pavilionCategoryFilter}
-                onChange={(e) => setPavilionCategoryFilter(e.target.value)}
+                onChange={(e) => {
+                  setPavilionCategoryFilter(e.target.value);
+                  setPavilionsPage(1);
+                }}
                 className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все категории</option>
@@ -1101,7 +1250,10 @@ export default function StorePage() {
               </select>
               <select
                 value={pavilionStatusFilter}
-                onChange={(e) => setPavilionStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setPavilionStatusFilter(e.target.value);
+                  setPavilionsPage(1);
+                }}
                 className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все статусы</option>
@@ -1111,7 +1263,10 @@ export default function StorePage() {
               </select>
               <select
                 value={pavilionGroupFilter}
-                onChange={(e) => setPavilionGroupFilter(e.target.value)}
+                onChange={(e) => {
+                  setPavilionGroupFilter(e.target.value);
+                  setPavilionsPage(1);
+                }}
                 className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все группы</option>
@@ -1120,6 +1275,23 @@ export default function StorePage() {
                     {group.name}
                   </option>
                 ))}
+              </select>
+              <select
+                value={pavilionPaymentStatusFilter}
+                onChange={(e) =>
+                  {
+                    setPavilionPaymentStatusFilter(
+                      (e.target.value as '' | 'PAID' | 'PARTIAL' | 'UNPAID') || '',
+                    );
+                    setPavilionsPage(1);
+                  }
+                }
+                className="rounded-lg border border-gray-300 px-3 py-2"
+              >
+                <option value="">все</option>
+                <option value="PAID">Оплачено</option>
+                <option value="PARTIAL">Частично оплачено</option>
+                <option value="UNPAID">Не оплачено</option>
               </select>
             </div>
 
@@ -1171,24 +1343,31 @@ export default function StorePage() {
                         key={p.id}
                         className="cursor-pointer transition-colors hover:bg-gray-50"
                         onDragOver={(e) => {
+                          if (!canReorderPavilions) return;
                           if (draggedPavilionId == null) return;
                           e.preventDefault();
                           e.dataTransfer.dropEffect = 'move';
                         }}
                         onDrop={(e) => {
+                          if (!canReorderPavilions) return;
                           e.preventDefault();
                           if (draggedPavilionId == null) return;
                           movePavilion(draggedPavilionId, p.id);
                           setDraggedPavilionId(null);
                         }}
-                        onClick={() => router.push(`/stores/${storeId}/pavilions/${p.id}`)}
+                        onClick={() =>
+                          router.push(
+                            `/stores/${storeId}/pavilions/${p.id}?returnTo=${encodeURIComponent(buildStoreReturnTo())}`,
+                          )
+                        }
                       >
                         <td className="px-4 py-3 text-sm text-gray-700">
                           <button
                             type="button"
-                            draggable
+                            draggable={canReorderPavilions}
                             onClick={(e) => e.stopPropagation()}
                             onDragStart={(e) => {
+                              if (!canReorderPavilions) return;
                               e.stopPropagation();
                               setDraggedPavilionId(p.id);
                               e.dataTransfer.effectAllowed = 'move';
@@ -1197,8 +1376,16 @@ export default function StorePage() {
                               e.stopPropagation();
                               setDraggedPavilionId(null);
                             }}
-                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
-                            title="Потяните, чтобы изменить порядок"
+                            className={`select-none rounded px-2 py-1 text-lg leading-none ${
+                              canReorderPavilions
+                                ? 'cursor-grab text-gray-500 hover:bg-gray-100 active:cursor-grabbing'
+                                : 'cursor-not-allowed text-gray-300'
+                            }`}
+                            title={
+                              canReorderPavilions
+                                ? 'Потяните, чтобы изменить порядок'
+                                : 'Сортировка по оплате активна'
+                            }
                             aria-label={`Переместить павильон ${p.number}`}
                           >
                             ⋮⋮

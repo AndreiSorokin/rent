@@ -50,6 +50,10 @@ export class PavilionsController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('paginated') paginated?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('paymentStatusFirst') paymentStatusFirst?: string,
+    @Query('paymentStatus') paymentStatus?: string,
   ) {
     return this.service.findAll(storeId, {
       search,
@@ -59,6 +63,20 @@ export class PavilionsController {
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
       paginated: paginated === 'true' || paginated === '1',
+      sortBy: sortBy === 'paymentStatus' ? 'paymentStatus' : undefined,
+      sortDir: sortDir === 'desc' ? 'desc' : 'asc',
+      paymentStatusFirst:
+        paymentStatusFirst === 'PAID' ||
+        paymentStatusFirst === 'PARTIAL' ||
+        paymentStatusFirst === 'UNPAID'
+          ? paymentStatusFirst
+          : undefined,
+      paymentStatus:
+        paymentStatus === 'PAID' ||
+        paymentStatus === 'PARTIAL' ||
+        paymentStatus === 'UNPAID'
+          ? paymentStatus
+          : undefined,
     });
   }
 
