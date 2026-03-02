@@ -519,6 +519,7 @@ export default function StoreSummaryPage() {
     const channelsByEntity = income.channelsByEntity || {};
     const expenses = summary.expenses || {};
     const expenseChannels = expenses.channels || {};
+    const expenseChannelsByType = expenses.channelsByType || {};
     const expenseByType = expenses.byType || {};
     const storeLevelExpenses = expenses.storeLevel || {};
     const tradeArea = summary.tradeArea || {};
@@ -595,6 +596,7 @@ export default function StoreSummaryPage() {
       channelsByEntity,
       expenses,
       expenseChannels,
+      expenseChannelsByType,
       saldoChannels,
       expenseByType,
       tradeArea: {
@@ -757,22 +759,47 @@ export default function StoreSummaryPage() {
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Аренда</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.rent?.total ?? 0, data.currency)}</p>
+                <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                  <div>Безнал: {formatMoney(data.channelsByEntity.rent?.bankTransfer ?? 0, data.currency)}</div>
+                  <div>Касса 1: {formatMoney(data.channelsByEntity.rent?.cashbox1 ?? 0, data.currency)}</div>
+                  <div>Касса 2: {formatMoney(data.channelsByEntity.rent?.cashbox2 ?? 0, data.currency)}</div>
+                </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Коммунальные</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.facilities?.total ?? 0, data.currency)}</p>
+                <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                  <div>Безнал: {formatMoney(data.channelsByEntity.facilities?.bankTransfer ?? 0, data.currency)}</div>
+                  <div>Касса 1: {formatMoney(data.channelsByEntity.facilities?.cashbox1 ?? 0, data.currency)}</div>
+                  <div>Касса 2: {formatMoney(data.channelsByEntity.facilities?.cashbox2 ?? 0, data.currency)}</div>
+                </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Реклама</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.advertising?.total ?? 0, data.currency)}</p>
+                <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                  <div>Безнал: {formatMoney(data.channelsByEntity.advertising?.bankTransfer ?? 0, data.currency)}</div>
+                  <div>Касса 1: {formatMoney(data.channelsByEntity.advertising?.cashbox1 ?? 0, data.currency)}</div>
+                  <div>Касса 2: {formatMoney(data.channelsByEntity.advertising?.cashbox2 ?? 0, data.currency)}</div>
+                </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Доп. начисления</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.additional?.total ?? 0, data.currency)}</p>
+                <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                  <div>Безнал: {formatMoney(data.channelsByEntity.additional?.bankTransfer ?? 0, data.currency)}</div>
+                  <div>Касса 1: {formatMoney(data.channelsByEntity.additional?.cashbox1 ?? 0, data.currency)}</div>
+                  <div>Касса 2: {formatMoney(data.channelsByEntity.additional?.cashbox2 ?? 0, data.currency)}</div>
+                </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Доп приход</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.storeExtra?.total ?? 0, data.currency)}</p>
+                <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                  <div>Безнал: {formatMoney(data.channelsByEntity.storeExtra?.bankTransfer ?? 0, data.currency)}</div>
+                  <div>Касса 1: {formatMoney(data.channelsByEntity.storeExtra?.cashbox1 ?? 0, data.currency)}</div>
+                  <div>Касса 2: {formatMoney(data.channelsByEntity.storeExtra?.cashbox2 ?? 0, data.currency)}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -843,17 +870,33 @@ export default function StoreSummaryPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-            <div>Зарплаты: <span className="font-medium">{formatMoney(data.expenseByType.salaries ?? 0, data.currency)}</span></div>
-            <div>Налоги с зарплаты: <span className="font-medium">{formatMoney(data.expenseByType.payrollTax ?? 0, data.currency)}</span></div>
-            <div>Налог на прибыль: <span className="font-medium">{formatMoney(data.expenseByType.profitTax ?? 0, data.currency)}</span></div>
-            <div>Коммуналка объекта: <span className="font-medium">{formatMoney(data.expenseByType.facilities ?? 0, data.currency)}</span></div>
-            <div>Дивиденды: <span className="font-medium">{formatMoney(data.expenseByType.dividends ?? 0, data.currency)}</span></div>
-            <div>Услуги банка: <span className="font-medium">{formatMoney(data.expenseByType.bankServices ?? 0, data.currency)}</span></div>
-            <div>Хоз. расходы: <span className="font-medium">{formatMoney(data.expenseByType.household ?? 0, data.currency)}</span></div>
-            <div>НДС: <span className="font-medium">{formatMoney(data.expenseByType.vat ?? 0, data.currency)}</span></div>
-            <div>Аренда земли: <span className="font-medium">{formatMoney(data.expenseByType.landRent ?? 0, data.currency)}</span></div>
-            <div>Прочие: <span className="font-medium">{formatMoney(data.expenseByType.other ?? 0, data.currency)}</span></div>
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
+            {[
+              { key: 'salaries', label: 'Зарплаты' },
+              { key: 'payrollTax', label: 'Налоги с зарплаты' },
+              { key: 'profitTax', label: 'Налог на прибыль' },
+              { key: 'facilities', label: 'Коммуналка объекта' },
+              { key: 'dividends', label: 'Дивиденды' },
+              { key: 'bankServices', label: 'Услуги банка' },
+              { key: 'household', label: 'Хоз. расходы' },
+              { key: 'vat', label: 'НДС' },
+              { key: 'landRent', label: 'Аренда земли' },
+              { key: 'other', label: 'Прочие' },
+            ].map((item) => {
+              const channels = (data.expenseChannelsByType as any)?.[item.key] || {};
+              return (
+                <div key={item.key} className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="font-medium text-gray-800">
+                    {item.label}: {formatMoney((data.expenseByType as any)?.[item.key] ?? 0, data.currency)}
+                  </div>
+                  <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                    <div>Безнал: {formatMoney(channels.bankTransfer ?? 0, data.currency)}</div>
+                    <div>Касса 1: {formatMoney(channels.cashbox1 ?? 0, data.currency)}</div>
+                    <div>Касса 2: {formatMoney(channels.cashbox2 ?? 0, data.currency)}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <FinanceTrendChart

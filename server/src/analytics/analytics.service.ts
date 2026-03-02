@@ -373,6 +373,26 @@ export class AnalyticsService {
       LAND_RENT: 0,
       OTHER: 0,
     };
+    const makeChannels = () => ({
+      bankTransfer: 0,
+      cashbox1: 0,
+      cashbox2: 0,
+    });
+    const expenseChannelsByType: Record<
+      string,
+      { bankTransfer: number; cashbox1: number; cashbox2: number }
+    > = {
+      SALARIES: makeChannels(),
+      STORE_FACILITIES: makeChannels(),
+      HOUSEHOLD: makeChannels(),
+      PAYROLL_TAX: makeChannels(),
+      PROFIT_TAX: makeChannels(),
+      DIVIDENDS: makeChannels(),
+      BANK_SERVICES: makeChannels(),
+      VAT: makeChannels(),
+      LAND_RENT: makeChannels(),
+      OTHER: makeChannels(),
+    };
     let expenseUtilitiesForecast = 0;
     let expenseHouseholdTotal = 0;
 
@@ -514,6 +534,7 @@ export class AnalyticsService {
       expense: any,
       fallbackAmount: number,
       fallbackMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null,
+      expenseType?: string,
     ) => {
       const bank = Number(expense?.bankTransferPaid ?? 0);
       const cash1 = Number(expense?.cashbox1Paid ?? 0);
@@ -523,9 +544,26 @@ export class AnalyticsService {
         expenseChannelsBankTransfer += bank;
         expenseChannelsCashbox1 += cash1;
         expenseChannelsCashbox2 += cash2;
+        if (expenseType && expenseChannelsByType[expenseType]) {
+          expenseChannelsByType[expenseType].bankTransfer += bank;
+          expenseChannelsByType[expenseType].cashbox1 += cash1;
+          expenseChannelsByType[expenseType].cashbox2 += cash2;
+        }
         return;
       }
 
+      if (expenseType && expenseChannelsByType[expenseType]) {
+        const safeAmount = Number(fallbackAmount ?? 0);
+        if (safeAmount > 0) {
+          if (fallbackMethod === 'CASHBOX1') {
+            expenseChannelsByType[expenseType].cashbox1 += safeAmount;
+          } else if (fallbackMethod === 'CASHBOX2') {
+            expenseChannelsByType[expenseType].cashbox2 += safeAmount;
+          } else {
+            expenseChannelsByType[expenseType].bankTransfer += safeAmount;
+          }
+        }
+      }
       addExpenseByMethod(fallbackAmount, fallbackMethod);
     };
 
@@ -539,6 +577,7 @@ export class AnalyticsService {
           | 'CASHBOX1'
           | 'CASHBOX2'
           | null,
+        String(expense.type),
       );
     }
 
@@ -555,6 +594,7 @@ export class AnalyticsService {
             | 'CASHBOX1'
             | 'CASHBOX2'
             | null,
+          'SALARIES',
         );
       }
     } else {
@@ -568,14 +608,26 @@ export class AnalyticsService {
           expenseChannelsBankTransfer += bank;
           expenseChannelsCashbox1 += cash1;
           expenseChannelsCashbox2 += cash2;
+          expenseChannelsByType.SALARIES.bankTransfer += bank;
+          expenseChannelsByType.SALARIES.cashbox1 += cash1;
+          expenseChannelsByType.SALARIES.cashbox2 += cash2;
         } else {
+          const fallbackMethod = (member as any).salaryPaymentMethod as
+            | 'BANK_TRANSFER'
+            | 'CASHBOX1'
+            | 'CASHBOX2'
+            | null;
+          const salaryAmount = Number(member.salary ?? 0);
+          if (fallbackMethod === 'CASHBOX1') {
+            expenseChannelsByType.SALARIES.cashbox1 += salaryAmount;
+          } else if (fallbackMethod === 'CASHBOX2') {
+            expenseChannelsByType.SALARIES.cashbox2 += salaryAmount;
+          } else {
+            expenseChannelsByType.SALARIES.bankTransfer += salaryAmount;
+          }
           addExpenseByMethod(
-            Number(member.salary ?? 0),
-            (member as any).salaryPaymentMethod as
-              | 'BANK_TRANSFER'
-              | 'CASHBOX1'
-              | 'CASHBOX2'
-              | null,
+            salaryAmount,
+            fallbackMethod,
           );
         }
       }
@@ -1151,6 +1203,78 @@ export class AnalyticsService {
               expenseChannelsBankTransfer +
               expenseChannelsCashbox1 +
               expenseChannelsCashbox2,
+          },
+          channelsByType: {
+            salaries: {
+              ...expenseChannelsByType.SALARIES,
+              total:
+                expenseChannelsByType.SALARIES.bankTransfer +
+                expenseChannelsByType.SALARIES.cashbox1 +
+                expenseChannelsByType.SALARIES.cashbox2,
+            },
+            payrollTax: {
+              ...expenseChannelsByType.PAYROLL_TAX,
+              total:
+                expenseChannelsByType.PAYROLL_TAX.bankTransfer +
+                expenseChannelsByType.PAYROLL_TAX.cashbox1 +
+                expenseChannelsByType.PAYROLL_TAX.cashbox2,
+            },
+            profitTax: {
+              ...expenseChannelsByType.PROFIT_TAX,
+              total:
+                expenseChannelsByType.PROFIT_TAX.bankTransfer +
+                expenseChannelsByType.PROFIT_TAX.cashbox1 +
+                expenseChannelsByType.PROFIT_TAX.cashbox2,
+            },
+            dividends: {
+              ...expenseChannelsByType.DIVIDENDS,
+              total:
+                expenseChannelsByType.DIVIDENDS.bankTransfer +
+                expenseChannelsByType.DIVIDENDS.cashbox1 +
+                expenseChannelsByType.DIVIDENDS.cashbox2,
+            },
+            bankServices: {
+              ...expenseChannelsByType.BANK_SERVICES,
+              total:
+                expenseChannelsByType.BANK_SERVICES.bankTransfer +
+                expenseChannelsByType.BANK_SERVICES.cashbox1 +
+                expenseChannelsByType.BANK_SERVICES.cashbox2,
+            },
+            vat: {
+              ...expenseChannelsByType.VAT,
+              total:
+                expenseChannelsByType.VAT.bankTransfer +
+                expenseChannelsByType.VAT.cashbox1 +
+                expenseChannelsByType.VAT.cashbox2,
+            },
+            landRent: {
+              ...expenseChannelsByType.LAND_RENT,
+              total:
+                expenseChannelsByType.LAND_RENT.bankTransfer +
+                expenseChannelsByType.LAND_RENT.cashbox1 +
+                expenseChannelsByType.LAND_RENT.cashbox2,
+            },
+            other: {
+              ...expenseChannelsByType.OTHER,
+              total:
+                expenseChannelsByType.OTHER.bankTransfer +
+                expenseChannelsByType.OTHER.cashbox1 +
+                expenseChannelsByType.OTHER.cashbox2,
+            },
+            facilities: {
+              ...expenseChannelsByType.STORE_FACILITIES,
+              total:
+                expenseChannelsByType.STORE_FACILITIES.bankTransfer +
+                expenseChannelsByType.STORE_FACILITIES.cashbox1 +
+                expenseChannelsByType.STORE_FACILITIES.cashbox2,
+            },
+            household: {
+              ...expenseChannelsByType.HOUSEHOLD,
+              total:
+                expenseChannelsByType.HOUSEHOLD.bankTransfer +
+                expenseChannelsByType.HOUSEHOLD.cashbox1 +
+                expenseChannelsByType.HOUSEHOLD.cashbox2,
+            },
           },
         },
         saldo,
