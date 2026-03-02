@@ -817,10 +817,10 @@ export default function StoreSummaryPage() {
         </section>
 
         <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">3. Сальдо</h2>
+          <h2 className="text-xl font-semibold text-gray-900">3. Остаток</h2>
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
             <MetricCard
-              title="Общий доход"
+              title="Общий приход (факт) с учетом остатка прошлого месяца"
               value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
               tone="success"
             />
@@ -830,14 +830,14 @@ export default function StoreSummaryPage() {
               tone="danger"
             />
             <MetricCard
-              title="Сальдо"
+              title="Остаток текущего месяца (приход минус расход)"
               value={formatMoney(data.saldo, data.currency)}
               tone={data.saldo >= 0 ? 'success' : 'danger'}
             />
           </div>
           <div className="mt-4">
             <FinanceTrendChart
-              title="Тренд сальдо по месяцам"
+              title="Тренд остатка по месяцам"
               items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
               actualKey="saldo"
               valueFormatter={(value) => formatMoney(value, data.currency)}
