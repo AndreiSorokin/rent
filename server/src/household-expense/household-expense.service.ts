@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PavilionExpenseStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 const HOUSEHOLD_TYPE = 'HOUSEHOLD' as any;
 
 @Injectable()
 export class HouseholdExpenseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
   private normalizePaymentMethod(
     paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
@@ -65,7 +69,7 @@ export class HouseholdExpenseService {
       );
   }
 
-  create(storeId: number, data: { name: string; amount: number }) {
+  create(storeId: number, data: { name: string; amount: number }, userId?: number) {
     return (this.prisma.pavilionExpense as any)
       .create({
         data: {
@@ -80,22 +84,35 @@ export class HouseholdExpenseService {
           cashbox2Paid: 0,
         },
       })
-      .then((row: any) => ({
-        id: row.id,
-        name: row.note ?? 'Хозяйственный расход',
-        amount: row.amount,
-        status: row.status,
-        paymentMethod: row.paymentMethod ?? null,
-        bankTransferPaid: Number(row.bankTransferPaid ?? 0),
-        cashbox1Paid: Number(row.cashbox1Paid ?? 0),
-        cashbox2Paid: Number(row.cashbox2Paid ?? 0),
-        storeId: row.storeId,
-        pavilionId: row.pavilionId,
-        createdAt: row.createdAt,
-      }));
+      .then(async (row: any) => {
+        await this.storeActivity.log({
+          storeId,
+          userId,
+          action: 'CREATE',
+          entityType: 'HOUSEHOLD_EXPENSE',
+          entityId: row.id,
+          details: {
+            name: row.note ?? 'Хозяйственный расход',
+            amount: Number(row.amount ?? 0),
+          },
+        });
+        return {
+          id: row.id,
+          name: row.note ?? 'Хозяйственный расход',
+          amount: row.amount,
+          status: row.status,
+          paymentMethod: row.paymentMethod ?? null,
+          bankTransferPaid: Number(row.bankTransferPaid ?? 0),
+          cashbox1Paid: Number(row.cashbox1Paid ?? 0),
+          cashbox2Paid: Number(row.cashbox2Paid ?? 0),
+          storeId: row.storeId,
+          pavilionId: row.pavilionId,
+          createdAt: row.createdAt,
+        };
+      });
   }
 
-  async delete(storeId: number, expenseId: number) {
+  async delete(storeId: number, expenseId: number, userId?: number) {
     const expense = await (this.prisma.pavilionExpense as any).findFirst({
       where: {
         id: expenseId,
@@ -109,9 +126,21 @@ export class HouseholdExpenseService {
       throw new NotFoundException('Expense not found');
     }
 
-    return this.prisma.pavilionExpense.delete({
+    const deleted = await this.prisma.pavilionExpense.delete({
       where: { id: expenseId },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'HOUSEHOLD_EXPENSE',
+      entityId: deleted.id,
+      details: {
+        name: (deleted as any).note ?? 'Хозяйственный расход',
+        amount: Number((deleted as any).amount ?? 0),
+      },
+    });
+    return deleted;
   }
 
   async update(
@@ -126,6 +155,7 @@ export class HouseholdExpenseService {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    userId?: number,
   ) {
     const expense = await (this.prisma.pavilionExpense as any).findFirst({
       where: {
@@ -223,10 +253,23 @@ export class HouseholdExpenseService {
       updateData.paymentMethod = this.deriveSingleMethod(bank, cash1, cash2);
     }
 
-    return (this.prisma.pavilionExpense as any).update({
+    const updated = await (this.prisma.pavilionExpense as any).update({
       where: { id: expenseId },
       data: updateData,
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'HOUSEHOLD_EXPENSE',
+      entityId: updated.id,
+      details: {
+        name: updated.note ?? 'Хозяйственный расход',
+        amount: Number(updated.amount ?? 0),
+        status: updated.status,
+      },
+    });
+    return updated;
   }
 
   async updateStatus(
@@ -234,12 +277,13 @@ export class HouseholdExpenseService {
     expenseId: number,
     status: PavilionExpenseStatus,
     paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
+    userId?: number,
   ) {
     const normalizedMethod = this.normalizePaymentMethod(paymentMethod);
     return this.update(storeId, expenseId, {
       status,
       paymentMethod: normalizedMethod,
-    });
+    }, userId);
   }
 }
 

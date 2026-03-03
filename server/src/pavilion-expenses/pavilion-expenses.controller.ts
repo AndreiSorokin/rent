@@ -7,6 +7,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { PavilionExpenseStatus, PavilionExpenseType, Permission } from '@prisma/client';
@@ -41,8 +42,9 @@ export class PavilionExpensesController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
-    return this.service.create(storeId, data);
+    return this.service.create(storeId, data, req.user.id);
   }
 
   @Patch(':expenseId')
@@ -61,8 +63,9 @@ export class PavilionExpensesController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
-    return this.service.update(storeId, expenseId, data);
+    return this.service.update(storeId, expenseId, data, req.user.id);
   }
 
   @Patch(':expenseId/status')
@@ -75,12 +78,14 @@ export class PavilionExpensesController {
       status: PavilionExpenseStatus;
       paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
     },
+    @Req() req: any,
   ) {
     return this.service.updateStatus(
       storeId,
       expenseId,
       data.status,
       data.paymentMethod,
+      req.user.id,
     );
   }
 
@@ -89,7 +94,8 @@ export class PavilionExpensesController {
   delete(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('expenseId', ParseIntPipe) expenseId: number,
+    @Req() req: any,
   ) {
-    return this.service.delete(storeId, expenseId);
+    return this.service.delete(storeId, expenseId, req.user.id);
   }
 }

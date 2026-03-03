@@ -5,12 +5,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Permission } from '@prisma/client';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class StoreUserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
-  async inviteByEmail(storeId: number, email: string) {
+  async inviteByEmail(storeId: number, email: string, actorUserId?: number) {
     const user = await this.prisma.user.findUnique({
       where: { email: email.trim().toLowerCase() },
     });
@@ -28,7 +32,7 @@ export class StoreUserService {
       throw new BadRequestException('User is already a member of this store');
     }
 
-    return this.prisma.storeUser.create({
+    const created = await this.prisma.storeUser.create({
       data: {
         storeId,
         userId: user.id,
@@ -36,17 +40,50 @@ export class StoreUserService {
       },
       include: { user: { select: { id: true, email: true, name: true } } },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId: actorUserId,
+      action: 'CREATE',
+      entityType: 'STORE_USER_INVITE',
+      entityId: created.userId,
+      details: {
+        invitedUserId: created.userId,
+        invitedUserEmail: created.user.email,
+        invitedUserName: created.user.name,
+      },
+    });
+    return created;
   }
 
   // Invite a user to a store (starts with empty permissions)
-  async inviteUser(storeId: number, userId: number) {
-    return this.prisma.storeUser.create({
+  async inviteUser(storeId: number, userId: number, actorUserId?: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const created = await this.prisma.storeUser.create({
       data: {
         storeId,
         userId,
         permissions: [], // empty by default
       },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId: actorUserId,
+      action: 'CREATE',
+      entityType: 'STORE_USER_INVITE',
+      entityId: created.userId,
+      details: {
+        invitedUserId: created.userId,
+        invitedUserEmail: user.email,
+        invitedUserName: user.name,
+      },
+    });
+    return created;
   }
 
   //Assign and remove permissions
@@ -86,7 +123,7 @@ export class StoreUserService {
       throw new NotFoundException('User not part of this store');
     }
 
-    return this.prisma.storeUser.update({
+    const updated = await this.prisma.storeUser.update({
       where: {
         userId_storeId: { userId, storeId },
       },
@@ -94,6 +131,25 @@ export class StoreUserService {
         permissions,
       },
     });
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true },
+    });
+    await this.storeActivity.log({
+      storeId,
+      userId: actorUserId,
+      action: 'UPDATE',
+      entityType: 'STORE_USER_PERMISSIONS',
+      entityId: userId,
+      details: {
+        targetUserId: userId,
+        targetUserEmail: targetUser?.email ?? null,
+        targetUserName: targetUser?.name ?? null,
+        before: { permissions: storeUser.permissions },
+        after: { permissions: permissions },
+      },
+    });
+    return updated;
   }
 
   // List all users in a store with permissions

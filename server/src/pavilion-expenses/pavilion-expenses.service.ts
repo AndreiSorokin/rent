@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PavilionExpenseStatus, PavilionExpenseType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class PavilionExpensesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
   private normalizePaymentMethod(
     paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
@@ -57,6 +61,7 @@ export class PavilionExpensesService {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    userId?: number,
   ) {
     const amount = Number(data.amount ?? 0);
     const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
@@ -140,6 +145,21 @@ export class PavilionExpensesService {
         cashbox1Paid: paidChannels.cashbox1Paid,
         cashbox2Paid: paidChannels.cashbox2Paid,
       },
+    }).then(async (created: any) => {
+      await this.storeActivity.log({
+        storeId,
+        userId,
+        action: 'CREATE',
+        entityType: 'PAVILION_EXPENSE',
+        entityId: created.id,
+        details: {
+          type: created.type,
+          amount: Number(created.amount ?? 0),
+          note: created.note ?? null,
+          status: created.status,
+        },
+      });
+      return created;
     });
   }
 
@@ -148,11 +168,12 @@ export class PavilionExpensesService {
     expenseId: number,
     status: PavilionExpenseStatus,
     paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
+    userId?: number,
   ) {
     return this.update(storeId, expenseId, {
       status,
       paymentMethod: this.normalizePaymentMethod(paymentMethod),
-    });
+    }, userId);
   }
 
   async update(
@@ -168,6 +189,7 @@ export class PavilionExpensesService {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    userId?: number,
   ) {
     const expense = await this.prisma.pavilionExpense.findFirst({
       where: {
@@ -269,13 +291,27 @@ export class PavilionExpensesService {
       updateData.paymentMethod = this.deriveSingleMethod(bank, cash1, cash2);
     }
 
-    return (this.prisma.pavilionExpense as any).update({
+    const updated = await (this.prisma.pavilionExpense as any).update({
       where: { id: expenseId },
       data: updateData,
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'PAVILION_EXPENSE',
+      entityId: updated.id,
+      details: {
+        type: updated.type,
+        amount: Number(updated.amount ?? 0),
+        note: updated.note ?? null,
+        status: updated.status,
+      },
+    });
+    return updated;
   }
 
-  async delete(storeId: number, expenseId: number) {
+  async delete(storeId: number, expenseId: number, userId?: number) {
     const expense = await this.prisma.pavilionExpense.findFirst({
       where: {
         id: expenseId,
@@ -288,8 +324,21 @@ export class PavilionExpensesService {
       throw new NotFoundException('Pavilion expense not found');
     }
 
-    return this.prisma.pavilionExpense.delete({
+    const deleted = await this.prisma.pavilionExpense.delete({
       where: { id: expenseId },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'PAVILION_EXPENSE',
+      entityId: deleted.id,
+      details: {
+        type: deleted.type,
+        amount: Number(deleted.amount ?? 0),
+        note: deleted.note ?? null,
+      },
+    });
+    return deleted;
   }
 }

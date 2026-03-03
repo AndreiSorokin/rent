@@ -235,11 +235,29 @@ export default function PavilionPage() {
       const rentCash1Delta = cash1 - currentRentCash1;
       const rentCash2Delta = cash2 - currentRentCash2;
 
-      if (rentDelta < -0.01 || rentBankDelta < -0.01 || rentCash1Delta < -0.01 || rentCash2Delta < -0.01) {
-        alert(
-          'Уменьшение предоплаты или перераспределение по каналам не поддерживается через "Изменить предоплату". Удалите предоплату и задайте заново.',
-        );
-        return;
+      let nextRentDelta = rentDelta;
+      let nextRentBankDelta = rentBankDelta;
+      let nextRentCash1Delta = rentCash1Delta;
+      let nextRentCash2Delta = rentCash2Delta;
+
+      // If previous prepayment channels conflict, replace month prepayment in one flow.
+      if (
+        rentDelta < -0.01 ||
+        rentBankDelta < -0.01 ||
+        rentCash1Delta < -0.01 ||
+        rentCash2Delta < -0.01
+      ) {
+        if (existingForPeriod?.id) {
+          await deletePavilionPaymentEntry(
+            storeIdNum,
+            pavilionIdNum,
+            Number(existingForPeriod.id),
+          );
+        }
+        nextRentDelta = targetRentPaid;
+        nextRentBankDelta = bank;
+        nextRentCash1Delta = cash1;
+        nextRentCash2Delta = cash2;
       }
 
       await updatePavilion(storeIdNum, pavilionIdNum, {
@@ -247,13 +265,16 @@ export default function PavilionPage() {
         prepaidUntil: periodIso,
       });
 
-      if (Math.abs(rentDelta) > 0.0001) {
+      if (Math.abs(nextRentDelta) > 0.0001) {
         await createPavilionPayment(storeIdNum, pavilionIdNum, {
           period: periodIso,
-          rentPaid: rentDelta,
-          rentBankTransferPaid: rentBankDelta > 0 ? rentBankDelta : undefined,
-          rentCashbox1Paid: rentCash1Delta > 0 ? rentCash1Delta : undefined,
-          rentCashbox2Paid: rentCash2Delta > 0 ? rentCash2Delta : undefined,
+          rentPaid: nextRentDelta,
+          rentBankTransferPaid:
+            nextRentBankDelta > 0 ? nextRentBankDelta : undefined,
+          rentCashbox1Paid:
+            nextRentCash1Delta > 0 ? nextRentCash1Delta : undefined,
+          rentCashbox2Paid:
+            nextRentCash2Delta > 0 ? nextRentCash2Delta : undefined,
           utilitiesPaid: 0,
           advertisingPaid: 0,
         });

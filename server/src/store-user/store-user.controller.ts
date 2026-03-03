@@ -31,11 +31,12 @@ export class StoreUserController {
   async inviteByEmail(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body('email') email: string,
+    @Req() req: any,
   ) {
     if (!email || typeof email !== 'string') {
       throw new BadRequestException('Valid email is required');
     }
-    return this.service.inviteByEmail(storeId, email);
+    return this.service.inviteByEmail(storeId, email, req.user.id);
   }
 
   /**
@@ -46,8 +47,9 @@ export class StoreUserController {
   inviteUser(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,
+    @Req() req: any,
   ) {
-    return this.service.inviteUser(storeId, userId);
+    return this.service.inviteUser(storeId, userId, req.user.id);
   }
 
   //Assign and remove permissions

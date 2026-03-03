@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -31,12 +32,13 @@ export class AdditionalChargeController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
     return this.service.payCharge(id, body.amountPaid, {
       bankTransferPaid: body.bankTransferPaid,
       cashbox1Paid: body.cashbox1Paid,
       cashbox2Paid: body.cashbox2Paid,
-    });
+    }, req.user.id);
   }
 
   @Get(':id/payments')
@@ -50,8 +52,9 @@ export class AdditionalChargeController {
   create(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Body() data: { name: string; amount: number },
+    @Req() req: any,
   ) {
-    return this.service.create(pavilionId, data);
+    return this.service.create(pavilionId, data, req.user.id);
   }
 
   @Get()
@@ -66,8 +69,9 @@ export class AdditionalChargeController {
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('chargeId', ParseIntPipe) chargeId: number,
     @Body() data: { name?: string; amount?: number },
+    @Req() req: any,
   ) {
-    return this.service.update(pavilionId, chargeId, data);
+    return this.service.update(pavilionId, chargeId, data, req.user.id);
   }
 
   @Delete(':chargeId')
@@ -75,9 +79,9 @@ export class AdditionalChargeController {
   delete(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('chargeId', ParseIntPipe) chargeId: number,
+    @Req() req: any,
   ) {
-    console.log('dfgdgdfg:', pavilionId, chargeId);
-    return this.service.delete(pavilionId, chargeId);
+    return this.service.delete(pavilionId, chargeId, req.user.id);
   }
 
   @Delete(':chargeId/payments/:paymentId')
@@ -86,8 +90,9 @@ export class AdditionalChargeController {
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('chargeId', ParseIntPipe) chargeId: number,
     @Param('paymentId', ParseIntPipe) paymentId: number,
+    @Req() req: any,
   ) {
-    return this.service.deletePayment(pavilionId, chargeId, paymentId);
+    return this.service.deletePayment(pavilionId, chargeId, paymentId, req.user.id);
   }
 
   @Patch(':chargeId/payments/:paymentId')
@@ -103,7 +108,8 @@ export class AdditionalChargeController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
-    return this.service.updatePayment(pavilionId, chargeId, paymentId, body);
+    return this.service.updatePayment(pavilionId, chargeId, paymentId, body, req.user.id);
   }
 }

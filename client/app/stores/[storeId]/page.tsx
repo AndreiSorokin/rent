@@ -13,6 +13,7 @@ import {
   CheckCheck,
   CirclePlus,
   HandCoins,
+  History,
   LockKeyhole,
   Menu,
   Sigma,
@@ -217,7 +218,6 @@ export default function StorePage() {
   const [createAdminExpenseModal, setCreateAdminExpenseModal] = useState<{
     type: CardExpenseType;
     label: string;
-    note: string;
     amount: string;
   } | null>(null);
   const [editAdminExpenseModal, setEditAdminExpenseModal] = useState<{
@@ -960,13 +960,9 @@ export default function StorePage() {
 
   const handleCreateAdminExpense = async () => {
     if (!createAdminExpenseModal) return;
-    const note = createAdminExpenseModal.note.trim();
+    const note = createAdminExpenseModal.label.trim();
     const amount = Number(createAdminExpenseModal.amount);
 
-    if (!note) {
-      alert('Введите название');
-      return;
-    }
     if (Number.isNaN(amount) || amount < 0) {
       alert('Сумма должна быть неотрицательной');
       return;
@@ -1353,6 +1349,15 @@ export default function StorePage() {
                 Бух. таблица
               </Link>
             )}
+            {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+              <Link
+                href={`/stores/${storeId}/activity`}
+                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                <History className="h-4 w-4" />
+                Журнал действий
+              </Link>
+            )}
             {hasPermission(permissions, 'VIEW_PAYMENTS') && (
               <button
                 onClick={() => setShowExtraIncomeModal(true)}
@@ -1490,6 +1495,16 @@ export default function StorePage() {
                   >
                     <CheckCheck className="h-4 w-4" />
                     Бух. таблица
+                  </Link>
+                )}
+                {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+                  <Link
+                    href={`/stores/${storeId}/activity`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                  >
+                    <History className="h-4 w-4" />
+                    Журнал действий
                   </Link>
                 )}
                 {hasPermission(permissions, 'VIEW_PAYMENTS') && (
@@ -2099,7 +2114,6 @@ export default function StorePage() {
                             setCreateAdminExpenseModal({
                               type: category.type,
                               label: category.label,
-                              note: '',
                               amount: '',
                             })
                           }
@@ -3010,19 +3024,6 @@ export default function StorePage() {
             </p>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={createAdminExpenseModal.note}
-                  onChange={(e) =>
-                    setCreateAdminExpenseModal((prev) =>
-                      prev ? { ...prev, note: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
-                />
-              </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
                 <input

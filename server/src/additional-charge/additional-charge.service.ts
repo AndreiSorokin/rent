@@ -2,15 +2,20 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PavilionStatus } from '@prisma/client';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class AdditionalChargeService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
   async deletePayment(
     pavilionId: number,
     additionalChargeId: number,
     paymentId: number,
+    _userId?: number,
   ) {
     // Ensure payment belongs to the charge, and charge belongs to the pavilion
     const payment = await this.prisma.additionalChargePayment.findFirst({
@@ -32,6 +37,27 @@ export class AdditionalChargeService {
     const deleted = await this.prisma.additionalChargePayment.delete({
       where: { id: paymentId },
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId,
+        action: 'DELETE',
+        entityType: 'ADDITIONAL_CHARGE_PAYMENT',
+        entityId: deleted.id,
+        details: {
+          pavilionNumber: pavilion.number,
+          amountPaid: deleted.amountPaid,
+          bankTransferPaid: deleted.bankTransferPaid,
+          cashbox1Paid: deleted.cashbox1Paid,
+          cashbox2Paid: deleted.cashbox2Paid,
+        },
+      });
+    }
 
     await this.refreshMonthlyLedger(pavilionId, payment.paidAt);
     return deleted;
@@ -46,6 +72,7 @@ export class AdditionalChargeService {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    _userId?: number,
   ) {
     const charge = await this.prisma.additionalCharge.findUnique({
       where: { id: additionalChargeId },
@@ -88,6 +115,27 @@ export class AdditionalChargeService {
         cashbox2Paid: hasChannelsInput ? cashbox2Paid : 0,
       },
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: charge.pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId: charge.pavilionId,
+        action: 'CREATE',
+        entityType: 'ADDITIONAL_CHARGE_PAYMENT',
+        entityId: created.id,
+        details: {
+          pavilionNumber: pavilion.number,
+          amountPaid: created.amountPaid,
+          bankTransferPaid: created.bankTransferPaid,
+          cashbox1Paid: created.cashbox1Paid,
+          cashbox2Paid: created.cashbox2Paid,
+        },
+      });
+    }
 
     await this.refreshMonthlyLedger(charge.pavilionId, created.paidAt);
     return created;
@@ -100,7 +148,11 @@ export class AdditionalChargeService {
     });
   }
 
-  async create(pavilionId: number, data: { name: string; amount: number }) {
+  async create(
+    pavilionId: number,
+    data: { name: string; amount: number },
+    _userId?: number,
+  ) {
     const created = await this.prisma.additionalCharge.create({
       data: {
         name: data.name,
@@ -108,6 +160,25 @@ export class AdditionalChargeService {
         pavilionId,
       },
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId,
+        action: 'CREATE',
+        entityType: 'ADDITIONAL_CHARGE',
+        entityId: created.id,
+        details: {
+          pavilionNumber: pavilion.number,
+          name: created.name,
+          amount: created.amount,
+        },
+      });
+    }
     await this.refreshMonthlyLedger(pavilionId, created.createdAt);
     return created;
   }
@@ -123,6 +194,7 @@ export class AdditionalChargeService {
     pavilionId: number,
     chargeId: number,
     data: { name?: string; amount?: number },
+    _userId?: number,
   ) {
     const charge = await this.prisma.additionalCharge.findFirst({
       where: { id: chargeId, pavilionId },
@@ -136,11 +208,35 @@ export class AdditionalChargeService {
       where: { id: chargeId },
       data,
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId,
+        action: 'UPDATE',
+        entityType: 'ADDITIONAL_CHARGE',
+        entityId: updated.id,
+        details: {
+          before: {
+            name: charge.name,
+            amount: charge.amount,
+          },
+          after: {
+            name: updated.name,
+            amount: updated.amount,
+          },
+        },
+      });
+    }
     await this.refreshMonthlyLedger(pavilionId, updated.createdAt);
     return updated;
   }
 
-  async delete(pavilionId: number, chargeId: number) {
+  async delete(pavilionId: number, chargeId: number, _userId?: number) {
     const charge = await this.prisma.additionalCharge.findFirst({
       where: { id: chargeId, pavilionId },
     });
@@ -152,6 +248,25 @@ export class AdditionalChargeService {
     const deleted = await this.prisma.additionalCharge.delete({
       where: { id: chargeId },
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId,
+        action: 'DELETE',
+        entityType: 'ADDITIONAL_CHARGE',
+        entityId: deleted.id,
+        details: {
+          pavilionNumber: pavilion.number,
+          name: deleted.name,
+          amount: deleted.amount,
+        },
+      });
+    }
     await this.refreshMonthlyLedger(pavilionId, deleted.createdAt);
     return deleted;
   }
@@ -166,6 +281,7 @@ export class AdditionalChargeService {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    _userId?: number,
   ) {
     const payment = await this.prisma.additionalChargePayment.findFirst({
       where: {
@@ -216,6 +332,34 @@ export class AdditionalChargeService {
         cashbox2Paid: nextCashbox2Paid,
       },
     });
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (pavilion) {
+      await this.storeActivity.log({
+        storeId: pavilion.storeId,
+        userId: _userId,
+        pavilionId,
+        action: 'UPDATE',
+        entityType: 'ADDITIONAL_CHARGE_PAYMENT',
+        entityId: updated.id,
+        details: {
+          before: {
+            amountPaid: payment.amountPaid,
+            bankTransferPaid: payment.bankTransferPaid,
+            cashbox1Paid: payment.cashbox1Paid,
+            cashbox2Paid: payment.cashbox2Paid,
+          },
+          after: {
+            amountPaid: updated.amountPaid,
+            bankTransferPaid: updated.bankTransferPaid,
+            cashbox1Paid: updated.cashbox1Paid,
+            cashbox2Paid: updated.cashbox2Paid,
+          },
+        },
+      });
+    }
 
     await this.refreshMonthlyLedger(pavilionId, updated.paidAt);
     return updated;

@@ -16,10 +16,14 @@ import {
   Prisma,
 } from '@prisma/client';
 import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class StoresService implements OnModuleInit, OnModuleDestroy {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
   private readonly logger = new Logger(StoresService.name);
   private monthlyRolloverTimer?: NodeJS.Timeout;
 
@@ -61,7 +65,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
    * Create store + make creator store admin (all permissions)
    */
   async create(data: Prisma.StoreCreateInput, userId: number) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const store = await tx.store.create({
         data,
       });
@@ -76,6 +80,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
       return store;
     });
+    return result;
   }
 
   /**
@@ -185,6 +190,51 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       ...store,
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
+    };
+  }
+
+  async listActivity(
+    storeId: number,
+    userId: number,
+    options?: { page?: number; pageSize?: number },
+  ) {
+    await this.assertStorePermission(storeId, userId, [Permission.VIEW_PAVILIONS]);
+    const page = Math.max(1, Number(options?.page ?? 1));
+    const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 30)));
+
+    const [total, items] = await this.prisma.$transaction([
+      (this.prisma as any).storeActivity.count({
+        where: { storeId },
+      }),
+      (this.prisma as any).storeActivity.findMany({
+        where: { storeId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          pavilion: {
+            select: {
+              id: true,
+              number: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     };
   }
 
@@ -312,7 +362,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Both old and new category names are required');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.pavilion.updateMany({
         where: { storeId, category: normalizedOldName },
         data: { category: normalizedNewName },
@@ -353,7 +403,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Category name is required');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       await tx.pavilion.updateMany({
         where: { storeId, category: normalizedName },
         data: { category: null },
@@ -413,7 +463,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('salary must be non-negative');
     }
 
-    return this.prisma.storeStaff.create({
+    const created = await this.prisma.storeStaff.create({
       data: {
         storeId,
         fullName,
@@ -421,6 +471,19 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         salary,
       },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'CREATE',
+      entityType: 'STAFF',
+      entityId: created.id,
+      details: {
+        fullName: created.fullName,
+        position: created.position,
+        salary: Number(created.salary ?? 0),
+      },
+    });
+    return created;
   }
 
   async createPavilionGroup(
@@ -799,6 +862,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STAFF',
+      entityId: updatedStaff.id,
+      details: {
+        salary: Number(updatedStaff.salary ?? 0),
+        salaryStatus: updatedStaff.salaryStatus,
+        salaryBankTransferPaid: Number(updatedStaff.salaryBankTransferPaid ?? 0),
+        salaryCashbox1Paid: Number(updatedStaff.salaryCashbox1Paid ?? 0),
+        salaryCashbox2Paid: Number(updatedStaff.salaryCashbox2Paid ?? 0),
+      },
+    });
     return updatedStaff;
   }
 
@@ -830,7 +907,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Staff record not found');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const deletedStaff = await this.prisma.$transaction(async (tx) => {
       // Remove salary expense entries generated from this staff member,
       // so summary/accounting no longer includes deleted salary.
       await tx.pavilionExpense.deleteMany({
@@ -847,6 +924,18 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         where: { id: staffId },
       });
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'STAFF',
+      entityId: deletedStaff.id,
+      details: {
+        fullName: deletedStaff.fullName,
+        position: deletedStaff.position,
+      },
+    });
+    return deletedStaff;
   }
 
   async updateExpenseStatuses(
@@ -906,6 +995,26 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     return startOfMonth(new Date(year, month - 1, 1));
+  }
+
+  private async logActivity(args: {
+    storeId: number;
+    userId?: number;
+    pavilionId?: number | null;
+    action: string;
+    entityType: string;
+    entityId?: number;
+    details?: Prisma.InputJsonValue;
+  }) {
+    await this.storeActivity.log({
+      storeId: args.storeId,
+      userId: args.userId,
+      pavilionId: args.pavilionId ?? null,
+      action: args.action,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      details: args.details,
+    });
   }
 
   private normalizeExtraIncomeInput(data: {
@@ -974,6 +1083,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async createStoreExtraIncome(
     storeId: number,
+    userId: number,
     data: {
       name: string;
       amount: number;
@@ -985,7 +1095,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     },
   ) {
     const payload = this.normalizeExtraIncomeInput(data);
-    return (this.prisma as any).storeExtraIncome.create({
+    const created = await (this.prisma as any).storeExtraIncome.create({
       data: {
         storeId,
         name: payload.name,
@@ -997,11 +1107,24 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         paidAt: payload.paidAt,
       },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'CREATE',
+      entityType: 'STORE_EXTRA_INCOME',
+      entityId: created.id,
+      details: {
+        name: created.name,
+        amount: Number(created.amount ?? 0),
+      },
+    });
+    return created;
   }
 
   async updateStoreExtraIncome(
     storeId: number,
     incomeId: number,
+    userId: number,
     data: {
       name?: string;
       amount?: number;
@@ -1033,7 +1156,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       paidAt: data.paidAt ?? existing.paidAt.toISOString(),
     });
 
-    return (this.prisma as any).storeExtraIncome.update({
+    const updated = await (this.prisma as any).storeExtraIncome.update({
       where: { id: incomeId },
       data: {
         name: payload.name,
@@ -1045,19 +1168,43 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         paidAt: payload.paidAt,
       },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STORE_EXTRA_INCOME',
+      entityId: updated.id,
+      details: {
+        name: updated.name,
+        amount: Number(updated.amount ?? 0),
+      },
+    });
+    return updated;
   }
 
-  async deleteStoreExtraIncome(storeId: number, incomeId: number) {
+  async deleteStoreExtraIncome(storeId: number, incomeId: number, userId: number) {
     const existing = await (this.prisma as any).storeExtraIncome.findFirst({
       where: { id: incomeId, storeId },
-      select: { id: true },
+      select: { id: true, name: true, amount: true },
     });
     if (!existing) {
       throw new NotFoundException('Store extra income not found');
     }
-    return (this.prisma as any).storeExtraIncome.delete({
+    const deleted = await (this.prisma as any).storeExtraIncome.delete({
       where: { id: incomeId },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'STORE_EXTRA_INCOME',
+      entityId: deleted.id,
+      details: {
+        name: existing.name,
+        amount: Number(existing.amount ?? 0),
+      },
+    });
+    return deleted;
   }
 
   async listAccountingTable(storeId: number) {
@@ -1661,6 +1808,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async openAccountingDay(
     storeId: number,
+    userId: number,
     data: {
       date?: string;
       bankTransferPaid?: number;
@@ -1686,10 +1834,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('День уже открыт');
     }
 
-    await this.prisma.storeAccountingRecord.create({
+    const openingRecord = await this.prisma.storeAccountingRecord.create({
       data: {
         storeId,
         recordDate: dayStart,
+        bankTransferPaid: amounts.bankTransferPaid,
+        cashbox1Paid: amounts.cashbox1Paid,
+        cashbox2Paid: amounts.cashbox2Paid,
+      },
+    });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'OPEN',
+      entityType: 'ACCOUNTING_DAY',
+      entityId: openingRecord.id,
+      details: {
+        date: dayStart.toISOString(),
         bankTransferPaid: amounts.bankTransferPaid,
         cashbox1Paid: amounts.cashbox1Paid,
         cashbox2Paid: amounts.cashbox2Paid,
@@ -1701,6 +1862,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async closeAccountingDay(
     storeId: number,
+    userId: number,
     data: {
       date?: string;
       bankTransferPaid?: number;
@@ -1751,7 +1913,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    await this.prisma.storeAccountingRecord.create({
+    const closingRecord = await this.prisma.storeAccountingRecord.create({
       data: {
         storeId,
         recordDate: dayStart,
@@ -1760,12 +1922,29 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         cashbox2Paid: amounts.cashbox2Paid,
       },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'CLOSE',
+      entityType: 'ACCOUNTING_DAY',
+      entityId: closingRecord.id,
+      details: {
+        date: dayStart.toISOString(),
+        bankTransferPaid: amounts.bankTransferPaid,
+        cashbox1Paid: amounts.cashbox1Paid,
+        cashbox2Paid: amounts.cashbox2Paid,
+        diffBank,
+        diffCash1,
+        diffCash2,
+      },
+    });
 
     return this.getAccountingDayReconciliation(storeId, dayStart.toISOString());
   }
 
   async createAccountingRecord(
     storeId: number,
+    userId: number,
     data: {
       recordDate: string;
       bankTransferPaid?: number;
@@ -1788,7 +1967,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     await this.cleanupOldAccountingRecords(storeId);
 
-    return this.prisma.storeAccountingRecord.create({
+    const created = await this.prisma.storeAccountingRecord.create({
       data: {
         storeId,
         recordDate: startOfDay(parsedDate),
@@ -1797,21 +1976,55 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         cashbox2Paid,
       },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'CREATE',
+      entityType: 'ACCOUNTING_RECORD',
+      entityId: created.id,
+      details: {
+        recordDate: created.recordDate.toISOString(),
+        bankTransferPaid: created.bankTransferPaid,
+        cashbox1Paid: created.cashbox1Paid,
+        cashbox2Paid: created.cashbox2Paid,
+      },
+    });
+    return created;
   }
 
-  async deleteAccountingRecord(storeId: number, recordId: number) {
+  async deleteAccountingRecord(storeId: number, recordId: number, userId: number) {
     const record = await this.prisma.storeAccountingRecord.findFirst({
       where: { id: recordId, storeId },
-      select: { id: true },
+      select: {
+        id: true,
+        recordDate: true,
+        bankTransferPaid: true,
+        cashbox1Paid: true,
+        cashbox2Paid: true,
+      },
     });
 
     if (!record) {
       throw new NotFoundException('Accounting record not found');
     }
 
-    return this.prisma.storeAccountingRecord.delete({
+    const deleted = await this.prisma.storeAccountingRecord.delete({
       where: { id: recordId },
     });
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'ACCOUNTING_RECORD',
+      entityId: deleted.id,
+      details: {
+        recordDate: record.recordDate.toISOString(),
+        bankTransferPaid: record.bankTransferPaid,
+        cashbox1Paid: record.cashbox1Paid,
+        cashbox2Paid: record.cashbox2Paid,
+      },
+    });
+    return deleted;
   }
 
   private async cleanupOldAccountingRecords(storeId: number) {
@@ -1881,11 +2094,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     if (!storeUser) {
       throw new NotFoundException('Store not found or access denied');
     }
-    if (!storeUser.permissions.includes(Permission.ASSIGN_PERMISSIONS)) {
-      throw new ForbiddenException('Only store owner can import data');
+    if (!storeUser.permissions.includes(Permission.CREATE_PAVILIONS)) {
+      throw new ForbiddenException(
+        'Insufficient permissions to import pavilion data',
+      );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existingPavilions = await tx.pavilion.findMany({
         where: { storeId },
         select: { id: true, number: true },
@@ -1905,6 +2120,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       let importedExpenses = 0;
       let importedAccounting = 0;
       let importedStaff = 0;
+      const importedPavilionList: string[] = [];
       const currentPeriod = startOfMonth(new Date());
 
       for (const item of data.pavilions ?? []) {
@@ -1995,6 +2211,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           });
         }
         importedPavilions += 1;
+        const statusLabel =
+          normalizedStatus === PavilionStatus.AVAILABLE
+            ? 'Свободен'
+            : normalizedStatus === PavilionStatus.RENTED
+              ? 'Занят'
+              : 'Предоплата';
+        importedPavilionList.push(`${number} (${statusLabel})`);
       }
 
       for (const item of data.householdExpenses ?? []) {
@@ -2079,8 +2302,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           accounting: importedAccounting,
           staff: importedStaff,
         },
+        importedPavilionList,
       };
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'IMPORT',
+      entityType: 'PAVILION_IMPORT',
+      entityId: null,
+      details: {
+        pavilions: result.importedPavilionList,
+      },
+    });
+    return result;
   }
 
   private getMonthlyDiscountTotal(

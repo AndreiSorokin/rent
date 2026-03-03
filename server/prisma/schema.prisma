@@ -13,6 +13,7 @@ model User {
   password        String
   name            String?
   stores          StoreUser[]
+  activities      StoreActivity[]
   passwordResetTokens PasswordResetToken[]
   createdAt       DateTime     @default(now())
   sentInvitations Invitation[] @relation("inviter")
@@ -76,6 +77,30 @@ model Store {
   householdExpenses HouseholdExpense[]
   pavilionExpenses PavilionExpense[]
   pavilionGroups PavilionGroup[]
+  activities StoreActivity[]
+}
+
+model StoreActivity {
+  id Int @id @default(autoincrement())
+
+  storeId Int
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  pavilionId Int?
+  pavilion Pavilion? @relation(fields: [pavilionId], references: [id], onDelete: SetNull)
+
+  userId Int?
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action String
+  entityType String
+  entityId Int?
+  details Json?
+  createdAt DateTime @default(now())
+
+  @@index([storeId, createdAt])
+  @@index([pavilionId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model StoreExtraIncome {
@@ -183,6 +208,7 @@ model Pavilion {
   monthlyLedgers    PavilionMonthlyLedger[]
   contracts         Contract[]
   groupMemberships PavilionGroupMembership[]
+  activities        StoreActivity[]
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id])

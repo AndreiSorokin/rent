@@ -2,10 +2,14 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from 'src/prisma/prisma.service';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { PavilionStatus } from '@prisma/client';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
   private toNumber(value: number | null | undefined) {
     return Number(value ?? 0);
@@ -169,6 +173,7 @@ async addPayment(
     advertisingCashbox1Paid?: number;
     advertisingCashbox2Paid?: number;
   },
+  userId?: number,
 ) {
   const normalizedPeriod = startOfMonth(period);
   const hasLegacyRentChannels =
@@ -265,6 +270,8 @@ async addPayment(
     where: { id: pavilionId },
     select: {
       id: true,
+      storeId: true,
+      number: true,
       status: true,
       prepaidUntil: true,
     },
@@ -387,6 +394,24 @@ async addPayment(
     return payment;
   });
   await this.refreshMonthlyLedger(pavilionId, normalizedPeriod, normalizedStatus);
+  await this.storeActivity.log({
+    storeId: pavilion.storeId,
+    userId,
+    pavilionId,
+    action: 'CREATE',
+    entityType: 'PAYMENT_TRANSACTION',
+    entityId: null,
+    details: {
+      pavilionNumber: pavilion.number,
+      date: normalizedPeriod,
+      rentPaid: rentIncrement,
+      utilitiesPaid: safeUtilitiesIncrement,
+      advertisingPaid: safeAdvertisingIncrement,
+      bankTransferPaid: safeChannelBank,
+      cashbox1Paid: safeChannelCashbox1,
+      cashbox2Paid: safeChannelCashbox2,
+    },
+  });
   return payment;
 }
 
@@ -449,7 +474,15 @@ async addPayment(
     });
   }
 
-  async deleteEntry(pavilionId: number, entryId: number) {
+  async deleteEntry(pavilionId: number, entryId: number, userId?: number) {
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const entry = await tx.paymentTransaction.findFirst({
         where: { id: entryId, pavilionId },
@@ -477,7 +510,17 @@ async addPayment(
           where: { id: aggregate.id },
         });
 
-        return { period: aggregate.period };
+        return {
+          period: aggregate.period,
+          deleted: {
+            rentPaid: aggregate.rentPaid ?? 0,
+            utilitiesPaid: aggregate.utilitiesPaid ?? 0,
+            advertisingPaid: aggregate.advertisingPaid ?? 0,
+            bankTransferPaid: aggregate.bankTransferPaid ?? 0,
+            cashbox1Paid: aggregate.cashbox1Paid ?? 0,
+            cashbox2Paid: aggregate.cashbox2Paid ?? 0,
+          },
+        };
       }
 
       const payment = await tx.payment.findUnique({
@@ -559,11 +602,34 @@ async addPayment(
         where: { id: entryId },
       });
 
-      return { period: entry.period };
+      return {
+        period: entry.period,
+        deleted: {
+          rentPaid: entry.rentPaid ?? 0,
+          utilitiesPaid: entry.utilitiesPaid ?? 0,
+          advertisingPaid: entry.advertisingPaid ?? 0,
+          bankTransferPaid: entry.bankTransferPaid ?? 0,
+          cashbox1Paid: entry.cashbox1Paid ?? 0,
+          cashbox2Paid: entry.cashbox2Paid ?? 0,
+        },
+      };
     });
 
     const normalizedPeriod = startOfMonth(result.period);
     await this.refreshMonthlyLedger(pavilionId, normalizedPeriod);
+    await this.storeActivity.log({
+      storeId: pavilion.storeId,
+      userId,
+      pavilionId,
+      action: 'DELETE',
+      entityType: 'PAYMENT_TRANSACTION',
+      entityId: entryId,
+      details: {
+        pavilionNumber: pavilion.number,
+        date: normalizedPeriod,
+        ...result.deleted,
+      },
+    });
     return { success: true };
   }
 
@@ -587,7 +653,16 @@ async addPayment(
       advertisingCashbox1Paid?: number;
       advertisingCashbox2Paid?: number;
     },
+    userId?: number,
   ) {
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      select: { storeId: true, number: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const entry = await tx.paymentTransaction.findFirst({
         where: { id: entryId, pavilionId },
@@ -755,10 +830,28 @@ async addPayment(
         data: nextPayment,
       });
 
-      return { period: updatedEntry.period };
+      return {
+        period: updatedEntry.period,
+        before: previousEntry,
+        after: nextEntry,
+      };
     });
 
     await this.refreshMonthlyLedger(pavilionId, startOfMonth(result.period));
+    await this.storeActivity.log({
+      storeId: pavilion.storeId,
+      userId,
+      pavilionId,
+      action: 'UPDATE',
+      entityType: 'PAYMENT_TRANSACTION',
+      entityId: entryId,
+      details: {
+        pavilionNumber: pavilion.number,
+        date: startOfMonth(result.period),
+        before: result.before,
+        after: result.after,
+      },
+    });
     return { success: true };
   }
 

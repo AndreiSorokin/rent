@@ -10,6 +10,7 @@ import {
   Patch,
   UseGuards,
   Query,
+  Req,
 } from '@nestjs/common';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,6 +27,7 @@ export class PaymentsController {
   @Permissions(Permission.CREATE_PAYMENTS)
   addPayment(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Req() req: any,
     @Body()
     body: {
       period: string;
@@ -63,7 +65,7 @@ export class PaymentsController {
       advertisingBankTransferPaid: body.advertisingBankTransferPaid,
       advertisingCashbox1Paid: body.advertisingCashbox1Paid,
       advertisingCashbox2Paid: body.advertisingCashbox2Paid,
-    });
+    }, req.user.id);
   }
 
   @Get()
@@ -102,8 +104,9 @@ export class PaymentsController {
   deleteEntry(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('entryId', ParseIntPipe) entryId: number,
+    @Req() req: any,
   ) {
-    return this.service.deleteEntry(pavilionId, entryId);
+    return this.service.deleteEntry(pavilionId, entryId, req.user.id);
   }
 
   @Patch('entries/:entryId')
@@ -111,6 +114,7 @@ export class PaymentsController {
   updateEntry(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('entryId', ParseIntPipe) entryId: number,
+    @Req() req: any,
     @Body()
     body: {
       rentPaid?: number;
@@ -136,6 +140,6 @@ export class PaymentsController {
     if (!hasAnyField) {
       throw new BadRequestException('No fields provided for update');
     }
-    return this.service.updateEntry(pavilionId, entryId, body);
+    return this.service.updateEntry(pavilionId, entryId, body, req.user.id);
   }
 }

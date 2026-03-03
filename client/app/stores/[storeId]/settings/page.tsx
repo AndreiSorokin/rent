@@ -114,6 +114,7 @@ export default function StoreSettingsPage() {
   const permissions = store.permissions || [];
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canEditPavilions = hasPermission(permissions, 'EDIT_PAVILIONS');
+  const createPavilions = hasPermission(permissions, 'CREATE_PAVILIONS');
   const canManageUsers =
     hasPermission(permissions, 'INVITE_USERS') ||
     hasPermission(permissions, 'ASSIGN_PERMISSIONS');
@@ -379,7 +380,7 @@ export default function StoreSettingsPage() {
               Управление объектом: {store.name}
             </h1>
           </div>
-          {canManageStore && (
+          {createPavilions && (
             <button
               onClick={() => setShowImportModal(true)}
               className="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"

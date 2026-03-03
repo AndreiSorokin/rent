@@ -232,6 +232,20 @@ export class StoresController {
     return this.service.listAccountingTable(storeId);
   }
 
+  @Get(':storeId/activity')
+  @Permissions(Permission.VIEW_PAVILIONS)
+  listStoreActivity(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.service.listActivity(storeId, req.user.id, {
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+    });
+  }
+
   @Post(':storeId/accounting-table')
   @Permissions(Permission.CREATE_PAYMENTS)
   createAccountingRecord(
@@ -243,8 +257,9 @@ export class StoresController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
-    return this.service.createAccountingRecord(storeId, data);
+    return this.service.createAccountingRecord(storeId, req.user.id, data);
   }
 
   @Delete(':storeId/accounting-table/:recordId')
@@ -252,8 +267,9 @@ export class StoresController {
   deleteAccountingRecord(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('recordId', ParseIntPipe) recordId: number,
+    @Req() req: any,
   ) {
-    return this.service.deleteAccountingRecord(storeId, recordId);
+    return this.service.deleteAccountingRecord(storeId, recordId, req.user.id);
   }
 
   @Get(':storeId/extra-income')
@@ -279,8 +295,9 @@ export class StoresController {
       period?: string;
       paidAt?: string;
     },
+    @Req() req: any,
   ) {
-    return this.service.createStoreExtraIncome(storeId, data);
+    return this.service.createStoreExtraIncome(storeId, req.user.id, data);
   }
 
   @Patch(':storeId/extra-income/:incomeId')
@@ -298,8 +315,9 @@ export class StoresController {
       period?: string;
       paidAt?: string;
     },
+    @Req() req: any,
   ) {
-    return this.service.updateStoreExtraIncome(storeId, incomeId, data);
+    return this.service.updateStoreExtraIncome(storeId, incomeId, req.user.id, data);
   }
 
   @Delete(':storeId/extra-income/:incomeId')
@@ -307,8 +325,9 @@ export class StoresController {
   deleteStoreExtraIncome(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('incomeId', ParseIntPipe) incomeId: number,
+    @Req() req: any,
   ) {
-    return this.service.deleteStoreExtraIncome(storeId, incomeId);
+    return this.service.deleteStoreExtraIncome(storeId, incomeId, req.user.id);
   }
 
   @Get(':storeId/accounting-reconciliation')
@@ -340,8 +359,9 @@ export class StoresController {
       cashbox1Paid?: number;
       cashbox2Paid?: number;
     },
+    @Req() req: any,
   ) {
-    return this.service.openAccountingDay(storeId, data);
+    return this.service.openAccountingDay(storeId, req.user.id, data);
   }
 
   @Post(':storeId/accounting-reconciliation/close')
@@ -356,12 +376,13 @@ export class StoresController {
       cashbox2Paid?: number;
       forceClose?: boolean;
     },
+    @Req() req: any,
   ) {
-    return this.service.closeAccountingDay(storeId, data);
+    return this.service.closeAccountingDay(storeId, req.user.id, data);
   }
 
   @Post(':storeId/import-data')
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  @Permissions(Permission.CREATE_PAVILIONS)
   importData(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body()

@@ -6,6 +6,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Permission } from '@prisma/client';
@@ -31,8 +32,9 @@ export class DiscountsController {
   create(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Body() dto: CreateDiscountDto,
+    @Req() req: any,
   ) {
-    return this.service.create(pavilionId, dto);
+    return this.service.create(pavilionId, dto, req.user.id);
   }
 
   @Delete(':discountId')
@@ -40,7 +42,8 @@ export class DiscountsController {
   delete(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('discountId', ParseIntPipe) discountId: number,
+    @Req() req: any,
   ) {
-    return this.service.delete(pavilionId, discountId);
+    return this.service.delete(pavilionId, discountId, req.user.id);
   }
 }

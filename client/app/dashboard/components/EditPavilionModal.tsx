@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
@@ -26,9 +26,9 @@ type PavilionLike = {
 };
 
 const STATUS_OPTIONS: Array<{ value: PavilionStatus; label: string }> = [
-  { value: 'AVAILABLE', label: 'СВОБОДЕН' },
-  { value: 'RENTED', label: 'ЗАНЯТ' },
-  { value: 'PREPAID', label: 'ПРЕДОПЛАТА' },
+  { value: 'AVAILABLE', label: 'РЎР’РћР‘РћР”Р•Рќ' },
+  { value: 'RENTED', label: 'Р—РђРќРЇРў' },
+  { value: 'PREPAID', label: 'РџР Р•Р”РћРџР›РђРўРђ' },
 ];
 
 export function EditPavilionModal({
@@ -143,19 +143,19 @@ export function EditPavilionModal({
       form.status === 'RENTED' ? Number(form.advertisingAmount || 0) : 0;
 
     if (!form.number.trim()) {
-      setErrorAndScrollTop('Укажите номер павильона');
+      setErrorAndScrollTop('РЈРєР°Р¶РёС‚Рµ РЅРѕРјРµСЂ РїР°РІРёР»СЊРѕРЅР°');
       return;
     }
     if (!Number.isFinite(parsedSquareMeters) || parsedSquareMeters <= 0) {
-      setErrorAndScrollTop('Площадь должна быть больше 0');
+      setErrorAndScrollTop('РџР»РѕС‰Р°РґСЊ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0');
       return;
     }
     if (!Number.isFinite(parsedPricePerSqM) || parsedPricePerSqM < 0) {
-      setErrorAndScrollTop('Цена за м² должна быть неотрицательной');
+      setErrorAndScrollTop('Р¦РµРЅР° Р·Р° РјВІ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµРѕС‚СЂРёС†Р°С‚РµР»СЊРЅРѕР№');
       return;
     }
     if (form.status !== 'AVAILABLE' && !form.tenantName.trim()) {
-      setErrorAndScrollTop('Укажите арендатора для занятых/предоплаченных павильонов');
+      setErrorAndScrollTop('РЈРєР°Р¶РёС‚Рµ Р°СЂРµРЅРґР°С‚РѕСЂР° РґР»СЏ Р·Р°РЅСЏС‚С‹С…/РїСЂРµРґРѕРїР»Р°С‡РµРЅРЅС‹С… РїР°РІРёР»СЊРѕРЅРѕРІ');
       return;
     }
     if (
@@ -164,7 +164,7 @@ export function EditPavilionModal({
       parsedUtilities < 0 ||
       parsedAdvertising < 0
     ) {
-      setErrorAndScrollTop('Коммунальные и реклама должны быть неотрицательными');
+      setErrorAndScrollTop('РљРѕРјРјСѓРЅР°Р»СЊРЅС‹Рµ Рё СЂРµРєР»Р°РјР° РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ РЅРµРѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹РјРё');
       return;
     }
 
@@ -179,11 +179,11 @@ export function EditPavilionModal({
 
     if (form.status === 'PREPAID') {
       if (targetPrepayment <= 0) {
-        setErrorAndScrollTop('Сумма предоплаты должна быть больше 0');
+        setErrorAndScrollTop('РЎСѓРјРјР° РїСЂРµРґРѕРїР»Р°С‚С‹ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0');
         return;
       }
       if (Math.abs(prepayChannelsTotal - targetPrepayment) > 0.01) {
-        setErrorAndScrollTop('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+        setErrorAndScrollTop('РЎСѓРјРјР° РїРѕ РєР°РЅР°Р»Р°Рј РѕРїР»Р°С‚С‹ РґРѕР»Р¶РЅР° СЃРѕРІРїР°РґР°С‚СЊ СЃ СЃСѓРјРјРѕР№ РїСЂРµРґРѕРїР»Р°С‚С‹');
         return;
       }
     }
@@ -226,10 +226,10 @@ export function EditPavilionModal({
         const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
         const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
         const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
-        const rentDelta = targetPrepayment - currentRentPaid;
-        const rentBankDelta = prepayBank - currentRentBank;
-        const rentCash1Delta = prepayCash1 - currentRentCash1;
-        const rentCash2Delta = prepayCash2 - currentRentCash2;
+                let rentDelta = targetPrepayment - currentRentPaid;
+        let rentBankDelta = prepayBank - currentRentBank;
+        let rentCash1Delta = prepayCash1 - currentRentCash1;
+        let rentCash2Delta = prepayCash2 - currentRentCash2;
 
         if (
           rentDelta < -0.01 ||
@@ -237,11 +237,16 @@ export function EditPavilionModal({
           rentCash1Delta < -0.01 ||
           rentCash2Delta < -0.01
         ) {
-          setErrorAndScrollTop(
-            'Уменьшение предоплаты или перераспределение по каналам не поддерживается через редактирование. Удалите предоплату и задайте заново.',
-          );
-          setSaving(false);
-          return;
+          if (existingForPeriod?.id) {
+            await apiFetch(
+              `/stores/${storeId}/pavilions/${pavilion.id}/payments/entries/${existingForPeriod.id}`,
+              { method: 'DELETE' },
+            );
+          }
+          rentDelta = targetPrepayment;
+          rentBankDelta = prepayBank;
+          rentCash1Delta = prepayCash1;
+          rentCash2Delta = prepayCash2;
         }
 
         if (Math.abs(rentDelta) > 0.0001) {
@@ -260,7 +265,7 @@ export function EditPavilionModal({
       onClose();
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Не удалось сохранить изменения';
+        err instanceof Error ? err.message : 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РёР·РјРµРЅРµРЅРёСЏ';
       setErrorAndScrollTop(message);
     } finally {
       setSaving(false);
@@ -272,11 +277,11 @@ export function EditPavilionModal({
     const amount = Number(newChargeAmount);
 
     if (!name || !newChargeAmount) {
-      setErrorAndScrollTop('Введите название и сумму дополнительного начисления');
+      setErrorAndScrollTop('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Рё СЃСѓРјРјСѓ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ РЅР°С‡РёСЃР»РµРЅРёСЏ');
       return;
     }
     if (!Number.isFinite(amount) || amount < 0) {
-      setErrorAndScrollTop('Сумма дополнительного начисления должна быть неотрицательной');
+      setErrorAndScrollTop('РЎСѓРјРјР° РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРіРѕ РЅР°С‡РёСЃР»РµРЅРёСЏ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РЅРµРѕС‚СЂРёС†Р°С‚РµР»СЊРЅРѕР№');
       return;
     }
 
@@ -292,7 +297,7 @@ export function EditPavilionModal({
       const message =
         err instanceof Error
           ? err.message
-          : 'Не удалось добавить дополнительное начисление';
+          : 'РќРµ СѓРґР°Р»РѕСЃСЊ РґРѕР±Р°РІРёС‚СЊ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРµ РЅР°С‡РёСЃР»РµРЅРёРµ';
       setErrorAndScrollTop(message);
     } finally {
       setChargeSaving(false);
@@ -300,7 +305,7 @@ export function EditPavilionModal({
   };
 
   const handleDeleteAdditionalCharge = async (chargeId: number) => {
-    if (!confirm('Удалить это дополнительное начисление?')) return;
+    if (!confirm('РЈРґР°Р»РёС‚СЊ СЌС‚Рѕ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРµ РЅР°С‡РёСЃР»РµРЅРёРµ?')) return;
 
     try {
       setChargeSaving(true);
@@ -312,7 +317,7 @@ export function EditPavilionModal({
       const message =
         err instanceof Error
           ? err.message
-          : 'Не удалось удалить дополнительное начисление';
+          : 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРµ РЅР°С‡РёСЃР»РµРЅРёРµ';
       setErrorAndScrollTop(message);
     } finally {
       setChargeSaving(false);
@@ -326,14 +331,14 @@ export function EditPavilionModal({
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
-          <h2 className="text-lg font-bold">Редактировать павильон</h2>
+          <h2 className="text-lg font-bold">Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РїР°РІРёР»СЊРѕРЅ</h2>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-            aria-label="Закрыть"
+            aria-label="Р—Р°РєСЂС‹С‚СЊ"
           >
-            <span aria-hidden>✕</span>
+            <span aria-hidden>вњ•</span>
           </button>
         </div>
         <div className="p-6">
@@ -346,7 +351,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Номер павильона
+            РќРѕРјРµСЂ РїР°РІРёР»СЊРѕРЅР°
           </label>
           <input
             name="number"
@@ -358,7 +363,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Категория
+            РљР°С‚РµРіРѕСЂРёСЏ
           </label>
           <input value={resolvedCategory} readOnly className="input bg-gray-50" />
         </div>
@@ -366,14 +371,14 @@ export function EditPavilionModal({
         {!newCategory.trim() ? (
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Выбор из существующих категорий
+              Р’С‹Р±РѕСЂ РёР· СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… РєР°С‚РµРіРѕСЂРёР№
             </label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="input"
             >
-              <option value="">Выберите категорию</option>
+              <option value="">Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ</option>
               {(existingCategories || []).map((category) => (
                 <option key={category} value={category}>
                   {category}
@@ -383,14 +388,14 @@ export function EditPavilionModal({
           </div>
         ) : (
           <p className="mb-3 text-xs text-gray-500">
-            Введите новую категорию: выбор из существующих скрыт.
+            Р’РІРµРґРёС‚Рµ РЅРѕРІСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ: РІС‹Р±РѕСЂ РёР· СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… СЃРєСЂС‹С‚.
           </p>
         )}
 
         {!selectedCategory ? (
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
-              Новая категория
+              РќРѕРІР°СЏ РєР°С‚РµРіРѕСЂРёСЏ
             </label>
             <input
               value={newCategory}
@@ -400,13 +405,13 @@ export function EditPavilionModal({
           </div>
         ) : (
           <p className="mb-3 text-xs text-gray-500">
-            Выбрана существующая категория: поле новой категории скрыто.
+            Р’С‹Р±СЂР°РЅР° СЃСѓС‰РµСЃС‚РІСѓСЋС‰Р°СЏ РєР°С‚РµРіРѕСЂРёСЏ: РїРѕР»Рµ РЅРѕРІРѕР№ РєР°С‚РµРіРѕСЂРёРё СЃРєСЂС‹С‚Рѕ.
           </p>
         )}
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Площадь (м²)
+            РџР»РѕС‰Р°РґСЊ (РјВІ)
           </label>
           <input
             name="squareMeters"
@@ -421,7 +426,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Цена за м²
+            Р¦РµРЅР° Р·Р° РјВІ
           </label>
           <input
             name="pricePerSqM"
@@ -436,7 +441,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Аренда (авторасчет)
+            РђСЂРµРЅРґР° (Р°РІС‚РѕСЂР°СЃС‡РµС‚)
           </label>
           <input
             type="number"
@@ -448,7 +453,7 @@ export function EditPavilionModal({
 
         <div className="mb-3">
           <label className="mb-1 block text-sm font-medium text-gray-700">
-            Статус
+            РЎС‚Р°С‚СѓСЃ
           </label>
           <select
             name="status"
@@ -468,7 +473,7 @@ export function EditPavilionModal({
           <>
             <div className="mb-3">
               <label className="mb-1 block text-sm font-medium text-gray-700">
-                Наименование организации
+                РќР°РёРјРµРЅРѕРІР°РЅРёРµ РѕСЂРіР°РЅРёР·Р°С†РёРё
               </label>
               <input
                 name="tenantName"
@@ -482,7 +487,7 @@ export function EditPavilionModal({
               <>
                 <div className="mb-3">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Коммунальные
+                    РљРѕРјРјСѓРЅР°Р»СЊРЅС‹Рµ
                   </label>
                   <input
                     name="utilitiesAmount"
@@ -496,7 +501,7 @@ export function EditPavilionModal({
                 </div>
                 <div className="mb-3">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Реклама
+                    Р РµРєР»Р°РјР°
                   </label>
                   <input
                     name="advertisingAmount"
@@ -510,10 +515,10 @@ export function EditPavilionModal({
                 </div>
                 <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="mb-2 text-sm font-medium text-gray-700">
-                    Дополнительные начисления
+                    Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РЅР°С‡РёСЃР»РµРЅРёСЏ
                   </p>
                   {additionalCharges.length === 0 ? (
-                    <p className="mb-2 text-xs text-gray-500">Начислений пока нет</p>
+                    <p className="mb-2 text-xs text-gray-500">РќР°С‡РёСЃР»РµРЅРёР№ РїРѕРєР° РЅРµС‚</p>
                   ) : (
                     <div className="mb-3 space-y-2">
                       {additionalCharges.map((charge) => (
@@ -532,7 +537,7 @@ export function EditPavilionModal({
                               disabled={chargeSaving}
                               className="self-start rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60 sm:self-auto"
                             >
-                              Удалить
+                              РЈРґР°Р»РёС‚СЊ
                             </button>
                           )}
                         </div>
@@ -542,13 +547,13 @@ export function EditPavilionModal({
 
                   {canManageAdditionalCharges && (
                     <div>
-                      <div>Новое начисление:</div>
+                      <div>РќРѕРІРѕРµ РЅР°С‡РёСЃР»РµРЅРёРµ:</div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
                       <input
                         value={newChargeName}
                         onChange={(e) => setNewChargeName(e.target.value)}
                         className="input"
-                        placeholder="Название начисления"
+                        placeholder="РќР°Р·РІР°РЅРёРµ РЅР°С‡РёСЃР»РµРЅРёСЏ"
                       />
                       <input
                         type="number"
@@ -557,7 +562,7 @@ export function EditPavilionModal({
                         value={newChargeAmount}
                         onChange={(e) => setNewChargeAmount(e.target.value)}
                         className="input"
-                        placeholder="Сумма"
+                        placeholder="РЎСѓРјРјР°"
                       />
                       <button
                         type="button"
@@ -565,7 +570,7 @@ export function EditPavilionModal({
                         disabled={chargeSaving}
                         className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
                       >
-                        Добавить
+                        Р”РѕР±Р°РІРёС‚СЊ
                       </button>
                     </div>
                     </div>
@@ -577,11 +582,11 @@ export function EditPavilionModal({
             {form.status === 'PREPAID' && (
               <>
                 <div className="mb-3 rounded bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                  Для статуса ПРЕДОПЛАТА коммунальные и реклама автоматически равны 0.
+                  Р”Р»СЏ СЃС‚Р°С‚СѓСЃР° РџР Р•Р”РћРџР›РђРўРђ РєРѕРјРјСѓРЅР°Р»СЊРЅС‹Рµ Рё СЂРµРєР»Р°РјР° Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЂР°РІРЅС‹ 0.
                 </div>
                 <div className="mb-3">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Месяц предоплаты
+                    РњРµСЃСЏС† РїСЂРµРґРѕРїР»Р°С‚С‹
                   </label>
                   <input
                     type="month"
@@ -592,7 +597,7 @@ export function EditPavilionModal({
                 </div>
                 <div className="mb-3">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Сумма предоплаты (если пусто - полная аренда)
+                    РЎСѓРјРјР° РїСЂРµРґРѕРїР»Р°С‚С‹ (РµСЃР»Рё РїСѓСЃС‚Рѕ - РїРѕР»РЅР°СЏ Р°СЂРµРЅРґР°)
                   </label>
                   <input
                     type="number"
@@ -606,7 +611,7 @@ export function EditPavilionModal({
                 </div>
                 <div className="mb-3 rounded border p-3">
                   <p className="mb-2 text-sm font-medium text-gray-700">
-                    Каналы оплаты предоплаты
+                    РљР°РЅР°Р»С‹ РѕРїР»Р°С‚С‹ РїСЂРµРґРѕРїР»Р°С‚С‹
                   </p>
                   <div className="space-y-2">
                     <input
@@ -618,7 +623,7 @@ export function EditPavilionModal({
                         setPrepaymentBankTransferPaid(e.target.value)
                       }
                       className="input"
-                      placeholder="Безналичные"
+                      placeholder="Р‘РµР·РЅР°Р»РёС‡РЅС‹Рµ"
                     />
                     <input
                       type="number"
@@ -627,7 +632,7 @@ export function EditPavilionModal({
                       value={prepaymentCashbox1Paid}
                       onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
                       className="input"
-                      placeholder="Наличные - касса 1"
+                      placeholder="РќР°Р»РёС‡РЅС‹Рµ - РєР°СЃСЃР° 1"
                     />
                     <input
                       type="number"
@@ -636,7 +641,7 @@ export function EditPavilionModal({
                       value={prepaymentCashbox2Paid}
                       onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
                       className="input"
-                      placeholder="Наличные - касса 2"
+                      placeholder="РќР°Р»РёС‡РЅС‹Рµ - РєР°СЃСЃР° 2"
                     />
                   </div>
                 </div>
@@ -647,10 +652,10 @@ export function EditPavilionModal({
 
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="btn-secondary" disabled={saving}>
-            Отмена
+            РћС‚РјРµРЅР°
           </button>
           <button onClick={handleSave} className="btn-primary" disabled={saving}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? 'РЎРѕС…СЂР°РЅРµРЅРёРµ...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ'}
           </button>
         </div>
         </div>
@@ -658,3 +663,4 @@ export function EditPavilionModal({
     </div>
   );
 }
+

@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Query,
+  Req,
 } from '@nestjs/common';
 import { PavilionsService } from './pavilions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,6 +25,15 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import * as fs from 'fs';
 
+const decodeUploadFileName = (value: string) => {
+  try {
+    const decoded = Buffer.from(value, 'latin1').toString('utf8');
+    return decoded.includes('\uFFFD') ? value : decoded;
+  } catch {
+    return value;
+  }
+};
+
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores/:storeId/pavilions')
 export class PavilionsController {
@@ -35,8 +45,9 @@ export class PavilionsController {
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Body() dto: CreatePavilionDto,
+    @Req() req: any,
   ) {
-    return this.service.create(storeId, dto);
+    return this.service.create(storeId, dto, req.user.id);
   }
 
   @Get()
@@ -95,8 +106,9 @@ export class PavilionsController {
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Body() data: Prisma.PavilionUpdateInput,
+    @Req() req: any,
   ) {
-    return this.service.update(storeId, pavilionId, data);
+    return this.service.update(storeId, pavilionId, data, req.user.id);
   }
 
   @Delete(':pavilionId')
@@ -105,8 +117,9 @@ export class PavilionsController {
   delete(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Req() req: any,
   ) {
-    return this.service.delete(storeId, pavilionId);
+    return this.service.delete(storeId, pavilionId, req.user.id);
   }
 
   @Get(':pavilionId/contracts')
@@ -132,7 +145,8 @@ export class PavilionsController {
         },
         filename: (_req, file, cb) => {
           const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          cb(null, `${unique}${extname(file.originalname)}`);
+          const decodedOriginalName = decodeUploadFileName(file.originalname);
+          cb(null, `${unique}${extname(decodedOriginalName)}`);
         },
       }),
       fileFilter: (_req, file, cb) => {
@@ -152,16 +166,18 @@ export class PavilionsController {
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @UploadedFile() file?: any,
+    @Req() req?: any,
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
+    const decodedOriginalName = decodeUploadFileName(file.originalname);
 
     return this.service.createContract(storeId, pavilionId, {
-      fileName: file.originalname,
+      fileName: decodedOriginalName,
       fileType: file.mimetype,
       filePath: `/uploads/contracts/${file.filename}`,
-    });
+    }, req?.user?.id);
   }
 
   @Delete(':pavilionId/contracts/:contractId')
@@ -170,7 +186,8 @@ export class PavilionsController {
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Param('contractId', ParseIntPipe) contractId: number,
+    @Req() req: any,
   ) {
-    return this.service.deleteContract(storeId, pavilionId, contractId);
+    return this.service.deleteContract(storeId, pavilionId, contractId, req.user.id);
   }
 }

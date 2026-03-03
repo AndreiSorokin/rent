@@ -5,10 +5,14 @@ import { CreatePavilionDto } from './dto/create-pavilion.dto';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import * as fs from 'fs';
 import { join } from 'path';
+import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
 export class PavilionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storeActivity: StoreActivityService,
+  ) {}
 
   private enrichPavilionPaymentStatus<T extends {
     status: PavilionStatus;
@@ -138,7 +142,7 @@ export class PavilionsService {
     return undefined;
   }
 
-  async create(storeId: number, dto: CreatePavilionDto) {
+  async create(storeId: number, dto: CreatePavilionDto, userId?: number) {
     const calculatedRent = dto.squareMeters * dto.pricePerSqM;
     const isPrepaid = dto.status === PavilionStatus.PREPAID;
     const parsedPrepaidUntil = dto.prepaidUntil
@@ -156,6 +160,18 @@ export class PavilionsService {
       },
     });
     await this.refreshMonthlyLedger(created.id, startOfMonth(new Date()));
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId: created.id,
+      action: 'CREATE',
+      entityType: 'PAVILION',
+      entityId: created.id,
+      details: {
+        number: created.number,
+        status: created.status,
+      },
+    });
     return created;
   }
 
@@ -379,6 +395,7 @@ export class PavilionsService {
     storeId: number,
     pavilionId: number,
     data: Prisma.PavilionUpdateInput,
+    userId?: number,
   ) {
     const pavilion = await this.prisma.pavilion.findFirst({
       where: { id: pavilionId, storeId },
@@ -449,6 +466,63 @@ export class PavilionsService {
       data,
     });
     await this.refreshMonthlyLedger(updated.id, startOfMonth(new Date()));
+
+    const snapshot = (item: {
+      number: string;
+      category: string | null;
+      status: PavilionStatus;
+      tenantName: string | null;
+      squareMeters: number;
+      pricePerSqM: number;
+      rentAmount: number | null;
+      utilitiesAmount: number | null;
+      advertisingAmount: number | null;
+      prepaidUntil: Date | null;
+    }) => ({
+      number: item.number,
+      category: item.category,
+      status: item.status,
+      tenantName: item.tenantName,
+      squareMeters: Number(item.squareMeters ?? 0),
+      pricePerSqM: Number(item.pricePerSqM ?? 0),
+      rentAmount: Number(item.rentAmount ?? 0),
+      utilitiesAmount: Number(item.utilitiesAmount ?? 0),
+      advertisingAmount: Number(item.advertisingAmount ?? 0),
+      prepaidUntil: item.prepaidUntil ? item.prepaidUntil.toISOString() : null,
+    });
+
+    const beforeSnapshot = snapshot(pavilion);
+    const afterSnapshot = snapshot(updated);
+    const changedFields = Object.keys(beforeSnapshot).filter((key) => {
+      const beforeValue = beforeSnapshot[key as keyof typeof beforeSnapshot];
+      const afterValue = afterSnapshot[key as keyof typeof afterSnapshot];
+      return beforeValue !== afterValue;
+    });
+
+    const beforeDiff = changedFields.reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = beforeSnapshot[key as keyof typeof beforeSnapshot];
+      return acc;
+    }, {});
+    const afterDiff = changedFields.reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = afterSnapshot[key as keyof typeof afterSnapshot];
+      return acc;
+    }, {});
+
+    const detailsPayload = {
+      changedFields,
+      before: beforeDiff,
+      after: afterDiff,
+    } as unknown as Prisma.InputJsonValue;
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId: updated.id,
+      action: 'UPDATE',
+      entityType: 'PAVILION',
+      entityId: updated.id,
+      details: detailsPayload,
+    });
     return updated;
   }
 
@@ -473,8 +547,12 @@ export class PavilionsService {
   //   });
   // }
 
-  async delete(storeId: number, id: number) {
+  async delete(storeId: number, id: number, userId?: number) {
     await this.ensureExists(storeId, id);
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id },
+      select: { id: true, number: true },
+    });
 
     const contracts = await this.prisma.contract.findMany({
       where: { pavilionId: id },
@@ -491,9 +569,21 @@ export class PavilionsService {
       }
     }
 
-    return this.prisma.pavilion.delete({
+    const deleted = await this.prisma.pavilion.delete({
       where: { id },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId: id,
+      action: 'DELETE',
+      entityType: 'PAVILION',
+      entityId: id,
+      details: {
+        number: pavilion?.number ?? deleted.number,
+      },
+    });
+    return deleted;
   }
 
   private async ensureExists(storeId: number, id: number) {
@@ -520,10 +610,17 @@ export class PavilionsService {
     storeId: number,
     pavilionId: number,
     data: { fileName: string; filePath: string; fileType: string },
+    userId?: number,
   ) {
-    await this.ensureExists(storeId, pavilionId);
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true, number: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
 
-    return this.prisma.contract.create({
+    const created = await this.prisma.contract.create({
       data: {
         pavilionId,
         fileName: data.fileName,
@@ -531,10 +628,35 @@ export class PavilionsService {
         fileType: data.fileType,
       },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'CREATE',
+      entityType: 'CONTRACT',
+      entityId: created.id,
+      details: {
+        pavilionNumber: pavilion.number,
+        fileName: created.fileName,
+        fileType: created.fileType,
+      },
+    });
+    return created;
   }
 
-  async deleteContract(storeId: number, pavilionId: number, contractId: number) {
-    await this.ensureExists(storeId, pavilionId);
+  async deleteContract(
+    storeId: number,
+    pavilionId: number,
+    contractId: number,
+    userId?: number,
+  ) {
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true, number: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found');
+    }
 
     const contract = await this.prisma.contract.findFirst({
       where: {
@@ -555,9 +677,23 @@ export class PavilionsService {
       fs.unlinkSync(absolutePath);
     }
 
-    return this.prisma.contract.delete({
+    const deleted = await this.prisma.contract.delete({
       where: { id: contractId },
     });
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'DELETE',
+      entityType: 'CONTRACT',
+      entityId: deleted.id,
+      details: {
+        pavilionNumber: pavilion.number,
+        fileName: deleted.fileName,
+        fileType: deleted.fileType,
+      },
+    });
+    return deleted;
   }
 
   private async syncExpiredPrepayments(storeId: number) {
