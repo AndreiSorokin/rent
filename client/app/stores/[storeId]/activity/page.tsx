@@ -34,6 +34,15 @@ const ACTION_LABELS: Record<string, string> = {
   IMPORT: 'Импорт',
 };
 
+const ACTION_STYLES: Record<string, string> = {
+  CREATE: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
+  UPDATE: 'bg-amber-50 text-amber-700 border border-amber-100',
+  DELETE: 'bg-rose-50 text-rose-700 border border-rose-100',
+  OPEN: 'bg-sky-50 text-sky-700 border border-sky-100',
+  CLOSE: 'bg-slate-100 text-slate-700 border border-slate-200',
+  IMPORT: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
+};
+
 const ENTITY_LABELS: Record<string, string> = {
   PAVILION: 'Павильон',
   STAFF: 'Штатное расписание',
@@ -69,7 +78,6 @@ const DETAIL_LABELS: Record<string, string> = {
   position: 'Должность',
   fullName: 'Сотрудник',
   tenantName: 'Арендатор',
-  type: 'Тип',
   status: 'Статус',
   salaryStatus: 'Статус оплаты',
   amount: 'Сумма',
@@ -139,7 +147,6 @@ const DETAIL_ORDER = [
   'note',
   'position',
   'fullName',
-  'type',
   'salaryStatus',
   'amount',
   'salary',
@@ -214,11 +221,12 @@ const formatDetailValue = (key: string, value: unknown) => {
     return STATUS_LABELS[String(value)] ?? String(value);
   }
 
-  if (key.toLowerCase().includes('date') || key.toLowerCase().includes('until')) {
-    return formatUtcDateTime(value);
-  }
-
-  if (key === 'startsAt' || key === 'endsAt') {
+  if (
+    key.toLowerCase().includes('date') ||
+    key.toLowerCase().includes('until') ||
+    key === 'startsAt' ||
+    key === 'endsAt'
+  ) {
     return formatUtcDateTime(value);
   }
 
@@ -299,6 +307,7 @@ export default function StoreActivityPage() {
     () => (Array.isArray(store?.permissions) ? store.permissions : []),
     [store],
   );
+
   const getPavilionLabel = (item: ActivityItem) => {
     if (item.pavilion?.number) return item.pavilion.number;
     if (isRecord(item.details) && typeof item.details.pavilionNumber === 'string') {
@@ -307,6 +316,7 @@ export default function StoreActivityPage() {
     }
     return '-';
   };
+
   const getEntityLabel = (item: ActivityItem) => {
     if (item.entityType === 'PAVILION_EXPENSE') {
       const details = isRecord(item.details) ? item.details : null;
@@ -351,9 +361,7 @@ export default function StoreActivityPage() {
   }, [storeId, currentPage]);
 
   if (loading) {
-    return (
-      <div className="p-6 text-sm text-slate-600">Загрузка журнала действий...</div>
-    );
+    return <div className="p-6 text-sm text-slate-600">Загрузка журнала действий...</div>;
   }
 
   if (error) {
@@ -361,25 +369,23 @@ export default function StoreActivityPage() {
   }
 
   if (!store || !hasPermission(permissions, 'VIEW_ACTIVITY')) {
-    return (
-      <div className="p-6 text-sm text-red-600">Нет доступа к журналу действий</div>
-    );
+    return <div className="p-6 text-sm text-red-600">Нет доступа к журналу действий</div>;
   }
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-6">
       <div className="mx-auto max-w-6xl space-y-4">
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">Журнал действий</h1>
-            <p className="text-sm text-slate-600">{store.name}</p>
-          </div>
+        <div className="space-y-3">
           <Link
             href={`/stores/${storeId}`}
             className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             Назад к объекту
           </Link>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <h1 className="text-xl font-semibold text-slate-900">Журнал действий</h1>
+            <p className="text-sm text-slate-600">{store.name}</p>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
@@ -404,15 +410,15 @@ export default function StoreActivityPage() {
                     <td className="px-4 py-3 text-slate-700">
                       {item.user?.email || 'Система'}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {getPavilionLabel(item)}
+                    <td className="px-4 py-3 text-slate-700">{getPavilionLabel(item)}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[item.action] ?? 'bg-slate-100 text-slate-700 border border-slate-200'}`}
+                      >
+                        {ACTION_LABELS[item.action] || item.action}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {ACTION_LABELS[item.action] || item.action}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {getEntityLabel(item)}
-                    </td>
+                    <td className="px-4 py-3 text-slate-700">{getEntityLabel(item)}</td>
                     <td className="max-w-[460px] px-4 py-3 text-xs text-slate-600">
                       <div className="space-y-0.5">
                         {renderDetails(item.details).map((line, idx) => (
