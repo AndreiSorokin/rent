@@ -4,6 +4,18 @@ import { useState, useEffect } from 'react';
 import { createPavilionPayment } from '@/lib/payments';
 import { apiFetch } from '@/lib/api';
 
+const getCurrentMonthLocal = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const toUtcMonthIso = (month: string) => {
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0)).toISOString();
+};
+
 export function CreatePavilionPaymentModal({
   storeId,
   pavilionId,
@@ -17,7 +29,7 @@ export function CreatePavilionPaymentModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = getCurrentMonthLocal();
   const [period, setPeriod] = useState(currentMonth);
   const [rentBankTransferPaid, setRentBankTransferPaid] = useState('');
   const [rentCashbox1Paid, setRentCashbox1Paid] = useState('');
@@ -39,10 +51,10 @@ export function CreatePavilionPaymentModal({
 
       setLoadingCurrent(true);
       try {
-        const periodDate = new Date(`${period}-01`);
+        const periodDateIso = toUtcMonthIso(period);
         const payments = await apiFetch<any[]>(
           `/stores/${storeId}/pavilions/${pavilionId}/payments?period=${encodeURIComponent(
-            periodDate.toISOString(),
+            periodDateIso,
           )}`,
         );
         const matchingPayment = payments[0];
@@ -75,7 +87,7 @@ export function CreatePavilionPaymentModal({
       return;
     }
 
-    const periodDate = new Date(`${period}-01`);
+    const periodDateIso = toUtcMonthIso(period);
     const rentBank = rentBankTransferPaid ? Number(rentBankTransferPaid) : 0;
     const rentCash1 = rentCashbox1Paid ? Number(rentCashbox1Paid) : 0;
     const rentCash2 = rentCashbox2Paid ? Number(rentCashbox2Paid) : 0;
@@ -96,7 +108,7 @@ export function CreatePavilionPaymentModal({
 
     try {
       await createPavilionPayment(storeId, pavilionId, {
-        period: periodDate.toISOString(),
+        period: periodDateIso,
         rentPaid: rentTotal > 0 ? rentTotal : undefined,
         rentBankTransferPaid: rentBank > 0 ? rentBank : undefined,
         rentCashbox1Paid: rentCash1 > 0 ? rentCash1 : undefined,

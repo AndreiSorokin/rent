@@ -166,7 +166,7 @@ const DETAIL_ORDER = [
   'salaryCashbox1Paid',
   'salaryCashbox2Paid',
   'recordDate',
-  'date',
+  // intentionally hidden in activity details (kept in backend payload)
   'diffBank',
   'diffCash1',
   'diffCash2',
@@ -241,9 +241,11 @@ const renderDiffDetails = (
 ) => {
   const changedKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
   const ordered = [
-    ...DETAIL_ORDER.filter((key) => changedKeys.has(key) && key !== 'type'),
+    ...DETAIL_ORDER.filter(
+      (key) => changedKeys.has(key) && key !== 'type' && key !== 'date',
+    ),
     ...Array.from(changedKeys).filter(
-      (key) => !DETAIL_ORDER.includes(key) && key !== 'type',
+      (key) => !DETAIL_ORDER.includes(key) && key !== 'type' && key !== 'date',
     ),
   ];
 
@@ -265,11 +267,14 @@ const renderDetails = (details?: Record<string, unknown> | null) => {
   }
 
   const keys = [
-    ...DETAIL_ORDER.filter((key) => key in details && key !== 'type'),
+    ...DETAIL_ORDER.filter(
+      (key) => key in details && key !== 'type' && key !== 'date',
+    ),
     ...Object.keys(details).filter(
       (key) =>
         !DETAIL_ORDER.includes(key) &&
         key !== 'type' &&
+        key !== 'date' &&
         key !== 'before' &&
         key !== 'after' &&
         key !== 'changedFields',

@@ -18,6 +18,18 @@ import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
 import { Discount, Pavilion } from './pavilion.types';
 
+const getCurrentMonthLocal = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const toUtcMonthIso = (month: string) => {
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0)).toISOString();
+};
+
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
   const searchParams = useSearchParams();
@@ -47,7 +59,7 @@ export default function PavilionPage() {
     amount: number;
   } | null>(null);
   const [prepaymentMonth, setPrepaymentMonth] = useState(
-    new Date().toISOString().slice(0, 7),
+    getCurrentMonthLocal(),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
@@ -200,7 +212,7 @@ export default function PavilionPage() {
   const handleSetPrepayment = async () => {
     if (!pavilion) return;
 
-    const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+    const periodIso = toUtcMonthIso(prepaymentMonth);
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
     const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
     const bank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;

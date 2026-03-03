@@ -6,6 +6,18 @@ import { createAdditionalCharge, deleteAdditionalCharge } from '@/lib/additional
 import { createPavilionPayment } from '@/lib/payments';
 import { updatePavilion } from '@/lib/pavilions';
 
+const getCurrentMonthLocal = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const toUtcMonthIso = (month: string) => {
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0)).toISOString();
+};
+
 type PavilionStatus = 'AVAILABLE' | 'RENTED' | 'PREPAID';
 
 type PavilionLike = {
@@ -80,7 +92,7 @@ export function EditPavilionModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prepaymentMonth, setPrepaymentMonth] = useState(
-    new Date().toISOString().slice(0, 7),
+    getCurrentMonthLocal(),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] =
@@ -168,7 +180,7 @@ export function EditPavilionModal({
       return;
     }
 
-    const periodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+    const periodIso = toUtcMonthIso(prepaymentMonth);
     const targetPrepayment = prepaymentAmount ? Number(prepaymentAmount) : rentAmount;
     const prepayBank = prepaymentBankTransferPaid
       ? Number(prepaymentBankTransferPaid)
