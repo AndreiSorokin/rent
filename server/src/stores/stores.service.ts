@@ -198,7 +198,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     userId: number,
     options?: { page?: number; pageSize?: number },
   ) {
-    await this.assertStorePermission(storeId, userId, [Permission.VIEW_PAVILIONS]);
+    await this.assertStorePermission(storeId, userId, ['VIEW_ACTIVITY' as Permission]);
     const page = Math.max(1, Number(options?.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 30)));
 

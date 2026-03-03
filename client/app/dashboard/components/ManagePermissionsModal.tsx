@@ -11,6 +11,7 @@ const PERMISSION_LABELS = {
   DELETE_PAVILIONS: 'Удалять павильоны',
   VIEW_PAYMENTS: 'Просмотр оплат',
   VIEW_SUMMARY: 'Просмотр сводки',
+  VIEW_ACTIVITY: 'Просмотр журнала действий',
   CREATE_PAYMENTS: 'Записывать оплаты',
   EDIT_PAYMENTS: 'Изменять оплаты',
   CALCULATE_PAYMENTS: 'Рассчитывать оплаты',
@@ -45,6 +46,7 @@ const PERMISSION_SECTIONS: Array<{
     items: [
       'VIEW_PAYMENTS',
       'VIEW_SUMMARY',
+      'VIEW_ACTIVITY',
       'CREATE_PAYMENTS',
       'EDIT_PAYMENTS',
       'CALCULATE_PAYMENTS',

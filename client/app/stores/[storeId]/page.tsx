@@ -1349,7 +1349,7 @@ export default function StorePage() {
                 Бух. таблица
               </Link>
             )}
-            {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+            {hasPermission(permissions, 'VIEW_ACTIVITY') && (
               <Link
                 href={`/stores/${storeId}/activity`}
                 className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -1497,7 +1497,7 @@ export default function StorePage() {
                     Бух. таблица
                   </Link>
                 )}
-                {hasPermission(permissions, 'VIEW_PAVILIONS') && (
+                {hasPermission(permissions, 'VIEW_ACTIVITY') && (
                   <Link
                     href={`/stores/${storeId}/activity`}
                     onClick={() => setMobileMenuOpen(false)}

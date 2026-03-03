@@ -233,7 +233,7 @@ export class StoresController {
   }
 
   @Get(':storeId/activity')
-  @Permissions(Permission.VIEW_PAVILIONS)
+  @Permissions('VIEW_ACTIVITY' as Permission)
   listStoreActivity(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Req() req: any,

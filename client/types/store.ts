@@ -7,6 +7,7 @@ export type Permission =
   | 'DELETE_PAVILIONS'
   | 'VIEW_PAYMENTS'
   | 'VIEW_SUMMARY'
+  | 'VIEW_ACTIVITY'
   | 'CREATE_PAYMENTS'
   | 'EDIT_PAYMENTS'
   | 'CALCULATE_PAYMENTS'

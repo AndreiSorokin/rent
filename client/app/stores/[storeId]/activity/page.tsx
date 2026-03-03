@@ -360,7 +360,7 @@ export default function StoreActivityPage() {
     return <div className="p-6 text-sm text-red-600">{error}</div>;
   }
 
-  if (!store || !hasPermission(permissions, 'VIEW_PAVILIONS')) {
+  if (!store || !hasPermission(permissions, 'VIEW_ACTIVITY')) {
     return (
       <div className="p-6 text-sm text-red-600">Нет доступа к журналу действий</div>
     );
