@@ -184,10 +184,44 @@ export class StoreUserService {
       );
     }
 
-    return this.prisma.storeUser.delete({
+    const targetMembership = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: {
+        userId: true,
+        permissions: true,
+        user: {
+          select: { id: true, email: true, name: true },
+        },
+      },
+    });
+
+    if (!targetMembership) {
+      throw new NotFoundException('User not part of this store');
+    }
+
+    const removed = await this.prisma.storeUser.delete({
       where: {
         userId_storeId: { userId, storeId },
       },
     });
+
+    await this.storeActivity.log({
+      storeId,
+      userId: actorUserId,
+      action: 'DELETE',
+      entityType: 'STORE_USER_REMOVE',
+      entityId: userId,
+      details: {
+        targetUserId: targetMembership.user.id,
+        targetUserEmail: targetMembership.user.email,
+        targetUserName: targetMembership.user.name,
+        before: { permissions: targetMembership.permissions },
+        after: { permissions: [] },
+      },
+    });
+
+    return removed;
   }
 }

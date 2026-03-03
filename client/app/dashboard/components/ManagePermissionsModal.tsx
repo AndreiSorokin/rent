@@ -23,6 +23,7 @@ const PERMISSION_LABELS = {
   UPLOAD_CONTRACTS: 'Загружать контракты',
   DELETE_CONTRACTS: 'Удалять контракты',
   INVITE_USERS: 'Приглашать пользователей',
+  REMOVE_USERS: 'Удалять пользователей из объекта',
   ASSIGN_PERMISSIONS: 'Управлять правами доступа',
 } as const;
 
@@ -62,7 +63,13 @@ const PERMISSION_SECTIONS: Array<{
   },
   {
     title: 'Пользователи и права',
-    items: ['INVITE_USERS', 'ASSIGN_PERMISSIONS','VIEW_STAFF','MANAGE_STAFF',],
+    items: [
+      'INVITE_USERS',
+      'REMOVE_USERS',
+      'ASSIGN_PERMISSIONS',
+      'VIEW_STAFF',
+      'MANAGE_STAFF',
+    ],
   },
 ];
 

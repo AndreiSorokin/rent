@@ -19,6 +19,7 @@ export type Permission =
   | 'UPLOAD_CONTRACTS'
   | 'DELETE_CONTRACTS'
   | 'INVITE_USERS'
+  | 'REMOVE_USERS'
   | 'ASSIGN_PERMISSIONS';
 
 export type Currency = 'RUB' | 'KZT';

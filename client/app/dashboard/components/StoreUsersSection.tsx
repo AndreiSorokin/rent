@@ -34,7 +34,10 @@ export function StoreUsersSection({
 
   const canManageUsers =
     hasPermission(permissions, 'INVITE_USERS') ||
-    hasPermission(permissions, 'ASSIGN_PERMISSIONS');
+    hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
+    hasPermission(permissions, 'REMOVE_USERS');
+  const canAssignPermissions = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
+  const canRemoveUsers = hasPermission(permissions, 'REMOVE_USERS');
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -156,6 +159,8 @@ export function StoreUsersSection({
                     <td className="px-6 py-4">
                       {isSelf ? (
                         <span className="text-sm text-gray-500">Ваши права</span>
+                      ) : !canAssignPermissions ? (
+                        <span className="text-sm text-gray-500">Нет доступа</span>
                       ) : (
                         <button
                           onClick={() =>
@@ -172,7 +177,7 @@ export function StoreUsersSection({
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      {isSelf ? (
+                      {isSelf || !canRemoveUsers ? (
                         <span className="text-sm text-gray-500">—</span>
                       ) : (
                         <button

@@ -75,7 +75,7 @@ export class StoreUserController {
    * Remove user from store
    */
   @Delete(':userId')
-  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  @Permissions('REMOVE_USERS' as Permission)
   removeUser(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('userId', ParseIntPipe) userId: number,

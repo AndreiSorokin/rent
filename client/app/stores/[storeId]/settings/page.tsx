@@ -117,7 +117,8 @@ export default function StoreSettingsPage() {
   const createPavilions = hasPermission(permissions, 'CREATE_PAVILIONS');
   const canManageUsers =
     hasPermission(permissions, 'INVITE_USERS') ||
-    hasPermission(permissions, 'ASSIGN_PERMISSIONS');
+    hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
+    hasPermission(permissions, 'REMOVE_USERS');
 
   const handleUpdateStoreName = async () => {
     const name = nameDraft.trim();

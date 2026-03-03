@@ -59,6 +59,7 @@ const ENTITY_LABELS: Record<string, string> = {
   PAVILION_IMPORT: 'Выгрузка павильонов',
   STORE_USER_INVITE: 'Приглашение пользователя',
   STORE_USER_PERMISSIONS: 'Права пользователя',
+  STORE_USER_REMOVE: 'Удаление пользователя из объекта',
 };
 
 const STATUS_LABELS: Record<string, string> = {
