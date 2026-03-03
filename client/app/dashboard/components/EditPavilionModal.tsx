@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { createAdditionalCharge, deleteAdditionalCharge } from '@/lib/additionalCharges';
 import { createPavilionPayment } from '@/lib/payments';
@@ -93,6 +93,14 @@ export function EditPavilionModal({
   const [newChargeName, setNewChargeName] = useState('');
   const [newChargeAmount, setNewChargeAmount] = useState('');
   const [chargeSaving, setChargeSaving] = useState(false);
+  const modalBodyRef = useRef<HTMLDivElement | null>(null);
+
+  const setErrorAndScrollTop = (message: string) => {
+    setError(message);
+    requestAnimationFrame(() => {
+      modalBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
 
   const resolvedCategory = (newCategory.trim() || selectedCategory || '').trim();
   const squareMeters = Number(form.squareMeters || 0);
@@ -135,19 +143,19 @@ export function EditPavilionModal({
       form.status === 'RENTED' ? Number(form.advertisingAmount || 0) : 0;
 
     if (!form.number.trim()) {
-      setError('Укажите номер павильона');
+      setErrorAndScrollTop('Укажите номер павильона');
       return;
     }
     if (!Number.isFinite(parsedSquareMeters) || parsedSquareMeters <= 0) {
-      setError('Площадь должна быть больше 0');
+      setErrorAndScrollTop('Площадь должна быть больше 0');
       return;
     }
     if (!Number.isFinite(parsedPricePerSqM) || parsedPricePerSqM < 0) {
-      setError('Цена за м² должна быть неотрицательной');
+      setErrorAndScrollTop('Цена за м² должна быть неотрицательной');
       return;
     }
     if (form.status !== 'AVAILABLE' && !form.tenantName.trim()) {
-      setError('Укажите арендатора для занятых/предоплаченных павильонов');
+      setErrorAndScrollTop('Укажите арендатора для занятых/предоплаченных павильонов');
       return;
     }
     if (
@@ -156,7 +164,7 @@ export function EditPavilionModal({
       parsedUtilities < 0 ||
       parsedAdvertising < 0
     ) {
-      setError('Коммунальные и реклама должны быть неотрицательными');
+      setErrorAndScrollTop('Коммунальные и реклама должны быть неотрицательными');
       return;
     }
 
@@ -171,11 +179,11 @@ export function EditPavilionModal({
 
     if (form.status === 'PREPAID') {
       if (targetPrepayment <= 0) {
-        setError('Сумма предоплаты должна быть больше 0');
+        setErrorAndScrollTop('Сумма предоплаты должна быть больше 0');
         return;
       }
       if (Math.abs(prepayChannelsTotal - targetPrepayment) > 0.01) {
-        setError('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+        setErrorAndScrollTop('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
         return;
       }
     }
@@ -229,7 +237,7 @@ export function EditPavilionModal({
           rentCash1Delta < -0.01 ||
           rentCash2Delta < -0.01
         ) {
-          setError(
+          setErrorAndScrollTop(
             'Уменьшение предоплаты или перераспределение по каналам не поддерживается через редактирование. Удалите предоплату и задайте заново.',
           );
           setSaving(false);
@@ -253,7 +261,7 @@ export function EditPavilionModal({
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Не удалось сохранить изменения';
-      setError(message);
+      setErrorAndScrollTop(message);
     } finally {
       setSaving(false);
     }
@@ -264,11 +272,11 @@ export function EditPavilionModal({
     const amount = Number(newChargeAmount);
 
     if (!name || !newChargeAmount) {
-      setError('Введите название и сумму дополнительного начисления');
+      setErrorAndScrollTop('Введите название и сумму дополнительного начисления');
       return;
     }
     if (!Number.isFinite(amount) || amount < 0) {
-      setError('Сумма дополнительного начисления должна быть неотрицательной');
+      setErrorAndScrollTop('Сумма дополнительного начисления должна быть неотрицательной');
       return;
     }
 
@@ -285,7 +293,7 @@ export function EditPavilionModal({
         err instanceof Error
           ? err.message
           : 'Не удалось добавить дополнительное начисление';
-      setError(message);
+      setErrorAndScrollTop(message);
     } finally {
       setChargeSaving(false);
     }
@@ -305,7 +313,7 @@ export function EditPavilionModal({
         err instanceof Error
           ? err.message
           : 'Не удалось удалить дополнительное начисление';
-      setError(message);
+      setErrorAndScrollTop(message);
     } finally {
       setChargeSaving(false);
     }
@@ -313,8 +321,22 @@ export function EditPavilionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white p-6">
-        <h2 className="mb-4 text-lg font-bold">Редактировать павильон</h2>
+      <div
+        ref={modalBodyRef}
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white"
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+          <h2 className="text-lg font-bold">Редактировать павильон</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            aria-label="Закрыть"
+          >
+            <span aria-hidden>✕</span>
+          </button>
+        </div>
+        <div className="p-6">
 
         {error && (
           <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -630,6 +652,7 @@ export function EditPavilionModal({
           <button onClick={handleSave} className="btn-primary" disabled={saving}>
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
+        </div>
         </div>
       </div>
     </div>

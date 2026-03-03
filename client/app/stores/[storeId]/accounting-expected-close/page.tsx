@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
@@ -165,8 +165,8 @@ export default function AccountingExpectedClosePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
         <div className="space-y-2">
-          <Link href={`/stores/${storeId}`} className="text-blue-600 hover:underline">
-            Назад к объекту
+          <Link href={`/stores/${storeId}/accounting?date=${encodeURIComponent(selectedDate)}`} className="text-blue-600 hover:underline">
+            Назад в бух.таблицу
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">Ожидаемое закрытие дня</h1>
           <p className="text-sm text-gray-600">{storeName}</p>
