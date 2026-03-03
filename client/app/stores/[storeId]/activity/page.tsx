@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
 
@@ -116,11 +116,6 @@ const DETAIL_LABELS: Record<string, string> = {
   diffCash2: 'Расхождение касса 2',
   fileName: 'Файл',
   fileType: 'Тип файла',
-  pavilions: 'Павильоны',
-  householdExpenses: 'Хоз. расходы',
-  expenses: 'Расходы',
-  accounting: 'Бух. записи',
-  staff: 'Штат',
   invitedUserId: 'ID пользователя',
   invitedUserEmail: 'Email пользователя',
   invitedUserName: 'Имя пользователя',
@@ -176,11 +171,6 @@ const DETAIL_ORDER = [
   'diffCash2',
   'fileName',
   'fileType',
-  'pavilions',
-  'householdExpenses',
-  'expenses',
-  'accounting',
-  'staff',
   'invitedUserId',
   'invitedUserEmail',
   'invitedUserName',
@@ -295,18 +285,66 @@ const renderDetails = (details?: Record<string, unknown> | null) => {
 export default function StoreActivityPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const storeId = Number(params.storeId);
-  const currentPage = Math.max(1, Number(searchParams.get('page') ?? 1));
 
+  const currentPage = Math.max(1, Number(searchParams.get('page') ?? 1));
+  const queryDate = searchParams.get('date') ?? '';
+  const queryPavilion = searchParams.get('pavilion') ?? '';
+  const queryAction = searchParams.get('action') ?? '';
+  const queryEntityType = searchParams.get('entityType') ?? '';
+
+  const [filterDate, setFilterDate] = useState(queryDate);
+  const [filterPavilion, setFilterPavilion] = useState(queryPavilion);
+  const [filterAction, setFilterAction] = useState(queryAction);
+  const [filterEntityType, setFilterEntityType] = useState(queryEntityType);
   const [store, setStore] = useState<any>(null);
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFilterDate(queryDate);
+    setFilterPavilion(queryPavilion);
+    setFilterAction(queryAction);
+    setFilterEntityType(queryEntityType);
+  }, [queryDate, queryPavilion, queryAction, queryEntityType]);
+
+  const applyFiltersToUrl = (
+    nextDate: string,
+    nextPavilion: string,
+    nextAction: string,
+    nextEntityType: string,
+  ) => {
+    const next = new URLSearchParams();
+    if (nextDate) next.set('date', nextDate);
+    if (nextPavilion.trim()) next.set('pavilion', nextPavilion.trim());
+    if (nextAction) next.set('action', nextAction);
+    if (nextEntityType) next.set('entityType', nextEntityType);
+
+    const current = new URLSearchParams(searchParams.toString());
+    current.delete('page');
+
+    if (current.toString() === next.toString()) return;
+    router.replace(next.toString() ? `${pathname}?${next.toString()}` : pathname);
+  };
 
   const permissions: string[] = useMemo(
     () => (Array.isArray(store?.permissions) ? store.permissions : []),
     [store],
   );
+
+  const buildQueryString = (page: number) => {
+    const query = new URLSearchParams();
+    if (page > 1) query.set('page', String(page));
+    if (queryDate) query.set('date', queryDate);
+    if (queryPavilion) query.set('pavilion', queryPavilion);
+    if (queryAction) query.set('action', queryAction);
+    if (queryEntityType) query.set('entityType', queryEntityType);
+    return query.toString();
+  };
 
   const getPavilionLabel = (item: ActivityItem) => {
     if (item.pavilion?.number) return item.pavilion.number;
@@ -335,16 +373,40 @@ export default function StoreActivityPage() {
     return ENTITY_LABELS[item.entityType] || item.entityType;
   };
 
+  const resetFilters = () => {
+    router.replace(pathname);
+  };
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (filterPavilion.trim() === queryPavilion.trim()) return;
+      applyFiltersToUrl(filterDate, filterPavilion, filterAction, filterEntityType);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [
+    filterPavilion,
+    queryPavilion,
+    filterDate,
+    filterAction,
+    filterEntityType,
+  ]);
+
   useEffect(() => {
     const load = async () => {
       if (!Number.isFinite(storeId) || storeId <= 0) return;
-      setLoading(true);
+      const isFirstLoad = store === null;
+      if (isFirstLoad) {
+        setLoading(true);
+      } else {
+        setIsFetching(true);
+      }
       setError(null);
       try {
+        const query = buildQueryString(currentPage);
         const [storeData, activityData] = await Promise.all([
           apiFetch<any>(`/stores/${storeId}?lite=1`),
           apiFetch<ActivityResponse>(
-            `/stores/${storeId}/activity?page=${currentPage}&pageSize=30`,
+            `/stores/${storeId}/activity?${query}&pageSize=30`,
           ),
         ]);
         setStore(storeData);
@@ -354,11 +416,14 @@ export default function StoreActivityPage() {
           e instanceof Error ? e.message : 'Не удалось загрузить журнал действий',
         );
       } finally {
-        setLoading(false);
+        if (isFirstLoad) {
+          setLoading(false);
+        }
+        setIsFetching(false);
       }
     };
     void load();
-  }, [storeId, currentPage]);
+  }, [storeId, currentPage, queryDate, queryPavilion, queryAction, queryEntityType]);
 
   if (loading) {
     return <div className="p-6 text-sm text-slate-600">Загрузка журнала действий...</div>;
@@ -383,8 +448,96 @@ export default function StoreActivityPage() {
             Назад к объекту
           </Link>
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <h1 className="text-xl font-semibold text-slate-900">Журнал действий</h1>
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-xl font-semibold text-slate-900">Журнал действий</h1>
+              {isFetching && (
+                <span className="text-xs font-medium text-slate-500">Обновление...</span>
+              )}
+            </div>
             <p className="text-sm text-slate-600">{store.name}</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Дата
+              </span>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilterDate(value);
+                  applyFiltersToUrl(value, filterPavilion, filterAction, filterEntityType);
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Павильон
+              </span>
+              <input
+                type="text"
+                value={filterPavilion}
+                onChange={(e) => setFilterPavilion(e.target.value)}
+                placeholder="Номер павильона"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Действие
+              </span>
+              <select
+                value={filterAction}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilterAction(value);
+                  applyFiltersToUrl(filterDate, filterPavilion, value, filterEntityType);
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              >
+                <option value="">Все</option>
+                {Object.entries(ACTION_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Сущность
+              </span>
+              <select
+                value={filterEntityType}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilterEntityType(value);
+                  applyFiltersToUrl(filterDate, filterPavilion, filterAction, value);
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              >
+                <option value="">Все</option>
+                {Object.entries(ENTITY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Сбросить
+            </button>
           </div>
         </div>
 
@@ -446,7 +599,7 @@ export default function StoreActivityPage() {
             </span>
             <div className="flex gap-2">
               <Link
-                href={`/stores/${storeId}/activity?page=${Math.max(1, data.page - 1)}`}
+                href={`${pathname}?${buildQueryString(Math.max(1, data.page - 1))}`}
                 className={`rounded-lg border px-3 py-1.5 ${
                   data.page <= 1
                     ? 'pointer-events-none border-slate-200 text-slate-400'
@@ -456,9 +609,8 @@ export default function StoreActivityPage() {
                 Назад
               </Link>
               <Link
-                href={`/stores/${storeId}/activity?page=${Math.min(
-                  data.totalPages,
-                  data.page + 1,
+                href={`${pathname}?${buildQueryString(
+                  Math.min(data.totalPages, data.page + 1),
                 )}`}
                 className={`rounded-lg border px-3 py-1.5 ${
                   data.page >= data.totalPages

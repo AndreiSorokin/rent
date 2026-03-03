@@ -196,18 +196,78 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   async listActivity(
     storeId: number,
     userId: number,
-    options?: { page?: number; pageSize?: number },
+    options?: {
+      page?: number;
+      pageSize?: number;
+      date?: string;
+      pavilion?: string;
+      action?: string;
+      entityType?: string;
+    },
   ) {
     await this.assertStorePermission(storeId, userId, ['VIEW_ACTIVITY' as Permission]);
     const page = Math.max(1, Number(options?.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 30)));
+    const where: Prisma.StoreActivityWhereInput = { storeId };
+
+    const action = options?.action?.trim();
+    if (action) {
+      where.action = action;
+    }
+
+    const entityType = options?.entityType?.trim();
+    if (entityType) {
+      where.entityType = entityType;
+    }
+
+    const pavilion = options?.pavilion?.trim();
+    if (pavilion) {
+      const variants = Array.from(
+        new Set([pavilion, pavilion.toLowerCase(), pavilion.toUpperCase()]),
+      );
+      const matchedPavilions = await this.prisma.pavilion.findMany({
+        where: {
+          storeId,
+          number: {
+            contains: pavilion,
+            mode: 'insensitive',
+          },
+        },
+        select: { id: true },
+      });
+      const matchedPavilionIds = matchedPavilions.map((p) => p.id);
+
+      where.OR = [
+        ...(matchedPavilionIds.length > 0
+          ? [{ pavilionId: { in: matchedPavilionIds } }]
+          : []),
+        ...variants.map((value) => ({
+          details: {
+            path: ['pavilionNumber'],
+            string_contains: value,
+          },
+        })),
+      ];
+    }
+
+    const date = options?.date?.trim();
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const from = new Date(`${date}T00:00:00.000Z`);
+      const to = new Date(`${date}T23:59:59.999Z`);
+      if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
+        where.createdAt = {
+          gte: from,
+          lte: to,
+        };
+      }
+    }
 
     const [total, items] = await this.prisma.$transaction([
       (this.prisma as any).storeActivity.count({
-        where: { storeId },
+        where,
       }),
       (this.prisma as any).storeActivity.findMany({
-        where: { storeId },
+        where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,

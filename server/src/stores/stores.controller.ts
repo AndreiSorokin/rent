@@ -239,10 +239,18 @@ export class StoresController {
     @Req() req: any,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('date') date?: string,
+    @Query('pavilion') pavilion?: string,
+    @Query('action') action?: string,
+    @Query('entityType') entityType?: string,
   ) {
     return this.service.listActivity(storeId, req.user.id, {
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
+      date,
+      pavilion,
+      action,
+      entityType,
     });
   }
 
