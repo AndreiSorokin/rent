@@ -1904,24 +1904,25 @@ export default function StorePage() {
             {householdExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <div className="hidden items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
+                  <div className="text-center">Название и статус</div>
+                  <div className="text-center">Каналы оплаты</div>
+                  <div className="text-center">Сумма</div>
+                  <div className="text-center">Действия</div>
+                </div>
                 {householdExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5"
                   >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
-                        {expense.name}
-                      </p>
-                      <p className="shrink-0 text-sm font-bold text-slate-900">
-                        {formatMoney(expense.amount, store.currency)}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 space-y-1">
+                    <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
+                      <div className="min-w-0 md:text-center">
+                        <p className="truncate text-sm font-semibold text-slate-900 md:mx-auto md:max-w-[260px]">
+                          {expense.name}
+                        </p>
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             expense.status === 'PAID'
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-amber-100 text-amber-700'
@@ -1929,20 +1930,31 @@ export default function StorePage() {
                         >
                           {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                         </span>
-                        <div className="text-[11px] text-slate-600">
-                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
-                            paymentChannelsLines(
-                              expense.bankTransferPaid,
-                              expense.cashbox1Paid,
-                              expense.cashbox2Paid,
-                              store.currency,
-                            ).map((line) => <div key={line}>{line}</div>)
-                          ) : (
-                            <div>Каналы оплаты не заданы</div>
-                          )}
+                      </div>
+                      <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
+                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
+                          Каналы оплаты
+                        </div>
+                        <div className="md:mx-auto md:max-w-[260px] font-bold text-slate-900">
+                          {(expense.status ?? 'UNPAID') === 'PAID'
+                            ? paymentChannelsLabel(
+                                expense.bankTransferPaid,
+                                expense.cashbox1Paid,
+                                expense.cashbox2Paid,
+                                store.currency,
+                              ) || 'Каналы оплаты не заданы'
+                            : 'Каналы оплаты не заданы'}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="text-left md:text-center">
+                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
+                          Сумма
+                        </div>
+                        <p className="text-sm font-bold text-slate-900">
+                          {formatMoney(expense.amount, store.currency)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
@@ -1967,7 +1979,7 @@ export default function StorePage() {
                                 cashbox2Paid: cash2,
                               });
                             }}
-                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Оплатить/Изменить
                           </button>
@@ -1975,7 +1987,7 @@ export default function StorePage() {
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
                           <button
                             onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                           >
                             Удалить
                           </button>
@@ -2011,24 +2023,25 @@ export default function StorePage() {
             {otherExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
+              <div className="space-y-2">
+                <div className="hidden items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
+                  <div className="text-center">Название и статус</div>
+                  <div className="text-center">Каналы оплаты</div>
+                  <div className="text-center">Сумма</div>
+                  <div className="text-center">Действия</div>
+                </div>
                 {otherExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2.5"
                   >
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
-                        {expense.note || 'Прочий расход'}
-                      </p>
-                      <p className="shrink-0 text-sm font-bold text-slate-900">
-                        {formatMoney(expense.amount, store.currency)}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 space-y-1">
+                    <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
+                      <div className="min-w-0 md:text-center">
+                        <p className="truncate text-sm font-semibold text-slate-900 md:mx-auto md:max-w-[260px]">
+                          {expense.note || 'Прочий расход'}
+                        </p>
                         <span
-                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                             expense.status === 'PAID'
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-amber-100 text-amber-700'
@@ -2036,20 +2049,31 @@ export default function StorePage() {
                         >
                           {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                         </span>
-                        <div className="text-[11px] text-slate-600">
-                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
-                            paymentChannelsLines(
-                              expense.bankTransferPaid,
-                              expense.cashbox1Paid,
-                              expense.cashbox2Paid,
-                              store.currency,
-                            ).map((line) => <div key={line}>{line}</div>)
-                          ) : (
-                            <div>Каналы оплаты не заданы</div>
-                          )}
+                      </div>
+                      <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
+                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400 text-bold">
+                          Каналы оплаты
+                        </div>
+                        <div className="md:mx-auto md:max-w-[260px] font-bold text-slate-900">
+                          {(expense.status ?? 'UNPAID') === 'PAID'
+                            ? paymentChannelsLabel(
+                                expense.bankTransferPaid,
+                                expense.cashbox1Paid,
+                                expense.cashbox2Paid,
+                                store.currency,
+                              ) || 'Каналы оплаты не заданы'
+                            : 'Каналы оплаты не заданы'}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="text-left md:text-center">
+                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
+                          Сумма
+                        </div>
+                        <p className="text-sm font-bold text-slate-900">
+                          {formatMoney(expense.amount, store.currency)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
@@ -2074,7 +2098,7 @@ export default function StorePage() {
                                 cashbox2Paid: cash2,
                               });
                             }}
-                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                            className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Оплатить/Изменить
                           </button>
@@ -2082,7 +2106,7 @@ export default function StorePage() {
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
                           <button
                             onClick={() => handleDeleteManualExpense(expense.id)}
-                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                           >
                             Удалить
                           </button>
