@@ -949,6 +949,18 @@ async addPayment(
     }
 
     const pavilionStatus = normalizedStatus ?? (await this.normalizePrepaidStatus(pavilion));
+    const existingLedgerForPeriod = await this.prisma.pavilionMonthlyLedger.findUnique({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: normalizedPeriod,
+        },
+      },
+      select: { pavilionId: true },
+    });
+    const isHistoricalWithoutLedger =
+      normalizedPeriod.getTime() < startOfMonth(new Date()).getTime() &&
+      !existingLedgerForPeriod;
     const previousPeriod = startOfMonth(
       new Date(normalizedPeriod.getFullYear(), normalizedPeriod.getMonth() - 1, 1),
     );
@@ -972,17 +984,23 @@ async addPayment(
       normalizedPeriod,
     );
     const expectedRent =
-      pavilionStatus === PavilionStatus.PREPAID
-        ? baseRent
-        : pavilionStatus === PavilionStatus.RENTED
-          ? Math.max(baseRent - monthlyDiscount, 0)
-          : 0;
+      isHistoricalWithoutLedger
+        ? 0
+        : pavilionStatus === PavilionStatus.PREPAID
+          ? baseRent
+          : pavilionStatus === PavilionStatus.RENTED
+            ? Math.max(baseRent - monthlyDiscount, 0)
+            : 0;
     const expectedUtilities =
-      pavilionStatus === PavilionStatus.RENTED ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
+        ? Number(pavilion.utilitiesAmount ?? 0)
+        : 0;
     const expectedAdvertising =
-      pavilionStatus === PavilionStatus.RENTED ? Number(pavilion.advertisingAmount ?? 0) : 0;
+      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
+        ? Number(pavilion.advertisingAmount ?? 0)
+        : 0;
     const expectedAdditional =
-      pavilionStatus === PavilionStatus.RENTED
+      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
         ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
         : 0;
     const expectedTotal =
