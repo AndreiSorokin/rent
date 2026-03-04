@@ -2555,7 +2555,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
         data: {
           utilitiesAmount: null,
-          advertisingAmount: null,
         },
       });
 
@@ -2566,7 +2565,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
         data: {
           utilitiesAmount: 0,
-          advertisingAmount: 0,
         },
       });
 
