@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -39,6 +39,7 @@ export default function StoreAccountingPage() {
         router.replace(`/stores/${storeId}`);
         return;
       }
+
 
       const [analyticsData, accountingData, reconciliationData] = await Promise.all([
         apiFetch<any>(`/stores/${storeId}/analytics`),
@@ -193,6 +194,14 @@ export default function StoreAccountingPage() {
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) {
     return <div className="p-6 text-center text-red-600">Нет доступа</div>;
   }
+  const difference = dayReconciliation?.difference ?? null;
+  const hasDifference =
+    difference &&
+    (Math.abs(Number(difference.bankTransferPaid ?? 0)) > 0.01 ||
+      Math.abs(Number(difference.cashbox1Paid ?? 0)) > 0.01 ||
+      Math.abs(Number(difference.cashbox2Paid ?? 0)) > 0.01 ||
+      Math.abs(Number(difference.total ?? 0)) > 0.01);
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -270,6 +279,45 @@ export default function StoreAccountingPage() {
                     ? formatMoney(dayReconciliation.closing.total ?? 0, store.currency)
                     : '-'}
                 </div>
+              </div>
+              <div
+                className={`rounded-lg p-3 md:col-span-2 ${
+                  hasDifference
+                    ? 'border border-red-200 bg-red-50'
+                    : 'border border-emerald-200 bg-emerald-50'
+                }`}
+              >
+                <div className="mb-2 text-xs text-gray-500">Схождение при закрытии</div>
+                {dayReconciliation.isClosed && difference ? (
+                  <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
+                    <div>
+                      <div className="text-xs text-gray-500">Безналичные</div>
+                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
+                        {formatMoney(Number(difference.bankTransferPaid ?? 0), store.currency)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Наличные касса 1</div>
+                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
+                        {formatMoney(Number(difference.cashbox1Paid ?? 0), store.currency)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Наличные касса 2</div>
+                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
+                        {formatMoney(Number(difference.cashbox2Paid ?? 0), store.currency)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500">Итого</div>
+                      <div className={hasDifference ? "font-bold text-red-700" : "font-bold text-emerald-700"}>
+                        {formatMoney(Number(difference.total ?? 0), store.currency)}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500">Появится после закрытия дня</div>
+                )}
               </div>
             </div>
           ) : (
@@ -484,3 +532,4 @@ export default function StoreAccountingPage() {
     </div>
   );
 }
+
