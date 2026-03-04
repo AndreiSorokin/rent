@@ -376,7 +376,19 @@ export default function PavilionPage() {
 
   const currency = pavilion.store?.currency ?? 'RUB';
   const currencySymbol = getCurrencySymbol(currency);
-  const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const allPayments = [...(pavilion.payments || [])].sort(
+    (a: any, b: any) =>
+      new Date(b.period).getTime() - new Date(a.period).getTime(),
+  );
+  const allPaymentTransactions = [...(pavilion.paymentTransactions || [])].sort(
+    (a: any, b: any) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  const currentMonthStart = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  );
   const currentMonthEnd = new Date(
     currentMonthStart.getFullYear(),
     currentMonthStart.getMonth() + 1,
@@ -386,38 +398,10 @@ export default function PavilionPage() {
     59,
     999,
   );
-  const isCurrentMonthPeriod = (value: string | Date) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return false;
-    return (
-      date.getFullYear() === currentMonthStart.getFullYear() &&
-      date.getMonth() === currentMonthStart.getMonth()
-    );
-  };
-  const currentMonthPayments = (pavilion.payments || []).filter((pay: any) =>
-    isCurrentMonthPeriod(pay.period),
-  );
-  const currentMonthPaymentTransactions = (pavilion.paymentTransactions || []).filter(
-    (entry: any) => isCurrentMonthPeriod(entry.period),
-  );
   const currentMonthAdditionalCharges = (pavilion.additionalCharges || []).filter(
     (charge: any) =>
       new Date(charge.createdAt) >= currentMonthStart &&
       new Date(charge.createdAt) <= currentMonthEnd,
-  );
-  const currentMonthAdditionalExpected = currentMonthAdditionalCharges.reduce(
-    (sum: number, charge: any) => sum + Number(charge.amount ?? 0),
-    0,
-  );
-  const currentMonthAdditionalPaid = currentMonthAdditionalCharges.reduce(
-    (sum: number, charge: any) =>
-      sum +
-      (charge.payments || []).reduce((paymentSum: number, payment: any) => {
-        const paidAt = new Date(payment.paidAt);
-        if (paidAt < currentMonthStart || paidAt > currentMonthEnd) return paymentSum;
-        return paymentSum + Number(payment.amountPaid ?? 0);
-      }, 0),
-    0,
   );
   const currentMonthDiscount = getDiscountForPeriod(new Date());
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
@@ -560,8 +544,8 @@ export default function PavilionPage() {
               )}
           </div>
 
-          {currentMonthPayments.length === 0 &&
-          currentMonthPaymentTransactions.length === 0 ? (
+          {allPayments.length === 0 &&
+          allPaymentTransactions.length === 0 ? (
             <p className="text-gray-500">Платежей пока нет</p>
           ) : (
             <div className="space-y-6">
@@ -576,10 +560,53 @@ export default function PavilionPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {currentMonthPayments.map((pay: any) => {
+                    {allPayments.map((pay: any) => {
                       const periodDate = new Date(pay.period);
+                      const periodStart = new Date(
+                        periodDate.getFullYear(),
+                        periodDate.getMonth(),
+                        1,
+                        0,
+                        0,
+                        0,
+                        0,
+                      );
+                      const periodEnd = new Date(
+                        periodDate.getFullYear(),
+                        periodDate.getMonth() + 1,
+                        0,
+                        23,
+                        59,
+                        59,
+                        999,
+                      );
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
+                      const periodAdditionalCharges = (pavilion.additionalCharges || []).filter(
+                        (charge: any) => {
+                          const createdAt = new Date(charge.createdAt);
+                          return createdAt >= periodStart && createdAt <= periodEnd;
+                        },
+                      );
+                      const periodAdditionalExpected = periodAdditionalCharges.reduce(
+                        (sum: number, charge: any) => sum + Number(charge.amount ?? 0),
+                        0,
+                      );
+                      const periodAdditionalPaid = periodAdditionalCharges.reduce(
+                        (sum: number, charge: any) =>
+                          sum +
+                          (charge.payments || []).reduce(
+                            (paymentSum: number, payment: any) => {
+                              const paidAt = new Date(payment.paidAt);
+                              if (paidAt < periodStart || paidAt > periodEnd) {
+                                return paymentSum;
+                              }
+                              return paymentSum + Number(payment.amountPaid ?? 0);
+                            },
+                            0,
+                          ),
+                        0,
+                      );
                       const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
                       const expectedAdvertising = pavilion.status === 'PREPAID' ? 0 : (pavilion.advertisingAmount || 0);
                       const expectedRent =
@@ -590,12 +617,12 @@ export default function PavilionPage() {
                         expectedRent +
                         expectedUtilities +
                         expectedAdvertising +
-                        currentMonthAdditionalExpected;
+                        periodAdditionalExpected;
                       const paid =
                         (pay.rentPaid || 0) +
                         (pay.utilitiesPaid || 0) +
                         (pay.advertisingPaid || 0) +
-                        currentMonthAdditionalPaid;
+                        periodAdditionalPaid;
                       const balance = paid - expected;
 
                       return (
@@ -625,7 +652,7 @@ export default function PavilionPage() {
 
               <div>
                 <h3 className="mb-3 text-sm font-semibold uppercase text-gray-600">История платежей</h3>
-                {currentMonthPaymentTransactions.length === 0 ? (
+                {allPaymentTransactions.length === 0 ? (
                   <p className="text-sm text-gray-500">Записей платежей пока нет</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -644,7 +671,7 @@ export default function PavilionPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {currentMonthPaymentTransactions.map((entry: any) => (
+                        {allPaymentTransactions.map((entry: any) => (
                           <tr key={entry.id}>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
                               {new Date(entry.createdAt).toLocaleDateString()}

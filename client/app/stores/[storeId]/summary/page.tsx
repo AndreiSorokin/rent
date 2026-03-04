@@ -796,7 +796,7 @@ export default function StoreSummaryPage() {
                 <MetricCard
                   title="Корректировка переносом"
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
-                  subtitle="Показывается как баланс переноса"
+                  subtitle="Баланс после переноса переплаты/долга"
                   tone="primary"
                 />
                 <MetricCard
