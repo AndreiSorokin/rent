@@ -956,11 +956,14 @@ async addPayment(
           period: normalizedPeriod,
         },
       },
-      select: { pavilionId: true },
+      select: { pavilionId: true, expectedTotal: true },
     });
-    const isHistoricalWithoutLedger =
-      normalizedPeriod.getTime() < startOfMonth(new Date()).getTime() &&
-      !existingLedgerForPeriod;
+    const isHistoricalPeriod =
+      normalizedPeriod.getTime() < startOfMonth(new Date()).getTime();
+    const shouldTreatHistoricalAsCarryOnly =
+      isHistoricalPeriod &&
+      (!existingLedgerForPeriod ||
+        Math.abs(Number(existingLedgerForPeriod.expectedTotal ?? 0)) < 0.01);
     const previousPeriod = startOfMonth(
       new Date(normalizedPeriod.getFullYear(), normalizedPeriod.getMonth() - 1, 1),
     );
@@ -984,7 +987,7 @@ async addPayment(
       normalizedPeriod,
     );
     const expectedRent =
-      isHistoricalWithoutLedger
+      shouldTreatHistoricalAsCarryOnly
         ? 0
         : pavilionStatus === PavilionStatus.PREPAID
           ? baseRent
@@ -992,15 +995,15 @@ async addPayment(
             ? Math.max(baseRent - monthlyDiscount, 0)
             : 0;
     const expectedUtilities =
-      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
+      !shouldTreatHistoricalAsCarryOnly && pavilionStatus === PavilionStatus.RENTED
         ? Number(pavilion.utilitiesAmount ?? 0)
         : 0;
     const expectedAdvertising =
-      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
+      !shouldTreatHistoricalAsCarryOnly && pavilionStatus === PavilionStatus.RENTED
         ? Number(pavilion.advertisingAmount ?? 0)
         : 0;
     const expectedAdditional =
-      !isHistoricalWithoutLedger && pavilionStatus === PavilionStatus.RENTED
+      !shouldTreatHistoricalAsCarryOnly && pavilionStatus === PavilionStatus.RENTED
         ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
         : 0;
     const expectedTotal =

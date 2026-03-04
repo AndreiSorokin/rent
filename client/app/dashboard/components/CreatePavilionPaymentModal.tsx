@@ -78,6 +78,10 @@ export function CreatePavilionPaymentModal({
       alert('Выберите период');
       return;
     }
+    if (period < currentMonth) {
+      alert('Оплата в прошлом месяце недоступна. Выберите текущий или будущий месяц.');
+      return;
+    }
 
     const rentBank = rentBankTransferPaid ? Number(rentBankTransferPaid) : 0;
     const rentCash1 = rentCashbox1Paid ? Number(rentCashbox1Paid) : 0;
@@ -159,6 +163,7 @@ export function CreatePavilionPaymentModal({
                 type="month"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
+                min={currentMonth}
                 className="w-full rounded-lg border px-3 py-2"
               />
             </div>
