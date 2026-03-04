@@ -26,11 +26,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   ) {}
   private readonly logger = new Logger(StoresService.name);
   private monthlyRolloverTimer?: NodeJS.Timeout;
+  private activityCleanupLastRunAt?: number;
+  private readonly activityCleanupIntervalMs = 12 * 60 * 60 * 1000;
+  private readonly activityRetentionMonths = 6;
 
   onModuleInit() {
     void this.runMonthlyRolloverForAllStores();
+    void this.runActivityCleanupJob();
     this.monthlyRolloverTimer = setInterval(() => {
       void this.runMonthlyRolloverForAllStores();
+      void this.runActivityCleanupJob();
     }, 60 * 60 * 1000);
   }
 
@@ -2589,6 +2594,30 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     } catch (error) {
       this.logger.error('Failed to execute monthly rollover job', error as Error);
+    }
+  }
+
+  private async runActivityCleanupJob() {
+    const nowMs = Date.now();
+    if (
+      this.activityCleanupLastRunAt &&
+      nowMs - this.activityCleanupLastRunAt < this.activityCleanupIntervalMs
+    ) {
+      return;
+    }
+
+    this.activityCleanupLastRunAt = nowMs;
+
+    try {
+      const cutoff = subMonths(new Date(), this.activityRetentionMonths);
+      const removed = await this.storeActivity.deleteOlderThan(cutoff);
+      if (removed > 0) {
+        this.logger.log(
+          `Removed ${removed} store activity records older than ${this.activityRetentionMonths} months`,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Failed to execute store activity cleanup job', error as Error);
     }
   }
 

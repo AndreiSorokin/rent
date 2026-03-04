@@ -33,4 +33,20 @@ export class StoreActivityService {
       // Activity logging must never break core mutations.
     }
   }
+
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    try {
+      const result = await (this.prisma as any).storeActivity.deleteMany({
+        where: {
+          createdAt: {
+            lt: cutoff,
+          },
+        },
+      });
+      return Number(result?.count ?? 0);
+    } catch {
+      // Cleanup should not break application flow.
+      return 0;
+    }
+  }
 }
