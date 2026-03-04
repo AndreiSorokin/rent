@@ -11,13 +11,6 @@ const getCurrentMonthLocal = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const toUtcMonthIso = (month: string) => {
-  const [yearStr, monthStr] = month.split('-');
-  const year = Number(yearStr);
-  const monthIndex = Number(monthStr) - 1;
-  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0)).toISOString();
-};
-
 type PavilionStatus = 'AVAILABLE' | 'RENTED' | 'PREPAID';
 
 type PavilionLike = {
@@ -180,7 +173,7 @@ export function EditPavilionModal({
       return;
     }
 
-    const periodIso = toUtcMonthIso(prepaymentMonth);
+    const periodIso = prepaymentMonth;
     const targetPrepayment = prepaymentAmount ? Number(prepaymentAmount) : rentAmount;
     const prepayBank = prepaymentBankTransferPaid
       ? Number(prepaymentBankTransferPaid)
@@ -227,10 +220,9 @@ export function EditPavilionModal({
       setError(null);
       await updatePavilion(storeId, pavilion.id, payload);
       if (form.status === 'PREPAID') {
-        const selectedPeriodDate = new Date(periodIso);
         const payments = await apiFetch<any[]>(
           `/stores/${storeId}/pavilions/${pavilion.id}/payments?period=${encodeURIComponent(
-            selectedPeriodDate.toISOString(),
+            periodIso,
           )}`,
         );
         const existingForPeriod = payments[0];

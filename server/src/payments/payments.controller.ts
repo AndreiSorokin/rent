@@ -22,6 +22,26 @@ import { PaymentsService } from './payments.service';
 @Controller('stores/:storeId/pavilions/:pavilionId/payments')
 export class PaymentsController {
   constructor(private readonly service: PaymentsService) {}
+  private parseMonthInput(value: string): Date {
+    const raw = String(value ?? '').trim();
+    const ym = /^(\d{4})-(\d{2})$/.exec(raw);
+    if (ym) {
+      const year = Number(ym[1]);
+      const month = Number(ym[2]);
+      if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+        throw new BadRequestException('period must be in YYYY-MM format');
+      }
+      return new Date(year, month - 1, 1);
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException('Invalid period');
+    }
+
+    // Normalize by UTC year/month to avoid timezone-dependent month shifts.
+    return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), 1);
+  }
 
   @Post()
   @Permissions(Permission.CREATE_PAYMENTS)
@@ -48,7 +68,7 @@ export class PaymentsController {
       advertisingCashbox2Paid?: number;
     },
   ) {
-    const period = new Date(body.period);
+    const period = this.parseMonthInput(body.period);
     return this.service.addPayment(pavilionId, period, {
       rentPaid: body.rentPaid,
       utilitiesPaid: body.utilitiesPaid,
@@ -81,7 +101,7 @@ export class PaymentsController {
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
     return this.service.list(pavilionId, {
-      period: period ? new Date(period) : undefined,
+      period: period ? this.parseMonthInput(period) : undefined,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
       page: page ? Number(page) : undefined,
@@ -96,7 +116,7 @@ export class PaymentsController {
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
     @Query('period') period: string,
   ) {
-    return this.service.getMonthlySummary(pavilionId, new Date(period));
+    return this.service.getMonthlySummary(pavilionId, this.parseMonthInput(period));
   }
 
   @Delete('entries/:entryId')

@@ -21,6 +21,31 @@ export class PaymentsService {
     }
   }
 
+  private addMonths(date: Date, months: number) {
+    return new Date(date.getFullYear(), date.getMonth() + months, 1);
+  }
+
+  /**
+   * Rebuild monthly ledger chain from `fromPeriod` up to current month.
+   * This is required when user edits payments in a past month: opening/closing
+   * debt for subsequent months must be recalculated.
+   */
+  private async refreshLedgerChainFromPeriod(pavilionId: number, fromPeriod: Date) {
+    const start = startOfMonth(fromPeriod);
+    const current = startOfMonth(new Date());
+
+    if (start.getTime() > current.getTime()) {
+      await this.refreshMonthlyLedger(pavilionId, start);
+      return;
+    }
+
+    let cursor = start;
+    while (cursor.getTime() <= current.getTime()) {
+      await this.refreshMonthlyLedger(pavilionId, cursor);
+      cursor = this.addMonths(cursor, 1);
+    }
+  }
+
   async getMonthlySummary(pavilionId: number, period: Date) {
     const normalizedPeriod = startOfMonth(period);
     const start = startOfMonth(normalizedPeriod);
@@ -64,7 +89,9 @@ export class PaymentsService {
       EXPECTED AMOUNTS
     ====================== */
 
-    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const baseRent = Number(
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+    );
     const monthlyDiscount = this.getMonthlyDiscountTotal(
       pavilion.discounts,
       pavilion.squareMeters,
@@ -393,7 +420,7 @@ async addPayment(
 
     return payment;
   });
-  await this.refreshMonthlyLedger(pavilionId, normalizedPeriod, normalizedStatus);
+  await this.refreshLedgerChainFromPeriod(pavilionId, normalizedPeriod);
   await this.storeActivity.log({
     storeId: pavilion.storeId,
     userId,
@@ -616,7 +643,7 @@ async addPayment(
     });
 
     const normalizedPeriod = startOfMonth(result.period);
-    await this.refreshMonthlyLedger(pavilionId, normalizedPeriod);
+    await this.refreshLedgerChainFromPeriod(pavilionId, normalizedPeriod);
     await this.storeActivity.log({
       storeId: pavilion.storeId,
       userId,
@@ -837,7 +864,7 @@ async addPayment(
       };
     });
 
-    await this.refreshMonthlyLedger(pavilionId, startOfMonth(result.period));
+    await this.refreshLedgerChainFromPeriod(pavilionId, startOfMonth(result.period));
     await this.storeActivity.log({
       storeId: pavilion.storeId,
       userId,
@@ -936,7 +963,9 @@ async addPayment(
     });
     const openingDebt = previousLedger?.closingDebt ?? 0;
 
-    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const baseRent = Number(
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+    );
     const monthlyDiscount = this.getMonthlyDiscountTotal(
       pavilion.discounts,
       pavilion.squareMeters,

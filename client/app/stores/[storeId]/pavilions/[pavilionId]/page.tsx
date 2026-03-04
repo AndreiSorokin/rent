@@ -23,13 +23,6 @@ const getCurrentMonthLocal = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const toUtcMonthIso = (month: string) => {
-  const [yearStr, monthStr] = month.split('-');
-  const year = Number(yearStr);
-  const monthIndex = Number(monthStr) - 1;
-  return new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0)).toISOString();
-};
-
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
   const searchParams = useSearchParams();
@@ -212,7 +205,7 @@ export default function PavilionPage() {
   const handleSetPrepayment = async () => {
     if (!pavilion) return;
 
-    const periodIso = toUtcMonthIso(prepaymentMonth);
+    const periodIso = prepaymentMonth;
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
     const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
     const bank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;
@@ -230,10 +223,9 @@ export default function PavilionPage() {
     }
 
     try {
-      const periodDate = new Date(periodIso);
       const payments = await apiFetch<any[]>(
         `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments?period=${encodeURIComponent(
-          periodDate.toISOString(),
+          periodIso,
         )}`,
       );
       const existingForPeriod = payments[0];
@@ -312,9 +304,12 @@ export default function PavilionPage() {
     try {
       if (pavilion.prepaidUntil) {
         const prepaidPeriod = new Date(pavilion.prepaidUntil);
+        const prepaidPeriodMonth = `${prepaidPeriod.getFullYear()}-${String(
+          prepaidPeriod.getMonth() + 1,
+        ).padStart(2, '0')}`;
         const payments = await apiFetch<any[]>(
           `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments?period=${encodeURIComponent(
-            prepaidPeriod.toISOString(),
+            prepaidPeriodMonth,
           )}`,
         );
         const existingForPeriod = payments[0];

@@ -33,6 +33,11 @@ export class PavilionsService {
       createdAt: Date;
       payments: Array<{ amountPaid: number; paidAt: Date }>;
     }>;
+    monthlyLedgers?: Array<{
+      period: Date;
+      openingDebt: number;
+      closingDebt: number;
+    }>;
   }>(pavilion: T) {
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -92,10 +97,24 @@ export class PavilionsService {
       expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
     const paidTotal = paidBase + paidAdditional;
 
+    const currentMonthLedger = (pavilion.monthlyLedgers ?? []).find(
+      (ledger) => startOfMonth(ledger.period).getTime() === monthStartTime,
+    );
+    const previousMonthLedger = (pavilion.monthlyLedgers ?? [])
+      .filter((ledger) => startOfMonth(ledger.period).getTime() < monthStartTime)
+      .sort(
+        (a, b) =>
+          startOfMonth(b.period).getTime() - startOfMonth(a.period).getTime(),
+      )[0];
+    const carryAdjustment = Number(
+      currentMonthLedger?.openingDebt ?? previousMonthLedger?.closingDebt ?? 0,
+    );
+    const expectedWithCarry = expectedTotal + carryAdjustment;
+
     let paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' = 'PAID';
-    if (expectedTotal > 0.01) {
+    if (expectedWithCarry > 0.01) {
       if (paidTotal <= 0.01) paymentStatus = 'UNPAID';
-      else if (paidTotal + 0.01 >= expectedTotal) paymentStatus = 'PAID';
+      else if (paidTotal + 0.01 >= expectedWithCarry) paymentStatus = 'PAID';
       else paymentStatus = 'PARTIAL';
     }
 
@@ -103,8 +122,10 @@ export class PavilionsService {
       ...pavilion,
       paymentStatus,
       paymentExpectedTotal: expectedTotal,
+      paymentExpectedTotalWithCarry: expectedWithCarry,
+      paymentCarryAdjustment: carryAdjustment,
       paymentPaidTotal: paidTotal,
-      paymentBalance: paidTotal - expectedTotal,
+      paymentBalance: paidTotal - expectedWithCarry,
     };
   }
 
@@ -240,6 +261,20 @@ export class PavilionsService {
       discounts: true,
       payments: true,
       contracts: true,
+      monthlyLedgers: {
+        where: {
+          period: {
+            lte: startOfMonth(new Date()),
+          },
+        },
+        orderBy: { period: 'desc' },
+        take: 2,
+        select: {
+          period: true,
+          openingDebt: true,
+          closingDebt: true,
+        },
+      },
       groupMemberships: {
         include: {
           group: {
@@ -759,7 +794,9 @@ export class PavilionsService {
     });
     const openingDebt = previousLedger?.closingDebt ?? 0;
 
-    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const baseRent = Number(
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+    );
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0

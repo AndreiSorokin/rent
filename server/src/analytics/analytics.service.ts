@@ -442,6 +442,12 @@ export class AnalyticsService {
     let expenseChannelsBankTransfer = 0;
     let expenseChannelsCashbox1 = 0;
     let expenseChannelsCashbox2 = 0;
+    let previousIncomeChannelsBankTransfer = 0;
+    let previousIncomeChannelsCashbox1 = 0;
+    let previousIncomeChannelsCashbox2 = 0;
+    let previousExpenseChannelsBankTransfer = 0;
+    let previousExpenseChannelsCashbox1 = 0;
+    let previousExpenseChannelsCashbox2 = 0;
 
     const nonSalaryManualExpenses = manualExpenses.filter(
       (expense) => expense.type !== 'SALARIES',
@@ -903,6 +909,164 @@ export class AnalyticsService {
       previousUtilitiesActualByStatus;
 
     const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
+    const carryAggregate = await this.prisma.pavilionMonthlyLedger.aggregate({
+      where: {
+        period: prevPeriod,
+        pavilion: {
+          storeId,
+        },
+      },
+      _sum: {
+        closingDebt: true,
+      },
+    });
+    const carryAdjustment = Number(carryAggregate._sum.closingDebt ?? 0);
+    const addPreviousExpenseByMethod = (
+      amount: number,
+      method?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null,
+    ) => {
+      const safeAmount = Number(amount ?? 0);
+      if (safeAmount <= 0) return;
+      if (method === 'CASHBOX1') {
+        previousExpenseChannelsCashbox1 += safeAmount;
+        return;
+      }
+      if (method === 'CASHBOX2') {
+        previousExpenseChannelsCashbox2 += safeAmount;
+        return;
+      }
+      previousExpenseChannelsBankTransfer += safeAmount;
+    };
+    const addPreviousExpenseByChannelsOrMethod = (
+      expense: any,
+      fallbackAmount: number,
+      fallbackMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null,
+    ) => {
+      const bank = Number(expense?.bankTransferPaid ?? 0);
+      const cash1 = Number(expense?.cashbox1Paid ?? 0);
+      const cash2 = Number(expense?.cashbox2Paid ?? 0);
+      const channelsTotal = bank + cash1 + cash2;
+      if (channelsTotal > 0) {
+        previousExpenseChannelsBankTransfer += bank;
+        previousExpenseChannelsCashbox1 += cash1;
+        previousExpenseChannelsCashbox2 += cash2;
+        return;
+      }
+      addPreviousExpenseByMethod(fallbackAmount, fallbackMethod);
+    };
+
+    for (const pavilion of previousIncomePavilions) {
+      for (const pay of pavilion.payments) {
+        const rentBank = pay.rentBankTransferPaid ?? 0;
+        const rentCash1 = pay.rentCashbox1Paid ?? 0;
+        const rentCash2 = pay.rentCashbox2Paid ?? 0;
+        const utilBank = pay.utilitiesBankTransferPaid ?? 0;
+        const utilCash1 = pay.utilitiesCashbox1Paid ?? 0;
+        const utilCash2 = pay.utilitiesCashbox2Paid ?? 0;
+        const advBank = pay.advertisingBankTransferPaid ?? 0;
+        const advCash1 = pay.advertisingCashbox1Paid ?? 0;
+        const advCash2 = pay.advertisingCashbox2Paid ?? 0;
+        const hasEntityChannels =
+          rentBank > 0 ||
+          rentCash1 > 0 ||
+          rentCash2 > 0 ||
+          utilBank > 0 ||
+          utilCash1 > 0 ||
+          utilCash2 > 0 ||
+          advBank > 0 ||
+          advCash1 > 0 ||
+          advCash2 > 0;
+
+        if (hasEntityChannels) {
+          previousIncomeChannelsBankTransfer += rentBank + utilBank + advBank;
+          previousIncomeChannelsCashbox1 += rentCash1 + utilCash1 + advCash1;
+          previousIncomeChannelsCashbox2 += rentCash2 + utilCash2 + advCash2;
+        } else {
+          // Backward compatibility for old records where channels were stored only for rent.
+          previousIncomeChannelsBankTransfer += pay.bankTransferPaid ?? 0;
+          previousIncomeChannelsCashbox1 += pay.cashbox1Paid ?? 0;
+          previousIncomeChannelsCashbox2 += pay.cashbox2Paid ?? 0;
+        }
+      }
+
+      for (const charge of pavilion.additionalCharges) {
+        for (const payment of charge.payments) {
+          previousIncomeChannelsBankTransfer += payment.bankTransferPaid ?? 0;
+          previousIncomeChannelsCashbox1 += payment.cashbox1Paid ?? 0;
+          previousIncomeChannelsCashbox2 += payment.cashbox2Paid ?? 0;
+        }
+      }
+    }
+
+    for (const incomeItem of storeExtraIncomePrevious) {
+      previousIncomeChannelsBankTransfer += Number(
+        incomeItem.bankTransferPaid ?? 0,
+      );
+      previousIncomeChannelsCashbox1 += Number(incomeItem.cashbox1Paid ?? 0);
+      previousIncomeChannelsCashbox2 += Number(incomeItem.cashbox2Paid ?? 0);
+    }
+
+    for (const expense of previousManualAdministrativeExpenses) {
+      if (expense.status !== 'PAID') continue;
+      addPreviousExpenseByChannelsOrMethod(
+        expense,
+        Number(expense.amount ?? 0),
+        (expense as any).paymentMethod as
+          | 'BANK_TRANSFER'
+          | 'CASHBOX1'
+          | 'CASHBOX2'
+          | null,
+      );
+    }
+    for (const expense of previousHouseholdTypeExpenses) {
+      if (expense.status !== 'PAID') continue;
+      addPreviousExpenseByChannelsOrMethod(
+        expense,
+        Number(expense.amount ?? 0),
+        (expense as any).paymentMethod as
+          | 'BANK_TRANSFER'
+          | 'CASHBOX1'
+          | 'CASHBOX2'
+          | null,
+      );
+    }
+    for (const expense of previousStoreFacilitiesExpenses) {
+      if (expense.status !== 'PAID') continue;
+      addPreviousExpenseByChannelsOrMethod(
+        expense,
+        Number(expense.amount ?? 0),
+        (expense as any).paymentMethod as
+          | 'BANK_TRANSFER'
+          | 'CASHBOX1'
+          | 'CASHBOX2'
+          | null,
+      );
+    }
+    for (const expense of previousManualExpenses) {
+      if (expense.type !== 'SALARIES' || expense.status !== 'PAID') continue;
+      addPreviousExpenseByChannelsOrMethod(
+        expense,
+        Number(expense.amount ?? 0),
+        (expense as any).paymentMethod as
+          | 'BANK_TRANSFER'
+          | 'CASHBOX1'
+          | 'CASHBOX2'
+          | null,
+      );
+    }
+    const previousMonthChannels = {
+      bankTransfer:
+        previousIncomeChannelsBankTransfer - previousExpenseChannelsBankTransfer,
+      cashbox1: previousIncomeChannelsCashbox1 - previousExpenseChannelsCashbox1,
+      cashbox2: previousIncomeChannelsCashbox2 - previousExpenseChannelsCashbox2,
+      total:
+        previousIncomeChannelsBankTransfer +
+        previousIncomeChannelsCashbox1 +
+        previousIncomeChannelsCashbox2 -
+        (previousExpenseChannelsBankTransfer +
+          previousExpenseChannelsCashbox1 +
+          previousExpenseChannelsCashbox2),
+    };
     const months: Date[] = [];
     for (let i = 5; i >= 0; i -= 1) {
       months.push(startOfMonth(subMonths(period, i)));
@@ -1127,6 +1291,8 @@ export class AnalyticsService {
           storeExtra: incomeActualStoreExtra,
           total: overallIncomeTotal,
           previousMonthBalance,
+          previousMonthChannels,
+          carryAdjustment,
           channels: {
             bankTransfer: channelsBankTransfer,
             cashbox1: channelsCashbox1,

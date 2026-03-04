@@ -135,10 +135,10 @@ function MonthlyLineChart({
       <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
         <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[39rem] w-full sm:h-[22rem]">
           <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
-          {yTicks.map((tick) => {
+          {yTicks.map((tick, tickIndex) => {
             const y = plotBottom - (tick / maxValue) * plotHeight;
             return (
-              <g key={`tick-${tick}`}>
+              <g key={`tick-${tickIndex}-${tick}`}>
                 <line
                   x1={plotLeft}
                   y1={y}
@@ -567,20 +567,23 @@ export default function StoreSummaryPage() {
           return fallback;
         })();
 
-    const previousMonthBalance = Number(income.previousMonthBalance ?? 0);
+    const carryAdjustment = Number(
+      income.carryAdjustment ?? income.previousMonthBalance ?? 0,
+    );
     const incomeTotalRaw = Number(income.total ?? 0);
-    const incomeTotalWithPrevious = incomeTotalRaw + previousMonthBalance;
+    const incomeTotalWithPrevious = incomeTotalRaw + carryAdjustment;
     const incomeWithAdjustedTotal = {
       ...income,
+      carryAdjustment,
       totalWithPrevious: incomeTotalWithPrevious,
     };
 
     const storeLevelTotals = calcStoreLevelExpensesTotals(storeLevelExpenses);
     const totalMoney = calcSummaryTotalMoney(
-      incomeTotalWithPrevious,
+      incomeTotalRaw,
       expenses.totals?.actual,
     );
-    const saldo = calcProfit(incomeTotalWithPrevious, expenses.totals?.actual);
+    const saldo = calcProfit(incomeTotalRaw, expenses.totals?.actual);
     const saldoChannels = summary.saldoChannels || {
       bankTransfer: Number(income.channels?.bankTransfer ?? 0) - Number(expenseChannels.bankTransfer ?? 0),
       cashbox1: Number(income.channels?.cashbox1 ?? 0) - Number(expenseChannels.cashbox1 ?? 0),
@@ -703,7 +706,7 @@ export default function StoreSummaryPage() {
                   Прогноз: {formatMoney(data.income.forecast?.total ?? 0, data.currency)}
                 </Link>
               </div>
-              <div>Факт: {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}</div>
+              <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div>
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -730,11 +733,39 @@ export default function StoreSummaryPage() {
                 Факт:{' '}
                 {formatMoney(
                   calcProfit(
-                    Number(data.income.totalWithPrevious ?? 0),
+                    Number(data.income.total ?? 0),
                     Number(data.expenses.totals?.actual ?? 0),
                   ),
                   data.currency,
                 )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+          <h2 className="text-xl font-semibold text-gray-900">Остаток с прошлого месяца</h2>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <MetricCard
+              title="Итого остаток"
+              value={formatMoney(data.income.previousMonthBalance ?? 0, data.currency)}
+              subtitle="Факт прошлого месяца"
+              tone="primary"
+            />
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Остаток по кассам
+              </p>
+              <div className="mt-2 space-y-1 text-sm text-gray-700">
+                <div>
+                  Безнал: {formatMoney(data.income.previousMonthChannels?.bankTransfer ?? 0, data.currency)}
+                </div>
+                <div>
+                  Касса 1: {formatMoney(data.income.previousMonthChannels?.cashbox1 ?? 0, data.currency)}
+                </div>
+                <div>
+                  Касса 2: {formatMoney(data.income.previousMonthChannels?.cashbox2 ?? 0, data.currency)}
+                </div>
               </div>
             </div>
           </div>
@@ -749,7 +780,12 @@ export default function StoreSummaryPage() {
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Итого приход (прогноз)"
-                  value={formatMoney(data.income.forecast?.total ?? 0, data.currency)}
+                  value={formatMoney(
+                    Number(data.income.forecast?.total ?? 0) +
+                      Number(data.income.carryAdjustment ?? 0),
+                    data.currency,
+                  )}
+                  subtitle="С учетом переноса"
                   tone="primary"
                 />
               </div>
@@ -758,17 +794,21 @@ export default function StoreSummaryPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <MetricCard
-                  title="Остаток с прошлого месяца"
-                  value={formatMoney(data.income.previousMonthBalance ?? 0, data.currency)}
+                  title="Корректировка переносом"
+                  value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
+                  subtitle="Показывается как баланс переноса"
                   tone="primary"
                 />
                 <MetricCard
                   title="Итого приход"
-                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
-                  subtitle="С учетом остатка"
+                  value={formatMoney(data.income.total ?? 0, data.currency)}
+                  subtitle="Факт текущего месяца"
                   tone="success"
                 />
               </div>
+              <p className="mt-2 text-xs text-gray-600">
+                «Корректировка переносом» не подмешивается в факт текущего месяца.
+              </p>
               <div className="mt-3 space-y-3">
                 <p className="text-sm font-semibold text-gray-800">Распределение по каналам оплаты</p>
                 <ChannelRow
@@ -968,7 +1008,7 @@ export default function StoreSummaryPage() {
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <MetricCard
                   title="Общий приход"
-                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+                  value={formatMoney(data.income.total ?? 0, data.currency)}
                   tone="success"
                 />
                 <MetricCard

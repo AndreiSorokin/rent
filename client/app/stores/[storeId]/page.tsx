@@ -1718,6 +1718,9 @@ export default function StorePage() {
                     {orderedPavilions.map((p: any) => (
                       (() => {
                         const paymentStatus = getPavilionPaymentStatus(p);
+                        const carryAdjustment = Number(p.paymentCarryAdjustment ?? 0);
+                        const carryBalance = -carryAdjustment;
+                        const hasCarryAdjustment = Math.abs(carryBalance) > 0.009;
                         return (
                       <tr
                         key={p.id}
@@ -1791,11 +1794,24 @@ export default function StorePage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
-                          >
-                            {paymentStatus.label}
-                          </span>
+                          <div className="space-y-1">
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
+                            >
+                              {paymentStatus.label}
+                            </span>
+                            {hasCarryAdjustment && (
+                              <div
+                                className={`text-xs ${
+                                  carryBalance < 0
+                                    ? 'text-amber-700'
+                                    : 'text-emerald-700'
+                                }`}
+                              >
+                                Перенос: {formatMoney(carryBalance, store.currency)}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           {p.category || '-'}
