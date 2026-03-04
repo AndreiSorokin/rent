@@ -119,6 +119,7 @@ export default function StoreSettingsPage() {
     hasPermission(permissions, 'INVITE_USERS') ||
     hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
     hasPermission(permissions, 'REMOVE_USERS');
+  const canViewActivity = hasPermission(permissions, 'VIEW_ACTIVITY');
 
   const handleUpdateStoreName = async () => {
     const name = nameDraft.trim();
@@ -381,14 +382,24 @@ export default function StoreSettingsPage() {
               Управление объектом: {store.name}
             </h1>
           </div>
-          {createPavilions && (
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
-            >
-              Загрузить данные
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {canViewActivity && (
+              <Link
+                href={`/stores/${storeId}/activity`}
+                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Журнал действий
+              </Link>
+            )}
+            {createPavilions && (
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+              >
+                Загрузить данные
+              </button>
+            )}
+          </div>
         </div>
 
         {canManageStore && (

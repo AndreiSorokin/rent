@@ -13,7 +13,6 @@ import {
   CheckCheck,
   CirclePlus,
   HandCoins,
-  History,
   LockKeyhole,
   Menu,
   Sigma,
@@ -1290,6 +1289,7 @@ export default function StorePage() {
   const canOpenUtilities =
     hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
   const canCreatePavilion = hasPermission(permissions, 'CREATE_PAVILIONS');
+  const canViewAccounting = hasPermission(permissions, 'VIEW_PAYMENTS');
   const buildStoreReturnTo = () => {
     const query = new URLSearchParams();
     if (pavilionSearch.trim()) query.set('q', pavilionSearch.trim());
@@ -1334,39 +1334,6 @@ export default function StorePage() {
               <ArrowLeft className="h-4 w-4" />
               Назад к объектам
             </Link>
-            {canOpenUtilities && (
-              <Link href={`/stores/${storeId}/utilities`} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
-                <HandCoins className="h-4 w-4" />
-                Начисления
-              </Link>
-            )}
-            {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-              <Link
-                href={`/stores/${storeId}/accounting`}
-                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                <CheckCheck className="h-4 w-4" />
-                Бух. таблица
-              </Link>
-            )}
-            {hasPermission(permissions, 'VIEW_ACTIVITY') && (
-              <Link
-                href={`/stores/${storeId}/activity`}
-                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                <History className="h-4 w-4" />
-                Журнал действий
-              </Link>
-            )}
-            {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-              <button
-                onClick={() => setShowExtraIncomeModal(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              >
-                <BanknoteArrowDown className="h-4 w-4" />
-                Доп приход
-              </button>
-            )}
           </div>
 
           <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
@@ -1387,6 +1354,41 @@ export default function StorePage() {
                 <CirclePlus className="h-4 w-4" />
                 Добавить павильон
               </button>
+            )}
+            {canViewAccounting && (
+              <Link
+                href={`/stores/${storeId}/accounting`}
+                className="flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+              >
+                <CheckCheck className="h-4 w-4" />
+                Открытие/закрытие смены
+              </Link>
+            )}
+            {(canOpenUtilities || canViewAccounting) && (
+              <div className="grid grid-cols-2 gap-2 pt-5">
+                {canOpenUtilities && (
+                  <Link
+                    href={`/stores/${storeId}/utilities`}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${
+                      canViewAccounting ? '' : 'col-span-2'
+                    }`}
+                  >
+                    <HandCoins className="h-3.5 w-3.5" />
+                    Начисления
+                  </Link>
+                )}
+                {canViewAccounting && (
+                  <button
+                    onClick={() => setShowExtraIncomeModal(true)}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${
+                      canOpenUtilities ? '' : 'col-span-2'
+                    }`}
+                  >
+                    <BanknoteArrowDown className="h-3.5 w-3.5" />
+                    Доп приход
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -1477,48 +1479,6 @@ export default function StorePage() {
                   <ArrowLeft className="h-4 w-4" />
                   Назад к объектам
                 </Link>
-                {canOpenUtilities && (
-                  <Link
-                    href={`/stores/${storeId}/utilities`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <HandCoins className="h-4 w-4" />
-                    Начисления
-                  </Link>
-                )}
-                {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-                  <Link
-                    href={`/stores/${storeId}/accounting`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Бух. таблица
-                  </Link>
-                )}
-                {hasPermission(permissions, 'VIEW_ACTIVITY') && (
-                  <Link
-                    href={`/stores/${storeId}/activity`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <History className="h-4 w-4" />
-                    Журнал действий
-                  </Link>
-                )}
-                {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-                  <button
-                    onClick={() => {
-                      setShowExtraIncomeModal(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
-                  >
-                    <BanknoteArrowDown className="h-4 w-4" />
-                    Доп приход
-                  </button>
-                )}
               </div>
 
               <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
@@ -1543,6 +1503,46 @@ export default function StorePage() {
                     <CirclePlus className="h-4 w-4" />
                     Добавить павильон
                   </button>
+                )}
+                {canViewAccounting && (
+                  <Link
+                    href={`/stores/${storeId}/accounting`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Открытие/закрытие смены
+                  </Link>
+                )}
+                {(canOpenUtilities || canViewAccounting) && (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {canOpenUtilities && (
+                      <Link
+                        href={`/stores/${storeId}/utilities`}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 ${
+                          canViewAccounting ? '' : 'col-span-2'
+                        }`}
+                      >
+                        <HandCoins className="h-3.5 w-3.5" />
+                        Начисления
+                      </Link>
+                    )}
+                    {canViewAccounting && (
+                      <button
+                        onClick={() => {
+                          setShowExtraIncomeModal(true);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 ${
+                          canOpenUtilities ? '' : 'col-span-2'
+                        }`}
+                      >
+                        <BanknoteArrowDown className="h-3.5 w-3.5" />
+                        Доп приход
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
