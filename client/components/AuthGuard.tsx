@@ -8,6 +8,7 @@ const ANON_ONLY_PATHS = new Set(['/login', '/register']);
 
 function isPublicPath(pathname: string | null) {
   if (!pathname) return false;
+  if (pathname === '/') return true;
   if (ANON_ONLY_PATHS.has(pathname)) return true;
   return pathname.startsWith('/forgot-password');
 }

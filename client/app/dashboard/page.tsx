@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
@@ -36,65 +36,94 @@ export default function StoresPage() {
     setShowCreateModal(false);
   };
 
-  if (loading) return <div className="p-8 text-center text-lg">Загрузка...</div>;
-  if (error) return <div className="p-8 text-center text-red-600 text-lg">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-lg text-[#111111]">Загрузка...</div>;
+  if (error) return <div className="p-8 text-center text-lg text-[#EF4444]">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl p-4 md:p-8">
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <h1 className="text-center text-3xl font-bold text-gray-800 md:text-left">
-            Мои объекты
-          </h1>
+    <div className="min-h-screen bg-[#f9f5f0] text-[#111111]">
+      <div className="mx-auto max-w-7xl px-5 pb-14 pt-10 md:px-8 md:pt-14">
+        <div className="mb-12 flex flex-col gap-7 md:mb-16 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-3 text-sm font-medium tracking-wide text-[#6B6B6B]">
+              {currentUser ? (
+                <>
+                  Добро пожаловать, <span className="font-semibold text-[#111111]">{currentUser.name || 'Пользователь'}</span> ({currentUser.email})
+                </>
+              ) : (
+                'Панель управления объектами'
+              )}
+            </p>
+            <h1 className="text-5xl font-extrabold leading-none tracking-tight md:text-4xl">
+              Мои объекты
+            </h1>
+          </div>
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="rounded-lg bg-green-600 px-6 py-3 font-medium text-white shadow-sm transition hover:bg-green-700"
+            className="group relative inline-flex items-center gap-2 self-start rounded-full bg-[#FF6A13] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5 hover:bg-[#E65C00]"
           >
-            + Добавить объект
+            <span className="text-lg leading-none">+</span>
+            <span>Добавить объект</span>
+            <span className="pointer-events-none absolute -inset-1 -z-10 rounded-full bg-[#FF6A13]/30 blur-xl transition group-hover:opacity-80" />
           </button>
         </div>
 
         {currentUser ? (
-          <div className="mb-8 rounded-xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-xl font-semibold">Добро пожаловать!</h2>
-            <p className="text-lg">
-              <strong>{currentUser.name || 'Пользователь'}</strong> ({currentUser.email})
-            </p>
-            <div className="mt-6 border-t pt-4">
+          <div className="mb-10 rounded-[1.75rem] border border-[#D8D1CB] bg-[#F4EFEB] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] md:p-7">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="mb-1 text-2xl font-bold">Профиль</h2>
+                <p className="text-[15px] text-[#6B6B6B]">
+                  <span className="font-semibold text-[#111111]">{currentUser.name || 'Пользователь'}</span> ({currentUser.email})
+                </p>
+              </div>
               <Link
                 href="/reset-password"
-                className="inline-flex rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-full bg-[#22C55E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#16a34a]"
               >
                 Сменить пароль
               </Link>
             </div>
           </div>
         ) : (
-          <div className="mb-8 animate-pulse rounded-xl bg-white p-6 shadow">
+          <div className="mb-10 animate-pulse rounded-[1.75rem] border border-[#D8D1CB] bg-[#F4EFEB] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
             <h2 className="mb-4 text-xl font-semibold">Загрузка пользователя...</h2>
           </div>
         )}
 
         {stores.length === 0 ? (
-          <div className="rounded-xl bg-white p-8 text-center shadow">
-            <p className="mb-6 text-lg text-gray-600">У вас пока нет объектов</p>
+          <div className="rounded-[2rem] border border-dashed border-[#D8D1CB] bg-[#F4EFEB] p-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl text-[#6B6B6B]">
+              +
+            </div>
+            <p className="mb-2 text-lg font-semibold text-[#111111]">У вас пока нет объектов</p>
+            <p className="text-sm text-[#6B6B6B]">Нажмите «Добавить объект», чтобы создать первый объект.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {stores.map((store) => (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {stores.map((store, index) => (
               <Link
                 key={store.id}
                 href={`/stores/${store.id}`}
-                className="overflow-hidden rounded-xl bg-white shadow transition-shadow hover:shadow-lg"
+                className="group relative overflow-hidden rounded-[2rem] border border-[#D8D1CB] bg-white p-7 shadow-[0_6px_28px_rgba(0,0,0,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#FF6A13]/40 hover:shadow-[0_16px_34px_rgba(0,0,0,0.08)]"
               >
-                <div className="p-6">
-                  <h3 className="mb-2 truncate text-xl font-semibold text-gray-800">
-                    {store.name}
-                  </h3>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm text-indigo-800">
+                <span className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#FF6A13]/8 blur-2xl transition duration-300 group-hover:bg-[#FF6A13]/18" />
+                <div className="relative z-10">
+                  <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F4EFEB] text-lg font-bold text-[#FF6A13] transition group-hover:scale-105">
+                    {index + 1}
+                  </div>
+                  <h3 className="mb-3 truncate text-2xl font-bold text-[#111111]">{store.name}</h3>
+                  <div className="mb-8">
+                    <span className="inline-flex rounded-full bg-[#F4EFEB] px-3 py-1 text-sm text-[#6B6B6B]">
                       {store.permissions?.join(', ') || 'Сотрудник'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-[#ECE6E0] pt-4">
+                    <span className="rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#15803d]">
+                      Активен
+                    </span>
+                    <span className="text-sm font-bold text-[#111111] transition group-hover:text-[#FF6A13]">
+                      Управлять →
                     </span>
                   </div>
                 </div>
@@ -113,3 +142,4 @@ export default function StoresPage() {
     </div>
   );
 }
+
