@@ -175,7 +175,8 @@ jobs:
     steps:
       - name: Skip deploy when SSH secrets are missing
         if: ${{ env.SSH_HOST == '' || env.SSH_USER == '' || env.SSH_PRIVATE_KEY == '' }}
-        run: echo "Deploy skipped: SSH secrets are not configured."
+        run: |
+          echo "Deploy skipped: SSH secrets are not configured."
 
       - name: Deploy via SSH
         if: ${{ env.SSH_HOST != '' && env.SSH_USER != '' && env.SSH_PRIVATE_KEY != '' }}
