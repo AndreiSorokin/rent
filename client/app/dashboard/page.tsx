@@ -123,7 +123,7 @@ export default function StoresPage() {
                       Активен
                     </span>
                     <span className="text-sm font-bold text-[#111111] transition group-hover:text-[#FF6A13]">
-                      Управлять →
+                      Управление →
                     </span>
                   </div>
                 </div>
