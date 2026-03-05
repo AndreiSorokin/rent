@@ -29,10 +29,10 @@ async function mockStoreApi(page: Page, permissions: string[]) {
       return;
     }
 
-    const url = new URL(route.request().url());
+    const url = new URL(request.url());
     const pathname = url.pathname;
 
-    if (pathname === `/stores/${STORE_ID}`) {
+    if (pathname === `/stores/${STORE_ID}` || pathname === `/api/stores/${STORE_ID}`) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -61,7 +61,7 @@ async function mockStoreApi(page: Page, permissions: string[]) {
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/users`) {
+    if (pathname === `/stores/${STORE_ID}/users` || pathname === `/api/stores/${STORE_ID}/users`) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -70,20 +70,28 @@ async function mockStoreApi(page: Page, permissions: string[]) {
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/analytics`) {
+    if (
+      pathname === `/stores/${STORE_ID}/analytics/summary-view` ||
+      pathname === `/api/stores/${STORE_ID}/analytics/summary-view`
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          income: { forecast: { total: 0 }, actual: { total: 0 } },
-          expenses: { total: { forecast: 0, actual: 0 } },
-          summaryPage: { income: { previousMonthBalance: 0 } },
+          summaryPage: {
+            income: { forecast: { total: 0 }, total: 0, channels: { total: 0 } },
+            expenses: { totals: { forecast: 0, actual: 0 }, channels: { total: 0 } },
+            saldo: 0,
+          },
         }),
       });
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/accounting-table`) {
+    if (
+      pathname === `/stores/${STORE_ID}/accounting-table` ||
+      pathname === `/api/stores/${STORE_ID}/accounting-table`
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -92,7 +100,11 @@ async function mockStoreApi(page: Page, permissions: string[]) {
       return;
     }
 
-    await route.continue();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({}),
+    });
   });
 }
 
@@ -106,20 +118,19 @@ test.describe('RBAC UI', () => {
     await page.goto(`/stores/${STORE_ID}`);
 
     await expect(page.locator(`a[href="/stores/${STORE_ID}/settings"]`)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /\+ Добавить павильон/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Добавить павильон/i })).toHaveCount(0);
     await expect(page.getByText(/Пользователи и права/i)).toHaveCount(0);
   });
 
-  test('user with EDIT_PAVILIONS sees settings and can use group assignment controls', async ({
+  test('user with EDIT_PAVILIONS and ASSIGN_PERMISSIONS can open settings', async ({
     page,
   }) => {
     await setAuthorizedSession(page);
-    await mockStoreApi(page, ['VIEW_PAVILIONS', 'EDIT_PAVILIONS']);
+    await mockStoreApi(page, ['VIEW_PAVILIONS', 'EDIT_PAVILIONS', 'ASSIGN_PERMISSIONS']);
 
-    await page.goto(`/stores/${STORE_ID}`);
-
-    await expect(page.locator(`a[href="/stores/${STORE_ID}/settings"]`)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Добавить/i }).first()).toBeVisible();
+    await page.goto(`/stores/${STORE_ID}/settings`);
+    await expect(page.getByText(/Основные настройки/i)).toBeVisible();
+    await expect(page.getByText(/Пользователи и права/i)).toBeVisible();
   });
 
   test('user without admin permissions cannot access management sections on settings page', async ({

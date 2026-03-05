@@ -126,4 +126,59 @@ describe('PaymentsService', () => {
       'Utilities and advertising cannot be paid while pavilion status is PREPAID',
     );
   });
+
+  it('getMonthlySummary counts channel-only legacy payment as paid', async () => {
+    const prisma = makePrismaMock();
+    const service = new PaymentsService(prisma as any);
+
+    const now = new Date();
+    const period = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const pavilionPayload = {
+      id: 100,
+      status: PavilionStatus.RENTED,
+      prepaidUntil: null,
+      squareMeters: 10,
+      pricePerSqM: 10,
+      rentAmount: 100,
+      utilitiesAmount: 0,
+      advertisingAmount: 0,
+      discounts: [],
+      additionalCharges: [],
+      payments: [
+        {
+          period,
+          rentPaid: 0,
+          utilitiesPaid: 0,
+          advertisingPaid: 0,
+          rentBankTransferPaid: 100,
+          rentCashbox1Paid: 0,
+          rentCashbox2Paid: 0,
+          utilitiesBankTransferPaid: 0,
+          utilitiesCashbox1Paid: 0,
+          utilitiesCashbox2Paid: 0,
+          advertisingBankTransferPaid: 0,
+          advertisingCashbox1Paid: 0,
+          advertisingCashbox2Paid: 0,
+        },
+      ],
+    };
+
+    prisma.pavilion.findUnique
+      .mockResolvedValueOnce(pavilionPayload)
+      .mockResolvedValueOnce(pavilionPayload);
+    prisma.pavilionMonthlyLedger.findUnique
+      .mockResolvedValueOnce(null) // existing ledger for period
+      .mockResolvedValueOnce(null); // previous month ledger
+    prisma.pavilionMonthlyLedger.upsert.mockImplementation(async (args: any) => ({
+      ...args.create,
+    }));
+
+    const summary = await service.getMonthlySummary(100, period);
+
+    expect(summary.paid.rent).toBe(100);
+    expect(summary.paid.total).toBe(100);
+    expect(summary.expected.total).toBe(100);
+    expect(summary.balance).toBe(0);
+  });
 });

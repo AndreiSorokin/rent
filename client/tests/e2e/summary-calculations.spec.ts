@@ -29,10 +29,10 @@ async function mockSummaryApi(page: Page) {
       return;
     }
 
-    const url = new URL(route.request().url());
+    const url = new URL(request.url());
     const pathname = url.pathname;
 
-    if (pathname === `/stores/${STORE_ID}`) {
+    if (pathname === `/stores/${STORE_ID}` || pathname === `/api/stores/${STORE_ID}`) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -40,34 +40,45 @@ async function mockSummaryApi(page: Page) {
           id: STORE_ID,
           name: 'Тестовый объект',
           currency: 'RUB',
-          permissions: ['VIEW_PAYMENTS'],
+          permissions: ['VIEW_PAYMENTS', 'VIEW_SUMMARY'],
         }),
       });
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/analytics`) {
+    if (
+      pathname === `/stores/${STORE_ID}/analytics/summary-view` ||
+      pathname === `/api/stores/${STORE_ID}/analytics/summary-view`
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           summaryPage: {
             income: {
+              forecast: { total: 210000 },
               total: 200000,
               previousMonthBalance: 10000,
               channels: { bankTransfer: 80000, cashbox1: 70000, cashbox2: 50000, total: 200000 },
+              previousMonthChannels: {
+                bankTransfer: 3000,
+                cashbox1: 4000,
+                cashbox2: 3000,
+                total: 10000,
+              },
+              carryAdjustment: 0,
             },
             expenses: {
               totals: { forecast: 70000, actual: 50000 },
               byType: {},
-              storeLevel: {
-                manual: { forecast: 1000, actual: 500 },
-                salaries: { forecast: 2000, actual: 1500 },
-                household: { forecast: 300, actual: 250 },
-              },
+              channels: { bankTransfer: 25000, cashbox1: 15000, cashbox2: 10000, total: 50000 },
+              channelsByType: {},
             },
             tradeArea: {},
             groupedByPavilionGroups: [],
+            saldo: 150000,
+            saldoChannels: { bankTransfer: 55000, cashbox1: 55000, cashbox2: 40000, total: 150000 },
+            financeTrend: [],
           },
         }),
       });
@@ -84,5 +95,7 @@ test('summary shows money totals using actual income and actual expenses', async
 
   await page.goto(`/stores/${STORE_ID}/summary`);
 
-  await expect(page.getByText('150 000.00 ₽').first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*200[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
 });

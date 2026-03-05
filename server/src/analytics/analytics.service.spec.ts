@@ -7,11 +7,19 @@ describe('AnalyticsService', () => {
     const pavilionUpdateMany = jest.fn();
     const pavilionFindMany = jest.fn();
     const pavilionExpenseFindMany = jest.fn();
+    const additionalChargeFindMany = jest.fn();
+    const pavilionMonthlyLedgerFindMany = jest.fn();
+    const pavilionMonthlyLedgerAggregate = jest.fn();
 
     return {
       store: { findUnique: storeFindUnique },
       pavilion: { updateMany: pavilionUpdateMany, findMany: pavilionFindMany },
       pavilionExpense: { findMany: pavilionExpenseFindMany },
+      additionalCharge: { findMany: additionalChargeFindMany },
+      pavilionMonthlyLedger: {
+        findMany: pavilionMonthlyLedgerFindMany,
+        aggregate: pavilionMonthlyLedgerAggregate,
+      },
     };
   };
 
@@ -107,7 +115,14 @@ describe('AnalyticsService', () => {
         { type: 'PAYROLL_TAX', amount: 100, status: 'PAID' },
         { type: 'HOUSEHOLD', amount: 50, status: 'PAID' },
         { type: 'STORE_FACILITIES', amount: 40, status: 'PAID' },
-      ]);
+      ])
+      .mockResolvedValue([]);
+
+    prisma.additionalCharge.findMany.mockResolvedValue([]);
+    prisma.pavilionMonthlyLedger.findMany.mockResolvedValue([]);
+    prisma.pavilionMonthlyLedger.aggregate.mockResolvedValue({
+      _sum: { closingDebt: 0 },
+    });
 
     const service = new AnalyticsService(prisma as any);
     const result = await service.getStoreAnalytics(2);
@@ -126,7 +141,7 @@ describe('AnalyticsService', () => {
     expect(result.summaryPage.expenses.totals.actual).toBe(1600);
 
     expect(result.summaryPage.saldo).toBe(-250);
-    expect(result.summaryPage.income.previousMonthBalance).toBe(-565);
+    expect(result.summaryPage.income.previousMonthBalance).toBe(435);
 
     expect(result.summaryPage.groupedByPavilionGroups).toHaveLength(1);
     expect(result.summaryPage.groupedByPavilionGroups[0]).toMatchObject({

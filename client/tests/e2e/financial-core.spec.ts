@@ -29,10 +29,10 @@ async function mockStoreWithFinancials(page: Page) {
       return;
     }
 
-    const url = new URL(route.request().url());
+    const url = new URL(request.url());
     const pathname = url.pathname;
 
-    if (pathname === `/stores/${STORE_ID}`) {
+    if (pathname === `/stores/${STORE_ID}` || pathname === `/api/stores/${STORE_ID}`) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -40,7 +40,7 @@ async function mockStoreWithFinancials(page: Page) {
           id: STORE_ID,
           name: 'Тестовый объект',
           currency: 'RUB',
-          permissions: ['VIEW_PAVILIONS', 'VIEW_PAYMENTS'],
+          permissions: ['VIEW_PAVILIONS', 'VIEW_PAYMENTS', 'VIEW_SUMMARY'],
           pavilions: [],
           pavilionGroups: [],
           pavilionCategoryPresets: [],
@@ -50,38 +50,45 @@ async function mockStoreWithFinancials(page: Page) {
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/analytics`) {
+    if (
+      pathname === `/stores/${STORE_ID}/analytics/summary-view` ||
+      pathname === `/api/stores/${STORE_ID}/analytics/summary-view`
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          income: {
-            forecast: { total: 120000 },
-            actual: { total: 90000 },
-          },
-          expenses: {
-            total: { forecast: 45000, actual: 30000 },
-          },
           summaryPage: {
             income: {
+              forecast: { total: 120000 },
               total: 90000,
-              previousMonthBalance: 10000,
               channels: {
                 bankTransfer: 40000,
                 cashbox1: 30000,
                 cashbox2: 20000,
                 total: 90000,
               },
+              previousMonthBalance: 10000,
+              previousMonthChannels: {
+                bankTransfer: 4000,
+                cashbox1: 3000,
+                cashbox2: 3000,
+                total: 10000,
+              },
+              carryAdjustment: 0,
               channelsByEntity: {
                 rent: { bankTransfer: 25000, cashbox1: 15000, cashbox2: 10000, total: 50000 },
                 facilities: { bankTransfer: 7000, cashbox1: 5000, cashbox2: 3000, total: 15000 },
                 advertising: { bankTransfer: 5000, cashbox1: 6000, cashbox2: 4000, total: 15000 },
                 additional: { bankTransfer: 3000, cashbox1: 4000, cashbox2: 3000, total: 10000 },
+                storeExtra: { bankTransfer: 0, cashbox1: 0, cashbox2: 0, total: 0 },
               },
             },
             expenses: {
-              totals: { forecast: 70000, actual: 30000 },
+              totals: { forecast: 45000, actual: 30000 },
               byType: {},
+              channels: { bankTransfer: 15000, cashbox1: 9000, cashbox2: 6000, total: 30000 },
+              channelsByType: {},
               storeLevel: {
                 manual: { forecast: 1000, actual: 500 },
                 salaries: { forecast: 2000, actual: 1500 },
@@ -91,13 +98,18 @@ async function mockStoreWithFinancials(page: Page) {
             tradeArea: {},
             groupedByPavilionGroups: [],
             saldo: 60000,
+            saldoChannels: { bankTransfer: 25000, cashbox1: 20000, cashbox2: 15000, total: 60000 },
+            financeTrend: [],
           },
         }),
       });
       return;
     }
 
-    if (pathname === `/stores/${STORE_ID}/accounting-table`) {
+    if (
+      pathname === `/stores/${STORE_ID}/accounting-table` ||
+      pathname === `/api/stores/${STORE_ID}/accounting-table`
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -111,36 +123,38 @@ async function mockStoreWithFinancials(page: Page) {
 }
 
 test.describe('Financial core', () => {
-  test('store page cards compute forecast and actual profit', async ({ page }) => {
-    await setAuthorizedSession(page);
-    await mockStoreWithFinancials(page);
-
-    await page.goto(`/stores/${STORE_ID}`);
-
-    await expect(page.getByText(/Доходы/i)).toBeVisible();
-    await expect(page.getByText(/Расходы/i)).toBeVisible();
-    await expect(page.getByText(/Прибыль/i)).toBeVisible();
-
-    await expect(page.getByText(/Прогноз:\s*120 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*90 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Прогноз:\s*45 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*30 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Прогноз:\s*75 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*60 000\.00/i).first()).toBeVisible();
-  });
-
-  test('summary page shows channel totals and section totals', async ({ page }) => {
+  test('summary cards compute forecast and actual profit', async ({ page }) => {
     await setAuthorizedSession(page);
     await mockStoreWithFinancials(page);
 
     await page.goto(`/stores/${STORE_ID}/summary`);
 
-    await expect(page.getByText(/Итого доход:\s*90 000\.00/i)).toBeVisible();
-    await expect(page.getByText(/Итого по каналам:\s*90 000\.00/i)).toBeVisible();
-    await expect(page.getByText(/Итого:\s*50 000\.00/i)).toBeVisible();
-    await expect(page.getByText(/Итого:\s*15 000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Итого:\s*10 000\.00/i)).toBeVisible();
-    await expect(page.getByText(/60 000\.00 ₽/).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Доходы/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Расходы/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Прибыль/i })).toBeVisible();
+
+    await expect(page.getByText(/Прогноз:\s*120[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Факт:\s*90[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Прогноз:\s*45[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Факт:\s*30[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Прогноз:\s*75[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Факт:\s*60[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  });
+
+  test('summary page shows channels and entity totals', async ({ page }) => {
+    await setAuthorizedSession(page);
+    await mockStoreWithFinancials(page);
+
+    await page.goto(`/stores/${STORE_ID}/summary`);
+
+    await expect(page.getByText('Итого приход', { exact: true })).toBeVisible();
+    await expect(page.getByText(/90[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/Безналичные/i).first()).toBeVisible();
+    await expect(page.getByText(/Наличные касса 1/i).first()).toBeVisible();
+    await expect(page.getByText(/Наличные касса 2/i).first()).toBeVisible();
+    await expect(page.getByText(/50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/15[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    await expect(page.getByText(/10[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
   });
 
   test('user without VIEW_PAYMENTS is redirected from summary page to store page', async ({
@@ -154,8 +168,8 @@ test.describe('Financial core', () => {
         return;
       }
 
-      const url = new URL(route.request().url());
-      if (url.pathname === `/stores/${STORE_ID}`) {
+      const url = new URL(request.url());
+      if (url.pathname === `/stores/${STORE_ID}` || url.pathname === `/api/stores/${STORE_ID}`) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',

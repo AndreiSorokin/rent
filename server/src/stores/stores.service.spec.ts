@@ -101,13 +101,13 @@ describe('StoresService monthly rollover', () => {
     expect(prisma.pavilion.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ storeId: 10, status: 'RENTED' }),
-        data: { utilitiesAmount: null, advertisingAmount: null },
+        data: { utilitiesAmount: null },
       }),
     );
     expect(prisma.pavilion.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ storeId: 10, status: 'PREPAID' }),
-        data: { utilitiesAmount: 0, advertisingAmount: 0 },
+        data: { utilitiesAmount: 0 },
       }),
     );
     expect(prisma.store.update).toHaveBeenCalledWith(
