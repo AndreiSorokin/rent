@@ -3428,7 +3428,7 @@ export default function StorePage() {
         canDelete={hasPermission(permissions, 'EDIT_PAYMENTS')}
         onClose={() => setShowExtraIncomeModal(false)}
         onChanged={() => fetchData(false)}
-      />
+      />вапвап
     </div>
   );
 }
