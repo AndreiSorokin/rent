@@ -165,11 +165,20 @@ jobs:
           labels: ${{ steps.meta_server.outputs.labels }}
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.SSH_HOST != '' && secrets.SSH_USER != '' && secrets.SSH_PRIVATE_KEY != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: docker-push
     runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
     steps:
+      - name: Skip deploy when SSH secrets are missing
+        if: ${{ env.SSH_HOST == '' || env.SSH_USER == '' || env.SSH_PRIVATE_KEY == '' }}
+        run: echo "Deploy skipped: SSH secrets are not configured."
+
       - name: Deploy via SSH
+        if: ${{ env.SSH_HOST != '' && env.SSH_USER != '' && env.SSH_PRIVATE_KEY != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
