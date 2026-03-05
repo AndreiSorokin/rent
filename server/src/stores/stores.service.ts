@@ -1724,22 +1724,30 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         }),
       ]);
 
-    const pavilionItems = pavilionPayments.map((payment) => ({
+    const pavilionItems = pavilionPayments.map((payment) => {
+      const rent = Number(payment.rentPaid ?? 0);
+      const utilities = Number(payment.utilitiesPaid ?? 0);
+      const advertising = Number(payment.advertisingPaid ?? 0);
+      const channelsTotal =
+        Number(payment.bankTransferPaid ?? 0) +
+        Number(payment.cashbox1Paid ?? 0) +
+        Number(payment.cashbox2Paid ?? 0);
+      const rawTotal = rent + utilities + advertising;
+
+      return {
       id: payment.id,
       paidAt: payment.createdAt,
       pavilionId: payment.pavilion.id,
       pavilionNumber: payment.pavilion.number,
-      rentPaid: Number(payment.rentPaid ?? 0),
-      utilitiesPaid: Number(payment.utilitiesPaid ?? 0),
-      advertisingPaid: Number(payment.advertisingPaid ?? 0),
+      rentPaid: rent,
+      utilitiesPaid: utilities,
+      advertisingPaid: advertising,
       bankTransferPaid: Number(payment.bankTransferPaid ?? 0),
       cashbox1Paid: Number(payment.cashbox1Paid ?? 0),
       cashbox2Paid: Number(payment.cashbox2Paid ?? 0),
-      total:
-        Number(payment.rentPaid ?? 0) +
-        Number(payment.utilitiesPaid ?? 0) +
-        Number(payment.advertisingPaid ?? 0),
-    }));
+      total: rawTotal > 0 ? rawTotal : channelsTotal,
+    };
+    });
 
     const additionalItems = additionalChargePayments.map((payment) => ({
       id: payment.id,
@@ -2503,14 +2511,29 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         const expectedTotal =
           expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
 
-        const actualRentAndUtilities = pavilion.payments.reduce(
-          (sum, payment) =>
-            sum +
-            Number(payment.rentPaid ?? 0) +
-            Number(payment.utilitiesPaid ?? 0) +
-            Number(payment.advertisingPaid ?? 0),
-          0,
-        );
+        const actualRentAndUtilities = pavilion.payments.reduce((sum, payment) => {
+          const rentRaw = Number(payment.rentPaid ?? 0);
+          const rentChannels =
+            Number(payment.rentBankTransferPaid ?? 0) +
+            Number(payment.rentCashbox1Paid ?? 0) +
+            Number(payment.rentCashbox2Paid ?? 0);
+          const utilitiesRaw = Number(payment.utilitiesPaid ?? 0);
+          const utilitiesChannels =
+            Number(payment.utilitiesBankTransferPaid ?? 0) +
+            Number(payment.utilitiesCashbox1Paid ?? 0) +
+            Number(payment.utilitiesCashbox2Paid ?? 0);
+          const advertisingRaw = Number(payment.advertisingPaid ?? 0);
+          const advertisingChannels =
+            Number(payment.advertisingBankTransferPaid ?? 0) +
+            Number(payment.advertisingCashbox1Paid ?? 0) +
+            Number(payment.advertisingCashbox2Paid ?? 0);
+
+          const rent = rentRaw > 0 ? rentRaw : rentChannels;
+          const utilities = utilitiesRaw > 0 ? utilitiesRaw : utilitiesChannels;
+          const advertising =
+            advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
+          return sum + rent + utilities + advertising;
+        }, 0);
         const actualAdditional = pavilion.additionalCharges.reduce(
           (sum, charge) =>
             sum +

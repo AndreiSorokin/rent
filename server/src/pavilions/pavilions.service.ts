@@ -26,6 +26,15 @@ export class PavilionsService {
       rentPaid: number | null;
       utilitiesPaid: number | null;
       advertisingPaid: number | null;
+      rentBankTransferPaid?: number | null;
+      rentCashbox1Paid?: number | null;
+      rentCashbox2Paid?: number | null;
+      utilitiesBankTransferPaid?: number | null;
+      utilitiesCashbox1Paid?: number | null;
+      utilitiesCashbox2Paid?: number | null;
+      advertisingBankTransferPaid?: number | null;
+      advertisingCashbox1Paid?: number | null;
+      advertisingCashbox2Paid?: number | null;
     }>;
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>;
     additionalCharges: Array<{
@@ -82,10 +91,26 @@ export class PavilionsService {
       0,
     );
 
+    const paidRentRaw = Number(currentPayment?.rentPaid ?? 0);
+    const paidRentChannels =
+      Number(currentPayment?.rentBankTransferPaid ?? 0) +
+      Number(currentPayment?.rentCashbox1Paid ?? 0) +
+      Number(currentPayment?.rentCashbox2Paid ?? 0);
+    const paidUtilitiesRaw = Number(currentPayment?.utilitiesPaid ?? 0);
+    const paidUtilitiesChannels =
+      Number(currentPayment?.utilitiesBankTransferPaid ?? 0) +
+      Number(currentPayment?.utilitiesCashbox1Paid ?? 0) +
+      Number(currentPayment?.utilitiesCashbox2Paid ?? 0);
+    const paidAdvertisingRaw = Number(currentPayment?.advertisingPaid ?? 0);
+    const paidAdvertisingChannels =
+      Number(currentPayment?.advertisingBankTransferPaid ?? 0) +
+      Number(currentPayment?.advertisingCashbox1Paid ?? 0) +
+      Number(currentPayment?.advertisingCashbox2Paid ?? 0);
+
     const paidBase =
-      Number(currentPayment?.rentPaid ?? 0) +
-      Number(currentPayment?.utilitiesPaid ?? 0) +
-      Number(currentPayment?.advertisingPaid ?? 0);
+      (paidRentRaw > 0 ? paidRentRaw : paidRentChannels) +
+      (paidUtilitiesRaw > 0 ? paidUtilitiesRaw : paidUtilitiesChannels) +
+      (paidAdvertisingRaw > 0 ? paidAdvertisingRaw : paidAdvertisingChannels);
     const paidAdditional = currentMonthCharges.reduce(
       (sum, charge) =>
         sum +
@@ -825,14 +850,28 @@ export class PavilionsService {
         : 0;
     const expectedTotal =
       expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
-    const actualTotal = pavilion.payments.reduce(
-      (sum, payment) =>
-        sum +
-        Number(payment.rentPaid ?? 0) +
-        Number(payment.utilitiesPaid ?? 0) +
-        Number(payment.advertisingPaid ?? 0),
-      0,
-    );
+    const actualTotal = pavilion.payments.reduce((sum, payment) => {
+      const rentRaw = Number(payment.rentPaid ?? 0);
+      const rentChannels =
+        Number(payment.rentBankTransferPaid ?? 0) +
+        Number(payment.rentCashbox1Paid ?? 0) +
+        Number(payment.rentCashbox2Paid ?? 0);
+      const utilitiesRaw = Number(payment.utilitiesPaid ?? 0);
+      const utilitiesChannels =
+        Number(payment.utilitiesBankTransferPaid ?? 0) +
+        Number(payment.utilitiesCashbox1Paid ?? 0) +
+        Number(payment.utilitiesCashbox2Paid ?? 0);
+      const advertisingRaw = Number(payment.advertisingPaid ?? 0);
+      const advertisingChannels =
+        Number(payment.advertisingBankTransferPaid ?? 0) +
+        Number(payment.advertisingCashbox1Paid ?? 0) +
+        Number(payment.advertisingCashbox2Paid ?? 0);
+
+      const rent = rentRaw > 0 ? rentRaw : rentChannels;
+      const utilities = utilitiesRaw > 0 ? utilitiesRaw : utilitiesChannels;
+      const advertising = advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
+      return sum + rent + utilities + advertising;
+    }, 0);
     const monthDelta = expectedTotal - actualTotal;
     const closingDebt = openingDebt + monthDelta;
 

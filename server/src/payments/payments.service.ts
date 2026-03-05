@@ -107,13 +107,38 @@ export class PaymentsService {
       PAID AMOUNTS
     ====================== */
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const paidRent = payment?.rentPaid ?? 0;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const paidRentRaw = Number(payment?.rentPaid ?? 0);
+    const paidRentChannels =
+      Number(payment?.rentBankTransferPaid ?? 0) +
+      Number(payment?.rentCashbox1Paid ?? 0) +
+      Number(payment?.rentCashbox2Paid ?? 0);
+    const paidRent = paidRentRaw > 0 ? paidRentRaw : paidRentChannels;
+
+    const paidUtilitiesRaw =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : Number(payment?.utilitiesPaid ?? 0);
+    const paidUtilitiesChannels =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : Number(payment?.utilitiesBankTransferPaid ?? 0) +
+          Number(payment?.utilitiesCashbox1Paid ?? 0) +
+          Number(payment?.utilitiesCashbox2Paid ?? 0);
     const paidUtilities =
-      pavilionStatus === PavilionStatus.PREPAID ? 0 : (payment?.utilitiesPaid ?? 0);
+      paidUtilitiesRaw > 0 ? paidUtilitiesRaw : paidUtilitiesChannels;
+
+    const paidAdvertisingRaw =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : Number(payment?.advertisingPaid ?? 0);
+    const paidAdvertisingChannels =
+      pavilionStatus === PavilionStatus.PREPAID
+        ? 0
+        : Number(payment?.advertisingBankTransferPaid ?? 0) +
+          Number(payment?.advertisingCashbox1Paid ?? 0) +
+          Number(payment?.advertisingCashbox2Paid ?? 0);
     const paidAdvertising =
-      pavilionStatus === PavilionStatus.PREPAID ? 0 : (payment?.advertisingPaid ?? 0);
+      paidAdvertisingRaw > 0 ? paidAdvertisingRaw : paidAdvertisingChannels;
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
     const paidAdditional =
@@ -1009,14 +1034,31 @@ async addPayment(
     const expectedTotal =
       expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
 
-    const actualRentAndUtilities = pavilion.payments.reduce(
-      (sum, pay) =>
-        sum +
-        Number(pay.rentPaid ?? 0) +
-        Number(pay.utilitiesPaid ?? 0) +
-        Number(pay.advertisingPaid ?? 0),
-      0,
-    );
+    const actualRentAndUtilities = pavilion.payments.reduce((sum, pay) => {
+      const rentRaw = Number(pay.rentPaid ?? 0);
+      const rentChannels =
+        Number(pay.rentBankTransferPaid ?? 0) +
+        Number(pay.rentCashbox1Paid ?? 0) +
+        Number(pay.rentCashbox2Paid ?? 0);
+      const rent = rentRaw > 0 ? rentRaw : rentChannels;
+
+      const utilitiesRaw = Number(pay.utilitiesPaid ?? 0);
+      const utilitiesChannels =
+        Number(pay.utilitiesBankTransferPaid ?? 0) +
+        Number(pay.utilitiesCashbox1Paid ?? 0) +
+        Number(pay.utilitiesCashbox2Paid ?? 0);
+      const utilities = utilitiesRaw > 0 ? utilitiesRaw : utilitiesChannels;
+
+      const advertisingRaw = Number(pay.advertisingPaid ?? 0);
+      const advertisingChannels =
+        Number(pay.advertisingBankTransferPaid ?? 0) +
+        Number(pay.advertisingCashbox1Paid ?? 0) +
+        Number(pay.advertisingCashbox2Paid ?? 0);
+      const advertising =
+        advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
+
+      return sum + rent + utilities + advertising;
+    }, 0);
     const actualAdditional = pavilion.additionalCharges.reduce(
       (sum, charge) =>
         sum +

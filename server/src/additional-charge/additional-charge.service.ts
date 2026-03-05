@@ -465,14 +465,28 @@ export class AdditionalChargeService {
         : 0;
     const expectedTotal =
       expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
-    const actualBase = pavilion.payments.reduce(
-      (sum, payment) =>
-        sum +
-        Number(payment.rentPaid ?? 0) +
-        Number(payment.utilitiesPaid ?? 0) +
-        Number(payment.advertisingPaid ?? 0),
-      0,
-    );
+    const actualBase = pavilion.payments.reduce((sum, payment) => {
+      const rentRaw = Number(payment.rentPaid ?? 0);
+      const rentChannels =
+        Number(payment.rentBankTransferPaid ?? 0) +
+        Number(payment.rentCashbox1Paid ?? 0) +
+        Number(payment.rentCashbox2Paid ?? 0);
+      const utilitiesRaw = Number(payment.utilitiesPaid ?? 0);
+      const utilitiesChannels =
+        Number(payment.utilitiesBankTransferPaid ?? 0) +
+        Number(payment.utilitiesCashbox1Paid ?? 0) +
+        Number(payment.utilitiesCashbox2Paid ?? 0);
+      const advertisingRaw = Number(payment.advertisingPaid ?? 0);
+      const advertisingChannels =
+        Number(payment.advertisingBankTransferPaid ?? 0) +
+        Number(payment.advertisingCashbox1Paid ?? 0) +
+        Number(payment.advertisingCashbox2Paid ?? 0);
+
+      const rent = rentRaw > 0 ? rentRaw : rentChannels;
+      const utilities = utilitiesRaw > 0 ? utilitiesRaw : utilitiesChannels;
+      const advertising = advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
+      return sum + rent + utilities + advertising;
+    }, 0);
     const actualAdditional = pavilion.additionalCharges.reduce(
       (sum, charge) =>
         sum +
