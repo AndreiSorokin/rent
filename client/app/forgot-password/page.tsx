@@ -1,8 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
-import { apiFetch } from '@/lib/api';
 import { BackButton } from '@/components/BackButton';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthMessage } from '@/components/auth/AuthMessage';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { apiFetch } from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -35,36 +38,40 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
+    <AuthShell
+      title="Забыли пароль?"
+      subtitle="Введите email, и мы отправим ссылку для создания нового пароля."
+      sideTitle="Восстановление доступа"
+      sideDescription="Укажите email, и мы отправим ссылку для сброса пароля."
+      topActions={
         <BackButton
           label="Назад"
-          className="text-sm text-blue-600 hover:underline"
+          className="inline-flex rounded-lg border border-[#d8d1cb] px-3 py-1.5 text-sm text-[#111111] hover:bg-[#f4efeb]"
         />
-
-        <h1 className="text-xl font-bold">Забыли пароль?</h1>
-        <p className="text-sm text-gray-600">
-          Введите email, и мы отправим ссылку для создания нового пароля.
-        </p>
-
-        <input
-          className="w-full rounded border p-2"
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField
+          id="email"
+          type="email"
+          required
+          label="Email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {message && <p className="text-sm text-green-700">{message}</p>}
+        {error ? <AuthMessage>{error}</AuthMessage> : null}
+        {message ? <AuthMessage tone="success">{message}</AuthMessage> : null}
 
         <button
           type="submit"
           disabled={sending}
-          className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {sending ? 'Отправка...' : 'Отправить ссылку'}
         </button>
       </form>
-    </div>
+    </AuthShell>
   );
 }

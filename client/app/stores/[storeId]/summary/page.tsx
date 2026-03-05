@@ -24,17 +24,17 @@ type MetricCardProps = {
 
 function MetricCard({ title, value, subtitle, tone = 'neutral' }: MetricCardProps) {
   const toneStyles: Record<NonNullable<MetricCardProps['tone']>, string> = {
-    neutral: 'border-gray-200 bg-white',
-    success: 'border-emerald-200 bg-emerald-50/60',
-    danger: 'border-rose-200 bg-rose-50/60',
-    primary: 'border-blue-200 bg-blue-50/60',
+    neutral: 'border-[#d8d1cb] bg-white',
+    success: 'border-[#22c55e]/30 bg-[#22c55e]/10',
+    danger: 'border-[#ef4444]/30 bg-[#ef4444]/10',
+    primary: 'border-[#ff6a13]/30 bg-[#ff6a13]/10',
   };
 
   return (
     <div className={`rounded-xl border p-4 ${toneStyles[tone]}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{title}</p>
-      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
-      {subtitle ? <p className="mt-1 text-xs text-gray-600">{subtitle}</p> : null}
+      <p className="text-xs font-medium uppercase tracking-wide text-[#6b6b6b]">{title}</p>
+      <p className="mt-2 text-2xl font-semibold text-[#111111]">{value}</p>
+      {subtitle ? <p className="mt-1 text-xs text-[#6b6b6b]">{subtitle}</p> : null}
     </div>
   );
 }
@@ -53,10 +53,10 @@ function ChannelRow({ label, value, total, currency, colorClass }: ChannelRowPro
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-700">{label}</span>
-        <span className="font-medium text-gray-900">{formatMoney(value, currency)}</span>
+        <span className="text-[#6b6b6b]">{label}</span>
+        <span className="font-medium text-[#111111]">{formatMoney(value, currency)}</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-[#ece4dd]">
         <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -130,9 +130,9 @@ function MonthlyLineChart({
   const polylinePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-      <p className="text-sm font-semibold text-gray-800">{title}</p>
-      <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
+    <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+      <p className="text-sm font-semibold text-[#111111]">{title}</p>
+      <div className="relative mt-4 rounded-xl border border-[#d8d1cb] bg-white p-3">
         <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[39rem] w-full sm:h-[22rem]">
           <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
           {yTicks.map((tick, tickIndex) => {
@@ -225,18 +225,18 @@ function MonthlyLineChart({
         </svg>
         {tooltip ? (
           <div
-            className="pointer-events-none absolute z-20 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 text-xs shadow-lg"
+            className="pointer-events-none absolute z-20 rounded-lg border border-[#d8d1cb] bg-white/95 px-3 py-2 text-xs shadow-lg"
             style={{ left: tooltip.x, top: tooltip.y }}
           >
-            <div className="font-semibold text-gray-900">{tooltip.label}</div>
-            <div className="text-gray-700">Занято: {tooltip.value}</div>
-            <div className="text-gray-500">Из общего: {tooltip.total}</div>
+            <div className="font-semibold text-[#111111]">{tooltip.label}</div>
+            <div className="text-[#444]">Занято: {tooltip.value}</div>
+            <div className="text-[#6b6b6b]">Из общего: {tooltip.total}</div>
           </div>
         ) : null}
       </div>
-      <div className="mt-2 text-xs text-gray-600">
+      <div className="mt-2 text-xs text-[#6b6b6b]">
         Текущее значение:{' '}
-        <span className="font-medium text-gray-900">
+        <span className="font-medium text-[#111111]">
           {valueFormatter(points[points.length - 1]?.value ?? 0)}
         </span>
       </div>
@@ -315,23 +315,23 @@ function FinanceTrendChart({
     : '';
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
+        <p className="text-sm font-semibold text-[#111111]">{title}</p>
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <span className="inline-flex items-center gap-1.5 text-gray-700">
+          <span className="inline-flex items-center gap-1.5 text-[#444]">
             <span className="inline-block h-0.5 w-5 rounded bg-blue-600" />
             Сплошная = Факт
           </span>
           {forecastKey ? (
-            <span className="inline-flex items-center gap-1.5 text-gray-600">
+            <span className="inline-flex items-center gap-1.5 text-[#6b6b6b]">
               <span className="inline-block h-0.5 w-5 border-t-2 border-dashed border-slate-400" />
               Пунктир = Прогноз
             </span>
           ) : null}
         </div>
       </div>
-      <div className="relative mt-4 rounded-xl border border-gray-200 bg-white p-3">
+      <div className="relative mt-4 rounded-xl border border-[#d8d1cb] bg-white p-3">
         <svg viewBox={`0 0 ${chartWidth} ${svgHeight}`} className="h-[39rem] w-full sm:h-[22rem]">
           <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#d1d5db" strokeWidth="1" />
           {yTicks.map((tick, idx) => {
@@ -439,18 +439,18 @@ function FinanceTrendChart({
         </svg>
         {tooltip ? (
           <div
-            className="pointer-events-none absolute z-20 rounded-lg border border-gray-200 bg-white/95 px-3 py-2 text-xs shadow-lg"
+            className="pointer-events-none absolute z-20 rounded-lg border border-[#d8d1cb] bg-white/95 px-3 py-2 text-xs shadow-lg"
             style={{ left: tooltip.x, top: tooltip.y }}
           >
-            <div className="font-semibold text-gray-900">{tooltip.label}</div>
-            <div className="text-gray-700">Факт: {tooltip.actual}</div>
-            {tooltip.forecast ? <div className="text-gray-500">Прогноз: {tooltip.forecast}</div> : null}
+            <div className="font-semibold text-[#111111]">{tooltip.label}</div>
+            <div className="text-[#444]">Факт: {tooltip.actual}</div>
+            {tooltip.forecast ? <div className="text-[#6b6b6b]">Прогноз: {tooltip.forecast}</div> : null}
           </div>
         ) : null}
       </div>
-      <div className="mt-2 text-xs text-gray-600">
+      <div className="mt-2 text-xs text-[#6b6b6b]">
         Текущее значение:{' '}
-        <span className="font-medium text-gray-900">
+        <span className="font-medium text-[#111111]">
           {valueFormatter(actualPoints[actualPoints.length - 1]?.actual ?? 0)}
         </span>
       </div>
@@ -659,18 +659,21 @@ export default function StoreSummaryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-gray-100">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:space-y-8 md:p-8">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <section className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <Link href={`/stores/${storeId}`} className="text-sm text-blue-600 hover:underline">
+              <Link
+                href={`/stores/${storeId}`}
+                className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
+              >
                 Назад к объекту
               </Link>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900">СВОДКА</h1>
-              <p className="mt-1 text-sm text-gray-600">Ключевые финансовые показатели объекта</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#111111]">СВОДКА</h1>
+              <p className="mt-1 text-sm text-[#6b6b6b]">Ключевые финансовые показатели объекта</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label htmlFor="summary-month" className="text-sm text-gray-600">
+                <label htmlFor="summary-month" className="text-sm text-[#6b6b6b]">
                   Месяц:
                 </label>
                 <input
@@ -678,14 +681,14 @@ export default function StoreSummaryPage() {
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900"
+                  className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                 />
                 <button
                   onClick={() => {
                     setDownloadMonth(selectedMonth);
                     setShowDownloadModal(true);
                   }}
-                  className="ml-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                  className="ml-1 rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
                 >
                   Скачать сводку
                 </button>
@@ -695,13 +698,13 @@ export default function StoreSummaryPage() {
         </section>
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Доходы</h2>
-            <div className="space-y-1 text-sm text-slate-700">
+          <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Доходы</h2>
+            <div className="space-y-1 text-sm text-[#444]">
               <div>
                 <Link
                   href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(selectedMonth)}`}
-                  className="text-blue-700 hover:underline"
+                  className="text-[#ff6a13] hover:underline"
                 >
                   Прогноз: {formatMoney(data.income.forecast?.total ?? 0, data.currency)}
                 </Link>
@@ -709,16 +712,16 @@ export default function StoreSummaryPage() {
               <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Расходы</h2>
-            <div className="space-y-1 text-sm text-slate-700">
+          <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Расходы</h2>
+            <div className="space-y-1 text-sm text-[#444]">
               <div>Прогноз: {formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}</div>
               <div>Факт: {formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}</div>
             </div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-slate-900">Прибыль</h2>
-            <div className="space-y-1 text-sm text-slate-700">
+          <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Прибыль</h2>
+            <div className="space-y-1 text-sm text-[#444]">
               <div>
                 Прогноз:{' '}
                 {formatMoney(
@@ -743,8 +746,8 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">Остаток с прошлого месяца</h2>
+        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">Остаток с прошлого месяца</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <MetricCard
               title="Итого остаток"
@@ -752,11 +755,11 @@ export default function StoreSummaryPage() {
               subtitle="Факт прошлого месяца"
               tone="primary"
             />
-            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+            <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-[#6b6b6b]">
                 Остаток по кассам
               </p>
-              <div className="mt-2 space-y-1 text-sm text-gray-700">
+              <div className="mt-2 space-y-1 text-sm text-[#444]">
                 <div>
                   Безнал: {formatMoney(data.income.previousMonthChannels?.bankTransfer ?? 0, data.currency)}
                 </div>
@@ -771,8 +774,8 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">1. Общий доход</h2>
+        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">1. Общий доход</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
@@ -806,11 +809,11 @@ export default function StoreSummaryPage() {
                   tone="success"
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-600">
+              <p className="mt-2 text-xs text-[#6b6b6b]">
                 «Корректировка переносом» не подмешивается в факт текущего месяца.
               </p>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-gray-800">Распределение по каналам оплаты</p>
+                <p className="text-sm font-semibold text-[#111111]">Распределение по каналам оплаты</p>
                 <ChannelRow
                   label="Безналичные"
                   value={data.income.channels?.bankTransfer ?? 0}
@@ -837,7 +840,7 @@ export default function StoreSummaryPage() {
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-gray-800">По сущностям</p>
+            <p className="mb-3 text-sm font-semibold text-[#111111]">По сущностям</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <p className="text-xs uppercase text-gray-500">Аренда</p>
@@ -895,8 +898,8 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">2. Общий расход</h2>
+        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">2. Общий расход</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
@@ -919,7 +922,7 @@ export default function StoreSummaryPage() {
                 />
               </div>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-gray-800">Каналы оплаты расходов (факт)</p>
+                <p className="text-sm font-semibold text-[#111111]">Каналы оплаты расходов (факт)</p>
                 <ChannelRow
                   label="Безналичные"
                   value={data.expenseChannels?.bankTransfer ?? 0}
@@ -945,7 +948,7 @@ export default function StoreSummaryPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
             {[
               { key: 'salaries', label: 'Зарплаты' },
               { key: 'payrollTax', label: 'Налоги с зарплаты' },
@@ -983,8 +986,8 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">3. Остаток</h2>
+        <section className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">3. Остаток</h2>
 
           <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
@@ -1023,7 +1026,7 @@ export default function StoreSummaryPage() {
                 />
               </div>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-gray-800">Каналы остатка (факт)</p>
+                <p className="text-sm font-semibold text-[#111111]">Каналы остатка (факт)</p>
                 <ChannelRow
                   label="Безналичные"
                   value={data.saldoChannels?.bankTransfer ?? 0}
@@ -1058,8 +1061,8 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">4. Торговая площадь</h2>
+        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">4. Торговая площадь</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard title="Павильонов всего" value={String(data.tradeArea.pavilionsTotal ?? 0)} />
@@ -1087,8 +1090,8 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6">
-          <h2 className="text-xl font-semibold text-gray-900">5. Группы павильонов</h2>
+        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h2 className="text-xl font-semibold text-[#111111]">5. Группы павильонов</h2>
 
           {data.groupedByPavilionGroups.length === 0 ? (
             <p className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-gray-600">Группы не созданы</p>
@@ -1131,14 +1134,14 @@ export default function StoreSummaryPage() {
         </section>
       </div>
       {showDownloadModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Скачать сводку (PDF)</h3>
-            <p className="mt-1 text-sm text-gray-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+            <h3 className="text-lg font-semibold text-[#111111]">Скачать сводку (PDF)</h3>
+            <p className="mt-1 text-sm text-[#6b6b6b]">
               Выберите месяц, за который нужно сформировать файл.
             </p>
             <div className="mt-4">
-              <label htmlFor="download-month" className="mb-1 block text-sm text-gray-700">
+              <label htmlFor="download-month" className="mb-1 block text-sm text-[#444]">
                 Месяц
               </label>
               <input
@@ -1146,21 +1149,21 @@ export default function StoreSummaryPage() {
                 type="month"
                 value={downloadMonth}
                 onChange={(e) => setDownloadMonth(e.target.value)}
-                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1.5 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               />
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setShowDownloadModal(false)}
                 disabled={downloadingPdf}
-                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                className="rounded-xl border border-[#d8d1cb] px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-60"
               >
                 Отмена
               </button>
               <button
                 onClick={handleDownloadSummaryPdf}
                 disabled={downloadingPdf || !downloadMonth}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
               >
                 {downloadingPdf ? 'Формирование...' : 'Скачать PDF'}
               </button>

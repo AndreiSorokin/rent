@@ -34,6 +34,9 @@ export function StoreExtraIncomeModal({
   onClose,
   onChanged,
 }: Props) {
+  const inputClass =
+    'rounded-xl border border-[#d8d1cb] bg-white px-2 py-1.5 text-sm text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20';
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState<any[]>([]);
@@ -43,9 +46,7 @@ export function StoreExtraIncomeModal({
   const [bank, setBank] = useState('');
   const [cash1, setCash1] = useState('');
   const [cash2, setCash2] = useState('');
-  const [paidAtDate, setPaidAtDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [paidAtDate, setPaidAtDate] = useState(new Date().toISOString().slice(0, 10));
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
@@ -140,26 +141,26 @@ export function StoreExtraIncomeModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Доп приход (объект)</h2>
-            <p className="text-sm text-slate-600">
+            <h2 className="text-xl font-extrabold text-[#111111]">Доп. приход (объект)</h2>
+            <p className="text-sm text-[#6b6b6b]">
               Уровень объекта. Учитывается в СВОДКЕ и бух. таблице.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+            className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
           >
             Закрыть
           </button>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <label className="text-sm text-slate-600" htmlFor="extra-income-period">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+          <label className="text-sm font-medium text-[#6b6b6b]" htmlFor="extra-income-period">
             Месяц:
           </label>
           <input
@@ -167,29 +168,29 @@ export function StoreExtraIncomeModal({
             type="month"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="rounded border border-slate-300 px-2 py-1.5 text-sm"
+            className={inputClass}
           />
-          <div className="text-sm font-medium text-slate-800">
+          <div className="text-sm font-semibold text-[#111111]">
             Итого за месяц: {formatMoney(total, currency)}
           </div>
         </div>
 
         {canCreate && (
-          <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
-            <p className="mb-2 text-sm font-semibold text-indigo-900">Новый доп. приход</p>
+          <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+            <p className="mb-2 text-sm font-semibold text-[#111111]">Новый доп. приход</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
+                className={inputClass}
                 placeholder="Название"
               />
               <input
                 type="date"
                 value={paidAtDate}
                 onChange={(e) => setPaidAtDate(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
+                className={inputClass}
               />
               <input
                 type="number"
@@ -197,8 +198,8 @@ export function StoreExtraIncomeModal({
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
-                placeholder="Сумма"
+                className={inputClass}
+                placeholder="Общая сумма"
               />
               <input
                 type="number"
@@ -206,7 +207,7 @@ export function StoreExtraIncomeModal({
                 min="0"
                 value={bank}
                 onChange={(e) => setBank(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
+                className={inputClass}
                 placeholder="Безналичные"
               />
               <input
@@ -215,7 +216,7 @@ export function StoreExtraIncomeModal({
                 min="0"
                 value={cash1}
                 onChange={(e) => setCash1(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
+                className={inputClass}
                 placeholder="Наличные касса 1"
               />
               <input
@@ -224,7 +225,7 @@ export function StoreExtraIncomeModal({
                 min="0"
                 value={cash2}
                 onChange={(e) => setCash2(e.target.value)}
-                className="rounded border border-indigo-200 px-2 py-1.5 text-sm"
+                className={inputClass}
                 placeholder="Наличные касса 2"
               />
             </div>
@@ -232,7 +233,7 @@ export function StoreExtraIncomeModal({
               type="button"
               onClick={handleCreate}
               disabled={saving}
-              className="mt-2 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="mt-2 rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
             >
               Добавить
             </button>
@@ -240,27 +241,27 @@ export function StoreExtraIncomeModal({
         )}
 
         <div>
-          <p className="mb-2 text-sm font-semibold text-slate-800">История</p>
+          <p className="mb-2 text-sm font-semibold text-[#111111]">История</p>
           {loading ? (
-            <p className="text-sm text-slate-600">Загрузка...</p>
+            <p className="text-sm text-[#6b6b6b]">Загрузка...</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-slate-600">Записей нет</p>
+            <p className="text-sm text-[#6b6b6b]">Записей нет</p>
           ) : (
             <div className="space-y-2">
               {items.map((item) => (
-                <div key={item.id} className="rounded border border-slate-200 bg-white p-3">
+                <div key={item.id} className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="font-medium text-slate-900">{item.name}</div>
-                      <div className="text-xs text-slate-500">
+                      <div className="font-semibold text-[#111111]">{item.name}</div>
+                      <div className="text-xs text-[#6b6b6b]">
                         {new Date(item.paidAt).toLocaleDateString('ru-RU')}
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-slate-900">
+                    <div className="text-sm font-semibold text-[#111111]">
                       {formatMoney(Number(item.amount ?? 0), currency)}
                     </div>
                   </div>
-                  <div className="mt-1 text-xs text-slate-600">
+                  <div className="mt-1 text-xs text-[#6b6b6b]">
                     Безнал: {formatMoney(Number(item.bankTransferPaid ?? 0), currency)} | Касса 1:{' '}
                     {formatMoney(Number(item.cashbox1Paid ?? 0), currency)} | Касса 2:{' '}
                     {formatMoney(Number(item.cashbox2Paid ?? 0), currency)}
@@ -270,7 +271,7 @@ export function StoreExtraIncomeModal({
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
-                        className="text-sm text-red-600 hover:underline"
+                        className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-sm font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                       >
                         Удалить
                       </button>

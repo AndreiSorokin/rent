@@ -25,6 +25,8 @@ export function CreateDiscountModal({
   onSaved: () => void;
 }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
+  const inputClass =
+    'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
 
   const [amount, setAmount] = useState('');
   const [startsAtMonth, setStartsAtMonth] = useState(currentMonth);
@@ -47,12 +49,12 @@ export function CreateDiscountModal({
     }
 
     if (hasEndDate && !endsAtMonth) {
-      setError('Выберите конечный месяц или установите бесконечную длительность');
+      setError('Выберите конечный месяц или отключите ограничение по сроку');
       return;
     }
 
     if (hasEndDate && endsAtMonth < startsAtMonth) {
-      setError('Конечный месяц не может быть раньше начального месяца');
+      setError('Конечный месяц не может быть раньше начального');
       return;
     }
 
@@ -66,78 +68,85 @@ export function CreateDiscountModal({
         endsAt: hasEndDate ? monthToLastDayISO(endsAtMonth) : undefined,
         note: note.trim() ? note.trim() : undefined,
       });
-
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to create discount');
+      setError(err.message || 'Не удалось создать скидку');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6">
-        <h2 className="mb-4 text-xl font-bold">Добавить скидку</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Добавить скидку</h2>
 
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
+            {error}
+          </p>
+        )}
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium">Скидка за кв. метер (Рублей)</label>
+            <label className="mb-1 block text-sm font-semibold text-[#111111]">
+              Скидка за кв. метр (₽)
+            </label>
             <input
               type="number"
               step="0.01"
               min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+              className={inputClass}
               placeholder="1"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Пример: для 100 м² павильона и скидки 1Р/м², ежемесячная скидка составляет 100Р.
+            <p className="mt-1 text-xs text-[#6b6b6b]">
+              Пример: при 100 м² и скидке 1 ₽/м² ежемесячная скидка составит 100 ₽.
             </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Начало месяца</label>
+            <label className="mb-1 block text-sm font-semibold text-[#111111]">Начальный месяц</label>
             <input
               type="month"
               value={startsAtMonth}
               onChange={(e) => setStartsAtMonth(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+              className={inputClass}
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm font-medium text-[#111111]">
             <input
               type="checkbox"
               checked={hasEndDate}
               onChange={(e) => setHasEndDate(e.target.checked)}
+              className="h-4 w-4 rounded border-[#d8d1cb] text-[#ff6a13] focus:ring-[#ff6a13]/30"
             />
-            Установить конечный месяц
+            Указать конечный месяц
           </label>
 
           {hasEndDate && (
             <div>
-              <label className="mb-1 block text-sm font-medium">Конечный месяц</label>
+              <label className="mb-1 block text-sm font-semibold text-[#111111]">Конечный месяц</label>
               <input
                 type="month"
                 value={endsAtMonth}
                 onChange={(e) => setEndsAtMonth(e.target.value)}
-                className="w-full rounded border px-3 py-2"
+                className={inputClass}
               />
             </div>
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Примечание (опционально)</label>
+            <label className="mb-1 block text-sm font-semibold text-[#111111]">Примечание (опционально)</label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded border px-3 py-2"
+              className={inputClass}
+              placeholder="Например: сезонная акция"
             />
           </div>
         </div>
@@ -146,14 +155,14 @@ export function CreateDiscountModal({
           <button
             onClick={onClose}
             disabled={saving}
-            className="rounded border px-4 py-2 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Отмена
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>

@@ -328,18 +328,22 @@ export function EditPavilionModal({
     }
   };
 
+  const inputClass =
+    'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
+  const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
       <div
         ref={modalBodyRef}
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
-          <h2 className="text-lg font-bold">Редактировать павильон</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur-sm">
+          <h2 className="text-lg font-extrabold text-[#111111]">Редактировать павильон</h2>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f4efeb] hover:text-[#111111]"
             aria-label="Закрыть"
           >
             <span aria-hidden>✕</span>
@@ -348,39 +352,39 @@ export function EditPavilionModal({
         <div className="p-6">
 
         {error && (
-          <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="mb-3 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
             {error}
           </div>
         )}
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Номер павильона
           </label>
           <input
             name="number"
             value={form.number}
             onChange={handleChange}
-            className="input"
+            className={inputClass}
           />
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Категория
           </label>
-          <input value={resolvedCategory} readOnly className="input bg-gray-50" />
+          <input value={resolvedCategory} readOnly className={`${inputClass} bg-[#ece4dd]`} />
         </div>
 
         {!newCategory.trim() ? (
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className={labelClass}>
               Выбор из существующих категорий
             </label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input"
+              className={inputClass}
             >
               <option value="">Выберите категорию</option>
               {(existingCategories || []).map((category) => (
@@ -398,13 +402,13 @@ export function EditPavilionModal({
 
         {!selectedCategory ? (
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className={labelClass}>
               Новая категория
             </label>
             <input
               value={newCategory}
               onChange={(e) => setNewCategory(e.target.value)}
-              className="input"
+              className={inputClass}
             />
           </div>
         ) : (
@@ -414,7 +418,7 @@ export function EditPavilionModal({
         )}
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Площадь (м²)
           </label>
           <input
@@ -424,12 +428,12 @@ export function EditPavilionModal({
             step="0.01"
             value={form.squareMeters}
             onChange={handleChange}
-            className="input"
+            className={inputClass}
           />
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Цена за м²
           </label>
           <input
@@ -439,31 +443,31 @@ export function EditPavilionModal({
             step="0.01"
             value={form.pricePerSqM}
             onChange={handleChange}
-            className="input"
+            className={inputClass}
           />
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Аренда (авторасчет)
           </label>
           <input
             type="number"
             value={Number.isFinite(rentAmount) ? rentAmount : 0}
             readOnly
-            className="input bg-gray-50"
+            className={`${inputClass} bg-[#ece4dd]`}
           />
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label className={labelClass}>
             Статус
           </label>
           <select
             name="status"
             value={form.status}
             onChange={handleChange}
-            className="input"
+            className={inputClass}
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -476,21 +480,21 @@ export function EditPavilionModal({
         {form.status !== 'AVAILABLE' && (
           <>
             <div className="mb-3">
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 Наименование организации
               </label>
               <input
                 name="tenantName"
                 value={form.tenantName}
                 onChange={handleChange}
-                className="input"
+                className={inputClass}
               />
             </div>
 
             {form.status === 'RENTED' && (
               <>
                 <div className="mb-3">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className={labelClass}>
                     Коммунальные
                   </label>
                   <input
@@ -500,11 +504,11 @@ export function EditPavilionModal({
                     step="0.01"
                     value={form.utilitiesAmount}
                     onChange={handleChange}
-                    className="input"
+                    className={inputClass}
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className={labelClass}>
                     Реклама
                   </label>
                   <input
@@ -514,11 +518,11 @@ export function EditPavilionModal({
                     step="0.01"
                     value={form.advertisingAmount}
                     onChange={handleChange}
-                    className="input"
+                    className={inputClass}
                   />
                 </div>
-                <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-2 text-sm font-medium text-gray-700">
+                <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">
                     Дополнительные начисления
                   </p>
                   {additionalCharges.length === 0 ? (
@@ -528,7 +532,7 @@ export function EditPavilionModal({
                       {additionalCharges.map((charge) => (
                         <div
                           key={charge.id}
-                          className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                          className="flex flex-col gap-2 rounded-lg border border-[#e8e1da] bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="min-w-0">
                             <span className="font-medium">{charge.name}: </span>
@@ -539,7 +543,7 @@ export function EditPavilionModal({
                               type="button"
                               onClick={() => handleDeleteAdditionalCharge(charge.id)}
                               disabled={chargeSaving}
-                              className="self-start rounded border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-60 sm:self-auto"
+                              className="self-start rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20 disabled:opacity-60 sm:self-auto"
                             >
                               Удалить
                             </button>
@@ -551,12 +555,12 @@ export function EditPavilionModal({
 
                   {canManageAdditionalCharges && (
                     <div>
-                      <div>Новое начисление:</div>
+                      <div className="mb-1 text-sm font-semibold text-[#111111]">Новое начисление</div>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
                       <input
                         value={newChargeName}
                         onChange={(e) => setNewChargeName(e.target.value)}
-                        className="input"
+                        className={inputClass}
                         placeholder="Название начисления"
                       />
                       <input
@@ -565,14 +569,14 @@ export function EditPavilionModal({
                         step="0.01"
                         value={newChargeAmount}
                         onChange={(e) => setNewChargeAmount(e.target.value)}
-                        className="input"
+                        className={inputClass}
                         placeholder="Сумма"
                       />
                       <button
                         type="button"
                         onClick={handleAddAdditionalCharge}
                         disabled={chargeSaving}
-                        className="w-full rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 sm:w-auto"
+                        className="w-full rounded-xl bg-[#ff6a13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60 sm:w-auto"
                       >
                         Добавить
                       </button>
@@ -585,22 +589,22 @@ export function EditPavilionModal({
 
             {form.status === 'PREPAID' && (
               <>
-                <div className="mb-3 rounded bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                <div className="mb-3 rounded-xl border border-[#ff6a13]/30 bg-[#ff6a13]/10 px-3 py-2 text-xs font-medium text-[#c2410c]">
                   Для статуса ПРЕДОПЛАТА коммунальные и реклама автоматически равны 0.
                 </div>
                 <div className="mb-3">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className={labelClass}>
                     Месяц предоплаты
                   </label>
                   <input
                     type="month"
                     value={prepaymentMonth}
                     onChange={(e) => setPrepaymentMonth(e.target.value)}
-                    className="input"
+                    className={inputClass}
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className={labelClass}>
                     Сумма предоплаты (если пусто - полная аренда)
                   </label>
                   <input
@@ -609,12 +613,12 @@ export function EditPavilionModal({
                     step="0.01"
                     value={prepaymentAmount}
                     onChange={(e) => setPrepaymentAmount(e.target.value)}
-                    className="input"
+                    className={inputClass}
                     placeholder={rentAmount.toFixed(2)}
                   />
                 </div>
-                <div className="mb-3 rounded border p-3">
-                  <p className="mb-2 text-sm font-medium text-gray-700">
+                <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">
                     Каналы оплаты предоплаты
                   </p>
                   <div className="space-y-2">
@@ -626,7 +630,7 @@ export function EditPavilionModal({
                       onChange={(e) =>
                         setPrepaymentBankTransferPaid(e.target.value)
                       }
-                      className="input"
+                      className={inputClass}
                       placeholder="Безналичные"
                     />
                     <input
@@ -635,7 +639,7 @@ export function EditPavilionModal({
                       step="0.01"
                       value={prepaymentCashbox1Paid}
                       onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
-                      className="input"
+                      className={inputClass}
                       placeholder="Наличные - касса 1"
                     />
                     <input
@@ -644,7 +648,7 @@ export function EditPavilionModal({
                       step="0.01"
                       value={prepaymentCashbox2Paid}
                       onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
-                      className="input"
+                      className={inputClass}
                       placeholder="Наличные - касса 2"
                     />
                   </div>
@@ -654,11 +658,19 @@ export function EditPavilionModal({
           </>
         )}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="btn-secondary" disabled={saving}>
+        <div className="mt-4 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={saving}
+          >
             Отмена
           </button>
-          <button onClick={handleSave} className="btn-primary" disabled={saving}>
+          <button
+            onClick={handleSave}
+            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={saving}
+          >
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>

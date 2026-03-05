@@ -76,7 +76,7 @@ export function PavilionExpensesSection({
     manualExpensesActualTotal + utilitiesExpenseActual + householdExpensesTotal;
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow">
+    <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
       <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -88,7 +88,7 @@ export function PavilionExpensesSection({
           );
 
           return (
-            <div key={category.type} className="rounded-md border p-3">
+            <div key={category.type} className="rounded-xl border border-[#d8d1cb] bg-[#fcfaf8] p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="text-sm font-semibold">{category.label}</div>
                 <div className="text-sm font-semibold">{formatMoney(categoryTotal, currency)}</div>
@@ -111,7 +111,7 @@ export function PavilionExpensesSection({
                   />
                   <button
                     onClick={() => onCreateManualExpense(category.type)}
-                    className="shrink-0 rounded bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-700"
+                    className="shrink-0 rounded-lg bg-[#111111] px-3 py-1 text-xs text-white hover:bg-[#2a2a2a]"
                   >
                     +
                   </button>
@@ -123,7 +123,7 @@ export function PavilionExpensesSection({
                   {categoryItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between rounded bg-gray-50 px-2 py-1 text-xs"
+                      className="flex items-center justify-between rounded bg-[#f4efeb] px-2 py-1 text-xs"
                     >
                       <span>
                         {formatMoney(item.amount, currency)}{' '}
@@ -166,7 +166,7 @@ export function PavilionExpensesSection({
           );
         })}
 
-        <div className="rounded-md border p-3">
+        <div className="rounded-xl border border-[#d8d1cb] bg-[#fcfaf8] p-3">
           <div className="text-sm font-semibold">Коммуналка</div>
           <div className="text-xs text-gray-700">
             Прогноз: {formatMoney(utilitiesExpenseForecast, currency)}
@@ -176,14 +176,14 @@ export function PavilionExpensesSection({
           </div>
         </div>
 
-        <div className="rounded-md border p-3">
+        <div className="rounded-xl border border-[#d8d1cb] bg-[#fcfaf8] p-3">
           <div className="text-sm font-semibold">Хозяйственные расходы</div>
           <div className="text-xs text-gray-700">
             Итого: {formatMoney(householdExpensesTotal, currency)}
           </div>
         </div>
 
-        <div className="rounded-md border bg-gray-50 p-3 md:col-span-2 xl:col-span-1">
+        <div className="rounded-md border bg-[#f4efeb] p-3 md:col-span-2 xl:col-span-1">
           <div className="text-sm font-semibold">
             Итого прогноз: {formatMoney(pavilionExpenseForecastTotal, currency)}
           </div>
@@ -195,3 +195,4 @@ export function PavilionExpensesSection({
     </div>
   );
 }
+

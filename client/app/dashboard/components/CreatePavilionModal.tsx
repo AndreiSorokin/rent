@@ -17,6 +17,10 @@ export function CreatePavilionModal({
   onClose,
   onSaved,
 }: CreatePavilionModalProps) {
+  const inputClass =
+    'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
+  const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
+
   const [number, setNumber] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -116,33 +120,37 @@ export function CreatePavilionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6">
-        <h2 className="mb-6 text-xl font-bold">Создать новый павильон</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+        <h2 className="mb-6 text-xl font-extrabold text-[#111111]">Создать новый павильон</h2>
 
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="mb-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
+            {error}
+          </p>
+        )}
 
         <div className="space-y-5">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Номер павильона</label>
+            <label className={labelClass}>Номер павильона</label>
             <input
               type="text"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               placeholder="Например: A-12"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className={labelClass}>
               Категория (из существующих)
             </label>
             {!newCategory.trim() ? (
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
               >
                 <option value="">Не выбрано</option>
                 {existingCategories.map((category) => (
@@ -159,7 +167,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className={labelClass}>
               Или введите новую категорию
             </label>
             {!selectedCategory ? (
@@ -167,7 +175,7 @@ export function CreatePavilionModal({
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
                 placeholder="Например: Одежда"
               />
             ) : (
@@ -178,35 +186,35 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Площадь (м²)</label>
+            <label className={labelClass}>Площадь (м²)</label>
             <input
               type="number"
               step="0.01"
               value={squareMeters}
               onChange={(e) => setSquareMeters(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               placeholder="25.5"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Цена за м²</label>
+            <label className={labelClass}>Цена за м²</label>
             <input
               type="number"
               step="0.01"
               value={pricePerSqM}
               onChange={(e) => setPricePerSqM(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               placeholder="120.00"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Статус</label>
+            <label className={labelClass}>Статус</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
             >
               <option value="AVAILABLE">СВОБОДЕН</option>
               <option value="RENTED">ЗАНЯТ</option>
@@ -216,14 +224,14 @@ export function CreatePavilionModal({
 
           {(status === 'RENTED' || status === 'PREPAID') && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 Наименование организации
               </label>
               <input
                 type="text"
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
                 placeholder="Например: Иван Петров"
               />
             </div>
@@ -231,7 +239,7 @@ export function CreatePavilionModal({
 
           {status === 'RENTED' && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
+              <label className={labelClass}>
                 Реклама
               </label>
               <input
@@ -240,7 +248,7 @@ export function CreatePavilionModal({
                 min="0"
                 value={advertisingAmount}
                 onChange={(e) => setAdvertisingAmount(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClass}
                 placeholder="0.00"
               />
             </div>
@@ -249,18 +257,18 @@ export function CreatePavilionModal({
           {status === 'PREPAID' && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className={labelClass}>
                   Месяц предоплаты
                 </label>
                 <input
                   type="month"
                   value={prepaymentMonth}
                   onChange={(e) => setPrepaymentMonth(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label className={labelClass}>
                   Сумма предоплаты (если пусто - полная аренда)
                 </label>
                 <input
@@ -268,12 +276,12 @@ export function CreatePavilionModal({
                   step="0.01"
                   value={prepaymentAmount}
                   onChange={(e) => setPrepaymentAmount(e.target.value)}
-                  className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={inputClass}
                   placeholder="Например: 1200"
                 />
               </div>
-              <div className="rounded-lg border p-3">
-                <p className="mb-2 text-sm font-medium text-gray-700">Каналы оплаты предоплаты</p>
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <p className="mb-2 text-sm font-semibold text-[#111111]">Каналы оплаты предоплаты</p>
                 <div className="space-y-2">
                   <input
                     type="number"
@@ -281,7 +289,7 @@ export function CreatePavilionModal({
                     min="0"
                     value={prepaymentBankTransferPaid}
                     onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={inputClass}
                     placeholder="Безналичные"
                   />
                   <input
@@ -290,7 +298,7 @@ export function CreatePavilionModal({
                     min="0"
                     value={prepaymentCashbox1Paid}
                     onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={inputClass}
                     placeholder="Наличные - касса 1"
                   />
                   <input
@@ -299,7 +307,7 @@ export function CreatePavilionModal({
                     min="0"
                     value={prepaymentCashbox2Paid}
                     onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={inputClass}
                     placeholder="Наличные - касса 2"
                   />
                 </div>
@@ -308,18 +316,18 @@ export function CreatePavilionModal({
           )}
         </div>
 
-        <div className="mt-8 flex justify-end gap-3">
+        <div className="mt-8 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
           <button
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg border px-5 py-2.5 hover:bg-gray-100 disabled:opacity-50"
+            className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
           >
             Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
             {loading ? 'Создание...' : 'Создать павильон'}
           </button>

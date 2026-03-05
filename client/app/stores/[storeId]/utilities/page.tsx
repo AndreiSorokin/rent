@@ -214,13 +214,19 @@ export default function UtilitiesPage() {
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
+  const inputClass =
+    'w-32 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
+
   if (!hasPaymentsAccess) {
     return (
       <div className="p-6">
-        <Link href={`/stores/${storeId}`} className="text-sm text-blue-600 hover:underline">
+        <Link
+          href={`/stores/${storeId}`}
+          className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
+        >
           Назад к объекту
         </Link>
-        <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4 text-sm font-medium text-[#b91c1c]">
           Недостаточно прав для просмотра и редактирования коммунальных счетов.
         </div>
       </div>
@@ -252,36 +258,39 @@ export default function UtilitiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <Link href={`/stores/${storeId}`} className="text-sm text-blue-600 hover:underline">
+            <Link
+              href={`/stores/${storeId}`}
+              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
+            >
               Назад к объекту
             </Link>
-            <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
+            <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
               Начисления
             </h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-[#6b6b6b]">
               Валюта магазина: {store.currency} ({currencySymbol})
             </p>
           </div>
           <button
             onClick={handleSaveAll}
             disabled={savingAll || pavilions.length === 0}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
           >
             {savingAll ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow md:p-8">
+        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
           {pavilions.length === 0 ? (
-            <p className="py-8 text-center text-gray-600">В магазине пока нет павильонов</p>
+            <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-[#ece4dd]">
+                <thead className="bg-[#f4efeb]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Перенос
@@ -300,7 +309,7 @@ export default function UtilitiesPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
+                <tbody className="divide-y divide-[#ece4dd] bg-white">
                   {pavilions.map((p) => {
                     const isAvailable = p.status === 'AVAILABLE';
                     const isPrepaid = p.status === 'PREPAID';
@@ -320,7 +329,7 @@ export default function UtilitiesPage() {
                           setDraggedPavilionId(null);
                         }}
                       >
-                        <td className="px-4 py-3 text-sm text-gray-700">
+                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                           <button
                             type="button"
                             draggable
@@ -329,18 +338,18 @@ export default function UtilitiesPage() {
                               e.dataTransfer.effectAllowed = 'move';
                             }}
                             onDragEnd={() => setDraggedPavilionId(null)}
-                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
+                            className="cursor-grab select-none rounded-lg border border-[#d8d1cb] bg-white px-2 py-1 text-lg leading-none text-[#6b6b6b] transition hover:bg-[#f8f4ef] active:cursor-grabbing"
                             title="Потяните, чтобы изменить порядок"
                             aria-label={`Переместить павильон ${p.number}`}
                           >
                             ⋮⋮
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        <td className="px-4 py-3 text-sm font-semibold text-[#111111]">
                           Павильон {p.number}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{p.tenantName || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
+                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">{p.tenantName || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                           <input
                             type="number"
                             min="0"
@@ -348,13 +357,13 @@ export default function UtilitiesPage() {
                             value={utilitiesById[p.id] ?? ''}
                             onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
                             disabled={isAvailable || isPrepaid}
-                            className={`w-32 rounded border px-2 py-1 text-sm ${
-                              isAvailable || isPrepaid ? 'bg-gray-100 text-gray-500' : ''
+                            className={`${inputClass} ${
+                              isAvailable || isPrepaid ? 'bg-[#ece4dd] text-[#8a8a8a]' : ''
                             }`}
                             placeholder={isAvailable ? '-' : '0'}
                           />
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
+                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                           <input
                             type="number"
                             min="0"
@@ -362,8 +371,8 @@ export default function UtilitiesPage() {
                             value={advertisingById[p.id] ?? ''}
                             onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
                             disabled={isAvailable || isPrepaid}
-                            className={`w-32 rounded border px-2 py-1 text-sm ${
-                              isAvailable || isPrepaid ? 'bg-gray-100 text-gray-500' : ''
+                            className={`${inputClass} ${
+                              isAvailable || isPrepaid ? 'bg-[#ece4dd] text-[#8a8a8a]' : ''
                             }`}
                             placeholder={isAvailable ? '-' : '0'}
                           />

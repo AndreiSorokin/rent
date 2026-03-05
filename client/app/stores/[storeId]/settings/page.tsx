@@ -368,17 +368,17 @@ export default function StoreSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
             <Link
               href={`/stores/${storeId}`}
-              className="text-sm text-blue-600 hover:underline md:text-base"
+              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb] md:text-base"
             >
               Назад к объекту
             </Link>
-            <h1 className="mt-2 text-2xl font-bold text-gray-900 md:text-3xl">
+            <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
               Управление объектом: {store.name}
             </h1>
           </div>
@@ -386,7 +386,7 @@ export default function StoreSettingsPage() {
             {canViewActivity && (
               <Link
                 href={`/stores/${storeId}/activity`}
-                className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
               >
                 Журнал действий
               </Link>
@@ -394,7 +394,7 @@ export default function StoreSettingsPage() {
             {createPavilions && (
               <button
                 onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                className="inline-flex items-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
               >
                 Загрузить данные
               </button>
@@ -403,38 +403,38 @@ export default function StoreSettingsPage() {
         </div>
 
         {canManageStore && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
             <h2 className="mb-4 text-xl font-semibold md:text-2xl">Основные настройки</h2>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-lg border p-4">
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
                 <h3 className="mb-2 font-medium">Название объекта</h3>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={nameDraft}
                     onChange={(e) => setNameDraft(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                   />
                   <button
                     onClick={handleUpdateStoreName}
                     disabled={nameSaving || nameDraft.trim() === String(store.name ?? '').trim()}
-                    className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {nameSaving ? '...' : 'Сохранить'}
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-lg border p-4">
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
                 <h3 className="mb-2 font-medium">Валюта</h3>
-                <p className="mb-2 text-sm text-gray-600">
+                <p className="mb-2 text-sm text-[#6b6b6b]">
                   Текущая валюта: {store.currency} ({getCurrencySymbol(store.currency)})
                 </p>
                 <select
                   value={store.currency ?? 'RUB'}
                   onChange={(e) => handleCurrencyChange(e.target.value as 'RUB' | 'KZT')}
                   disabled={currencySaving}
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                 >
                   <option value="RUB">Российский рубль (₽)</option>
                   <option value="KZT">Казахстанский тенге (₸)</option>
@@ -445,27 +445,27 @@ export default function StoreSettingsPage() {
         )}
 
         {canEditPavilions && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
             <h2 className="mb-4 text-xl font-semibold md:text-2xl">Категории павильонов</h2>
             <div className="mb-4 flex gap-2">
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                 placeholder="Новая категория"
               />
               <button
                 onClick={handleCreateCategory}
                 disabled={categorySaving}
-                className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
               >
                 {categorySaving ? 'Добавление...' : 'Добавить'}
               </button>
             </div>
 
             {categoryList.length === 0 ? (
-              <p className="text-sm text-gray-600">Категорий пока нет</p>
+              <p className="text-sm text-[#6b6b6b]">Категорий пока нет</p>
             ) : (
               <div className="space-y-2">
                 {categoryList.map((category) => {
@@ -483,13 +483,13 @@ export default function StoreSettingsPage() {
                             [category]: e.target.value,
                           }))
                         }
-                        className="w-full rounded border border-gray-300 px-3 py-2"
+                        className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                       />
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleRenameCategory(category)}
                           disabled={Boolean(categoryRenameLoadingByName[category]) || !changed}
-                          className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {categoryRenameLoadingByName[category]
                             ? 'Сохранение...'
@@ -498,7 +498,7 @@ export default function StoreSettingsPage() {
                         <button
                           onClick={() => handleDeleteCategory(category)}
                           disabled={categoryDeletingName === category}
-                          className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {categoryDeletingName === category ? 'Удаление...' : 'Удалить'}
                         </button>
@@ -512,27 +512,27 @@ export default function StoreSettingsPage() {
         )}
 
         {canEditPavilions && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
             <h2 className="mb-4 text-xl font-semibold md:text-2xl">Группы павильонов</h2>
             <div className="mb-4 flex gap-2">
               <input
                 type="text"
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                 placeholder="Название новой группы"
               />
               <button
                 onClick={handleCreatePavilionGroup}
                 disabled={groupSaving}
-                className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-60"
+                className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
               >
                 {groupSaving ? 'Создание...' : 'Создать'}
               </button>
             </div>
 
             {(store.pavilionGroups || []).length === 0 ? (
-              <p className="text-sm text-gray-600">Групп пока нет</p>
+              <p className="text-sm text-[#6b6b6b]">Групп пока нет</p>
             ) : (
               <div className="space-y-2">
                 {(store.pavilionGroups || []).map((group: any) => {
@@ -548,7 +548,7 @@ export default function StoreSettingsPage() {
                   const selectedIds = new Set<number>(groupPavilionSelectionById[group.id] || []);
 
                   return (
-                    <div key={group.id} className="rounded border p-3">
+                    <div key={group.id} className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
                       <div className="flex flex-col gap-2 md:flex-row">
                         <input
                           type="text"
@@ -559,12 +559,12 @@ export default function StoreSettingsPage() {
                               [group.id]: e.target.value,
                             }))
                           }
-                          className="w-full rounded border border-gray-300 px-3 py-2"
+                          className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleOpenGroupPavilionEditor(group)}
-                            className="rounded bg-indigo-600 px-3 py-2 text-xs text-white hover:bg-indigo-700"
+                            className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
                           >
                             {groupPavilionEditorGroupId === group.id
                               ? 'Скрыть список'
@@ -573,7 +573,7 @@ export default function StoreSettingsPage() {
                           <button
                             onClick={() => handleRenamePavilionGroup(group.id)}
                             disabled={Boolean(groupRenameLoadingById[group.id]) || !changed}
-                            className="rounded bg-blue-600 px-3 py-2 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-xs font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {groupRenameLoadingById[group.id]
                               ? 'Сохранение...'
@@ -582,19 +582,19 @@ export default function StoreSettingsPage() {
                           <button
                             onClick={() => handleDeletePavilionGroup(group.id)}
                             disabled={groupDeletingId === group.id}
-                            className="rounded bg-red-600 px-3 py-2 text-xs text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-xl bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {groupDeletingId === group.id ? 'Удаление...' : 'Удалить'}
                           </button>
                         </div>
                       </div>
 
-                      <div className="mt-2 text-xs text-gray-600">
+                      <div className="mt-2 text-xs text-[#6b6b6b]">
                         Текущий состав: {(group.pavilions || []).length} павильонов
                       </div>
 
                       {groupPavilionEditorGroupId === group.id && (
-                        <div className="mt-3 rounded bg-gray-50 p-3">
+                        <div className="mt-3 rounded-xl border border-[#d8d1cb] bg-white p-3">
                           <input
                             type="text"
                             value={groupPavilionSearchById[group.id] || ''}
@@ -604,17 +604,17 @@ export default function StoreSettingsPage() {
                                 [group.id]: e.target.value,
                               }))
                             }
-                            className="mb-3 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                            className="mb-3 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                             placeholder="Поиск павильона по номеру"
                           />
-                          <div className="max-h-56 space-y-2 overflow-y-auto rounded border bg-white p-2">
+                          <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-2">
                             {filteredPavilions.length === 0 ? (
-                              <p className="text-xs text-gray-500">Павильоны не найдены</p>
+                              <p className="text-xs text-[#6b6b6b]">Павильоны не найдены</p>
                             ) : (
                               filteredPavilions.map((p: any) => (
                                 <label
                                   key={`${group.id}-${p.id}`}
-                                  className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50"
+                                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-white"
                                 >
                                   <input
                                     type="checkbox"
@@ -632,13 +632,13 @@ export default function StoreSettingsPage() {
                           </div>
 
                           <div className="mt-3 flex items-center justify-between">
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs text-[#6b6b6b]">
                               Выбрано: {selectedIds.size}
                             </span>
                             <button
                               onClick={() => handleSaveGroupPavilions(group)}
                               disabled={Boolean(groupPavilionSavingById[group.id])}
-                              className="rounded bg-green-600 px-3 py-2 text-xs text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="rounded-xl bg-[#22c55e] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {groupPavilionSavingById[group.id]
                                 ? 'Сохранение...'
@@ -656,7 +656,7 @@ export default function StoreSettingsPage() {
         )}
 
         {canManageUsers && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
             <h2 className="mb-6 text-xl font-semibold md:text-2xl">Пользователи и права</h2>
             <StoreUsersSection
               storeId={storeId}
@@ -669,14 +669,14 @@ export default function StoreSettingsPage() {
         )}
 
         {canManageStore && (
-          <div className="rounded-xl bg-white p-6 shadow md:p-8">
+          <div className="rounded-2xl border border-[#ef4444]/30 bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
             <h2 className="mb-4 text-xl font-semibold text-red-700 md:text-2xl">
               Опасная зона
             </h2>
             <button
               onClick={() => setShowDeleteStoreModal(true)}
               disabled={deletingStore}
-              className="rounded-lg bg-red-600 px-5 py-2.5 font-medium text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-[#ef4444] px-5 py-2.5 font-semibold text-white shadow-sm transition hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {deletingStore ? 'Удаление...' : 'Удалить объект'}
             </button>
@@ -696,17 +696,17 @@ export default function StoreSettingsPage() {
       )}
 
       {showDeleteStoreModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900">Удаление объекта</h3>
-            <p className="mt-3 text-sm text-gray-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#ef4444]/30 bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+            <h3 className="text-lg font-semibold text-[#111111]">Удаление объекта</h3>
+            <p className="mt-3 text-sm text-[#6b6b6b]">
               Чтобы удалить, напишите слово <span className="font-semibold">УДАЛИТЬ</span>.
             </p>
             <input
               type="text"
               value={deleteStoreInput}
               onChange={(e) => setDeleteStoreInput(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2"
+              className="mt-4 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition focus:border-[#ef4444] focus:bg-white focus:ring-2 focus:ring-[#ef4444]/20"
               placeholder="УДАЛИТЬ"
             />
             <div className="mt-5 flex justify-end gap-3">
@@ -715,14 +715,14 @@ export default function StoreSettingsPage() {
                   setShowDeleteStoreModal(false);
                   setDeleteStoreInput('');
                 }}
-                className="rounded-lg border px-4 py-2 hover:bg-gray-100"
+                className="rounded-xl border border-[#d8d1cb] px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
               >
                 Отмена
               </button>
               <button
                 onClick={handleDeleteStore}
                 disabled={deletingStore || deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ'}
-                className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-[#ef4444] px-4 py-2 font-semibold text-white transition hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {deletingStore ? 'Удаление...' : 'Удалить объект'}
               </button>

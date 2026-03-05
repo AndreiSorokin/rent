@@ -31,7 +31,7 @@ export function PavilionHouseholdExpensesSection({
   );
 
   return (
-    <div className="rounded-xl bg-white p-6 shadow">
+    <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
       <h2 className="mb-4 text-xl font-semibold">Расходы на хоз. часть</h2>
 
       {hasPermission(permissions, 'CREATE_CHARGES') && (
@@ -53,7 +53,7 @@ export function PavilionHouseholdExpensesSection({
           />
           <button
             onClick={onCreateHouseholdExpense}
-            className="rounded bg-amber-600 px-4 py-2 text-white hover:bg-amber-700"
+            className="rounded-xl bg-[#111111] px-4 py-2 text-white hover:bg-[#2a2a2a]"
           >
             + Добавить расход
           </button>
@@ -66,7 +66,7 @@ export function PavilionHouseholdExpensesSection({
         <div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-[#f4efeb]">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
@@ -105,3 +105,4 @@ export function PavilionHouseholdExpensesSection({
     </div>
   );
 }
+

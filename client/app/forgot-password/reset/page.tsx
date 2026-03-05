@@ -1,17 +1,17 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiFetch } from '@/lib/api';
 import { BackButton } from '@/components/BackButton';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthMessage } from '@/components/auth/AuthMessage';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { apiFetch } from '@/lib/api';
 
 function mapError(message: string) {
   const normalized = message.toLowerCase();
-  if (
-    normalized.includes('invalid or expired') ||
-    normalized.includes('reset token')
-  ) {
-    return 'Ссылка недействительна или истек срок действия';
+  if (normalized.includes('invalid or expired') || normalized.includes('reset token')) {
+    return 'Ссылка недействительна или срок действия истек';
   }
   if (normalized.includes('password must be at least 6 characters')) {
     return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
@@ -48,12 +48,9 @@ function ForgotPasswordResetForm() {
       return;
     }
 
-    const isStrongPassword =
-      /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
+    const isStrongPassword = /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
     if (!isStrongPassword) {
-      setError(
-        'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ',
-      );
+      setError('Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ');
       return;
     }
 
@@ -64,7 +61,6 @@ function ForgotPasswordResetForm() {
         body: JSON.stringify({ token, newPassword }),
       });
       localStorage.removeItem('token');
-      alert('Пароль успешно обновлен. Войдите с новым паролем.');
       router.replace('/login');
     } catch (err: any) {
       setError(mapError(String(err?.message || '')));
@@ -74,46 +70,54 @@ function ForgotPasswordResetForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
+    <AuthShell
+      title="Новый пароль"
+      subtitle="Введите и подтвердите новый пароль"
+      sideTitle="Создайте новый пароль"
+      sideDescription="Новый пароль начнет действовать сразу после сохранения."
+      topActions={
         <BackButton
           label="Назад"
-          className="text-sm text-blue-600 hover:underline"
+          className="inline-flex rounded-lg border border-[#d8d1cb] px-3 py-1.5 text-sm text-[#111111] hover:bg-[#f4efeb]"
         />
-
-        <h1 className="text-xl font-bold">Создать новый пароль</h1>
-
-        <input
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField
+          id="newPassword"
           type="password"
-          className="w-full rounded border p-2"
-          placeholder="Новый пароль"
+          required
+          label="Новый пароль"
+          placeholder="Введите новый пароль"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
 
-        <input
+        <AuthField
+          id="confirmPassword"
           type="password"
-          className="w-full rounded border p-2"
+          required
+          label="Повторите пароль"
           placeholder="Повторите новый пароль"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[#6b6b6b]">
           Минимум 6 символов, буквы, цифры и специальный символ.
         </p>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error ? <AuthMessage>{error}</AuthMessage> : null}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? 'Сохранение...' : 'Сохранить новый пароль'}
         </button>
       </form>
-    </div>
+    </AuthShell>
   );
 }
 

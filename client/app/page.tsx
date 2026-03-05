@@ -139,7 +139,7 @@ export default function HomePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">
               Демо
             </p>
-            <h3 className="mt-2 text-3xl font-extrabold">Посмотреть интерфейс</h3>
+            <h3 className="mt-2 text-3xl font-extrabold">Попробуйте месяц бесплатно</h3>
             <p className="mt-2 text-[#4B5563]">
               Если у вас уже есть доступ, перейдите в панель и оцените работу
               модулей на реальных данных.

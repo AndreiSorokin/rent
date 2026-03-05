@@ -46,19 +46,19 @@ export function AddAdditionalChargeModal({
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40">
-      <div className="w-[360px] rounded bg-white p-6">
-        <h2 className="mb-4 font-bold">Добавить дополнительное начисление</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Добавить дополнительное начисление</h2>
 
         <input
-          className="input"
+          className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
           placeholder="Название начисления"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
         <input
-          className="input"
+          className="mt-3 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
           type="number"
           step="0.01"
           min="0"
@@ -67,11 +67,19 @@ export function AddAdditionalChargeModal({
           onChange={(e) => setAmount(e.target.value)}
         />
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button className="btn-secondary" onClick={onClose} disabled={saving}>
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={onClose}
+            disabled={saving}
+          >
             Отмена
           </button>
-          <button className="btn-primary" onClick={save} disabled={saving}>
+          <button
+            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={save}
+            disabled={saving}
+          >
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>

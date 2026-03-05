@@ -40,5 +40,16 @@ export async function apiFetch<T = any>(
     return undefined as T;
   }
 
-  return res.json() as Promise<T>;
+  const contentType = res.headers.get('content-type') || '';
+  const rawText = await res.text();
+
+  if (!rawText.trim()) {
+    return undefined as T;
+  }
+
+  if (contentType.includes('application/json')) {
+    return JSON.parse(rawText) as T;
+  }
+
+  return rawText as T;
 }
