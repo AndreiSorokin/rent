@@ -838,18 +838,6 @@ export default function StorePage() {
     }
   };
 
-  const handleDeleteHouseholdExpense = async (expenseId: number) => {
-    if (!confirm('Удалить этот расход?')) return;
-
-    try {
-      await deleteHouseholdExpense(storeId, expenseId);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить расход');
-    }
-  };
-
   const handleCreateHouseholdExpense = async () => {
     if (!createHouseholdModal) return;
     const name = createHouseholdModal.name.trim();
@@ -1150,6 +1138,40 @@ export default function StorePage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось обновить прочий расход');
+    } finally {
+      setOtherExpenseSaving(false);
+    }
+  };
+
+  const handleDeleteHouseholdExpenseFromEditModal = async () => {
+    if (!editHouseholdModal) return;
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      setHouseholdSaving(true);
+      await deleteHouseholdExpense(storeId, editHouseholdModal.id);
+      setEditHouseholdModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    } finally {
+      setHouseholdSaving(false);
+    }
+  };
+
+  const handleDeleteOtherExpenseFromEditModal = async () => {
+    if (!editOtherExpenseModal) return;
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      setOtherExpenseSaving(true);
+      await deletePavilionExpense(storeId, editOtherExpenseModal.id);
+      setEditOtherExpenseModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
     } finally {
       setOtherExpenseSaving(false);
     }
@@ -1989,14 +2011,6 @@ export default function StorePage() {
                             Оплатить/Изменить
                           </button>
                         )}
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button
-                            onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                          >
-                            Удалить
-                          </button>
-                        )}
                       </div>
                     </div>
                   </article>
@@ -2115,14 +2129,6 @@ export default function StorePage() {
                             className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                           >
                             Оплатить/Изменить
-                          </button>
-                        )}
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button
-                            onClick={() => handleDeleteManualExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                          >
-                            Удалить
                           </button>
                         )}
                       </div>
@@ -2830,23 +2836,35 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditHouseholdModal(null)}
-                disabled={householdSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEditedHouseholdExpense}
-                disabled={householdSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {householdSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+            <div className="mt-5 flex items-center justify-between gap-2">
+              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                <button
+                  type="button"
+                  onClick={handleDeleteHouseholdExpenseFromEditModal}
+                  disabled={householdSaving}
+                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Удалить
+                </button>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditHouseholdModal(null)}
+                  disabled={householdSaving}
+                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedHouseholdExpense}
+                  disabled={householdSaving}
+                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {householdSaving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3045,23 +3063,35 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditOtherExpenseModal(null)}
-                disabled={otherExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEditedOtherExpense}
-                disabled={otherExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+            <div className="mt-5 flex items-center justify-between gap-2">
+              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                <button
+                  type="button"
+                  onClick={handleDeleteOtherExpenseFromEditModal}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Удалить
+                </button>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditOtherExpenseModal(null)}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedOtherExpense}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
