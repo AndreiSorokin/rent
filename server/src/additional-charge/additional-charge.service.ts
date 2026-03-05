@@ -431,7 +431,9 @@ export class AdditionalChargeService {
     });
     const openingDebt = previousLedger?.closingDebt ?? 0;
 
-    const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+    const baseRent = Number(
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+    );
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0

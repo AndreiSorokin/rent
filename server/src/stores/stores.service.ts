@@ -2463,6 +2463,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           },
         },
         monthlyLedgers: {
+          where: {
+            period: startOfMonth(subMonths(previousPeriod, 1)),
+          },
           orderBy: { period: 'desc' },
           take: 1,
         },
@@ -2472,7 +2475,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     await this.prisma.$transaction(async (tx) => {
       for (const pavilion of pavilions) {
         const openingDebt = pavilion.monthlyLedgers[0]?.closingDebt ?? 0;
-        const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
+        const baseRent = Number(
+          pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+        );
         const discount =
           pavilion.status === PavilionStatus.PREPAID
             ? 0

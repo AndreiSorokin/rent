@@ -43,6 +43,9 @@ export class PavilionsService {
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
     const monthStartTime = monthStart.getTime();
+    const previousMonthStartTime = startOfMonth(
+      new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1),
+    ).getTime();
 
     const currentPayment = pavilion.payments.find(
       (payment) => startOfMonth(payment.period).getTime() === monthStartTime,
@@ -100,14 +103,11 @@ export class PavilionsService {
     const currentMonthLedger = (pavilion.monthlyLedgers ?? []).find(
       (ledger) => startOfMonth(ledger.period).getTime() === monthStartTime,
     );
-    const previousMonthLedger = (pavilion.monthlyLedgers ?? [])
-      .filter((ledger) => startOfMonth(ledger.period).getTime() < monthStartTime)
-      .sort(
-        (a, b) =>
-          startOfMonth(b.period).getTime() - startOfMonth(a.period).getTime(),
-      )[0];
+    const previousMonthLedger = (pavilion.monthlyLedgers ?? []).find(
+      (ledger) => startOfMonth(ledger.period).getTime() === previousMonthStartTime,
+    );
     const carryAdjustment = Number(
-      currentMonthLedger?.openingDebt ?? previousMonthLedger?.closingDebt ?? 0,
+      previousMonthLedger?.closingDebt ?? currentMonthLedger?.openingDebt ?? 0,
     );
     const expectedWithCarry = expectedTotal + carryAdjustment;
 
