@@ -1318,11 +1318,11 @@ export default function StorePage() {
   ];
 
   return (
-    <div className="min-h-screen scroll-smooth bg-[#f9f5f0]">
+    <div className="min-h-screen scroll-smooth bg-slate-100">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
-        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-violet-100 bg-white p-5 shadow-sm lg:block">
           <div className="mb-5">
-            <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-violet-400">Объект</p>
             <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name}</h1>
             <p className="mt-1 text-sm text-slate-600">
               Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
@@ -1330,7 +1330,7 @@ export default function StorePage() {
           </div>
 
           <div className="space-y-2 border-b border-slate-100 pb-4">
-            <Link href="/dashboard" className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]">
+            <Link href="/dashboard" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
               <ArrowLeft className="h-4 w-4" />
               Назад к объектам
             </Link>
@@ -1340,7 +1340,7 @@ export default function StorePage() {
             {hasPermission(permissions, 'VIEW_SUMMARY') && (
               <Link
                 href={`/stores/${storeId}/summary`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               >
                 <Sigma className="h-4 w-4" />
                 СВОДКА
@@ -1349,7 +1349,7 @@ export default function StorePage() {
             {canCreatePavilion && (
               <button
                 onClick={() => setShowCreatePavilionModal(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
               >
                 <CirclePlus className="h-4 w-4" />
                 Добавить павильон
@@ -1358,7 +1358,7 @@ export default function StorePage() {
             {canViewAccounting && (
               <Link
                 href={`/stores/${storeId}/accounting`}
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#020617]"
+                className="flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
               >
                 <CheckCheck className="h-4 w-4" />
                 Открытие/закрытие смены
@@ -1369,7 +1369,7 @@ export default function StorePage() {
                 {canOpenUtilities && (
                   <Link
                     href={`/stores/${storeId}/utilities`}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${
                       canViewAccounting ? '' : 'col-span-2'
                     }`}
                   >
@@ -1380,7 +1380,7 @@ export default function StorePage() {
                 {canViewAccounting && (
                   <button
                     onClick={() => setShowExtraIncomeModal(true)}
-                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 ${
                       canOpenUtilities ? '' : 'col-span-2'
                     }`}
                   >
@@ -1393,7 +1393,7 @@ export default function StorePage() {
           </div>
 
           <div className="pt-4">
-            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-violet-400">Навигация</p>
             <nav className="space-y-1">
               {navSections.filter((item) => item.visible).map((item) => (
                 <a
@@ -1402,8 +1402,8 @@ export default function StorePage() {
                   onClick={() => setActiveSection(item.id)}
                   className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
                     activeSection === item.id
-                      ? 'bg-[#FFE8DB] text-[#C2410C]'
-                      : 'text-slate-600 hover:bg-[#F4EFEB] hover:text-slate-900'
+                      ? 'bg-violet-50 text-violet-700'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
                   <item.icon className="h-4 w-4 shrink-0" />
@@ -1415,7 +1415,7 @@ export default function StorePage() {
               <div className="mt-3 border-t border-slate-100 pt-3">
                 <Link
                   href={`/stores/${storeId}/settings`}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   Управление объектом
@@ -1430,7 +1430,7 @@ export default function StorePage() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-3 py-2 text-sm text-slate-700 shadow-sm"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
             >
               <Menu className="h-4 w-4" />
               Меню
@@ -1455,7 +1455,7 @@ export default function StorePage() {
             >
               <div className="mb-4 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
+                  <p className="text-xs uppercase tracking-[0.12em] text-violet-400">Объект</p>
                   <h2 className="text-lg font-bold text-slate-900">{store.name}</h2>
                   <p className="text-xs text-slate-600">
                     Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
@@ -1464,7 +1464,7 @@ export default function StorePage() {
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-lg border border-[#D8D1CB] bg-white p-2 text-slate-700"
+                  className="rounded-lg border border-slate-200 p-2 text-slate-700"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1474,7 +1474,7 @@ export default function StorePage() {
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Назад к объектам
@@ -1486,7 +1486,7 @@ export default function StorePage() {
                   <Link
                     href={`/stores/${storeId}/summary`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
                   >
                     <Sigma className="h-4 w-4" />
                     СВОДКА
@@ -1498,7 +1498,7 @@ export default function StorePage() {
                       setShowCreatePavilionModal(true);
                       setMobileMenuOpen(false);
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
                   >
                     <CirclePlus className="h-4 w-4" />
                     Добавить павильон
@@ -1508,7 +1508,7 @@ export default function StorePage() {
                   <Link
                     href={`/stores/${storeId}/accounting`}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white"
                   >
                     <CheckCheck className="h-4 w-4" />
                     Открытие/закрытие смены
@@ -1520,7 +1520,7 @@ export default function StorePage() {
                       <Link
                         href={`/stores/${storeId}/utilities`}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 ${
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 ${
                           canViewAccounting ? '' : 'col-span-2'
                         }`}
                       >
@@ -1534,7 +1534,7 @@ export default function StorePage() {
                           setShowExtraIncomeModal(true);
                           setMobileMenuOpen(false);
                         }}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 ${
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-700 ${
                           canOpenUtilities ? '' : 'col-span-2'
                         }`}
                       >
@@ -1547,7 +1547,7 @@ export default function StorePage() {
               </div>
 
               <div className="pt-4">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-violet-400">Навигация</p>
                 <nav className="space-y-1">
                   {navSections.filter((item) => item.visible).map((item) => (
                     <a
@@ -1559,8 +1559,8 @@ export default function StorePage() {
                       }}
                       className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
                         activeSection === item.id
-                          ? 'bg-[#FFE8DB] text-[#C2410C]'
-                          : 'text-slate-600 hover:bg-[#F4EFEB] hover:text-slate-900'
+                          ? 'bg-violet-50 text-violet-700'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
@@ -1573,7 +1573,7 @@ export default function StorePage() {
                     <Link
                       href={`/stores/${storeId}/settings`}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700"
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
                     >
                       <SlidersHorizontal className="h-4 w-4" />
                       Управление объектом
@@ -1594,7 +1594,7 @@ export default function StorePage() {
           <section
             id="pavilions"
             data-store-section
-            className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
@@ -1608,7 +1608,7 @@ export default function StorePage() {
                   setPavilionSearch(e.target.value);
                   setPavilionsPage(1);
                 }}
-                className="w-full rounded-lg border border-[#D8D1CB] px-3 py-2"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2"
                 placeholder="Поиск по имени павильона"
               />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -1618,7 +1618,7 @@ export default function StorePage() {
                   setPavilionCategoryFilter(e.target.value);
                   setPavilionsPage(1);
                 }}
-                className="rounded-lg border border-[#D8D1CB] px-3 py-2"
+                className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все категории</option>
                 {allCategories.map((category) => (
@@ -1633,7 +1633,7 @@ export default function StorePage() {
                   setPavilionStatusFilter(e.target.value);
                   setPavilionsPage(1);
                 }}
-                className="rounded-lg border border-[#D8D1CB] px-3 py-2"
+                className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все статусы</option>
                 <option value="AVAILABLE">СВОБОДЕН</option>
@@ -1646,7 +1646,7 @@ export default function StorePage() {
                   setPavilionGroupFilter(e.target.value);
                   setPavilionsPage(1);
                 }}
-                className="rounded-lg border border-[#D8D1CB] px-3 py-2"
+                className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">Все группы</option>
                 {(store.pavilionGroups || []).map((group: any) => (
@@ -1665,7 +1665,7 @@ export default function StorePage() {
                     setPavilionsPage(1);
                   }
                 }
-                className="rounded-lg border border-[#D8D1CB] px-3 py-2"
+                className="rounded-lg border border-gray-300 px-3 py-2"
               >
                 <option value="">все</option>
                 <option value="PAID">Оплачено</option>
@@ -1676,45 +1676,45 @@ export default function StorePage() {
             </div>
 
             {pavilionsLoading ? (
-              <p className="py-8 text-center text-[#6B6B6B]">Загрузка павильонов...</p>
+              <p className="py-8 text-center text-gray-600">Загрузка павильонов...</p>
             ) : orderedPavilions.length === 0 ? (
-              <p className="py-8 text-center text-[#6B6B6B]">
+              <p className="py-8 text-center text-gray-600">
                 {pavilionsTotal === 0
                   ? 'В магазине пока нет павильонов'
                   : 'По текущим фильтрам павильоны не найдены'}
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#E5DED8]">
-                  <thead className="bg-[#F4EFEB]">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Перенос
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Павильон
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         м²
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Статус
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Оплата
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Категория
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Наименование организации
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Группы
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5DED8] bg-white">
+                  <tbody className="divide-y divide-gray-200 bg-white">
                     {orderedPavilions.map((p: any) => (
                       (() => {
                         const paymentStatus = getPavilionPaymentStatus(p);
@@ -1724,7 +1724,7 @@ export default function StorePage() {
                         return (
                       <tr
                         key={p.id}
-                        className="cursor-pointer transition-colors hover:bg-[#f9f5f0]"
+                        className="cursor-pointer transition-colors hover:bg-gray-50"
                         onDragOver={(e) => {
                           if (!canReorderPavilions) return;
                           if (draggedPavilionId == null) return;
@@ -1744,7 +1744,7 @@ export default function StorePage() {
                           )
                         }
                       >
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           <button
                             type="button"
                             draggable={canReorderPavilions}
@@ -1761,7 +1761,7 @@ export default function StorePage() {
                             }}
                             className={`select-none rounded px-2 py-1 text-lg leading-none ${
                               canReorderPavilions
-                                ? 'cursor-grab text-[#6B6B6B] hover:bg-[#ede7e2] active:cursor-grabbing'
+                                ? 'cursor-grab text-gray-500 hover:bg-gray-100 active:cursor-grabbing'
                                 : 'cursor-not-allowed text-gray-300'
                             }`}
                             title={
@@ -1774,13 +1774,13 @@ export default function StorePage() {
                             ⋮⋮
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-[#111111]">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           {p.number}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           {p.squareMeters ?? 0}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                               p.status === 'RENTED'
@@ -1793,7 +1793,7 @@ export default function StorePage() {
                             {statusLabel[p.status] ?? p.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           <div className="space-y-1">
                             <span
                               className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
@@ -1813,25 +1813,25 @@ export default function StorePage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           {p.category || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           {p.tenantName || 'Свободен'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           <div
                             className="space-y-2"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex flex-wrap gap-2">
                               {(p.groupMemberships || []).length === 0 ? (
-                                <span className="text-xs text-[#6B6B6B]">Нет групп</span>
+                                <span className="text-xs text-gray-500">Нет групп</span>
                               ) : (
                                 p.groupMemberships.map((membership: any) => (
                                   <span
                                     key={`${p.id}-${membership.group.id}`}
-                                    className="inline-flex items-center gap-1 rounded-full bg-[#F4EFEB] px-2 py-1 text-xs"
+                                    className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs"
                                   >
                                     {membership.group.name}
                                   </span>
@@ -1849,7 +1849,7 @@ export default function StorePage() {
               </div>
             )}
 
-            <div className="mt-4 flex items-center justify-between text-sm text-[#6B6B6B]">
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1859,7 +1859,7 @@ export default function StorePage() {
                     })
                   }
                   disabled={pavilionsLoading || pavilionsPage <= 1}
-                  className="rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 transition hover:bg-[#f9f5f0] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Назад
                 </button>
@@ -1874,7 +1874,7 @@ export default function StorePage() {
                     })
                   }
                   disabled={pavilionsLoading || !pavilionsHasMore}
-                  className="rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 transition hover:bg-[#f9f5f0] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded border px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Далее
                 </button>
@@ -1887,14 +1887,14 @@ export default function StorePage() {
           <section
             id="household"
             data-store-section
-            className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
           >
             <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Хозяйственные расходы</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5 mt-4">
                 <button
                   onClick={() => setCreateHouseholdModal({ name: '', amount: '' })}
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2.5 text-white transition hover:bg-[#E65C00] disabled:opacity-60"
+                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
                 </button>
@@ -1904,25 +1904,24 @@ export default function StorePage() {
             {householdExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="space-y-2">
-                <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
-                  <div className="text-center">Название и статус</div>
-                  <div className="text-center">Каналы оплаты</div>
-                  <div className="text-center">Сумма</div>
-                  <div className="text-center">Действия</div>
-                </div>
+              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
                 {householdExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5"
+                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
-                    <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
-                      <div className="min-w-0 md:text-center">
-                        <p className="truncate text-sm font-semibold text-slate-900 md:mx-auto md:max-w-[260px]">
-                          {expense.name}
-                        </p>
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
+                        {expense.name}
+                      </p>
+                      <p className="shrink-0 text-sm font-bold text-slate-900">
+                        {formatMoney(expense.amount, store.currency)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 space-y-1">
                         <span
-                          className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                             expense.status === 'PAID'
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-amber-100 text-amber-700'
@@ -1930,31 +1929,20 @@ export default function StorePage() {
                         >
                           {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                         </span>
-                      </div>
-                      <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
-                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
-                          Каналы оплаты
-                        </div>
-                        <div className="md:mx-auto md:max-w-[260px] font-bold text-slate-900">
-                          {(expense.status ?? 'UNPAID') === 'PAID'
-                            ? paymentChannelsLabel(
-                                expense.bankTransferPaid,
-                                expense.cashbox1Paid,
-                                expense.cashbox2Paid,
-                                store.currency,
-                              ) || 'Каналы оплаты не заданы'
-                            : 'Каналы оплаты не заданы'}
+                        <div className="text-[11px] text-slate-600">
+                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
+                            paymentChannelsLines(
+                              expense.bankTransferPaid,
+                              expense.cashbox1Paid,
+                              expense.cashbox2Paid,
+                              store.currency,
+                            ).map((line) => <div key={line}>{line}</div>)
+                          ) : (
+                            <div>Каналы оплаты не заданы</div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-left md:text-center">
-                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
-                          Сумма
-                        </div>
-                        <p className="text-sm font-bold text-slate-900">
-                          {formatMoney(expense.amount, store.currency)}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
+                      <div className="flex flex-col items-end gap-2">
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
@@ -1979,7 +1967,7 @@ export default function StorePage() {
                                 cashbox2Paid: cash2,
                               });
                             }}
-                            className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Оплатить/Изменить
                           </button>
@@ -1987,7 +1975,7 @@ export default function StorePage() {
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
                           <button
                             onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                           >
                             Удалить
                           </button>
@@ -2005,7 +1993,7 @@ export default function StorePage() {
           <section
             id="other-expenses"
             data-store-section
-            className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
           >
             <h2 className="mb-3 text-xl font-semibold text-slate-900 md:text-2xl">Прочие расходы</h2>
 
@@ -2013,7 +2001,7 @@ export default function StorePage() {
               <div className="mb-5">
                 <button
                   onClick={() => setCreateOtherExpenseModal({ note: '', amount: '' })}
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2.5 text-white transition hover:bg-[#E65C00] disabled:opacity-60"
+                  className="rounded-xl bg-violet-600 px-4 py-2.5 text-white transition hover:bg-violet-700 disabled:opacity-60"
                 >
                   Добавить
                 </button>
@@ -2023,25 +2011,24 @@ export default function StorePage() {
             {otherExpenses.length === 0 ? (
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
-              <div className="space-y-2">
-                <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
-                  <div className="text-center">Название и статус</div>
-                  <div className="text-center">Каналы оплаты</div>
-                  <div className="text-center">Сумма</div>
-                  <div className="text-center">Действия</div>
-                </div>
+              <div className="grid grid-cols-1 justify-items-start gap-3 md:grid-cols-2">
                 {otherExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
-                    className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5"
+                    className="flex min-h-[104px] w-full md:max-w-[350px] flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3.5"
                   >
-                    <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
-                      <div className="min-w-0 md:text-center">
-                        <p className="truncate text-sm font-semibold text-slate-900 md:mx-auto md:max-w-[260px]">
-                          {expense.note || 'Прочий расход'}
-                        </p>
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <p className="pr-2 text-sm font-semibold leading-5 text-slate-900">
+                        {expense.note || 'Прочий расход'}
+                      </p>
+                      <p className="shrink-0 text-sm font-bold text-slate-900">
+                        {formatMoney(expense.amount, store.currency)}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 space-y-1">
                         <span
-                          className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
                             expense.status === 'PAID'
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-amber-100 text-amber-700'
@@ -2049,31 +2036,20 @@ export default function StorePage() {
                         >
                           {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                         </span>
-                      </div>
-                      <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
-                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400 text-bold">
-                          Каналы оплаты
-                        </div>
-                        <div className="md:mx-auto md:max-w-[260px] font-bold text-slate-900">
-                          {(expense.status ?? 'UNPAID') === 'PAID'
-                            ? paymentChannelsLabel(
-                                expense.bankTransferPaid,
-                                expense.cashbox1Paid,
-                                expense.cashbox2Paid,
-                                store.currency,
-                              ) || 'Каналы оплаты не заданы'
-                            : 'Каналы оплаты не заданы'}
+                        <div className="text-[11px] text-slate-600">
+                          {(expense.status ?? 'UNPAID') === 'PAID' ? (
+                            paymentChannelsLines(
+                              expense.bankTransferPaid,
+                              expense.cashbox1Paid,
+                              expense.cashbox2Paid,
+                              store.currency,
+                            ).map((line) => <div key={line}>{line}</div>)
+                          ) : (
+                            <div>Каналы оплаты не заданы</div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-left md:text-center">
-                        <div className="md:hidden text-[10px] uppercase tracking-wide text-slate-400">
-                          Сумма
-                        </div>
-                        <p className="text-sm font-bold text-slate-900">
-                          {formatMoney(expense.amount, store.currency)}
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
+                      <div className="flex flex-col items-end gap-2">
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
@@ -2098,7 +2074,7 @@ export default function StorePage() {
                                 cashbox2Paid: cash2,
                               });
                             }}
-                            className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                            className="shrink-0 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                           >
                             Оплатить/Изменить
                           </button>
@@ -2106,7 +2082,7 @@ export default function StorePage() {
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
                           <button
                             onClick={() => handleDeleteManualExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                            className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                           >
                             Удалить
                           </button>
@@ -2124,7 +2100,7 @@ export default function StorePage() {
           <section
             id="admin-expenses"
             data-store-section
-            className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Административные расходы</h2>
@@ -2139,7 +2115,7 @@ export default function StorePage() {
                 );
 
                 return (
-                  <div key={category.type} className="rounded-xl border border-[#D8D1CB] bg-white p-3">
+                  <div key={category.type} className="rounded-md border p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="text-sm font-semibold">{category.label}</div>
                       <div className="text-sm font-semibold">
@@ -2157,7 +2133,7 @@ export default function StorePage() {
                               amount: '',
                             })
                           }
-                          className="w-full rounded-lg bg-[#FF6A13] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#E65C00]"
+                          className="w-full rounded bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-700"
                         >
                           Добавить
                         </button>
@@ -2169,7 +2145,7 @@ export default function StorePage() {
                         {categoryItems.map((item: any) => (
                           <article
                             key={item.id}
-                            className="flex min-h-[108px] w-full flex-col justify-between rounded-xl border border-[#D8D1CB] bg-[#F4EFEB]/70 p-3"
+                            className="flex min-h-[108px] w-full flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-3"
                           >
                             <div className="mb-2 flex items-start justify-between gap-3">
                               <p className="pr-2 text-xs font-semibold leading-5 text-slate-900">
@@ -2232,7 +2208,7 @@ export default function StorePage() {
                                         cashbox2Paid: cash2,
                                       });
                                     }}
-                                    className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
                                   >
                                     Оплатить/Изменить
                                   </button>
@@ -2251,7 +2227,7 @@ export default function StorePage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-[#6B6B6B]">Записей нет</p>
+                      <p className="text-xs text-gray-500">Записей нет</p>
                     )}
                   </div>
                 );
@@ -2266,7 +2242,7 @@ export default function StorePage() {
           <section
             id="staff"
             data-store-section
-            className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
+            className="scroll-mt-24 rounded-2xl border border-violet-100 bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Штатное расписание</h2>
@@ -2282,7 +2258,7 @@ export default function StorePage() {
                       salary: '',
                     })
                   }
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2.5 text-white transition hover:bg-[#E65C00] disabled:opacity-60"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
                 >
                   Добавить
                 </button>
@@ -2290,33 +2266,33 @@ export default function StorePage() {
             )}
 
             {!store.staff || store.staff.length === 0 ? (
-              <p className="text-[#6B6B6B]">Список сотрудников пуст</p>
+              <p className="text-gray-600">Список сотрудников пуст</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#E5DED8]">
-                  <thead className="bg-[#F4EFEB]">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Перенос
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Должность
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Имя фамилия
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Зарплата
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Статус оплаты
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                         Действия
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E5DED8]">
+                  <tbody className="divide-y divide-gray-200">
                     {orderedStaff.map((staff: any) => (
                       <tr
                         key={staff.id}
@@ -2332,7 +2308,7 @@ export default function StorePage() {
                           setDraggedStaffId(null);
                         }}
                       >
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 text-sm text-gray-700">
                           <button
                             type="button"
                             draggable
@@ -2341,7 +2317,7 @@ export default function StorePage() {
                               e.dataTransfer.effectAllowed = 'move';
                             }}
                             onDragEnd={() => setDraggedStaffId(null)}
-                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-[#6B6B6B] hover:bg-[#ede7e2] active:cursor-grabbing"
+                            className="cursor-grab select-none rounded px-2 py-1 text-lg leading-none text-gray-500 hover:bg-gray-100 active:cursor-grabbing"
                             title="Потяните, чтобы изменить порядок"
                             aria-label={`Переместить сотрудника ${staff.fullName}`}
                           >
@@ -2380,7 +2356,7 @@ export default function StorePage() {
 
                                   void handleUpdateStaffSalaryStatus(staff.id, nextStatus);
                                 }}
-                                className="rounded-lg border border-[#D8D1CB] bg-white px-2 py-1 text-xs text-[#374151]"
+                                className="rounded border px-2 py-1 text-xs"
                               >
                                 <option value="UNPAID">Не оплачено</option>
                                 <option value="PAID">Оплачено</option>
@@ -2459,7 +2435,7 @@ export default function StorePage() {
                                       (staff.salaryPaymentMethod as PaymentMethod | null) ?? null,
                                   })
                                 }
-                                className="text-[#2563EB] hover:underline"
+                                className="text-blue-600 hover:underline"
                               >
                                 Изменить зарплату
                               </button>
@@ -2498,7 +2474,7 @@ export default function StorePage() {
                   onChange={(e) =>
                     setAddStaffModal((prev) => (prev ? { ...prev, position: e.target.value } : prev))
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2509,7 +2485,7 @@ export default function StorePage() {
                   onChange={(e) =>
                     setAddStaffModal((prev) => (prev ? { ...prev, fullName: e.target.value } : prev))
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2522,7 +2498,7 @@ export default function StorePage() {
                   onChange={(e) =>
                     setAddStaffModal((prev) => (prev ? { ...prev, salary: e.target.value } : prev))
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
             </div>
@@ -2532,7 +2508,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setAddStaffModal(null)}
                 disabled={staffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -2540,7 +2516,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleAddStaff}
                 disabled={staffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {staffSaving ? 'Сохранение...' : 'Добавить'}
               </button>
@@ -2570,7 +2546,7 @@ export default function StorePage() {
                       prev ? { ...prev, bankTransfer: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2585,7 +2561,7 @@ export default function StorePage() {
                       prev ? { ...prev, cashbox1: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2600,7 +2576,7 @@ export default function StorePage() {
                       prev ? { ...prev, cashbox2: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
             </div>
@@ -2610,7 +2586,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setPayStaffSalaryModal(null)}
                 disabled={payStaffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -2618,7 +2594,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handlePayStaffSalary}
                 disabled={payStaffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {payStaffSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -2646,7 +2622,7 @@ export default function StorePage() {
                       prev ? { ...prev, name: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2661,7 +2637,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
             </div>
@@ -2671,7 +2647,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setCreateHouseholdModal(null)}
                 disabled={householdSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -2679,7 +2655,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleCreateHouseholdExpense}
                 disabled={householdSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {householdSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -2704,7 +2680,7 @@ export default function StorePage() {
                       prev ? { ...prev, name: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2719,7 +2695,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2750,7 +2726,7 @@ export default function StorePage() {
                       };
                     });
                   }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 >
                   <option value="UNPAID">Не оплачено</option>
                   <option value="PAID">Оплачено</option>
@@ -2775,7 +2751,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -2792,7 +2768,7 @@ export default function StorePage() {
                           prev ? { ...prev, cashbox1Paid: Number(e.target.value || 0) } : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -2809,7 +2785,7 @@ export default function StorePage() {
                           prev ? { ...prev, cashbox2Paid: Number(e.target.value || 0) } : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                 </div>
@@ -2821,7 +2797,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setEditHouseholdModal(null)}
                 disabled={householdSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -2829,7 +2805,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleSaveEditedHouseholdExpense}
                 disabled={householdSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {householdSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -2857,7 +2833,7 @@ export default function StorePage() {
                       prev ? { ...prev, note: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2872,7 +2848,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
             </div>
@@ -2882,7 +2858,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setCreateOtherExpenseModal(null)}
                 disabled={otherExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -2890,7 +2866,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleCreateOtherExpense}
                 disabled={otherExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -2915,7 +2891,7 @@ export default function StorePage() {
                       prev ? { ...prev, note: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2930,7 +2906,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -2961,7 +2937,7 @@ export default function StorePage() {
                       };
                     });
                   }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 >
                   <option value="UNPAID">Не оплачено</option>
                   <option value="PAID">Оплачено</option>
@@ -2986,7 +2962,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3005,7 +2981,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3024,7 +3000,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                 </div>
@@ -3036,7 +3012,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setEditOtherExpenseModal(null)}
                 disabled={otherExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -3044,7 +3020,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleSaveEditedOtherExpense}
                 disabled={otherExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -3076,7 +3052,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
             </div>
@@ -3086,7 +3062,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setCreateAdminExpenseModal(null)}
                 disabled={adminExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -3094,7 +3070,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleCreateAdminExpense}
                 disabled={adminExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -3121,7 +3097,7 @@ export default function StorePage() {
                       prev ? { ...prev, note: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -3136,7 +3112,7 @@ export default function StorePage() {
                       prev ? { ...prev, amount: e.target.value } : prev,
                     )
                   }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 />
               </div>
               <div>
@@ -3165,7 +3141,7 @@ export default function StorePage() {
                       };
                     });
                   }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 >
                   <option value="UNPAID">Не оплачено</option>
                   <option value="PAID">Оплачено</option>
@@ -3190,7 +3166,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3209,7 +3185,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3228,7 +3204,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                 </div>
@@ -3240,7 +3216,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setEditAdminExpenseModal(null)}
                 disabled={adminExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -3248,7 +3224,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleSaveEditedAdminExpense}
                 disabled={adminExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -3284,7 +3260,7 @@ export default function StorePage() {
                     prev ? { ...prev, salary: e.target.value } : prev,
                   )
                 }
-                className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
               />
 
               <div>
@@ -3320,7 +3296,7 @@ export default function StorePage() {
                       };
                     });
                   }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                 >
                   <option value="UNPAID">Не оплачено</option>
                   <option value="PAID">Оплачено</option>
@@ -3348,7 +3324,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3370,7 +3346,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                   <div>
@@ -3392,7 +3368,7 @@ export default function StorePage() {
                             : prev,
                         )
                       }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
                     />
                   </div>
                 </div>
@@ -3404,7 +3380,7 @@ export default function StorePage() {
                 type="button"
                 onClick={() => setEditStaffSalaryModal(null)}
                 disabled={staffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
               >
                 Отмена
               </button>
@@ -3412,7 +3388,7 @@ export default function StorePage() {
                 type="button"
                 onClick={handleSaveEditedStaffSalary}
                 disabled={staffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
               >
                 {staffSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
@@ -3432,4 +3408,3 @@ export default function StorePage() {
     </div>
   );
 }
-
