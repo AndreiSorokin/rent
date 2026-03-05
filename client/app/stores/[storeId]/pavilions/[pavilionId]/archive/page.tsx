@@ -397,34 +397,34 @@ export default function PavilionArchivePage() {
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div className="space-y-2">
           <Link
             href={`/stores/${storeId}/pavilions/${pavilionId}`}
-            className="inline-block text-blue-600 hover:underline"
+            className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
           >
             Назад к павильону
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">
             Бухгалтерский архив: павильон {pavilion.number}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[#6b6b6b]">
             Платежи прошлых месяцев. Доступно редактирование и удаление с автоматическим
             пересчетом.
           </p>
         </div>
 
         {months.length === 0 ? (
-          <div className="rounded-xl bg-white p-6 shadow">
-            <p className="text-gray-600">Архивных платежей пока нет.</p>
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+            <p className="text-[#6b6b6b]">Архивных платежей пока нет.</p>
           </div>
         ) : (
           months.map((month) => (
-            <div key={month.key} className="rounded-xl bg-white p-6 shadow">
+            <div key={month.key} className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
               <h2 className="mb-4 text-xl font-semibold capitalize">{month.label}</h2>
 
-              <div className="mb-5 grid grid-cols-1 gap-2 rounded-lg bg-gray-50 p-3 text-sm md:grid-cols-2">
+              <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3 text-sm md:grid-cols-2">
                 <div>Аренда: {formatMoney(month.totals.rent, currency)}</div>
                 <div>Коммунальные: {formatMoney(month.totals.utilities, currency)}</div>
                 <div>Реклама: {formatMoney(month.totals.advertising, currency)}</div>
@@ -442,8 +442,8 @@ export default function PavilionArchivePage() {
                     <p className="text-sm text-gray-500">Нет записей за этот месяц</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-[#ece4dd]">
+                        <thead className="bg-[#f4efeb]">
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
@@ -457,7 +457,7 @@ export default function PavilionArchivePage() {
                             )}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-[#ece4dd] bg-white">
                           {month.rentPayments.map((item) => {
                             const isEditing = editingRentId === item.id;
                             return (
@@ -475,7 +475,7 @@ export default function PavilionArchivePage() {
                                       onChange={(e) =>
                                         setRentDraft((prev) => ({ ...prev, rent: e.target.value }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.rent, currency)
@@ -491,7 +491,7 @@ export default function PavilionArchivePage() {
                                       onChange={(e) =>
                                         setRentDraft((prev) => ({ ...prev, utilities: e.target.value }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.utilities, currency)
@@ -507,7 +507,7 @@ export default function PavilionArchivePage() {
                                       onChange={(e) =>
                                         setRentDraft((prev) => ({ ...prev, advertising: e.target.value }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.advertising, currency)
@@ -523,13 +523,13 @@ export default function PavilionArchivePage() {
                                         <button
                                           onClick={saveRentEdit}
                                           disabled={busyKey === `rent-save-${item.id}`}
-                                          className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-60"
+                                          className="rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-1 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20 disabled:opacity-60"
                                         >
                                           Сохранить
                                         </button>
                                         <button
                                           onClick={cancelRentEdit}
-                                          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+                                          className="rounded-lg border border-[#d8d1cb] px-2 py-1 text-xs font-medium text-[#111111] transition hover:bg-[#f8f4ef]"
                                         >
                                           Отмена
                                         </button>
@@ -539,7 +539,7 @@ export default function PavilionArchivePage() {
                                         {canEditRentPayments && (
                                           <button
                                             onClick={() => startRentEdit(item)}
-                                            className="text-blue-600 hover:underline"
+                                            className="text-[#ff6a13] hover:underline"
                                           >
                                             Изменить
                                           </button>
@@ -548,7 +548,7 @@ export default function PavilionArchivePage() {
                                           <button
                                             onClick={() => removeRentEntry(item.id)}
                                             disabled={busyKey === `rent-del-${item.id}`}
-                                            className="text-red-600 hover:underline disabled:opacity-60"
+                                            className="text-[#b91c1c] hover:underline disabled:opacity-60"
                                           >
                                             Удалить
                                           </button>
@@ -572,8 +572,8 @@ export default function PavilionArchivePage() {
                     <p className="text-sm text-gray-500">Нет записей за этот месяц</p>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-[#ece4dd]">
+                        <thead className="bg-[#f4efeb]">
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Начисление</th>
@@ -586,7 +586,7 @@ export default function PavilionArchivePage() {
                             )}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-[#ece4dd] bg-white">
                           {month.additionalPayments.map((item) => {
                             const isEditing = editingAdditionalId === item.id;
                             return (
@@ -608,7 +608,7 @@ export default function PavilionArchivePage() {
                                           amount: e.target.value,
                                         }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.amount, currency)
@@ -627,7 +627,7 @@ export default function PavilionArchivePage() {
                                           bankTransfer: e.target.value,
                                         }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.bankTransfer, currency)
@@ -646,7 +646,7 @@ export default function PavilionArchivePage() {
                                           cashbox1: e.target.value,
                                         }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.cashbox1, currency)
@@ -665,7 +665,7 @@ export default function PavilionArchivePage() {
                                           cashbox2: e.target.value,
                                         }))
                                       }
-                                      className="w-28 rounded border px-2 py-1"
+                                      className="w-28 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                                     />
                                   ) : (
                                     formatMoney(item.cashbox2, currency)
@@ -678,13 +678,13 @@ export default function PavilionArchivePage() {
                                         <button
                                           onClick={() => saveAdditionalEdit(item)}
                                           disabled={busyKey === `additional-save-${item.id}`}
-                                          className="rounded bg-green-600 px-2 py-1 text-xs text-white hover:bg-green-700 disabled:opacity-60"
+                                          className="rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-1 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20 disabled:opacity-60"
                                         >
                                           Сохранить
                                         </button>
                                         <button
                                           onClick={cancelAdditionalEdit}
-                                          className="rounded border px-2 py-1 text-xs hover:bg-gray-100"
+                                          className="rounded-lg border border-[#d8d1cb] px-2 py-1 text-xs font-medium text-[#111111] transition hover:bg-[#f8f4ef]"
                                         >
                                           Отмена
                                         </button>
@@ -694,7 +694,7 @@ export default function PavilionArchivePage() {
                                         {canEditAdditionalPayments && (
                                           <button
                                             onClick={() => startAdditionalEdit(item)}
-                                            className="text-blue-600 hover:underline"
+                                            className="text-[#ff6a13] hover:underline"
                                           >
                                             Изменить
                                           </button>
@@ -703,7 +703,7 @@ export default function PavilionArchivePage() {
                                           <button
                                             onClick={() => removeAdditionalPayment(item)}
                                             disabled={busyKey === `additional-del-${item.id}`}
-                                            className="text-red-600 hover:underline disabled:opacity-60"
+                                            className="text-[#b91c1c] hover:underline disabled:opacity-60"
                                           >
                                             Удалить
                                           </button>

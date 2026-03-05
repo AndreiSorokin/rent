@@ -409,11 +409,14 @@ export default function PavilionPage() {
   const prepaidAmount = pavilion.prepaymentAmount ?? null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <Link href={backToStoreHref} className="mb-2 inline-block text-blue-600 hover:underline">
+            <Link
+              href={backToStoreHref}
+              className="mb-2 inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
+            >
               Назад к объекту
             </Link>
             <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
@@ -422,14 +425,14 @@ export default function PavilionPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setEditingPavilion(pavilion)}
-              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              className="rounded-xl bg-[#111111] px-4 py-2 text-white hover:bg-[#2a2a2a]"
             >
               Редактировать
             </button>
             {hasPermission(permissions, 'VIEW_PAYMENTS') && (
               <Link
                 href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/archive`}
-                className="rounded bg-slate-700 px-4 py-2 text-white hover:bg-slate-800"
+                className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-[#111111] hover:bg-[#f4efeb]"
               >
                 Бухгалтерский архив
               </Link>
@@ -438,7 +441,7 @@ export default function PavilionPage() {
         )}
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <h2 className="mb-4 text-xl font-semibold">Основная информация</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
@@ -506,7 +509,7 @@ export default function PavilionPage() {
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 onClick={() => setShowPrepaymentModal(true)}
-                className="rounded bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700"
+                className="rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e85a0c]"
               >
                 {pavilion.status === 'PREPAID'
                   ? 'Изменить предоплату'
@@ -530,14 +533,14 @@ export default function PavilionPage() {
         </div>
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
-          <div className="rounded-xl bg-white p-6 shadow">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Платежи</h2>
             {hasPermission(permissions, 'CREATE_PAYMENTS') &&
               (pavilion.status === 'RENTED' || pavilion.status === 'PREPAID') && (
                 <button
                   onClick={() => setShowPaymentModal(true)}
-                  className="rounded bg-green-600 px-4 py-2 text-white"
+                  className="rounded-xl px-4 py-2 text-white bg-[#FF6A13]"
                 >
                   + Новый платеж
                 </button>
@@ -551,7 +554,7 @@ export default function PavilionPage() {
             <div className="space-y-6">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-[#f4efeb]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
@@ -657,7 +660,7 @@ export default function PavilionPage() {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-[#f4efeb]">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
@@ -720,7 +723,7 @@ export default function PavilionPage() {
         )}
 
         {hasPermission(permissions, 'VIEW_CONTRACTS') && (
-          <div className="rounded-xl bg-white p-6 shadow">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Договоры</h2>
               {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
@@ -742,7 +745,7 @@ export default function PavilionPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-[#f4efeb]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
@@ -787,13 +790,13 @@ export default function PavilionPage() {
         )}
 
         {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-          <div className="rounded-xl bg-white p-6 shadow">
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Скидки</h2>
             {hasPermission(permissions, 'EDIT_PAVILIONS') && (
               <button
                 onClick={() => setShowDiscountModal(true)}
-                className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+                className="rounded-xl bg-[#111111] px-4 py-2 text-sm text-white hover:bg-[#2a2a2a]"
               >
                 + Добавить скидку
               </button>
@@ -805,7 +808,7 @@ export default function PavilionPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-[#f4efeb]">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м²</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
@@ -854,13 +857,13 @@ export default function PavilionPage() {
           </div>
         )}
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <button
                 onClick={() => setShowAddAdditionalChargeModal(true)}
-                className="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                className="rounded-xl bg-[#111111] px-3 py-2 text-sm text-white hover:bg-[#2a2a2a]"
               >
                 + Новое начисление
               </button>
@@ -874,7 +877,7 @@ export default function PavilionPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-[#f4efeb]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
@@ -960,35 +963,37 @@ export default function PavilionPage() {
                               <span className="font-semibold text-amber-600">Не оплачено</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-right text-sm">
-                            {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
-                              <button
-                                onClick={() =>
-                                  setPayingCharge({
-                                    pavilionId: pavilionIdNum,
-                                    chargeId: charge.id,
-                                    name: charge.name,
-                                    amount: charge.amount - totalPaid,
-                                  })
-                                }
-                                className="mr-3 text-green-600 hover:underline"
-                              >
-                                Оплатить
-                              </button>
-                            )}
-                            {hasPermission(permissions, 'DELETE_CHARGES') && (
-                              <button
-                                onClick={() => handleDeleteCharge(charge.id)}
-                                className="text-red-600 hover:underline"
-                              >
-                                Удалить
-                              </button>
-                            )}
+                          <td className="px-6 py-4 text-sm">
+                            <div className="flex min-w-[120px] flex-col items-end gap-2">
+                              {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
+                                <button
+                                  onClick={() =>
+                                    setPayingCharge({
+                                      pavilionId: pavilionIdNum,
+                                      chargeId: charge.id,
+                                      name: charge.name,
+                                      amount: charge.amount - totalPaid,
+                                    })
+                                  }
+                                  className="inline-flex w-full justify-center rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20"
+                                >
+                                  Оплатить
+                                </button>
+                              )}
+                              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                                <button
+                                  onClick={() => handleDeleteCharge(charge.id)}
+                                  className="inline-flex w-full justify-center rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
+                                >
+                                  Удалить
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
 
                         {isExpanded && (
-                          <tr className="bg-gray-50">
+                          <tr className="bg-[#f4efeb]">
                             <td colSpan={10} className="px-6 py-3 text-sm text-gray-700">
                               {currentMonthChargePayments.length ? (
                                 <div className="space-y-2">
@@ -1057,21 +1062,21 @@ export default function PavilionPage() {
         )}
 
         {showPrepaymentModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-lg bg-white p-6">
-              <h2 className="mb-4 text-xl font-bold">Установить предоплату</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+              <h2 className="mb-5 text-xl font-extrabold text-[#111111]">Установить предоплату</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Месяц предоплаты</label>
+                  <label className="mb-1 block text-sm font-semibold text-[#111111]">Месяц предоплаты</label>
                   <input
                     type="month"
                     value={prepaymentMonth}
                     onChange={(e) => setPrepaymentMonth(e.target.value)}
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="mb-1 block text-sm font-semibold text-[#111111]">
                     Сумма предоплаты (если пусто - полная аренда)
                   </label>
                   <input
@@ -1079,12 +1084,12 @@ export default function PavilionPage() {
                     step="0.01"
                     value={prepaymentAmount}
                     onChange={(e) => setPrepaymentAmount(e.target.value)}
-                    className="w-full rounded border px-3 py-2"
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
                     placeholder={(pavilion.squareMeters * pavilion.pricePerSqM).toFixed(2)}
                   />
                 </div>
-                <div className="rounded border p-3">
-                  <p className="mb-2 text-sm font-medium">Каналы оплаты предоплаты</p>
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">Каналы оплаты предоплаты</p>
                   <div className="space-y-2">
                     <input
                       type="number"
@@ -1092,7 +1097,7 @@ export default function PavilionPage() {
                       min="0"
                       value={prepaymentBankTransferPaid}
                       onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
-                      className="w-full rounded border px-3 py-2"
+                      className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Безналичные"
                     />
                     <input
@@ -1101,7 +1106,7 @@ export default function PavilionPage() {
                       min="0"
                       value={prepaymentCashbox1Paid}
                       onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
-                      className="w-full rounded border px-3 py-2"
+                      className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Наличные - касса 1"
                     />
                     <input
@@ -1110,7 +1115,7 @@ export default function PavilionPage() {
                       min="0"
                       value={prepaymentCashbox2Paid}
                       onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
-                      className="w-full rounded border px-3 py-2"
+                      className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Наличные - касса 2"
                     />
                   </div>
@@ -1119,13 +1124,13 @@ export default function PavilionPage() {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setShowPrepaymentModal(false)}
-                  className="rounded border px-4 py-2 hover:bg-gray-100"
+                  className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
                 >
                   Отмена
                 </button>
                 <button
                   onClick={handleSetPrepayment}
-                  className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700"
+                  className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]"
                 >
                   Сохранить
                 </button>

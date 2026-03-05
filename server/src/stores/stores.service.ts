@@ -1326,8 +1326,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
     const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
 
-    if (bankTransferPaid < 0 || cashbox1Paid < 0 || cashbox2Paid < 0) {
-      throw new BadRequestException('Amounts must be non-negative');
+    if (
+      Number.isNaN(bankTransferPaid) ||
+      Number.isNaN(cashbox1Paid) ||
+      Number.isNaN(cashbox2Paid)
+    ) {
+      throw new BadRequestException('Amounts must be valid numbers');
     }
 
     return { bankTransferPaid, cashbox1Paid, cashbox2Paid };

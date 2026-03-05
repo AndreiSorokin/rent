@@ -60,13 +60,11 @@ export function PayAdditionalChargeModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-96 max-w-[90vw] rounded-lg bg-white p-6">
-        <h2 className="mb-4 text-xl font-bold">Оплата доп. начисления</h2>
-        <p className="mb-2 font-medium">{chargeName}</p>
-        <p className="mb-4 text-sm text-gray-600">
-          Начислено: {expectedAmount.toFixed(2)}
-        </p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Оплата доп. начисления</h2>
+        <p className="mb-2 font-semibold text-[#111111]">{chargeName}</p>
+        <p className="mb-4 text-sm text-[#6b6b6b]">Начислено: {expectedAmount.toFixed(2)}</p>
 
         <input
           type="number"
@@ -75,56 +73,59 @@ export function PayAdditionalChargeModal({
           placeholder="Сумма оплаты"
           value={amountPaid}
           onChange={(e) => setAmountPaid(e.target.value)}
-          className="mb-6 w-full rounded border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="mb-6 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
         />
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium">Безналичные</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">Безналичные</label>
           <input
             type="number"
             step="0.01"
             min="0"
             value={bankTransferPaid}
             onChange={(e) => setBankTransferPaid(e.target.value)}
-            className="w-full rounded border p-2"
+            className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
             placeholder="0.00"
           />
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium">Наличные - касса 1</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">Наличные - касса 1</label>
           <input
             type="number"
             step="0.01"
             min="0"
             value={cashbox1Paid}
             onChange={(e) => setCashbox1Paid(e.target.value)}
-            className="w-full rounded border p-2"
+            className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
             placeholder="0.00"
           />
         </div>
 
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-medium">Наличные - касса 2</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">Наличные - касса 2</label>
           <input
             type="number"
             step="0.01"
             min="0"
             value={cashbox2Paid}
             onChange={(e) => setCashbox2Paid(e.target.value)}
-            className="w-full rounded border p-2"
+            className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
             placeholder="0.00"
           />
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="rounded border px-4 py-2 hover:bg-gray-100">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
+          >
             Отмена
           </button>
           <button
             onClick={handleSubmit}
             disabled={!amountPaid || Number(amountPaid) <= 0}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Записать платеж
           </button>

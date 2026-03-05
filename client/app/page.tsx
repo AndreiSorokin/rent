@@ -47,10 +47,10 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-12 pt-12 md:px-10 md:pt-16">
         <header className="mb-14 flex flex-col gap-5 md:mb-20 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">
-              Rent Manager
+            <p className="mb-2 text-lg font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">
+              Palaci
             </p>
-            <h1 className="max-w-4xl text-4xl font-extrabold leading-tight md:text-6xl">
+            <h1 className="max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
               Управление объектами и финансами без хаоса в таблицах
             </h1>
             <p className="mt-5 max-w-2xl text-base text-[#4B5563] md:text-lg">
@@ -139,7 +139,7 @@ export default function HomePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">
               Демо
             </p>
-            <h3 className="mt-2 text-3xl font-extrabold">Посмотреть интерфейс</h3>
+            <h3 className="mt-2 text-3xl font-extrabold">Попробуйте месяц бесплатно</h3>
             <p className="mt-2 text-[#4B5563]">
               Если у вас уже есть доступ, перейдите в панель и оцените работу
               модулей на реальных данных.
@@ -165,7 +165,7 @@ export default function HomePage() {
       <footer className="border-t border-[#D8D1CB] bg-[#F4EFEB]">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-3 md:px-10">
           <div>
-            <p className="text-lg font-extrabold">Rent Manager</p>
+            <p className="text-lg font-extrabold">Palaci</p>
             <p className="mt-2 text-sm text-[#6B6B6B]">
               Управление объектами, платежами и сверкой в одном рабочем контуре.
             </p>
@@ -191,9 +191,9 @@ export default function HomePage() {
               Документы
             </p>
             <div className="mt-3 flex flex-col gap-2 text-sm text-[#374151]">
-              <span>Политика конфиденциальности</span>
-              <span>Пользовательское соглашение</span>
-              <span>Поддержка: support@rentmanager.app</span>
+              {/* <span>Политика конфиденциальности</span> */}
+              {/* <span>Пользовательское соглашение</span> */}
+              {/* <span>Поддержка: support@rentmanager.app</span> */}
             </div>
           </div>
         </div>

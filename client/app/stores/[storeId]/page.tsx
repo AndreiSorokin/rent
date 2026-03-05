@@ -838,18 +838,6 @@ export default function StorePage() {
     }
   };
 
-  const handleDeleteHouseholdExpense = async (expenseId: number) => {
-    if (!confirm('Удалить этот расход?')) return;
-
-    try {
-      await deleteHouseholdExpense(storeId, expenseId);
-      await fetchData(false);
-    } catch (err) {
-      console.error(err);
-      alert('Не удалось удалить расход');
-    }
-  };
-
   const handleCreateHouseholdExpense = async () => {
     if (!createHouseholdModal) return;
     const name = createHouseholdModal.name.trim();
@@ -1155,6 +1143,40 @@ export default function StorePage() {
     }
   };
 
+  const handleDeleteHouseholdExpenseFromEditModal = async () => {
+    if (!editHouseholdModal) return;
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      setHouseholdSaving(true);
+      await deleteHouseholdExpense(storeId, editHouseholdModal.id);
+      setEditHouseholdModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    } finally {
+      setHouseholdSaving(false);
+    }
+  };
+
+  const handleDeleteOtherExpenseFromEditModal = async () => {
+    if (!editOtherExpenseModal) return;
+    if (!confirm('Удалить этот расход?')) return;
+
+    try {
+      setOtherExpenseSaving(true);
+      await deletePavilionExpense(storeId, editOtherExpenseModal.id);
+      setEditOtherExpenseModal(null);
+      await fetchData(false);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось удалить расход');
+    } finally {
+      setOtherExpenseSaving(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
@@ -1188,6 +1210,11 @@ export default function StorePage() {
     {} as Record<CardExpenseType, any[]>,
   );
   const otherExpenses = storeExpenses.filter((item: any) => item.type === 'OTHER');
+  const otherExpensesSorted = [...otherExpenses].sort(
+    (a: any, b: any) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+  );
+  const recentOtherExpenses = otherExpensesSorted.slice(0, 5);
   const householdExpensesTotal = householdExpenses.reduce(
     (sum, expense) => sum + Number(expense.amount ?? 0),
     0,
@@ -1620,7 +1647,7 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Все категории</option>
+                <option value="">Категория</option>
                 {allCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -1635,7 +1662,7 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Все статусы</option>
+                <option value="">Статус</option>
                 <option value="AVAILABLE">СВОБОДЕН</option>
                 <option value="RENTED">ЗАНЯТ</option>
                 <option value="PREPAID">ПРЕДОПЛАТА</option>
@@ -1648,7 +1675,7 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Все группы</option>
+                <option value="">Группы</option>
                 {(store.pavilionGroups || []).map((group: any) => (
                   <option key={group.id} value={group.id}>
                     {group.name}
@@ -1667,7 +1694,7 @@ export default function StorePage() {
                 }
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">все</option>
+                <option value="">Оплата</option>
                 <option value="PAID">Оплачено</option>
                 <option value="PARTIAL">Частично оплачено</option>
                 <option value="UNPAID">Не оплачено</option>
@@ -1984,14 +2011,6 @@ export default function StorePage() {
                             Оплатить/Изменить
                           </button>
                         )}
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button
-                            onClick={() => handleDeleteHouseholdExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                          >
-                            Удалить
-                          </button>
-                        )}
                       </div>
                     </div>
                   </article>
@@ -2007,7 +2026,15 @@ export default function StorePage() {
             data-store-section
             className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
           >
-            <h2 className="mb-3 text-xl font-semibold text-slate-900 md:text-2xl">Прочие расходы</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold text-slate-900 md:text-2xl">Прочие расходы</h2>
+              <Link
+                href={`/stores/${storeId}/other-expenses`}
+                className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
+              >
+                Все прочие расходы
+              </Link>
+            </div>
 
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5">
@@ -2024,13 +2051,14 @@ export default function StorePage() {
               <p className="text-slate-600">Расходов пока нет</p>
             ) : (
               <div className="space-y-2">
+                <p className="text-xs text-[#6b6b6b]">Показаны последние 5 записей за текущий месяц</p>
                 <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1fr)_minmax(220px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
                   <div className="text-center">Название и статус</div>
                   <div className="text-center">Каналы оплаты</div>
                   <div className="text-center">Сумма</div>
                   <div className="text-center">Действия</div>
                 </div>
-                {otherExpenses.map((expense: any) => (
+                {recentOtherExpenses.map((expense: any) => (
                   <article
                     key={expense.id}
                     className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5"
@@ -2101,14 +2129,6 @@ export default function StorePage() {
                             className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                           >
                             Оплатить/Изменить
-                          </button>
-                        )}
-                        {hasPermission(permissions, 'DELETE_CHARGES') && (
-                          <button
-                            onClick={() => handleDeleteManualExpense(expense.id)}
-                            className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                          >
-                            Удалить
                           </button>
                         )}
                       </div>
@@ -2816,23 +2836,35 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditHouseholdModal(null)}
-                disabled={householdSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEditedHouseholdExpense}
-                disabled={householdSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {householdSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+            <div className="mt-5 flex items-center justify-between gap-2">
+              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                <button
+                  type="button"
+                  onClick={handleDeleteHouseholdExpenseFromEditModal}
+                  disabled={householdSaving}
+                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Удалить
+                </button>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditHouseholdModal(null)}
+                  disabled={householdSaving}
+                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedHouseholdExpense}
+                  disabled={householdSaving}
+                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {householdSaving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -3031,23 +3063,35 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditOtherExpenseModal(null)}
-                disabled={otherExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEditedOtherExpense}
-                disabled={otherExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+            <div className="mt-5 flex items-center justify-between gap-2">
+              {hasPermission(permissions, 'DELETE_CHARGES') && (
+                <button
+                  type="button"
+                  onClick={handleDeleteOtherExpenseFromEditModal}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Удалить
+                </button>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditOtherExpenseModal(null)}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEditedOtherExpense}
+                  disabled={otherExpenseSaving}
+                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

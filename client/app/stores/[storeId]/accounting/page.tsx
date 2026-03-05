@@ -21,6 +21,7 @@ export default function StoreAccountingPage() {
     new Date().toISOString().slice(0, 10),
   );
   const [dayReconciliation, setDayReconciliation] = useState<any>(null);
+  const [expectedCloseDetails, setExpectedCloseDetails] = useState<any>(null);
   const [dayOpenBank, setDayOpenBank] = useState('');
   const [dayOpenCash1, setDayOpenCash1] = useState('');
   const [dayOpenCash2, setDayOpenCash2] = useState('');
@@ -41,17 +42,21 @@ export default function StoreAccountingPage() {
       }
 
 
-      const [analyticsData, accountingData, reconciliationData] = await Promise.all([
+      const [analyticsData, accountingData, reconciliationData, expectedCloseData] = await Promise.all([
         apiFetch<any>(`/stores/${storeId}/analytics`),
         apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
         apiFetch<any>(
           `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
+        ),
+        apiFetch<any>(
+          `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(accountingDate)}`,
         ),
       ]);
       setStore(storeData);
       setAnalytics(analyticsData);
       setAccountingRows(accountingData || []);
       setDayReconciliation(reconciliationData);
+      setExpectedCloseDetails(expectedCloseData);
       setError(null);
     } catch (err) {
       console.error(err);
@@ -69,10 +74,18 @@ export default function StoreAccountingPage() {
   useEffect(() => {
     if (!storeId || !store) return;
     if (!hasPermission(store.permissions || [], 'VIEW_PAYMENTS')) return;
-    void apiFetch<any>(
-      `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
-    )
-      .then((data) => setDayReconciliation(data))
+    void Promise.all([
+      apiFetch<any>(
+        `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
+      ),
+      apiFetch<any>(
+        `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(accountingDate)}`,
+      ),
+    ])
+      .then(([reconciliation, expectedCloseData]) => {
+        setDayReconciliation(reconciliation);
+        setExpectedCloseDetails(expectedCloseData);
+      })
       .catch((err) => console.error(err));
   }, [storeId, accountingDate, store]);
 
@@ -93,8 +106,8 @@ export default function StoreAccountingPage() {
     const bank = dayOpenBank ? Number(dayOpenBank) : 0;
     const cash1 = dayOpenCash1 ? Number(dayOpenCash1) : 0;
     const cash2 = dayOpenCash2 ? Number(dayOpenCash2) : 0;
-    if (bank < 0 || cash1 < 0 || cash2 < 0) {
-      alert('Суммы не могут быть отрицательными');
+    if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
+      alert('Введите корректные суммы');
       return;
     }
 
@@ -123,8 +136,8 @@ export default function StoreAccountingPage() {
     const bank = dayCloseBank ? Number(dayCloseBank) : 0;
     const cash1 = dayCloseCash1 ? Number(dayCloseCash1) : 0;
     const cash2 = dayCloseCash2 ? Number(dayCloseCash2) : 0;
-    if (bank < 0 || cash1 < 0 || cash2 < 0) {
-      alert('Суммы не могут быть отрицательными');
+    if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
+      alert('Введите корректные суммы');
       return;
     }
 
@@ -186,14 +199,7 @@ export default function StoreAccountingPage() {
       .sort((a, b) => new Date(b.dayKey).getTime() - new Date(a.dayKey).getTime());
   }, [accountingRows]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
-
-  const permissions = store.permissions || [];
-  if (!hasPermission(permissions, 'VIEW_PAYMENTS')) {
-    return <div className="p-6 text-center text-red-600">Нет доступа</div>;
-  }
+  const permissions = store?.permissions || [];
   const difference = dayReconciliation?.difference ?? null;
   const hasDifference =
     difference &&
@@ -202,21 +208,70 @@ export default function StoreAccountingPage() {
       Math.abs(Number(difference.cashbox2Paid ?? 0)) > 0.01 ||
       Math.abs(Number(difference.total ?? 0)) > 0.01);
 
+  const dayIncomeByChannels = useMemo(() => {
+    const sources = expectedCloseDetails?.actual?.sources;
+    if (!sources) {
+      return { bankTransferPaid: 0, cashbox1Paid: 0, cashbox2Paid: 0, total: 0 };
+    }
+    const bankTransferPaid =
+      Number(sources?.pavilionPayments?.bankTransferPaid ?? 0) +
+      Number(sources?.additionalCharges?.bankTransferPaid ?? 0) +
+      Number(sources?.storeExtraIncome?.bankTransferPaid ?? 0);
+    const cashbox1Paid =
+      Number(sources?.pavilionPayments?.cashbox1Paid ?? 0) +
+      Number(sources?.additionalCharges?.cashbox1Paid ?? 0) +
+      Number(sources?.storeExtraIncome?.cashbox1Paid ?? 0);
+    const cashbox2Paid =
+      Number(sources?.pavilionPayments?.cashbox2Paid ?? 0) +
+      Number(sources?.additionalCharges?.cashbox2Paid ?? 0) +
+      Number(sources?.storeExtraIncome?.cashbox2Paid ?? 0);
+
+    return {
+      bankTransferPaid,
+      cashbox1Paid,
+      cashbox2Paid,
+      total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+    };
+  }, [expectedCloseDetails]);
+
+  const dayExpenseByChannels = useMemo(() => {
+    const expenses = expectedCloseDetails?.actual?.sources?.expenses;
+    const bankTransferPaid = Number(expenses?.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(expenses?.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(expenses?.cashbox2Paid ?? 0);
+    return {
+      bankTransferPaid,
+      cashbox1Paid,
+      cashbox2Paid,
+      total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+    };
+  }, [expectedCloseDetails]);
+
+  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
+  if (!hasPermission(permissions, 'VIEW_PAYMENTS')) {
+    return <div className="p-6 text-center text-red-600">Нет доступа</div>;
+  }
+
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-7xl p-4 md:p-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link href={`/stores/${storeId}`} className="text-blue-600 hover:underline">
+            <Link
+              href={`/stores/${storeId}`}
+              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
+            >
               Назад к объекту
             </Link>
-            <h1 className="mt-1 text-2xl font-bold md:text-3xl">Бух. таблица</h1>
+            <h1 className="mt-1 text-2xl font-bold md:text-3xl">Открытие/закрытие дня</h1>
           </div>
         </div>
 
         {analytics && (
-          <div className="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm text-[#111111]">
             Остаток с предыдущего месяца:{' '}
             <span className="font-semibold">
               {formatMoney(
@@ -227,141 +282,202 @@ export default function StoreAccountingPage() {
           </div>
         )}
 
-        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mb-5 rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold text-slate-900">Сверка по дням</h3>
+            <h3 className="text-base font-semibold text-[#111111]">Сверка по дням</h3>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-600">Дата:</span>
+              <span className="text-xs text-[#6b6b6b]">Дата:</span>
               <input
                 type="date"
                 value={accountingDate}
                 onChange={(e) => setAccountingDate(e.target.value)}
-                className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 text-xs text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               />
             </div>
           </div>
 
           {dayReconciliation ? (
-            <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
-              <div className="rounded-lg bg-white p-3">
-                <div className="text-xs text-gray-500">Открытие дня</div>
-                <div className="font-medium">
-                  {dayReconciliation.opening
-                    ? formatMoney(dayReconciliation.opening.total ?? 0, store.currency)
-                    : 'День не открыт'}
+            <div className="grid grid-cols-1 gap-2 text-sm lg:grid-cols-2">
+              <div className="space-y-2">
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <div className="text-xs text-[#6b6b6b]">Открытие дня</div>
+                  <div className="font-medium">
+                    {dayReconciliation.opening
+                      ? formatMoney(dayReconciliation.opening.total ?? 0, store.currency)
+                      : 'День не открыт'}
+                  </div>
+                  {dayReconciliation.opening && (
+                    <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                      <div>Безналичные: {formatMoney(dayReconciliation.opening.bankTransferPaid ?? 0, store.currency)}</div>
+                      <div>Наличные касса 1: {formatMoney(dayReconciliation.opening.cashbox1Paid ?? 0, store.currency)}</div>
+                      <div>Наличные касса 2: {formatMoney(dayReconciliation.opening.cashbox2Paid ?? 0, store.currency)}</div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="rounded-lg bg-white p-3">
-                <div className="text-xs text-gray-500">Операции за день (факт)</div>
-                <div className="font-medium">
-                  {formatMoney(dayReconciliation.actual?.total ?? 0, store.currency)}
+
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <div className="text-xs text-[#6b6b6b]">Фактическое закрытие</div>
+                  <div className="font-medium">
+                    {dayReconciliation.closing
+                      ? formatMoney(dayReconciliation.closing.total ?? 0, store.currency)
+                      : '-'}
+                  </div>
+                  {dayReconciliation.closing && (
+                    <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                      <div>Безналичные: {formatMoney(dayReconciliation.closing.bankTransferPaid ?? 0, store.currency)}</div>
+                      <div>Наличные касса 1: {formatMoney(dayReconciliation.closing.cashbox1Paid ?? 0, store.currency)}</div>
+                      <div>Наличные касса 2: {formatMoney(dayReconciliation.closing.cashbox2Paid ?? 0, store.currency)}</div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="rounded-lg bg-white p-3">
-                <div className="text-xs text-gray-500">Ожидаемое закрытие</div>
-                <div className="font-medium">
-                  {dayReconciliation.expectedClose ? (
-                    <Link
-                      href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
-                      className="text-blue-700 hover:underline"
-                    >
-                      {formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)}
-                    </Link>
-                  ) : (
-                    '-'
+
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <div className="text-xs text-[#6b6b6b]">Ожидаемое закрытие</div>
+                  <div className="font-medium">
+                    {dayReconciliation.expectedClose ? (
+                      <Link
+                        href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
+                        className="text-[#ff6a13] hover:underline"
+                      >
+                        {formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)}
+                      </Link>
+                    ) : (
+                      '-'
+                    )}
+                  </div>
+                  {dayReconciliation.expectedClose && (
+                    <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                      <div>
+                        Безналичные:{' '}
+                        {formatMoney(
+                          dayReconciliation.expectedClose.bankTransferPaid ?? 0,
+                          store.currency,
+                        )}
+                      </div>
+                      <div>
+                        Наличные касса 1:{' '}
+                        {formatMoney(
+                          dayReconciliation.expectedClose.cashbox1Paid ?? 0,
+                          store.currency,
+                        )}
+                      </div>
+                      <div>
+                        Наличные касса 2:{' '}
+                        {formatMoney(
+                          dayReconciliation.expectedClose.cashbox2Paid ?? 0,
+                          store.currency,
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
-              <div className="rounded-lg bg-white p-3">
-                <div className="text-xs text-gray-500">Фактическое закрытие</div>
-                <div className="font-medium">
-                  {dayReconciliation.closing
-                    ? formatMoney(dayReconciliation.closing.total ?? 0, store.currency)
-                    : '-'}
-                </div>
-              </div>
-              <div
-                className={`rounded-lg p-3 md:col-span-2 ${
-                  hasDifference
-                    ? 'border border-red-200 bg-red-50'
-                    : 'border border-emerald-200 bg-emerald-50'
-                }`}
-              >
-                <div className="mb-2 text-xs text-gray-500">Схождение при закрытии</div>
-                {dayReconciliation.isClosed && difference ? (
-                  <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
-                    <div>
-                      <div className="text-xs text-gray-500">Безналичные</div>
-                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
-                        {formatMoney(Number(difference.bankTransferPaid ?? 0), store.currency)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Наличные касса 1</div>
-                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
-                        {formatMoney(Number(difference.cashbox1Paid ?? 0), store.currency)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Наличные касса 2</div>
-                      <div className={hasDifference ? "font-semibold text-red-700" : "font-semibold text-emerald-700"}>
-                        {formatMoney(Number(difference.cashbox2Paid ?? 0), store.currency)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500">Итого</div>
-                      <div className={hasDifference ? "font-bold text-red-700" : "font-bold text-emerald-700"}>
-                        {formatMoney(Number(difference.total ?? 0), store.currency)}
-                      </div>
-                    </div>
+
+              <div className="space-y-2">
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <div className="text-xs text-[#6b6b6b]">Приход за день</div>
+                  <div className="font-medium">
+                    {formatMoney(dayIncomeByChannels.total ?? 0, store.currency)}
                   </div>
-                ) : (
-                  <div className="text-sm text-gray-500">Появится после закрытия дня</div>
-                )}
+                  <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                    <div>Безналичные: {formatMoney(dayIncomeByChannels.bankTransferPaid ?? 0, store.currency)}</div>
+                    <div>Наличные касса 1: {formatMoney(dayIncomeByChannels.cashbox1Paid ?? 0, store.currency)}</div>
+                    <div>Наличные касса 2: {formatMoney(dayIncomeByChannels.cashbox2Paid ?? 0, store.currency)}</div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <div className="text-xs text-[#6b6b6b]">Расход за день</div>
+                  <div className="font-medium">
+                    {formatMoney(dayExpenseByChannels.total ?? 0, store.currency)}
+                  </div>
+                  <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                    <div>Безналичные: {formatMoney(dayExpenseByChannels.bankTransferPaid ?? 0, store.currency)}</div>
+                    <div>Наличные касса 1: {formatMoney(dayExpenseByChannels.cashbox1Paid ?? 0, store.currency)}</div>
+                    <div>Наличные касса 2: {formatMoney(dayExpenseByChannels.cashbox2Paid ?? 0, store.currency)}</div>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-xl p-3 ${
+                    hasDifference
+                      ? 'border border-[#ef4444]/30 bg-[#ef4444]/10'
+                      : 'border border-[#22c55e]/30 bg-[#22c55e]/10'
+                  }`}
+                >
+                  <div className="mb-2 text-xs text-[#6b6b6b]">Схождение при закрытии</div>
+                  {dayReconciliation.isClosed && difference ? (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-[#6b6b6b]">Безналичные</span>
+                        <span className={hasDifference ? 'font-semibold text-red-700' : 'font-semibold text-emerald-700'}>
+                          {formatMoney(Number(difference.bankTransferPaid ?? 0), store.currency)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-[#6b6b6b]">Наличные касса 1</span>
+                        <span className={hasDifference ? 'font-semibold text-red-700' : 'font-semibold text-emerald-700'}>
+                          {formatMoney(Number(difference.cashbox1Paid ?? 0), store.currency)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-[#6b6b6b]">Наличные касса 2</span>
+                        <span className={hasDifference ? 'font-semibold text-red-700' : 'font-semibold text-emerald-700'}>
+                          {formatMoney(Number(difference.cashbox2Paid ?? 0), store.currency)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2 border-t border-[#d8d1cb] pt-1">
+                        <span className="text-xs text-[#6b6b6b]">Итого</span>
+                        <span className={hasDifference ? 'font-bold text-red-700' : 'font-bold text-emerald-700'}>
+                          {formatMoney(Number(difference.total ?? 0), store.currency)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-[#6b6b6b]">Появится после закрытия дня</div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-600">Загрузка сверки...</p>
+            <p className="text-sm text-[#6b6b6b]">Загрузка сверки...</p>
           )}
 
           {hasPermission(permissions, 'CREATE_PAYMENTS') && dayReconciliation && (
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
               {!dayReconciliation.isOpened && (
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="mb-2 text-sm font-medium text-slate-800">Открыть день</p>
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">Открыть день</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayOpenBank}
                       onChange={(e) => setDayOpenBank(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Безналичные"
                     />
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayOpenCash1}
                       onChange={(e) => setDayOpenCash1(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Касса 1"
                     />
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayOpenCash2}
                       onChange={(e) => setDayOpenCash2(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Касса 2"
                     />
                   </div>
                   <button
                     onClick={handleOpenDay}
                     disabled={dayActionSaving}
-                    className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700 disabled:opacity-60"
+                    className="mt-3 rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-60"
                   >
                     Открыть день
                   </button>
@@ -369,41 +485,38 @@ export default function StoreAccountingPage() {
               )}
 
               {dayReconciliation.isOpened && !dayReconciliation.isClosed && (
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="mb-2 text-sm font-medium text-slate-800">Закрыть день</p>
+                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">Закрыть день</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayCloseBank}
                       onChange={(e) => setDayCloseBank(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Безналичные"
                     />
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayCloseCash1}
                       onChange={(e) => setDayCloseCash1(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Касса 1"
                     />
                     <input
                       type="number"
                       step="0.01"
-                      min="0"
                       value={dayCloseCash2}
                       onChange={(e) => setDayCloseCash2(e.target.value)}
-                      className="rounded-lg border border-gray-300 px-3 py-2"
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                       placeholder="Касса 2"
                     />
                   </div>
                   <button
                     onClick={handleCloseDay}
                     disabled={dayActionSaving}
-                    className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-60"
+                    className="mt-3 rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
                   >
                     Закрыть день
                   </button>
@@ -416,9 +529,9 @@ export default function StoreAccountingPage() {
         {accountingDays.length === 0 ? (
           <p className="text-gray-600">Записей пока нет</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+            <table className="min-w-full divide-y divide-[#ece4dd]">
+              <thead className="bg-[#f4efeb]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                     Дата
@@ -445,7 +558,7 @@ export default function StoreAccountingPage() {
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-[#ece4dd] bg-white">
                 {accountingDays.map((day: any) => (
                   <Fragment key={day.dayKey}>
                     {day.opening && (
@@ -477,7 +590,7 @@ export default function StoreAccountingPage() {
                           <td className="px-4 py-3 text-right text-sm">
                             <button
                               onClick={() => handleDeleteAccountingRecord(day.opening.id)}
-                              className="text-red-600 hover:underline"
+                              className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
                               Удалить
                             </button>
@@ -486,7 +599,7 @@ export default function StoreAccountingPage() {
                       </tr>
                     )}
                     {day.closing && (
-                      <tr className="bg-slate-50/40">
+                      <tr className="bg-[#f8f4ef]">
                         <td className="px-4 py-3 text-sm">
                           {new Date(day.dayKey).toLocaleDateString()}
                         </td>
@@ -514,7 +627,7 @@ export default function StoreAccountingPage() {
                           <td className="px-4 py-3 text-right text-sm">
                             <button
                               onClick={() => handleDeleteAccountingRecord(day.closing.id)}
-                              className="text-red-600 hover:underline"
+                              className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
                               Удалить
                             </button>

@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { AuthField } from '@/components/auth/AuthField';
+import { AuthMessage } from '@/components/auth/AuthMessage';
+import { AuthShell } from '@/components/auth/AuthShell';
 import { apiFetch } from '@/lib/api';
 
 function mapResetPasswordError(message: string) {
@@ -41,12 +44,9 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    const isStrongPassword =
-      /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
+    const isStrongPassword = /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(newPassword);
     if (!isStrongPassword) {
-      setError(
-        'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ',
-      );
+      setError('Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ');
       return;
     }
 
@@ -61,7 +61,6 @@ export default function ResetPasswordPage() {
       });
 
       localStorage.removeItem('token');
-      alert('Пароль обновлен. Выполните вход снова.');
       router.replace('/login');
     } catch (err: any) {
       setError(mapResetPasswordError(String(err?.message || '')));
@@ -71,58 +70,70 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow">
-        <div className="flex justify-between text-sm">
-          <Link href="/dashboard" className="text-blue-600 hover:underline">
-            Назад в личный кабинет
+    <AuthShell
+      title="Изменить пароль"
+      subtitle="Введите текущий и новый пароль"
+      sideTitle="Смена пароля"
+      sideDescription="После сохранения потребуется повторный вход в систему."
+      topActions={
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <Link
+            href="/dashboard"
+            className="inline-flex rounded-lg border border-[#d8d1cb] px-3 py-1.5 text-[#111111] hover:bg-[#f4efeb]"
+          >
+            Назад в кабинет
           </Link>
-          <Link href="/forgot-password" className="text-blue-600 hover:underline">
+          <Link href="/forgot-password" className="font-medium text-[#ff6a13] hover:underline">
             Забыли пароль?
           </Link>
         </div>
-
-        <h1 className="text-xl font-bold">Смена пароля</h1>
-
-        <input
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField
+          id="currentPassword"
           type="password"
-          className="w-full rounded border p-2"
-          placeholder="Текущий пароль"
+          required
+          label="Текущий пароль"
+          placeholder="Введите текущий пароль"
           value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
         />
 
-        <input
+        <AuthField
+          id="newPassword"
           type="password"
-          className="w-full rounded border p-2"
-          placeholder="Новый пароль"
+          required
+          label="Новый пароль"
+          placeholder="Введите новый пароль"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
         />
 
-        <input
+        <AuthField
+          id="confirmNewPassword"
           type="password"
-          className="w-full rounded border p-2"
+          required
+          label="Подтверждение пароля"
           placeholder="Повторите новый пароль"
           value={confirmNewPassword}
           onChange={(e) => setConfirmNewPassword(e.target.value)}
         />
 
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-[#6b6b6b]">
           Минимум 6 символов, буквы, цифры и специальный символ.
         </p>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error ? <AuthMessage>{error}</AuthMessage> : null}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving ? 'Сохранение...' : 'Обновить пароль'}
         </button>
       </form>
-    </div>
+    </AuthShell>
   );
 }
-

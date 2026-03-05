@@ -22,6 +22,11 @@ export function CreatePavilionPaymentModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const inputClass =
+    'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
+  const sectionCardClass = 'rounded-xl border border-[#d8d1cb] bg-white p-3';
+  const subLabelClass = 'mb-1 block text-xs font-medium text-[#6b6b6b]';
+
   const currentMonth = getCurrentMonthLocal();
   const [period, setPeriod] = useState(currentMonth);
   const [rentBankTransferPaid, setRentBankTransferPaid] = useState('');
@@ -149,25 +154,25 @@ export function CreatePavilionPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-xl">
-        <div className="border-b p-4 md:p-6">
-          <h2 className="text-xl font-bold">Записать платеж</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+        <div className="border-b border-[#e8e1da] p-4 md:p-6">
+          <h2 className="text-xl font-extrabold text-[#111111]">Записать платеж</h2>
         </div>
 
         <div className="max-h-[72vh] space-y-4 overflow-y-auto p-4 md:p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium">Период (месяц/год)</label>
+              <label className="mb-1 block text-sm font-semibold text-[#111111]">Период (месяц/год)</label>
               <input
                 type="month"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
                 min={currentMonth}
-                className="w-full rounded-lg border px-3 py-2"
+                className={inputClass}
               />
             </div>
-            <div className="rounded-lg border bg-gray-50 p-3 text-sm text-gray-600">
+            <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3 text-sm text-[#6b6b6b]">
               {loadingCurrent ? (
                 'Загрузка текущих платежей...'
               ) : (
@@ -182,42 +187,42 @@ export function CreatePavilionPaymentModal({
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-lg border p-3">
+            <div className={sectionCardClass}>
               <h3 className="mb-2 text-sm font-semibold">Аренда</h3>
               <div className="space-y-2">
                 <div>
-                  <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                  <label className={subLabelClass}>Безналичный</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={rentBankTransferPaid}
                     onChange={(e) => setRentBankTransferPaid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2"
+                    className={inputClass}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                  <label className={subLabelClass}>Наличные - касса 1</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={rentCashbox1Paid}
                     onChange={(e) => setRentCashbox1Paid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2"
+                    className={inputClass}
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                  <label className={subLabelClass}>Наличные - касса 2</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={rentCashbox2Paid}
                     onChange={(e) => setRentCashbox2Paid(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2"
+                    className={inputClass}
                     placeholder="0.00"
                   />
                 </div>
@@ -230,84 +235,84 @@ export function CreatePavilionPaymentModal({
               </div>
             ) : (
               <>
-                <div className="rounded-lg border p-3">
+                <div className={sectionCardClass}>
                   <h3 className="mb-2 text-sm font-semibold">Коммунальные</h3>
                   <div className="space-y-2">
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                      <label className={subLabelClass}>Безналичный</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={utilitiesBankTransferPaid}
                         onChange={(e) => setUtilitiesBankTransferPaid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                      <label className={subLabelClass}>Наличные - касса 1</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={utilitiesCashbox1Paid}
                         onChange={(e) => setUtilitiesCashbox1Paid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                      <label className={subLabelClass}>Наличные - касса 2</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={utilitiesCashbox2Paid}
                         onChange={(e) => setUtilitiesCashbox2Paid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-lg border p-3">
+                <div className={sectionCardClass}>
                   <h3 className="mb-2 text-sm font-semibold">Реклама</h3>
                   <div className="space-y-2">
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Безналичный</label>
+                      <label className={subLabelClass}>Безналичный</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={advertisingBankTransferPaid}
                         onChange={(e) => setAdvertisingBankTransferPaid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 1</label>
+                      <label className={subLabelClass}>Наличные - касса 1</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={advertisingCashbox1Paid}
                         onChange={(e) => setAdvertisingCashbox1Paid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs text-gray-600">Наличные - касса 2</label>
+                      <label className={subLabelClass}>Наличные - касса 2</label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={advertisingCashbox2Paid}
                         onChange={(e) => setAdvertisingCashbox2Paid(e.target.value)}
-                        className="w-full rounded-lg border px-3 py-2"
+                        className={inputClass}
                         placeholder="0.00"
                       />
                     </div>
@@ -318,13 +323,16 @@ export function CreatePavilionPaymentModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t bg-white p-4 md:p-6">
-          <button onClick={onClose} className="rounded-lg border px-5 py-2.5 hover:bg-gray-100">
+        <div className="flex justify-end gap-3 border-t border-[#e8e1da] bg-white p-4 md:p-6">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
+          >
             Отмена
           </button>
           <button
             onClick={handlePay}
-            className="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700"
+            className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
           >
             Записать платеж
           </button>

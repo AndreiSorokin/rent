@@ -81,7 +81,7 @@ export default function StoresPage() {
                 href="/reset-password"
                 className="inline-flex items-center justify-center rounded-full bg-[#22C55E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#16a34a]"
               >
-                Сменить пароль
+                Изменить пароль
               </Link>
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function StoresPage() {
                       Активен
                     </span>
                     <span className="text-sm font-bold text-[#111111] transition group-hover:text-[#FF6A13]">
-                      Управлять →
+                      Управление →
                     </span>
                   </div>
                 </div>

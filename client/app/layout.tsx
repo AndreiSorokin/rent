@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rent Manager",
+  title: "Palaci",
   description: "Store and pavilion management",
 };
 

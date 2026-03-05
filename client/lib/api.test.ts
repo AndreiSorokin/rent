@@ -17,7 +17,10 @@ describe('apiFetch', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true }),
+      headers: {
+        get: vi.fn().mockReturnValue('application/json; charset=utf-8'),
+      },
+      text: async () => JSON.stringify({ ok: true }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -38,6 +41,9 @@ describe('apiFetch', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 204,
+      headers: {
+        get: vi.fn().mockReturnValue(''),
+      },
     }) as unknown as typeof fetch;
 
     const result = await apiFetch('/stores/1', { method: 'DELETE' });
