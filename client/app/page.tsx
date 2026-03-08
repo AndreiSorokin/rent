@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react';
+import logo1 from './logo1.png';
 
 const features = [
   {
@@ -47,9 +48,11 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-6 pb-12 pt-12 md:px-10 md:pt-16">
         <header className="mb-14 flex flex-col gap-5 md:mb-20 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="mb-2 text-lg font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">
-              Palaci
-            </p>
+            <div className="mb-2 flex items-center gap-3">
+              <p className="text-lg font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">
+                Palaci
+              </p>
+            </div>
             <h1 className="max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
               Управление объектами и финансами без хаоса в таблицах
             </h1>
