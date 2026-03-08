@@ -66,6 +66,7 @@ export class PaymentsController {
       advertisingBankTransferPaid?: number;
       advertisingCashbox1Paid?: number;
       advertisingCashbox2Paid?: number;
+      idempotencyKey?: string;
     },
   ) {
     const period = this.parseMonthInput(body.period);
@@ -85,6 +86,7 @@ export class PaymentsController {
       advertisingBankTransferPaid: body.advertisingBankTransferPaid,
       advertisingCashbox1Paid: body.advertisingCashbox1Paid,
       advertisingCashbox2Paid: body.advertisingCashbox2Paid,
+      idempotencyKey: body.idempotencyKey,
     }, req.user.id);
   }
 

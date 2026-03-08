@@ -350,32 +350,38 @@ export default function UtilitiesPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-[#6b6b6b]">{p.tenantName || '-'}</td>
                         <td className="px-4 py-3 text-sm text-[#6b6b6b]">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={utilitiesById[p.id] ?? ''}
-                            onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
-                            disabled={isAvailable || isPrepaid}
-                            className={`${inputClass} ${
-                              isAvailable || isPrepaid ? 'bg-[#ece4dd] text-[#8a8a8a]' : ''
-                            }`}
-                            placeholder={isAvailable ? '-' : '0'}
-                          />
+                          {isAvailable || isPrepaid ? (
+                            <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
+                              {isAvailable ? '-' : 'Недоступно'}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={utilitiesById[p.id] ?? ''}
+                              onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
+                              className={inputClass}
+                              placeholder="0"
+                            />
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-[#6b6b6b]">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={advertisingById[p.id] ?? ''}
-                            onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
-                            disabled={isAvailable || isPrepaid}
-                            className={`${inputClass} ${
-                              isAvailable || isPrepaid ? 'bg-[#ece4dd] text-[#8a8a8a]' : ''
-                            }`}
-                            placeholder={isAvailable ? '-' : '0'}
-                          />
+                          {isAvailable || isPrepaid ? (
+                            <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
+                              {isAvailable ? '-' : 'Недоступно'}
+                            </div>
+                          ) : (
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={advertisingById[p.id] ?? ''}
+                              onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
+                              className={inputClass}
+                              placeholder="0"
+                            />
+                          )}
                         </td>
                       </tr>
                     );

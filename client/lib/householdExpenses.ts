@@ -22,9 +22,16 @@ export function createHouseholdExpense(
   storeId: number,
   data: { name: string; amount: number },
 ) {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined;
   return apiFetch<HouseholdExpense>(`/stores/${storeId}/household-expenses`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+    }),
   });
 }
 

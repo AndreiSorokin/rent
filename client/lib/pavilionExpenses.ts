@@ -47,9 +47,16 @@ export function createPavilionExpense(
     cashbox2Paid?: number;
   },
 ) {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined;
   return apiFetch<PavilionExpense>(`/stores/${storeId}/expenses`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+    }),
   });
 }
 

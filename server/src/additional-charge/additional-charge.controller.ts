@@ -31,6 +31,7 @@ export class AdditionalChargeController {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
+      idempotencyKey?: string;
     },
     @Req() req: any,
   ) {
@@ -38,6 +39,7 @@ export class AdditionalChargeController {
       bankTransferPaid: body.bankTransferPaid,
       cashbox1Paid: body.cashbox1Paid,
       cashbox2Paid: body.cashbox2Paid,
+      idempotencyKey: body.idempotencyKey,
     }, req.user.id);
   }
 
@@ -51,7 +53,7 @@ export class AdditionalChargeController {
   @Permissions(Permission.CREATE_CHARGES)
   create(
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
-    @Body() data: { name: string; amount: number },
+    @Body() data: { name: string; amount: number; idempotencyKey?: string },
     @Req() req: any,
   ) {
     return this.service.create(pavilionId, data, req.user.id);

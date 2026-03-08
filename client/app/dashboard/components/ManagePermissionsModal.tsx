@@ -7,6 +7,7 @@ const PERMISSION_LABELS = {
   VIEW_STAFF: 'Просмотр штатного расписания',
   MANAGE_STAFF: 'Управление штатным расписанием',
   CREATE_PAVILIONS: 'Создавать павильоны',
+  EXPORT_STORE_DATA: 'Выгружать данные',
   EDIT_PAVILIONS: 'Изменять павильоны',
   DELETE_PAVILIONS: 'Удалять павильоны',
   VIEW_PAYMENTS: 'Просмотр оплат',
@@ -38,6 +39,7 @@ const PERMISSION_SECTIONS: Array<{
     items: [
       'VIEW_PAVILIONS',
       'CREATE_PAVILIONS',
+      'EXPORT_STORE_DATA',
       'EDIT_PAVILIONS',
       'DELETE_PAVILIONS',
     ],

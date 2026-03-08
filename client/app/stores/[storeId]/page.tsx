@@ -662,12 +662,17 @@ export default function StorePage() {
 
     try {
       setStaffSaving(true);
+      const idempotencyKey =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : undefined;
       await apiFetch<any>(`/stores/${storeId}/staff`, {
         method: 'POST',
         body: JSON.stringify({
           fullName: addStaffModal.fullName.trim(),
           position: addStaffModal.position.trim(),
           salary,
+          ...(idempotencyKey ? { idempotencyKey } : {}),
         }),
       });
 

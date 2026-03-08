@@ -69,7 +69,37 @@ export class HouseholdExpenseService {
       );
   }
 
-  create(storeId: number, data: { name: string; amount: number }, userId?: number) {
+  async create(
+    storeId: number,
+    data: { name: string; amount: number; idempotencyKey?: string },
+    userId?: number,
+  ) {
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = await (this.prisma as any).pavilionExpense.findFirst({
+        where: {
+          storeId,
+          type: HOUSEHOLD_TYPE,
+          idempotencyKey,
+        },
+      });
+      if (existing) {
+        return {
+          id: existing.id,
+          name: existing.note ?? 'РҐРѕР·СЏР№СЃС‚РІРµРЅРЅС‹Р№ СЂР°СЃС…РѕРґ',
+          amount: existing.amount,
+          status: existing.status,
+          paymentMethod: existing.paymentMethod ?? null,
+          bankTransferPaid: Number(existing.bankTransferPaid ?? 0),
+          cashbox1Paid: Number(existing.cashbox1Paid ?? 0),
+          cashbox2Paid: Number(existing.cashbox2Paid ?? 0),
+          storeId: existing.storeId,
+          pavilionId: existing.pavilionId,
+          createdAt: existing.createdAt,
+        };
+      }
+    }
+
     return (this.prisma.pavilionExpense as any)
       .create({
         data: {
@@ -82,6 +112,7 @@ export class HouseholdExpenseService {
           bankTransferPaid: 0,
           cashbox1Paid: 0,
           cashbox2Paid: 0,
+          ...(idempotencyKey ? { idempotencyKey } : {}),
         },
       })
       .then(async (row: any) => {

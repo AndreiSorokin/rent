@@ -26,6 +26,7 @@ export default function StoreSettingsPage() {
   const [deleteStoreInput, setDeleteStoreInput] = useState('');
   const [deletingStore, setDeletingStore] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
@@ -115,6 +116,7 @@ export default function StoreSettingsPage() {
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canEditPavilions = hasPermission(permissions, 'EDIT_PAVILIONS');
   const createPavilions = hasPermission(permissions, 'CREATE_PAVILIONS');
+  const canExportData = hasPermission(permissions, 'EXPORT_STORE_DATA');
   const canManageUsers =
     hasPermission(permissions, 'INVITE_USERS') ||
     hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
@@ -367,6 +369,172 @@ export default function StoreSettingsPage() {
     }
   };
 
+  const handleExportData = async () => {
+    try {
+      setExportingData(true);
+      const payload = await apiFetch<{
+        pavilions: Array<{
+          number: string;
+          category?: string | null;
+          squareMeters: number;
+          pricePerSqM: number;
+          utilitiesAmount?: number | null;
+          status?: 'AVAILABLE' | 'RENTED' | 'PREPAID';
+          tenantName?: string | null;
+          advertisingAmount?: number | null;
+        }>;
+        householdExpenses: Array<{
+          name: string;
+          amount: number;
+          status?: 'UNPAID' | 'PAID';
+        }>;
+        expenses: Array<{
+          type:
+            | 'PAYROLL_TAX'
+            | 'PROFIT_TAX'
+            | 'DIVIDENDS'
+            | 'BANK_SERVICES'
+            | 'VAT'
+            | 'LAND_RENT'
+            | 'OTHER';
+          amount: number;
+          status?: 'UNPAID' | 'PAID';
+          note?: string | null;
+        }>;
+        accounting: Array<{
+          recordDate: string;
+          bankTransferPaid?: number;
+          cashbox1Paid?: number;
+          cashbox2Paid?: number;
+        }>;
+        staff: Array<{
+          fullName: string;
+          position: string;
+          salary?: number;
+          salaryStatus?: 'UNPAID' | 'PAID';
+        }>;
+      }>(`/stores/${storeId}/export-data`);
+
+      const XLSX = await import('xlsx');
+      const wb = XLSX.utils.book_new();
+
+      const SHEETS = {
+        pavilions: 'Павильоны',
+        householdExpenses: 'ХозяйственныеРасходы',
+        otherExpenses: 'ПрочиеРасходы',
+        adminExpenses: 'АдминистративныеРасходы',
+        accounting: 'БухТаблица',
+        staff: 'Сотрудники',
+      } as const;
+
+      const pavilionsRows = (payload.pavilions || []).map((item) => ({
+        'Номер павильона': item.number,
+        Категория: item.category ?? '',
+        Площадь: Number(item.squareMeters ?? 0),
+        'Цена за м2': Number(item.pricePerSqM ?? 0),
+        Коммунальные: item.utilitiesAmount ?? '',
+        Статус:
+          item.status === 'RENTED'
+            ? 'ЗАНЯТ'
+            : item.status === 'PREPAID'
+              ? 'ПРЕДОПЛАТА'
+              : 'СВОБОДЕН',
+        'Наименование организации': item.tenantName ?? '',
+        Реклама: item.advertisingAmount ?? '',
+      }));
+      const householdRows = (payload.householdExpenses || []).map((item) => ({
+        Название: item.name ?? '',
+        Сумма: Number(item.amount ?? 0),
+        Статус: item.status === 'PAID' ? 'Оплачено' : 'Не оплачено',
+      }));
+      const adminTypeLabelByType: Record<string, string> = {
+        PAYROLL_TAX: 'Налоги с зарплаты',
+        PROFIT_TAX: 'Налог на прибыль',
+        DIVIDENDS: 'Дивиденды',
+        BANK_SERVICES: 'Банковские услуги',
+        VAT: 'НДС',
+        LAND_RENT: 'Аренда земли',
+      };
+      const otherRows = (payload.expenses || [])
+        .filter((item) => item.type === 'OTHER')
+        .map((item) => ({
+          Название: item.note?.trim() || 'Прочий расход',
+          Сумма: Number(item.amount ?? 0),
+          Статус: item.status === 'PAID' ? 'Оплачено' : 'Не оплачено',
+        }));
+      const adminRows = (payload.expenses || [])
+        .filter((item) => item.type !== 'OTHER')
+        .map((item) => ({
+          Название: item.note?.trim() || adminTypeLabelByType[item.type] || item.type,
+          Сумма: Number(item.amount ?? 0),
+          Статус: item.status === 'PAID' ? 'Оплачено' : 'Не оплачено',
+        }));
+      const accountingRows = (payload.accounting || []).map((item) => ({
+        recordDate: item.recordDate,
+        bankTransferPaid: Number(item.bankTransferPaid ?? 0),
+        cashbox1Paid: Number(item.cashbox1Paid ?? 0),
+        cashbox2Paid: Number(item.cashbox2Paid ?? 0),
+      }));
+      const staffRows = (payload.staff || []).map((item) => ({
+        Должность: item.position ?? '',
+        'Имя Фамилия': item.fullName ?? '',
+        Зарплата: Number(item.salary ?? 0),
+      }));
+
+      const pavilionsSheet =
+        pavilionsRows.length > 0
+          ? XLSX.utils.json_to_sheet(pavilionsRows)
+          : XLSX.utils.aoa_to_sheet([
+              [
+                'Номер павильона',
+                'Категория',
+                'Площадь',
+                'Цена за м2',
+                'Коммунальные',
+                'Статус',
+                'Наименование организации',
+                'Реклама',
+              ],
+            ]);
+      const householdSheet =
+        householdRows.length > 0
+          ? XLSX.utils.json_to_sheet(householdRows)
+          : XLSX.utils.aoa_to_sheet([['Название', 'Сумма', 'Статус']]);
+      const otherSheet =
+        otherRows.length > 0
+          ? XLSX.utils.json_to_sheet(otherRows)
+          : XLSX.utils.aoa_to_sheet([['Название', 'Сумма', 'Статус']]);
+      const adminSheet =
+        adminRows.length > 0
+          ? XLSX.utils.json_to_sheet(adminRows)
+          : XLSX.utils.aoa_to_sheet([['Название', 'Сумма', 'Статус']]);
+      const accountingSheet =
+        accountingRows.length > 0
+          ? XLSX.utils.json_to_sheet(accountingRows)
+          : XLSX.utils.aoa_to_sheet([
+              ['recordDate', 'bankTransferPaid', 'cashbox1Paid', 'cashbox2Paid'],
+            ]);
+      const staffSheet =
+        staffRows.length > 0
+          ? XLSX.utils.json_to_sheet(staffRows)
+          : XLSX.utils.aoa_to_sheet([['Должность', 'Имя Фамилия', 'Зарплата']]);
+
+      XLSX.utils.book_append_sheet(wb, pavilionsSheet, SHEETS.pavilions);
+      XLSX.utils.book_append_sheet(wb, householdSheet, SHEETS.householdExpenses);
+      XLSX.utils.book_append_sheet(wb, otherSheet, SHEETS.otherExpenses);
+      XLSX.utils.book_append_sheet(wb, adminSheet, SHEETS.adminExpenses);
+      XLSX.utils.book_append_sheet(wb, accountingSheet, SHEETS.accounting);
+      XLSX.utils.book_append_sheet(wb, staffSheet, SHEETS.staff);
+
+      XLSX.writeFile(wb, `store-export-${storeId}.xlsx`);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось выгрузить данные');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
@@ -391,13 +559,26 @@ export default function StoreSettingsPage() {
                 Журнал действий
               </Link>
             )}
-            {createPavilions && (
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
-              >
-                Загрузить данные
-              </button>
+            {(createPavilions || canExportData) && (
+              <div className="inline-flex items-center gap-2">
+                {createPavilions && (
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
+                >
+                  Загрузить данные
+                </button>
+                )}
+                {canExportData && (
+                <button
+                  onClick={handleExportData}
+                  disabled={exportingData}
+                  className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-60"
+                >
+                  {exportingData ? 'Выгрузка...' : 'Выгрузить данные'}
+                </button>
+                )}
+              </div>
             )}
           </div>
         </div>

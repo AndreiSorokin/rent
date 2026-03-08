@@ -497,7 +497,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   async createStaff(
     storeId: number,
     userId: number,
-    data: { fullName: string; position: string; salary?: number },
+    data: {
+      fullName: string;
+      position: string;
+      salary?: number;
+      idempotencyKey?: string;
+    },
   ) {
     const storeUser = await this.prisma.storeUser.findUnique({
       where: {
@@ -528,12 +533,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('salary must be non-negative');
     }
 
-    const created = await this.prisma.storeStaff.create({
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = await (this.prisma as any).storeStaff.findFirst({
+        where: { storeId, idempotencyKey },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const created = await (this.prisma as any).storeStaff.create({
       data: {
         storeId,
         fullName,
         position,
         salary,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
     await this.logActivity({
@@ -1090,6 +1106,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     cashbox2Paid?: number;
     period?: string;
     paidAt?: string;
+    idempotencyKey?: string;
   }) {
     const name = String(data.name ?? '').trim();
     const amount = Number(data.amount ?? 0);
@@ -1098,6 +1115,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
     const paidAt = data.paidAt ? new Date(data.paidAt) : new Date();
     const period = this.parseMonthPeriod(data.period);
+    const idempotencyKey = String(data.idempotencyKey ?? '').trim();
 
     if (!name) {
       throw new BadRequestException('name is required');
@@ -1132,6 +1150,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid,
       period,
       paidAt,
+      idempotencyKey,
     };
   }
 
@@ -1157,9 +1176,21 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid?: number;
       period?: string;
       paidAt?: string;
+      idempotencyKey?: string;
     },
   ) {
     const payload = this.normalizeExtraIncomeInput(data);
+    if (payload.idempotencyKey) {
+      const existing = await (this.prisma as any).storeExtraIncome.findFirst({
+        where: {
+          storeId,
+          idempotencyKey: payload.idempotencyKey,
+        },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
     const created = await (this.prisma as any).storeExtraIncome.create({
       data: {
         storeId,
@@ -1170,6 +1201,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         cashbox2Paid: payload.cashbox2Paid,
         period: payload.period,
         paidAt: payload.paidAt,
+        ...(payload.idempotencyKey
+          ? { idempotencyKey: payload.idempotencyKey }
+          : {}),
       },
     });
     await this.logActivity({
@@ -2393,6 +2427,140 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return result;
+  }
+
+  async exportData(storeId: number, userId: number) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: { userId_storeId: { userId, storeId } },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+    if (!storeUser.permissions.includes(Permission.EXPORT_STORE_DATA)) {
+      throw new ForbiddenException(
+        'Insufficient permissions to export pavilion data',
+      );
+    }
+
+    const toIsoDate = (value: Date) => {
+      const year = value.getUTCFullYear();
+      const month = String(value.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(value.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const [pavilions, householdExpensesRaw, expensesRaw, accountingRaw, staffRaw] =
+      await Promise.all([
+        this.prisma.pavilion.findMany({
+          where: { storeId },
+          orderBy: [{ number: 'asc' }, { id: 'asc' }],
+          select: {
+            number: true,
+            category: true,
+            squareMeters: true,
+            pricePerSqM: true,
+            utilitiesAmount: true,
+            status: true,
+            tenantName: true,
+            advertisingAmount: true,
+          },
+        }),
+        this.prisma.pavilionExpense.findMany({
+          where: {
+            storeId,
+            type: 'HOUSEHOLD' as any,
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            note: true,
+            amount: true,
+            status: true,
+          },
+        }),
+        this.prisma.pavilionExpense.findMany({
+          where: {
+            storeId,
+            type: {
+              in: [
+                'PAYROLL_TAX',
+                'PROFIT_TAX',
+                'DIVIDENDS',
+                'BANK_SERVICES',
+                'VAT',
+                'LAND_RENT',
+                'OTHER',
+              ] as any,
+            },
+          },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            type: true,
+            amount: true,
+            status: true,
+            note: true,
+          },
+        }),
+        this.prisma.storeAccountingRecord.findMany({
+          where: { storeId },
+          orderBy: [{ recordDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            recordDate: true,
+            bankTransferPaid: true,
+            cashbox1Paid: true,
+            cashbox2Paid: true,
+          },
+        }),
+        this.prisma.storeStaff.findMany({
+          where: { storeId },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          select: {
+            fullName: true,
+            position: true,
+            salary: true,
+            salaryStatus: true,
+          },
+        }),
+      ]);
+
+    return {
+      pavilions: pavilions.map((item) => ({
+        number: item.number,
+        category: item.category,
+        squareMeters: Number(item.squareMeters ?? 0),
+        pricePerSqM: Number(item.pricePerSqM ?? 0),
+        utilitiesAmount:
+          item.utilitiesAmount === null ? null : Number(item.utilitiesAmount),
+        status: item.status,
+        tenantName: item.tenantName,
+        advertisingAmount:
+          item.advertisingAmount === null ? null : Number(item.advertisingAmount),
+      })),
+      householdExpenses: householdExpensesRaw.map((item) => ({
+        name: item.note ?? '',
+        amount: Number(item.amount ?? 0),
+        status: item.status,
+      })),
+      expenses: expensesRaw.map((item) => ({
+        type: item.type,
+        amount: Number(item.amount ?? 0),
+        status: item.status,
+        note: item.note ?? null,
+      })),
+      accounting: accountingRaw.map((item) => ({
+        recordDate: toIsoDate(item.recordDate),
+        bankTransferPaid: Number(item.bankTransferPaid ?? 0),
+        cashbox1Paid: Number(item.cashbox1Paid ?? 0),
+        cashbox2Paid: Number(item.cashbox2Paid ?? 0),
+      })),
+      staff: staffRaw.map((item) => ({
+        fullName: item.fullName,
+        position: item.position,
+        salary: Number(item.salary ?? 0),
+        salaryStatus: item.salaryStatus,
+      })),
+    };
   }
 
   private getMonthlyDiscountTotal(

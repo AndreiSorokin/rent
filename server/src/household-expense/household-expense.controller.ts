@@ -31,7 +31,7 @@ export class HouseholdExpenseController {
   @Permissions(Permission.CREATE_CHARGES)
   create(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body() data: { name: string; amount: number },
+    @Body() data: { name: string; amount: number; idempotencyKey?: string },
     @Req() req: any,
   ) {
     return this.service.create(storeId, data, req.user.id);

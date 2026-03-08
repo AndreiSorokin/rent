@@ -29,9 +29,16 @@ export function createStoreExtraIncome(
     paidAt?: string;
   },
 ) {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined;
   return apiFetch(`/stores/${storeId}/extra-income`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+    }),
   });
 }
 
