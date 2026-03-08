@@ -440,4 +440,13 @@ export class StoresController {
   ) {
     return this.service.importData(storeId, req.user.id, data);
   }
+
+  @Get(':storeId/export-data')
+  @Permissions(Permission.EXPORT_STORE_DATA)
+  exportData(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+  ) {
+    return this.service.exportData(storeId, req.user.id);
+  }
 }

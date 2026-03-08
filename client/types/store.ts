@@ -3,6 +3,7 @@ export type Permission =
   | 'VIEW_STAFF'
   | 'MANAGE_STAFF'
   | 'CREATE_PAVILIONS'
+  | 'EXPORT_STORE_DATA'
   | 'EDIT_PAVILIONS'
   | 'DELETE_PAVILIONS'
   | 'VIEW_PAYMENTS'
