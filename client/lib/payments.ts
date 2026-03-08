@@ -20,13 +20,23 @@ export function createPavilionPayment(
     advertisingBankTransferPaid?: number;
     advertisingCashbox1Paid?: number;
     advertisingCashbox2Paid?: number;
+    idempotencyKey?: string;
   },
 ) {
+  const idempotencyKey =
+    data.idempotencyKey ??
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined);
+
   return apiFetch(
     `/stores/${storeId}/pavilions/${pavilionId}/payments`,
     {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      }),
     },
   );
 }

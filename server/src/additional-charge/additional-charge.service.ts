@@ -71,6 +71,7 @@ export class AdditionalChargeService {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
+      idempotencyKey?: string;
     },
     _userId?: number,
   ) {
@@ -106,13 +107,24 @@ export class AdditionalChargeService {
       );
     }
 
-    const created = await this.prisma.additionalChargePayment.create({
+    const idempotencyKey = channels?.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = await (this.prisma as any).additionalChargePayment.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const created = await (this.prisma as any).additionalChargePayment.create({
       data: {
         additionalChargeId,
         amountPaid,
         bankTransferPaid: hasChannelsInput ? bankTransferPaid : amountPaid,
         cashbox1Paid: hasChannelsInput ? cashbox1Paid : 0,
         cashbox2Paid: hasChannelsInput ? cashbox2Paid : 0,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
     const pavilion = await this.prisma.pavilion.findUnique({
@@ -150,14 +162,25 @@ export class AdditionalChargeService {
 
   async create(
     pavilionId: number,
-    data: { name: string; amount: number },
+    data: { name: string; amount: number; idempotencyKey?: string },
     _userId?: number,
   ) {
-    const created = await this.prisma.additionalCharge.create({
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = await (this.prisma as any).additionalCharge.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const created = await (this.prisma as any).additionalCharge.create({
       data: {
         name: data.name,
         amount: data.amount,
         pavilionId,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
     const pavilion = await this.prisma.pavilion.findUnique({

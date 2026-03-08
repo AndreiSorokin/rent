@@ -177,7 +177,13 @@ export class StoresController {
   @Permissions(Permission.MANAGE_STAFF)
   createStaff(
     @Param('storeId', ParseIntPipe) storeId: number,
-    @Body() data: { fullName: string; position: string; salary?: number },
+    @Body()
+    data: {
+      fullName: string;
+      position: string;
+      salary?: number;
+      idempotencyKey?: string;
+    },
     @Req() req: any,
   ) {
     return this.service.createStaff(storeId, req.user.id, data);
@@ -302,6 +308,7 @@ export class StoresController {
       cashbox2Paid?: number;
       period?: string;
       paidAt?: string;
+      idempotencyKey?: string;
     },
     @Req() req: any,
   ) {

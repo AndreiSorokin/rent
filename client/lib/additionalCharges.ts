@@ -10,6 +10,10 @@ export function payAdditionalCharge(
     cashbox2Paid?: number;
   },
 ) {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined;
   return apiFetch(
     `/pavilions/${pavilionId}/additional-charges/${chargeId}/pay`,
     {
@@ -19,6 +23,7 @@ export function payAdditionalCharge(
         bankTransferPaid: channels?.bankTransferPaid,
         cashbox1Paid: channels?.cashbox1Paid,
         cashbox2Paid: channels?.cashbox2Paid,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       }),
     }
   );
@@ -30,11 +35,19 @@ export const getAdditionalCharges = (pavilionId: number) =>
 export const createAdditionalCharge = (
   pavilionId: number,
   data: { name: string; amount: number },
-) =>
-  apiFetch(`/pavilions/${pavilionId}/additional-charges`, {
+) => {
+  const idempotencyKey =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : undefined;
+  return apiFetch(`/pavilions/${pavilionId}/additional-charges`, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      ...data,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
+    }),
   });
+};
 
 export const updateAdditionalCharge = (
   pavilionId: number,

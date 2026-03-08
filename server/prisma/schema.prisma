@@ -105,6 +105,7 @@ model StoreActivity {
 
 model StoreExtraIncome {
   id Int @id @default(autoincrement())
+  idempotencyKey String? @unique
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
@@ -138,6 +139,7 @@ model StoreAccountingRecord {
 
 model StoreStaff {
   id       Int    @id @default(autoincrement())
+  idempotencyKey String? @unique
   fullName String
   position String
   salary   Float  @default(0)
@@ -162,6 +164,7 @@ enum Currency {
 
 model AdditionalCharge {
   id     Int    @id @default(autoincrement())
+  idempotencyKey String? @unique
   name   String
   amount Float
 
@@ -174,6 +177,7 @@ model AdditionalCharge {
 
 model AdditionalChargePayment {
   id Int @id @default(autoincrement())
+  idempotencyKey String? @unique
 
   additionalChargeId Int
   additionalCharge   AdditionalCharge @relation(fields: [additionalChargeId], references: [id], onDelete: Cascade)
@@ -306,6 +310,7 @@ enum PavilionExpenseStatus {
 
 model PavilionExpense {
   id     Int                @id @default(autoincrement())
+  idempotencyKey String?    @unique
   type   PavilionExpenseType
   status PavilionExpenseStatus @default(UNPAID)
   paymentMethod PaymentMethod?
@@ -383,6 +388,7 @@ model Contract {
 
 model PaymentTransaction {
   id               Int      @id @default(autoincrement())
+  idempotencyKey   String?  @unique
   pavilionId       Int
   pavilion         Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
   paymentId        Int?

@@ -41,6 +41,7 @@ export class PavilionExpensesController {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
+      idempotencyKey?: string;
     },
     @Req() req: any,
   ) {

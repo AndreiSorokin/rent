@@ -497,7 +497,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   async createStaff(
     storeId: number,
     userId: number,
-    data: { fullName: string; position: string; salary?: number },
+    data: {
+      fullName: string;
+      position: string;
+      salary?: number;
+      idempotencyKey?: string;
+    },
   ) {
     const storeUser = await this.prisma.storeUser.findUnique({
       where: {
@@ -528,12 +533,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('salary must be non-negative');
     }
 
-    const created = await this.prisma.storeStaff.create({
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      const existing = await (this.prisma as any).storeStaff.findFirst({
+        where: { storeId, idempotencyKey },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const created = await (this.prisma as any).storeStaff.create({
       data: {
         storeId,
         fullName,
         position,
         salary,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
     await this.logActivity({
@@ -1090,6 +1106,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     cashbox2Paid?: number;
     period?: string;
     paidAt?: string;
+    idempotencyKey?: string;
   }) {
     const name = String(data.name ?? '').trim();
     const amount = Number(data.amount ?? 0);
@@ -1098,6 +1115,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
     const paidAt = data.paidAt ? new Date(data.paidAt) : new Date();
     const period = this.parseMonthPeriod(data.period);
+    const idempotencyKey = String(data.idempotencyKey ?? '').trim();
 
     if (!name) {
       throw new BadRequestException('name is required');
@@ -1132,6 +1150,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid,
       period,
       paidAt,
+      idempotencyKey,
     };
   }
 
@@ -1157,9 +1176,21 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid?: number;
       period?: string;
       paidAt?: string;
+      idempotencyKey?: string;
     },
   ) {
     const payload = this.normalizeExtraIncomeInput(data);
+    if (payload.idempotencyKey) {
+      const existing = await (this.prisma as any).storeExtraIncome.findFirst({
+        where: {
+          storeId,
+          idempotencyKey: payload.idempotencyKey,
+        },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
     const created = await (this.prisma as any).storeExtraIncome.create({
       data: {
         storeId,
@@ -1170,6 +1201,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         cashbox2Paid: payload.cashbox2Paid,
         period: payload.period,
         paidAt: payload.paidAt,
+        ...(payload.idempotencyKey
+          ? { idempotencyKey: payload.idempotencyKey }
+          : {}),
       },
     });
     await this.logActivity({

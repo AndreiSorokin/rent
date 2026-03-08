@@ -60,6 +60,7 @@ export class PavilionExpensesService {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
+      idempotencyKey?: string;
     },
     userId?: number,
   ) {
@@ -132,6 +133,48 @@ export class PavilionExpensesService {
             cashbox1Paid: 0,
             cashbox2Paid: 0,
           };
+
+    const idempotencyKey = data.idempotencyKey?.trim();
+    if (idempotencyKey) {
+      return (async () => {
+        const existing = await (this.prisma.pavilionExpense as any).findFirst({
+          where: {
+            storeId,
+            idempotencyKey,
+          },
+        });
+        if (existing) return existing;
+
+        const created = await (this.prisma.pavilionExpense as any).create({
+          data: {
+            storeId,
+            type: data.type,
+            amount,
+            note: data.note ?? null,
+            status: effectiveStatus,
+            paymentMethod: normalizedPaymentMethod,
+            bankTransferPaid: paidChannels.bankTransferPaid,
+            cashbox1Paid: paidChannels.cashbox1Paid,
+            cashbox2Paid: paidChannels.cashbox2Paid,
+            idempotencyKey,
+          },
+        });
+        await this.storeActivity.log({
+          storeId,
+          userId,
+          action: 'CREATE',
+          entityType: 'PAVILION_EXPENSE',
+          entityId: created.id,
+          details: {
+            type: created.type,
+            amount: Number(created.amount ?? 0),
+            note: created.note ?? null,
+            status: created.status,
+          },
+        });
+        return created;
+      })();
+    }
 
     return (this.prisma.pavilionExpense as any).create({
       data: {

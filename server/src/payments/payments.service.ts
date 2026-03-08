@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { startOfMonth, endOfMonth } from 'date-fns';
-import { PavilionStatus } from '@prisma/client';
+import { PavilionStatus, Prisma } from '@prisma/client';
 import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
 @Injectable()
@@ -224,6 +224,7 @@ async addPayment(
     advertisingBankTransferPaid?: number;
     advertisingCashbox1Paid?: number;
     advertisingCashbox2Paid?: number;
+    idempotencyKey?: string;
   },
   userId?: number,
 ) {
@@ -369,8 +370,63 @@ async addPayment(
   const safeChannelBank = rentBank + safeUtilitiesBank + safeAdvertisingBank;
   const safeChannelCashbox1 = rentCashbox1 + safeUtilitiesCashbox1 + safeAdvertisingCashbox1;
   const safeChannelCashbox2 = rentCashbox2 + safeUtilitiesCashbox2 + safeAdvertisingCashbox2;
+  const idempotencyKey = data.idempotencyKey?.trim() || undefined;
 
   const payment = await this.prisma.$transaction(async (tx) => {
+    if (idempotencyKey) {
+      try {
+        await (tx as any).paymentTransaction.create({
+          data: {
+            idempotencyKey,
+            pavilionId,
+            paymentId: null,
+            period: normalizedPeriod,
+            rentPaid: rentIncrement,
+            utilitiesPaid: safeUtilitiesIncrement,
+            advertisingPaid: safeAdvertisingIncrement,
+            bankTransferPaid: safeChannelBank,
+            cashbox1Paid: safeChannelCashbox1,
+            cashbox2Paid: safeChannelCashbox2,
+            rentBankTransferPaid: rentBank,
+            rentCashbox1Paid: rentCashbox1,
+            rentCashbox2Paid: rentCashbox2,
+            utilitiesBankTransferPaid: safeUtilitiesBank,
+            utilitiesCashbox1Paid: safeUtilitiesCashbox1,
+            utilitiesCashbox2Paid: safeUtilitiesCashbox2,
+            advertisingBankTransferPaid: safeAdvertisingBank,
+            advertisingCashbox1Paid: safeAdvertisingCashbox1,
+            advertisingCashbox2Paid: safeAdvertisingCashbox2,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const duplicateTx = await (tx as any).paymentTransaction.findUnique({
+            where: { idempotencyKey },
+            select: { paymentId: true },
+          });
+
+          if (duplicateTx?.paymentId) {
+            const existingPaymentById = await tx.payment.findUnique({
+              where: { id: duplicateTx.paymentId },
+            });
+            if (existingPaymentById) return existingPaymentById;
+          }
+
+          const existingPayment = await tx.payment.findUnique({
+            where: {
+              pavilionId_period: { pavilionId, period: normalizedPeriod },
+            },
+          });
+          if (existingPayment) return existingPayment;
+        }
+
+        throw error;
+      }
+    }
+
     const existing = await tx.payment.findUnique({
       where: {
         pavilionId_period: { pavilionId, period: normalizedPeriod },
@@ -420,28 +476,35 @@ async addPayment(
           },
         });
 
-    await tx.paymentTransaction.create({
-      data: {
-        pavilionId,
-        paymentId: payment.id,
-        period: normalizedPeriod,
-        rentPaid: rentIncrement,
-        utilitiesPaid: safeUtilitiesIncrement,
-        advertisingPaid: safeAdvertisingIncrement,
-        bankTransferPaid: safeChannelBank,
-        cashbox1Paid: safeChannelCashbox1,
-        cashbox2Paid: safeChannelCashbox2,
-        rentBankTransferPaid: rentBank,
-        rentCashbox1Paid: rentCashbox1,
-        rentCashbox2Paid: rentCashbox2,
-        utilitiesBankTransferPaid: safeUtilitiesBank,
-        utilitiesCashbox1Paid: safeUtilitiesCashbox1,
-        utilitiesCashbox2Paid: safeUtilitiesCashbox2,
-        advertisingBankTransferPaid: safeAdvertisingBank,
-        advertisingCashbox1Paid: safeAdvertisingCashbox1,
-        advertisingCashbox2Paid: safeAdvertisingCashbox2,
-      },
-    });
+    if (idempotencyKey) {
+      await (tx as any).paymentTransaction.update({
+        where: { idempotencyKey },
+        data: { paymentId: payment.id },
+      });
+    } else {
+      await tx.paymentTransaction.create({
+        data: {
+          pavilionId,
+          paymentId: payment.id,
+          period: normalizedPeriod,
+          rentPaid: rentIncrement,
+          utilitiesPaid: safeUtilitiesIncrement,
+          advertisingPaid: safeAdvertisingIncrement,
+          bankTransferPaid: safeChannelBank,
+          cashbox1Paid: safeChannelCashbox1,
+          cashbox2Paid: safeChannelCashbox2,
+          rentBankTransferPaid: rentBank,
+          rentCashbox1Paid: rentCashbox1,
+          rentCashbox2Paid: rentCashbox2,
+          utilitiesBankTransferPaid: safeUtilitiesBank,
+          utilitiesCashbox1Paid: safeUtilitiesCashbox1,
+          utilitiesCashbox2Paid: safeUtilitiesCashbox2,
+          advertisingBankTransferPaid: safeAdvertisingBank,
+          advertisingCashbox1Paid: safeAdvertisingCashbox1,
+          advertisingCashbox2Paid: safeAdvertisingCashbox2,
+        },
+      });
+    }
 
     return payment;
   });
