@@ -472,6 +472,8 @@ export default function StoreSummaryPage() {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadMonth, setDownloadMonth] = useState<string>(getCurrentMonthValue());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [activeSection, setActiveSection] = useState('summary-overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -614,6 +616,41 @@ export default function StoreSummaryPage() {
     };
   }, [store, analytics, isMobile]);
 
+  const navSections = [
+    { id: 'summary-overview', label: 'Обзор' },
+    { id: 'summary-prev-balance', label: 'Остаток прошлого месяца' },
+    { id: 'summary-income', label: 'Общий доход' },
+    { id: 'summary-expenses', label: 'Общий расход' },
+    { id: 'summary-saldo', label: 'Остаток' },
+    { id: 'summary-trade-area', label: 'Торговая площадь' },
+    { id: 'summary-groups', label: 'Группы павильонов' },
+  ];
+
+  useEffect(() => {
+    const sections = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-summary-section]'),
+    );
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target?.id) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      {
+        threshold: [0.25, 0.5, 0.75],
+        rootMargin: '-20% 0px -55% 0px',
+      },
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [loading, error, data]);
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
@@ -659,9 +696,123 @@ export default function StoreSummaryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f1eb]">
-      <div className="mx-auto max-w-7xl space-y-6 p-4 md:space-y-8 md:p-8">
-        <section className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+    <div className="min-h-screen scroll-smooth bg-[#f6f1eb]">
+      <div className="mx-auto flex max-w-[1600px] gap-6 p-4 md:p-8">
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[280px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
+          <div className="mb-4">
+            <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Сводка</p>
+            <h2 className="mt-1 text-lg font-bold text-slate-900">{store.name}</h2>
+          </div>
+          <div className="space-y-2 border-b border-slate-200 pb-4">
+            <Link
+              href={`/stores/${storeId}`}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#f9f5f0]"
+            >
+              Назад к объекту
+            </Link>
+          </div>
+          <div className="pt-4">
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+            <nav className="space-y-1">
+              {navSections.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`flex items-center rounded-xl px-3 py-2 text-sm transition ${
+                    activeSection === item.id
+                      ? 'bg-[#FFE8DB] text-[#C2410C]'
+                      : 'text-slate-600 hover:bg-[#f9f5f0] hover:text-slate-900'
+                  }`}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        <div className="fixed right-3 top-3 z-30 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-3 py-2 text-sm text-slate-700 shadow-sm"
+          >
+            Меню
+          </button>
+        </div>
+
+        <div
+          className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
+            mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+        >
+          <button
+            type="button"
+            aria-label="Закрыть меню"
+            onClick={() => setMobileMenuOpen(false)}
+            className="absolute inset-0 bg-black/35"
+          />
+          <aside
+            className={`relative z-10 h-full w-[88%] max-w-[360px] overflow-y-auto bg-white p-5 shadow-xl transition-transform duration-300 ease-out ${
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Сводка</p>
+                <h2 className="mt-1 text-lg font-bold text-slate-900">{store.name}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-lg border border-[#D8D1CB] px-2 py-1 text-sm text-slate-600 hover:bg-[#f4efeb]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2 border-b border-slate-200 pb-4">
+              <Link
+                href={`/stores/${storeId}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex w-full items-center justify-center rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#f9f5f0]"
+              >
+                Назад к объекту
+              </Link>
+            </div>
+
+            <div className="pt-4">
+              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+              <nav className="space-y-1">
+                {navSections.map((item) => (
+                  <a
+                    key={`mobile-${item.id}`}
+                    href={`#${item.id}`}
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center rounded-xl px-3 py-2 text-sm transition ${
+                      activeSection === item.id
+                        ? 'bg-[#FFE8DB] text-[#C2410C]'
+                        : 'text-slate-600 hover:bg-[#f9f5f0] hover:text-slate-900'
+                    }`}
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+          </aside>
+        </div>
+
+        <main className="min-w-0 flex-1 space-y-6 md:space-y-8">
+        <section
+          id="summary-overview"
+          data-summary-section
+          className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <Link
@@ -746,7 +897,11 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-prev-balance"
+          data-summary-section
+          className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">Остаток с прошлого месяца</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <MetricCard
@@ -774,7 +929,11 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-income"
+          data-summary-section
+          className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">1. Общий доход</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -898,7 +1057,11 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-expenses"
+          data-summary-section
+          className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">2. Общий расход</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -986,7 +1149,11 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-saldo"
+          data-summary-section
+          className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">3. Остаток</h2>
 
           <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -1061,7 +1228,11 @@ export default function StoreSummaryPage() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-trade-area"
+          data-summary-section
+          className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">4. Торговая площадь</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1090,7 +1261,11 @@ export default function StoreSummaryPage() {
           />
         </section>
 
-        <section className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+        <section
+          id="summary-groups"
+          data-summary-section
+          className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
+        >
           <h2 className="text-xl font-semibold text-[#111111]">5. Группы павильонов</h2>
 
           {data.groupedByPavilionGroups.length === 0 ? (
@@ -1132,6 +1307,7 @@ export default function StoreSummaryPage() {
             </div>
           )}
         </section>
+        </main>
       </div>
       {showDownloadModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
