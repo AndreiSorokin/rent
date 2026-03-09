@@ -33,6 +33,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const isPublic = isPublicPath(pathname);
   const isAnonOnly = isAnonOnlyPath(pathname);
+  const isStorePage = Boolean(pathname && /^\/stores\/\d+(?:\/.*)?$/.test(pathname));
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -52,7 +53,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {!isPublic && (
+      {!isPublic && !isStorePage && (
         <div className="fixed right-8 top-8 z-50 hidden lg:block">
           <LogoutButton className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-100" />
         </div>

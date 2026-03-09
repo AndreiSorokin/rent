@@ -8,6 +8,7 @@ import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
+import { StoreSidebar } from '../components/StoreSidebar';
 
 export default function StoreSettingsPage() {
   const params = useParams();
@@ -537,15 +538,12 @@ export default function StoreSettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
+        <StoreSidebar storeId={storeId} store={store} />
+        <main className="min-w-0 flex-1">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-2">
         <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
-            <Link
-              href={`/stores/${storeId}`}
-              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb] md:text-base"
-            >
-              Назад к объекту
-            </Link>
             <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
               Управление объектом: {store.name}
             </h1>
@@ -864,6 +862,8 @@ export default function StoreSettingsPage() {
           </div>
         )}
       </div>
+        </main>
+      </div>
 
       {showImportModal && (
         <ImportStoreDataModal
@@ -914,6 +914,7 @@ export default function StoreSettingsPage() {
     </div>
   );
 }
+
 
 
 

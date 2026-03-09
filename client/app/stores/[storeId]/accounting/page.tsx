@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { StoreSidebar } from '../components/StoreSidebar';
 
 export default function StoreAccountingPage() {
   const params = useParams();
@@ -257,15 +258,12 @@ export default function StoreAccountingPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
-      <div className="mx-auto max-w-7xl p-4 md:p-8">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
+        <StoreSidebar storeId={storeId} store={store} />
+        <main className="min-w-0 flex-1">
+      <div className="mx-auto max-w-7xl p-4 md:p-2">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link
-              href={`/stores/${storeId}`}
-              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
-            >
-              Назад к объекту
-            </Link>
             <h1 className="mt-1 text-2xl font-bold md:text-3xl">Открытие/закрытие дня</h1>
           </div>
         </div>
@@ -642,7 +640,10 @@ export default function StoreAccountingPage() {
           </div>
         )}
       </div>
+        </main>
+      </div>
     </div>
   );
 }
+
 

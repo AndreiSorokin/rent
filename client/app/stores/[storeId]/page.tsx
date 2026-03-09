@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
+import { ExpenseCreatePaidModal, ExpenseEditModal } from './components/ExpenseModals';
+import { AddStaffModal, EditStaffSalaryModal, PayStaffSalaryModal } from './components/StaffModals';
+import { StoreSidebar } from './components/StoreSidebar';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -148,11 +151,10 @@ export default function StorePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const storeId = Number(params.storeId);
-  const initialPavilionsPage = Number(searchParams.get('page') ?? 1);
-  const safeInitialPavilionsPage =
-    Number.isFinite(initialPavilionsPage) && initialPavilionsPage > 0
-      ? initialPavilionsPage
-      : 1;
+  const initialPavilionDisplayLimit =
+    searchParams.get('show') === '100' || searchParams.get('show') === 'all'
+      ? (searchParams.get('show') as '100' | 'all')
+      : '50';
 
   const [store, setStore] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
@@ -188,47 +190,53 @@ export default function StorePage() {
   } | null>(null);
   const [createHouseholdModal, setCreateHouseholdModal] = useState<{
     name: string;
-    amount: string;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [editHouseholdModal, setEditHouseholdModal] = useState<{
     id: number;
     name: string;
-    amount: string;
+    amount: number;
     status: 'UNPAID' | 'PAID';
-    bankTransferPaid: number;
-    cashbox1Paid: number;
-    cashbox2Paid: number;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [householdSaving, setHouseholdSaving] = useState(false);
   const [createOtherExpenseModal, setCreateOtherExpenseModal] = useState<{
     note: string;
-    amount: string;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [editOtherExpenseModal, setEditOtherExpenseModal] = useState<{
     id: number;
     note: string;
-    amount: string;
-    status: 'UNPAID' | 'PAID';
-    bankTransferPaid: number;
-    cashbox1Paid: number;
-    cashbox2Paid: number;
+    amount: number;
+    status: PavilionExpenseStatus;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [otherExpenseSaving, setOtherExpenseSaving] = useState(false);
   const [createAdminExpenseModal, setCreateAdminExpenseModal] = useState<{
     type: CardExpenseType;
     label: string;
-    amount: string;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [editAdminExpenseModal, setEditAdminExpenseModal] = useState<{
     id: number;
     type: CardExpenseType;
     label: string;
     note: string;
-    amount: string;
-    status: 'UNPAID' | 'PAID';
-    bankTransferPaid: number;
-    cashbox1Paid: number;
-    cashbox2Paid: number;
+    amount: number;
+    status: PavilionExpenseStatus;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
   } | null>(null);
   const [adminExpenseSaving, setAdminExpenseSaving] = useState(false);
   const [householdExpenses, setHouseholdExpenses] = useState<any[]>([]);
@@ -252,11 +260,11 @@ export default function StorePage() {
       ? (searchParams.get('paymentStatus') as 'PAID' | 'PARTIAL' | 'UNPAID')
       : '',
   );
+  const [pavilionDisplayLimit, setPavilionDisplayLimit] = useState<'50' | '100' | 'all'>(
+    initialPavilionDisplayLimit,
+  );
   const [pavilions, setPavilions] = useState<any[]>([]);
   const [pavilionsTotal, setPavilionsTotal] = useState(0);
-  const [pavilionsPage, setPavilionsPage] = useState(safeInitialPavilionsPage);
-  const [pavilionsPageSize] = useState(20);
-  const [pavilionsHasMore, setPavilionsHasMore] = useState(false);
   const [pavilionsLoading, setPavilionsLoading] = useState(false);
   const [orderedPavilionIds, setOrderedPavilionIds] = useState<number[]>([]);
   const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
@@ -272,7 +280,7 @@ export default function StorePage() {
       Boolean(searchParams.get('status')) ||
       Boolean(searchParams.get('groupId')) ||
       Boolean(searchParams.get('paymentStatus')) ||
-      Boolean(searchParams.get('page'));
+      Boolean(searchParams.get('show'));
     if (hasUrlFilters) return;
 
     const storageKey = `store-page-filters-${storeId}`;
@@ -285,7 +293,7 @@ export default function StorePage() {
         status?: string;
         groupId?: string;
         paymentStatus?: '' | 'PAID' | 'PARTIAL' | 'UNPAID';
-        page?: number;
+        show?: '50' | '100' | 'all';
       };
 
       setPavilionSearch(parsed.q ?? '');
@@ -299,10 +307,8 @@ export default function StorePage() {
           ? parsed.paymentStatus
           : '',
       );
-      setPavilionsPage(
-        Number.isFinite(Number(parsed.page)) && Number(parsed.page) > 0
-          ? Number(parsed.page)
-          : 1,
+      setPavilionDisplayLimit(
+        parsed.show === '100' || parsed.show === 'all' ? parsed.show : '50',
       );
     } catch (err) {
       console.warn('Failed to restore pavilion filters on store page', err);
@@ -371,15 +377,19 @@ export default function StorePage() {
     return { label: 'Частично оплачено', className: 'border-amber-200 bg-amber-50 text-amber-700' };
   };
 
-  const fetchPavilions = async (page = 1) => {
+  const fetchPavilions = async () => {
     if (!storeId) return;
 
     setPavilionsLoading(true);
     try {
+      const pageSize =
+        pavilionDisplayLimit === 'all'
+          ? Math.max(1000, Number(pavilionsTotal || 0) + 100)
+          : Number(pavilionDisplayLimit);
       const query = new URLSearchParams();
       query.set('paginated', 'true');
-      query.set('page', String(page));
-      query.set('pageSize', String(pavilionsPageSize));
+      query.set('page', '1');
+      query.set('pageSize', String(pageSize));
       if (pavilionSearch.trim()) query.set('search', pavilionSearch.trim());
       if (pavilionCategoryFilter) query.set('category', pavilionCategoryFilter);
       if (pavilionStatusFilter) query.set('status', pavilionStatusFilter);
@@ -393,18 +403,14 @@ export default function StorePage() {
         total: number;
         page: number;
         pageSize: number;
-        hasMore: boolean;
       }>(`/stores/${storeId}/pavilions?${query.toString()}`);
 
       setPavilions(response.items || []);
       setPavilionsTotal(Number(response.total ?? 0));
-      setPavilionsPage(Number(response.page ?? page));
-      setPavilionsHasMore(Boolean(response.hasMore));
     } catch (err) {
       console.error(err);
       setPavilions([]);
       setPavilionsTotal(0);
-      setPavilionsHasMore(false);
     } finally {
       setPavilionsLoading(false);
     }
@@ -436,11 +442,10 @@ export default function StorePage() {
       }
 
       if (hasPermission(storeData.permissions || [], 'VIEW_PAVILIONS')) {
-        await fetchPavilions(pavilionsPage);
+        await fetchPavilions();
       } else {
         setPavilions([]);
         setPavilionsTotal(0);
-        setPavilionsHasMore(false);
       }
 
       setStore(storeData);
@@ -496,7 +501,7 @@ export default function StorePage() {
   useEffect(() => {
     if (!store) return;
     if (!hasPermission(store.permissions || [], 'VIEW_PAVILIONS')) return;
-    void fetchPavilions(pavilionsPage);
+    void fetchPavilions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pavilionSearch,
@@ -504,6 +509,7 @@ export default function StorePage() {
     pavilionStatusFilter,
     pavilionGroupFilter,
     pavilionPaymentStatusFilter,
+    pavilionDisplayLimit,
   ]);
 
   useEffect(() => {
@@ -515,7 +521,7 @@ export default function StorePage() {
     if (pavilionPaymentStatusFilter) {
       query.set('paymentStatus', pavilionPaymentStatusFilter);
     }
-    if (pavilionsPage > 1) query.set('page', String(pavilionsPage));
+    if (pavilionDisplayLimit !== '50') query.set('show', pavilionDisplayLimit);
 
     const next = query.toString() ? `${pathname}?${query.toString()}` : pathname;
     router.replace(next, { scroll: false });
@@ -527,7 +533,7 @@ export default function StorePage() {
     pavilionStatusFilter,
     pavilionGroupFilter,
     pavilionPaymentStatusFilter,
-    pavilionsPage,
+    pavilionDisplayLimit,
   ]);
 
   useEffect(() => {
@@ -542,7 +548,7 @@ export default function StorePage() {
           status: pavilionStatusFilter,
           groupId: pavilionGroupFilter,
           paymentStatus: pavilionPaymentStatusFilter,
-          page: pavilionsPage,
+          show: pavilionDisplayLimit,
         }),
       );
     } catch (err) {
@@ -555,7 +561,7 @@ export default function StorePage() {
     pavilionStatusFilter,
     pavilionGroupFilter,
     pavilionPaymentStatusFilter,
-    pavilionsPage,
+    pavilionDisplayLimit,
   ]);
 
   useEffect(() => {
@@ -846,19 +852,40 @@ export default function StorePage() {
   const handleCreateHouseholdExpense = async () => {
     if (!createHouseholdModal) return;
     const name = createHouseholdModal.name.trim();
-    const amount = Number(createHouseholdModal.amount);
+    const bank = Number(createHouseholdModal.bankTransferPaid || 0);
+    const cash1 = Number(createHouseholdModal.cashbox1Paid || 0);
+    const cash2 = Number(createHouseholdModal.cashbox2Paid || 0);
+    const amount = bank + cash1 + cash2;
     if (!name) {
       alert('Введите название');
       return;
     }
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (amount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
       return;
     }
 
     try {
       setHouseholdSaving(true);
-      await createHouseholdExpense(storeId, { name, amount });
+      await createHouseholdExpense(storeId, {
+        name,
+        amount,
+        status: 'PAID',
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
+      });
       setCreateHouseholdModal(null);
       await fetchData(false);
     } catch (err) {
@@ -873,13 +900,33 @@ export default function StorePage() {
     if (!editHouseholdModal) return;
 
     const name = editHouseholdModal.name.trim();
-    const amount = Number(editHouseholdModal.amount);
+    const status = editHouseholdModal.status;
+    const baseAmount = Number(editHouseholdModal.amount ?? 0);
+    const bank = Number(editHouseholdModal.bankTransferPaid || 0);
+    const cash1 = Number(editHouseholdModal.cashbox1Paid || 0);
+    const cash2 = Number(editHouseholdModal.cashbox2Paid || 0);
+    const paidAmount = bank + cash1 + cash2;
     if (!name) {
       alert('Введите название');
       return;
     }
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (status === 'PAID' && paidAmount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
+      return;
+    }
+    if (status === 'UNPAID' && baseAmount <= 0) {
+      alert('Сумма расхода должна быть больше 0');
       return;
     }
 
@@ -892,36 +939,12 @@ export default function StorePage() {
       cashbox2Paid?: number;
     } = {
       name,
-      amount,
-      status: editHouseholdModal.status,
+      amount: status === 'PAID' ? paidAmount : baseAmount,
+      status,
+      bankTransferPaid: status === 'PAID' ? bank : 0,
+      cashbox1Paid: status === 'PAID' ? cash1 : 0,
+      cashbox2Paid: status === 'PAID' ? cash2 : 0,
     };
-
-    if (editHouseholdModal.status === 'PAID') {
-      const bank = Number(editHouseholdModal.bankTransferPaid ?? 0);
-      const cash1 = Number(editHouseholdModal.cashbox1Paid ?? 0);
-      const cash2 = Number(editHouseholdModal.cashbox2Paid ?? 0);
-      const total = bank + cash1 + cash2;
-
-      if (
-        Number.isNaN(bank) ||
-        Number.isNaN(cash1) ||
-        Number.isNaN(cash2) ||
-        bank < 0 ||
-        cash1 < 0 ||
-        cash2 < 0
-      ) {
-        alert('Каналы оплаты должны быть неотрицательными');
-        return;
-      }
-      if (Math.abs(total - amount) > 0.01) {
-        alert('Сумма каналов оплаты должна быть равна сумме расхода');
-        return;
-      }
-
-      payload.bankTransferPaid = bank;
-      payload.cashbox1Paid = cash1;
-      payload.cashbox2Paid = cash2;
-    }
 
     try {
       setHouseholdSaving(true);
@@ -953,10 +976,24 @@ export default function StorePage() {
   const handleCreateAdminExpense = async () => {
     if (!createAdminExpenseModal) return;
     const note = createAdminExpenseModal.label.trim();
-    const amount = Number(createAdminExpenseModal.amount);
+    const bank = Number(createAdminExpenseModal.bankTransferPaid || 0);
+    const cash1 = Number(createAdminExpenseModal.cashbox1Paid || 0);
+    const cash2 = Number(createAdminExpenseModal.cashbox2Paid || 0);
+    const amount = bank + cash1 + cash2;
 
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (amount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
       return;
     }
 
@@ -966,7 +1003,10 @@ export default function StorePage() {
         type: createAdminExpenseModal.type,
         note,
         amount,
-        status: 'UNPAID',
+        status: 'PAID',
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
       });
       setCreateAdminExpenseModal(null);
       await fetchData(false);
@@ -981,14 +1021,34 @@ export default function StorePage() {
   const handleSaveEditedAdminExpense = async () => {
     if (!editAdminExpenseModal) return;
     const note = editAdminExpenseModal.note.trim();
-    const amount = Number(editAdminExpenseModal.amount);
+    const status = editAdminExpenseModal.status;
+    const baseAmount = Number(editAdminExpenseModal.amount ?? 0);
+    const bank = Number(editAdminExpenseModal.bankTransferPaid || 0);
+    const cash1 = Number(editAdminExpenseModal.cashbox1Paid || 0);
+    const cash2 = Number(editAdminExpenseModal.cashbox2Paid || 0);
+    const paidAmount = bank + cash1 + cash2;
 
     if (!note) {
       alert('Введите название');
       return;
     }
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (status === 'PAID' && paidAmount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
+      return;
+    }
+    if (status === 'UNPAID' && baseAmount <= 0) {
+      alert('Сумма расхода должна быть больше 0');
       return;
     }
 
@@ -1001,36 +1061,12 @@ export default function StorePage() {
       cashbox2Paid?: number;
     } = {
       note,
-      amount,
-      status: editAdminExpenseModal.status,
+      amount: status === 'PAID' ? paidAmount : baseAmount,
+      status,
+      bankTransferPaid: status === 'PAID' ? bank : 0,
+      cashbox1Paid: status === 'PAID' ? cash1 : 0,
+      cashbox2Paid: status === 'PAID' ? cash2 : 0,
     };
-
-    if (editAdminExpenseModal.status === 'PAID') {
-      const bank = Number(editAdminExpenseModal.bankTransferPaid ?? 0);
-      const cash1 = Number(editAdminExpenseModal.cashbox1Paid ?? 0);
-      const cash2 = Number(editAdminExpenseModal.cashbox2Paid ?? 0);
-      const total = bank + cash1 + cash2;
-
-      if (
-        Number.isNaN(bank) ||
-        Number.isNaN(cash1) ||
-        Number.isNaN(cash2) ||
-        bank < 0 ||
-        cash1 < 0 ||
-        cash2 < 0
-      ) {
-        alert('Каналы оплаты должны быть неотрицательными');
-        return;
-      }
-      if (Math.abs(total - amount) > 0.01) {
-        alert('Сумма каналов оплаты должна быть равна сумме расхода');
-        return;
-      }
-
-      payload.bankTransferPaid = bank;
-      payload.cashbox1Paid = cash1;
-      payload.cashbox2Paid = cash2;
-    }
 
     try {
       setAdminExpenseSaving(true);
@@ -1050,14 +1086,28 @@ export default function StorePage() {
   const handleCreateOtherExpense = async () => {
     if (!createOtherExpenseModal) return;
     const note = createOtherExpenseModal.note.trim();
-    const amount = Number(createOtherExpenseModal.amount);
+    const bank = Number(createOtherExpenseModal.bankTransferPaid || 0);
+    const cash1 = Number(createOtherExpenseModal.cashbox1Paid || 0);
+    const cash2 = Number(createOtherExpenseModal.cashbox2Paid || 0);
+    const amount = bank + cash1 + cash2;
 
     if (!note) {
       alert('Введите название');
       return;
     }
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (amount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
       return;
     }
 
@@ -1067,7 +1117,10 @@ export default function StorePage() {
         type: 'OTHER',
         note,
         amount,
-        status: 'UNPAID',
+        status: 'PAID',
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
       });
       setCreateOtherExpenseModal(null);
       await fetchData(false);
@@ -1082,14 +1135,34 @@ export default function StorePage() {
   const handleSaveEditedOtherExpense = async () => {
     if (!editOtherExpenseModal) return;
     const note = editOtherExpenseModal.note.trim();
-    const amount = Number(editOtherExpenseModal.amount);
+    const status = editOtherExpenseModal.status;
+    const baseAmount = Number(editOtherExpenseModal.amount ?? 0);
+    const bank = Number(editOtherExpenseModal.bankTransferPaid || 0);
+    const cash1 = Number(editOtherExpenseModal.cashbox1Paid || 0);
+    const cash2 = Number(editOtherExpenseModal.cashbox2Paid || 0);
+    const paidAmount = bank + cash1 + cash2;
 
     if (!note) {
       alert('Введите название');
       return;
     }
-    if (Number.isNaN(amount) || amount < 0) {
-      alert('Сумма должна быть неотрицательной');
+    if (
+      Number.isNaN(bank) ||
+      Number.isNaN(cash1) ||
+      Number.isNaN(cash2) ||
+      bank < 0 ||
+      cash1 < 0 ||
+      cash2 < 0
+    ) {
+      alert('Каналы оплаты должны быть неотрицательными');
+      return;
+    }
+    if (status === 'PAID' && paidAmount <= 0) {
+      alert('Введите сумму хотя бы в одном канале оплаты');
+      return;
+    }
+    if (status === 'UNPAID' && baseAmount <= 0) {
+      alert('Сумма расхода должна быть больше 0');
       return;
     }
 
@@ -1102,36 +1175,12 @@ export default function StorePage() {
       cashbox2Paid?: number;
     } = {
       note,
-      amount,
-      status: editOtherExpenseModal.status,
+      amount: status === 'PAID' ? paidAmount : baseAmount,
+      status,
+      bankTransferPaid: status === 'PAID' ? bank : 0,
+      cashbox1Paid: status === 'PAID' ? cash1 : 0,
+      cashbox2Paid: status === 'PAID' ? cash2 : 0,
     };
-
-    if (editOtherExpenseModal.status === 'PAID') {
-      const bank = Number(editOtherExpenseModal.bankTransferPaid ?? 0);
-      const cash1 = Number(editOtherExpenseModal.cashbox1Paid ?? 0);
-      const cash2 = Number(editOtherExpenseModal.cashbox2Paid ?? 0);
-      const total = bank + cash1 + cash2;
-
-      if (
-        Number.isNaN(bank) ||
-        Number.isNaN(cash1) ||
-        Number.isNaN(cash2) ||
-        bank < 0 ||
-        cash1 < 0 ||
-        cash2 < 0
-      ) {
-        alert('Каналы оплаты должны быть неотрицательными');
-        return;
-      }
-      if (Math.abs(total - amount) > 0.01) {
-        alert('Сумма каналов оплаты должна быть равна сумме расхода');
-        return;
-      }
-
-      payload.bankTransferPaid = bank;
-      payload.cashbox1Paid = cash1;
-      payload.cashbox2Paid = cash2;
-    }
 
     try {
       setOtherExpenseSaving(true);
@@ -1331,7 +1380,7 @@ export default function StorePage() {
     if (pavilionPaymentStatusFilter) {
       query.set('paymentStatus', pavilionPaymentStatusFilter);
     }
-    if (pavilionsPage > 1) query.set('page', String(pavilionsPage));
+    if (pavilionDisplayLimit !== '50') query.set('show', pavilionDisplayLimit);
     const qs = query.toString();
     return qs ? `${pathname}?${qs}` : pathname;
   };
@@ -1341,121 +1390,54 @@ export default function StorePage() {
     label: string;
     visible: boolean;
     icon: LucideIcon;
+    href: string;
   }> = [
-    { id: 'pavilions', label: 'Павильоны', visible: hasPermission(permissions, 'VIEW_PAVILIONS'), icon: Store },
-    { id: 'household', label: 'Хоз расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: Toolbox },
-    { id: 'other-expenses', label: 'Прочие расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: BanknoteArrowDown },
-    { id: 'admin-expenses', label: 'Административные расходы', visible: hasPermission(permissions, 'VIEW_CHARGES'), icon: LockKeyhole },
-    { id: 'staff', label: 'Штатное расписание', visible: hasPermission(permissions, 'VIEW_STAFF'), icon: UsersRound },
+    {
+      id: 'pavilions',
+      label: 'Павильоны',
+      visible: hasPermission(permissions, 'VIEW_PAVILIONS'),
+      icon: Store,
+      href: `/stores/${storeId}#pavilions`,
+    },
+    {
+      id: 'household',
+      label: 'Хоз расходы',
+      visible: hasPermission(permissions, 'VIEW_CHARGES'),
+      icon: Toolbox,
+      href: `/stores/${storeId}/household`,
+    },
+    {
+      id: 'other-expenses',
+      label: 'Прочие расходы',
+      visible: hasPermission(permissions, 'VIEW_CHARGES'),
+      icon: BanknoteArrowDown,
+      href: `/stores/${storeId}/other-expenses`,
+    },
+    {
+      id: 'admin-expenses',
+      label: 'Административные расходы',
+      visible: hasPermission(permissions, 'VIEW_CHARGES'),
+      icon: LockKeyhole,
+      href: `/stores/${storeId}/admin-expenses`,
+    },
+    {
+      id: 'staff',
+      label: 'Штатное расписание',
+      visible: hasPermission(permissions, 'VIEW_STAFF'),
+      icon: UsersRound,
+      href: `/stores/${storeId}/staff`,
+    },
   ];
 
   return (
     <div className="min-h-screen scroll-smooth bg-[#f9f5f0]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
-        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
-          <div className="mb-5">
-            <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
-            <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
-            </p>
-          </div>
-
-          <div className="space-y-2 border-b border-slate-100 pb-4">
-            <Link href="/dashboard" className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]">
-              <ArrowLeft className="h-4 w-4" />
-              Назад к объектам
-            </Link>
-          </div>
-
-          <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
-            {hasPermission(permissions, 'VIEW_SUMMARY') && (
-              <Link
-                href={`/stores/${storeId}/summary`}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
-              >
-                <Sigma className="h-4 w-4" />
-                СВОДКА
-              </Link>
-            )}
-            {canCreatePavilion && (
-              <button
-                onClick={() => setShowCreatePavilionModal(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
-              >
-                <CirclePlus className="h-4 w-4" />
-                Добавить павильон
-              </button>
-            )}
-            {canViewAccounting && (
-              <Link
-                href={`/stores/${storeId}/accounting`}
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#020617]"
-              >
-                <CheckCheck className="h-4 w-4" />
-                Открытие/закрытие смены
-              </Link>
-            )}
-            {(canOpenUtilities || canViewAccounting) && (
-              <div className="grid grid-cols-2 gap-2 pt-5">
-                {canOpenUtilities && (
-                  <Link
-                    href={`/stores/${storeId}/utilities`}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
-                      canViewAccounting ? '' : 'col-span-2'
-                    }`}
-                  >
-                    <HandCoins className="h-3.5 w-3.5" />
-                    Начисления
-                  </Link>
-                )}
-                {canViewAccounting && (
-                  <button
-                    onClick={() => setShowExtraIncomeModal(true)}
-                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
-                      canOpenUtilities ? '' : 'col-span-2'
-                    }`}
-                  >
-                    <BanknoteArrowDown className="h-3.5 w-3.5" />
-                    Доп приход
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4">
-            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
-            <nav className="space-y-1">
-              {navSections.filter((item) => item.visible).map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  onClick={() => setActiveSection(item.id)}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
-                    activeSection === item.id
-                      ? 'bg-[#FFE8DB] text-[#C2410C]'
-                      : 'text-slate-600 hover:bg-[#F4EFEB] hover:text-slate-900'
-                  }`}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  <span className="font-medium">{item.label}</span>
-                </a>
-              ))}
-            </nav>
-            {canManageStore && (
-              <div className="mt-3 border-t border-slate-100 pt-3">
-                <Link
-                  href={`/stores/${storeId}/settings`}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Управление объектом
-                </Link>
-              </div>
-            )}
-          </div>
-        </aside>
+        <StoreSidebar
+          storeId={storeId}
+          store={store}
+          active="pavilions"
+          onOpenExtraIncome={() => setShowExtraIncomeModal(true)}
+        />
 
         <main className="min-w-0 flex-1 space-y-3 pt-12 md:space-y-6 md:pt-0">
           <div className="fixed right-3 top-3 z-30 lg:hidden">
@@ -1524,18 +1506,6 @@ export default function StorePage() {
                     СВОДКА
                   </Link>
                 )}
-                {canCreatePavilion && (
-                  <button
-                    onClick={() => {
-                      setShowCreatePavilionModal(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white"
-                  >
-                    <CirclePlus className="h-4 w-4" />
-                    Добавить павильон
-                  </button>
-                )}
                 {canViewAccounting && (
                   <Link
                     href={`/stores/${storeId}/accounting`}
@@ -1582,11 +1552,10 @@ export default function StorePage() {
                 <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
                 <nav className="space-y-1">
                   {navSections.filter((item) => item.visible).map((item) => (
-                    <a
+                    <Link
                       key={`mobile-${item.id}`}
-                      href={`#${item.id}`}
+                      href={item.href}
                       onClick={() => {
-                        setActiveSection(item.id);
                         setMobileMenuOpen(false);
                       }}
                       className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
@@ -1597,7 +1566,7 @@ export default function StorePage() {
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span className="font-medium">{item.label}</span>
-                    </a>
+                    </Link>
                   ))}
                 </nav>
                 {canManageStore && (
@@ -1630,6 +1599,17 @@ export default function StorePage() {
           >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {canCreatePavilion && (
+                  <button
+                    onClick={() => setShowCreatePavilionModal(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                  >
+                    <CirclePlus className="h-4 w-4" />
+                    Добавить павильон
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mb-4 space-y-3">
@@ -1638,7 +1618,6 @@ export default function StorePage() {
                 value={pavilionSearch}
                 onChange={(e) => {
                   setPavilionSearch(e.target.value);
-                  setPavilionsPage(1);
                 }}
                 className="w-full rounded-lg border border-[#D8D1CB] px-3 py-2"
                 placeholder="Поиск по имени павильона"
@@ -1648,7 +1627,6 @@ export default function StorePage() {
                 value={pavilionCategoryFilter}
                 onChange={(e) => {
                   setPavilionCategoryFilter(e.target.value);
-                  setPavilionsPage(1);
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
@@ -1663,7 +1641,6 @@ export default function StorePage() {
                 value={pavilionStatusFilter}
                 onChange={(e) => {
                   setPavilionStatusFilter(e.target.value);
-                  setPavilionsPage(1);
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
@@ -1676,7 +1653,6 @@ export default function StorePage() {
                 value={pavilionGroupFilter}
                 onChange={(e) => {
                   setPavilionGroupFilter(e.target.value);
-                  setPavilionsPage(1);
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
@@ -1694,7 +1670,6 @@ export default function StorePage() {
                     setPavilionPaymentStatusFilter(
                       (e.target.value as '' | 'PAID' | 'PARTIAL' | 'UNPAID') || '',
                     );
-                    setPavilionsPage(1);
                   }
                 }
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
@@ -1881,41 +1856,25 @@ export default function StorePage() {
               </div>
             )}
 
-            <div className="mt-4 flex items-center justify-between text-sm text-[#6B6B6B]">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runKeepingScroll(async () => {
-                      await fetchPavilions(Math.max(1, pavilionsPage - 1));
-                    })
+            <div className="mt-4 flex items-start justify-between text-sm text-[#6B6B6B]">
+              <div className="flex flex-col gap-2">
+                <select
+                  value={pavilionDisplayLimit}
+                  onChange={(e) =>
+                    setPavilionDisplayLimit((e.target.value as '50' | '100' | 'all') || '50')
                   }
-                  disabled={pavilionsLoading || pavilionsPage <= 1}
-                  className="rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 transition hover:bg-[#f9f5f0] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-fit rounded-lg border border-[#D8D1CB] bg-white px-3 py-2 text-sm text-[#111111]"
                 >
-                  Назад
-                </button>
-                <span>
-                  Стр. {pavilionsPage}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void runKeepingScroll(async () => {
-                      await fetchPavilions(pavilionsPage + 1);
-                    })
-                  }
-                  disabled={pavilionsLoading || !pavilionsHasMore}
-                  className="rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 transition hover:bg-[#f9f5f0] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Далее
-                </button>
+                  <option value="50">Показать первые 50</option>
+                  <option value="100">Показать первые 100</option>
+                  <option value="all">Показать все</option>
+                </select>
               </div>
             </div>
           </section>
         )}
 
-        {hasPermission(permissions, 'VIEW_CHARGES') && (
+        {false && (
           <section
             id="household"
             data-store-section
@@ -1925,7 +1884,14 @@ export default function StorePage() {
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5 mt-4">
                 <button
-                  onClick={() => setCreateHouseholdModal({ name: '', amount: '' })}
+                  onClick={() =>
+                    setCreateHouseholdModal({
+                      name: '',
+                      bankTransferPaid: '',
+                      cashbox1Paid: '',
+                      cashbox2Paid: '',
+                    })
+                  }
                   className="rounded-xl bg-[#FF6A13] px-4 py-2.5 text-white transition hover:bg-[#E65C00] disabled:opacity-60"
                 >
                   Добавить
@@ -1990,25 +1956,18 @@ export default function StorePage() {
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
-                              const amount = Number(expense.amount ?? 0);
                               const bank = Number(expense.bankTransferPaid ?? 0);
                               const cash1 = Number(expense.cashbox1Paid ?? 0);
                               const cash2 = Number(expense.cashbox2Paid ?? 0);
-                              const hasChannels = bank + cash1 + cash2 > 0;
 
                               setEditHouseholdModal({
                                 id: Number(expense.id),
                                 name: String(expense.name ?? ''),
-                                amount: String(amount),
-                                status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                bankTransferPaid:
-                                  (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                    ? hasChannels
-                                      ? bank
-                                      : amount
-                                    : bank,
-                                cashbox1Paid: cash1,
-                                cashbox2Paid: cash2,
+                                amount: Number(expense.amount ?? 0),
+                                status: (expense.status ?? 'UNPAID') as 'UNPAID' | 'PAID',
+                                bankTransferPaid: String(bank || ''),
+                                cashbox1Paid: String(cash1 || ''),
+                                cashbox2Paid: String(cash2 || ''),
                               });
                             }}
                             className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
@@ -2025,7 +1984,7 @@ export default function StorePage() {
           </section>
         )}
 
-        {hasPermission(permissions, 'VIEW_CHARGES') && (
+        {false && (
           <section
             id="other-expenses"
             data-store-section
@@ -2037,14 +1996,21 @@ export default function StorePage() {
                 href={`/stores/${storeId}/other-expenses`}
                 className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
               >
-                Все прочие расходы
+                Прочие расходы
               </Link>
             </div>
 
             {hasPermission(permissions, 'CREATE_CHARGES') && (
               <div className="mb-5">
                 <button
-                  onClick={() => setCreateOtherExpenseModal({ note: '', amount: '' })}
+                  onClick={() =>
+                    setCreateOtherExpenseModal({
+                      note: '',
+                      bankTransferPaid: '',
+                      cashbox1Paid: '',
+                      cashbox2Paid: '',
+                    })
+                  }
                   className="rounded-xl bg-[#FF6A13] px-4 py-2.5 text-white transition hover:bg-[#E65C00] disabled:opacity-60"
                 >
                   Добавить
@@ -2110,25 +2076,18 @@ export default function StorePage() {
                         {hasPermission(permissions, 'EDIT_CHARGES') && (
                           <button
                             onClick={() => {
-                              const amount = Number(expense.amount ?? 0);
                               const bank = Number(expense.bankTransferPaid ?? 0);
                               const cash1 = Number(expense.cashbox1Paid ?? 0);
                               const cash2 = Number(expense.cashbox2Paid ?? 0);
-                              const hasChannels = bank + cash1 + cash2 > 0;
 
                               setEditOtherExpenseModal({
                                 id: Number(expense.id),
                                 note: String(expense.note ?? ''),
-                                amount: String(amount),
-                                status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                bankTransferPaid:
-                                  (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                    ? hasChannels
-                                      ? bank
-                                      : amount
-                                    : bank,
-                                cashbox1Paid: cash1,
-                                cashbox2Paid: cash2,
+                                amount: Number(expense.amount ?? 0),
+                                status: (expense.status ?? 'UNPAID') as PavilionExpenseStatus,
+                                bankTransferPaid: String(bank || ''),
+                                cashbox1Paid: String(cash1 || ''),
+                                cashbox2Paid: String(cash2 || ''),
                               });
                             }}
                             className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
@@ -2145,7 +2104,7 @@ export default function StorePage() {
           </section>
         )}
 
-        {hasPermission(permissions, 'VIEW_CHARGES') && (
+        {false && (
           <section
             id="admin-expenses"
             data-store-section
@@ -2179,7 +2138,9 @@ export default function StorePage() {
                             setCreateAdminExpenseModal({
                               type: category.type,
                               label: category.label,
-                              amount: '',
+                              bankTransferPaid: '',
+                              cashbox1Paid: '',
+                              cashbox2Paid: '',
                             })
                           }
                           className="w-full rounded-lg bg-[#FF6A13] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#E65C00]"
@@ -2234,40 +2195,25 @@ export default function StorePage() {
                                 {hasPermission(permissions, 'EDIT_CHARGES') && (
                                   <button
                                     onClick={() => {
-                                      const amount = Number(item.amount ?? 0);
                                       const bank = Number(item.bankTransferPaid ?? 0);
                                       const cash1 = Number(item.cashbox1Paid ?? 0);
                                       const cash2 = Number(item.cashbox2Paid ?? 0);
-                                      const hasChannels = bank + cash1 + cash2 > 0;
 
                                       setEditAdminExpenseModal({
                                         id: Number(item.id),
                                         type: category.type,
                                         label: category.label,
                                         note: String(item.note ?? category.label),
-                                        amount: String(amount),
-                                        status: (item.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                        bankTransferPaid:
-                                          (item.status as 'UNPAID' | 'PAID') === 'PAID'
-                                            ? hasChannels
-                                              ? bank
-                                              : amount
-                                            : bank,
-                                        cashbox1Paid: cash1,
-                                        cashbox2Paid: cash2,
+                                        amount: Number(item.amount ?? 0),
+                                        status: (item.status ?? 'UNPAID') as PavilionExpenseStatus,
+                                        bankTransferPaid: String(bank || ''),
+                                        cashbox1Paid: String(cash1 || ''),
+                                        cashbox2Paid: String(cash2 || ''),
                                       });
                                     }}
                                     className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                                   >
                                     Оплатить/Изменить
-                                  </button>
-                                )}
-                                {hasPermission(permissions, 'DELETE_CHARGES') && (
-                                  <button
-                                    onClick={() => handleDeleteManualExpense(item.id)}
-                                    className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                                  >
-                                    Удалить
                                   </button>
                                 )}
                               </div>
@@ -2287,7 +2233,7 @@ export default function StorePage() {
           </section>
         )}
 
-        {hasPermission(permissions, 'VIEW_STAFF') && (
+        {false && (
           <section
             id="staff"
             data-store-section
@@ -2379,90 +2325,15 @@ export default function StorePage() {
                           {formatMoney(Number(staff.salary ?? 0), store.currency)}
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          {hasPermission(permissions, 'MANAGE_STAFF') ? (
-                            <div className="flex items-center gap-2">
-                              <select
-                                value={staff.salaryStatus ?? 'UNPAID'}
-                                onChange={(e) => {
-                                  const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                                  if (nextStatus === 'PAID') {
-                                    const salary = Number(staff.salary ?? 0);
-                                    const bank = Number(staff.salaryBankTransferPaid ?? 0);
-                                    const cash1 = Number(staff.salaryCashbox1Paid ?? 0);
-                                    const cash2 = Number(staff.salaryCashbox2Paid ?? 0);
-                                    const hasChannels = bank + cash1 + cash2 > 0;
-
-                                    setPayStaffSalaryModal({
-                                      id: Number(staff.id),
-                                      fullName: String(staff.fullName ?? 'Сотрудник'),
-                                      salary,
-                                      bankTransfer: hasChannels ? String(bank || '') : String(salary),
-                                      cashbox1: hasChannels ? String(cash1 || '') : '',
-                                      cashbox2: hasChannels ? String(cash2 || '') : '',
-                                    });
-                                    return;
-                                  }
-
-                                  void handleUpdateStaffSalaryStatus(staff.id, nextStatus);
-                                }}
-                                className="rounded-lg border border-[#D8D1CB] bg-white px-2 py-1 text-xs text-[#374151]"
-                              >
-                                <option value="UNPAID">Не оплачено</option>
-                                <option value="PAID">Оплачено</option>
-                              </select>
-                              {(staff.salaryStatus ?? 'UNPAID') === 'PAID' && (
-                                <div className="space-y-0.5 text-[11px] text-slate-600">
-                                  <div>
-                                    Безналичные:{' '}
-                                    {formatMoney(
-                                      Number(staff.salaryBankTransferPaid ?? 0),
-                                      store.currency,
-                                    )}
-                                  </div>
-                                  <div>
-                                    Наличные касса 1:{' '}
-                                    {formatMoney(
-                                      Number(staff.salaryCashbox1Paid ?? 0),
-                                      store.currency,
-                                    )}
-                                  </div>
-                                  <div>
-                                    Наличные касса 2:{' '}
-                                    {formatMoney(
-                                      Number(staff.salaryCashbox2Paid ?? 0),
-                                      store.currency,
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ) : staff.salaryStatus === 'PAID' ? (
-                            <div className="space-y-0.5 text-[11px] text-slate-600">
-                              <div>
-                                Безналичные:{' '}
-                                {formatMoney(
-                                  Number(staff.salaryBankTransferPaid ?? 0),
-                                  store.currency,
-                                )}
-                              </div>
-                              <div>
-                                Наличные касса 1:{' '}
-                                {formatMoney(
-                                  Number(staff.salaryCashbox1Paid ?? 0),
-                                  store.currency,
-                                )}
-                              </div>
-                              <div>
-                                Наличные касса 2:{' '}
-                                {formatMoney(
-                                  Number(staff.salaryCashbox2Paid ?? 0),
-                                  store.currency,
-                                )}
-                              </div>
-                            </div>
-                          ) : (
-                            'Не оплачено'
-                          )}
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              (staff.salaryStatus ?? 'UNPAID') === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}
+                          >
+                            {(staff.salaryStatus ?? 'UNPAID') === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
                           {hasPermission(permissions, 'MANAGE_STAFF') && (
@@ -2503,842 +2374,212 @@ export default function StorePage() {
         </main>
       </div>
 
-      {addStaffModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleAddStaff();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
+      <AddStaffModal
+        open={Boolean(addStaffModal)}
+        fullName={addStaffModal?.fullName ?? ''}
+        position={addStaffModal?.position ?? ''}
+        salary={addStaffModal?.salary ?? ''}
+        onFullNameChange={(value) =>
+          setAddStaffModal((prev) => (prev ? { ...prev, fullName: value } : prev))
+        }
+        onPositionChange={(value) =>
+          setAddStaffModal((prev) => (prev ? { ...prev, position: value } : prev))
+        }
+        onSalaryChange={(value) =>
+          setAddStaffModal((prev) => (prev ? { ...prev, salary: value } : prev))
+        }
+        saving={staffSaving}
+        onClose={() => setAddStaffModal(null)}
+        onSubmit={() => void handleAddStaff()}
+      />
 
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Должность</label>
-                <input
-                  type="text"
-                  value={addStaffModal.position}
-                  onChange={(e) =>
-                    setAddStaffModal((prev) => (prev ? { ...prev, position: e.target.value } : prev))
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Имя фамилия</label>
-                <input
-                  type="text"
-                  value={addStaffModal.fullName}
-                  onChange={(e) =>
-                    setAddStaffModal((prev) => (prev ? { ...prev, fullName: e.target.value } : prev))
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Зарплата</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={addStaffModal.salary}
-                  onChange={(e) =>
-                    setAddStaffModal((prev) => (prev ? { ...prev, salary: e.target.value } : prev))
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-            </div>
+      <PayStaffSalaryModal
+        open={Boolean(payStaffSalaryModal)}
+        fullName={payStaffSalaryModal?.fullName ?? ''}
+        salary={Number(payStaffSalaryModal?.salary ?? 0)}
+        currency={store?.currency}
+        bankTransfer={payStaffSalaryModal?.bankTransfer ?? ''}
+        cashbox1={payStaffSalaryModal?.cashbox1 ?? ''}
+        cashbox2={payStaffSalaryModal?.cashbox2 ?? ''}
+        onBankTransferChange={(value) =>
+          setPayStaffSalaryModal((prev) => (prev ? { ...prev, bankTransfer: value } : prev))
+        }
+        onCashbox1Change={(value) =>
+          setPayStaffSalaryModal((prev) => (prev ? { ...prev, cashbox1: value } : prev))
+        }
+        onCashbox2Change={(value) =>
+          setPayStaffSalaryModal((prev) => (prev ? { ...prev, cashbox2: value } : prev))
+        }
+        saving={payStaffSaving}
+        onClose={() => setPayStaffSalaryModal(null)}
+        onSubmit={() => void handlePayStaffSalary()}
+      />
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setAddStaffModal(null)}
-                disabled={staffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={staffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {staffSaving ? 'Сохранение...' : 'Добавить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <ExpenseCreatePaidModal
+        open={Boolean(createHouseholdModal)}
+        title="Новый хозяйственный расход"
+        nameValue={createHouseholdModal?.name ?? ''}
+        onNameChange={(value) =>
+          setCreateHouseholdModal((prev) => (prev ? { ...prev, name: value } : prev))
+        }
+        bankTransferPaid={createHouseholdModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setCreateHouseholdModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={createHouseholdModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setCreateHouseholdModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={createHouseholdModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setCreateHouseholdModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={householdSaving}
+        onClose={() => setCreateHouseholdModal(null)}
+        onSubmit={() => void handleCreateHouseholdExpense()}
+      />
 
-      {payStaffSalaryModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handlePayStaffSalary();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Оплата зарплаты</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              {payStaffSalaryModal.fullName}. Сумма: {formatMoney(payStaffSalaryModal.salary, store?.currency)}
-            </p>
+      <ExpenseEditModal
+        open={Boolean(editHouseholdModal)}
+        title="Изменить хозяйственный расход"
+        nameValue={editHouseholdModal?.name ?? ''}
+        onNameChange={(value) =>
+          setEditHouseholdModal((prev) => (prev ? { ...prev, name: value } : prev))
+        }
+        status={editHouseholdModal?.status ?? 'UNPAID'}
+        onStatusChange={(status) =>
+          setEditHouseholdModal((prev) => (prev ? { ...prev, status } : prev))
+        }
+        bankTransferPaid={editHouseholdModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setEditHouseholdModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={editHouseholdModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setEditHouseholdModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={editHouseholdModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setEditHouseholdModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={householdSaving}
+        onClose={() => setEditHouseholdModal(null)}
+        onSubmit={() => void handleSaveEditedHouseholdExpense()}
+        onDelete={handleDeleteHouseholdExpenseFromEditModal}
+        showDelete={hasPermission(permissions, 'DELETE_CHARGES')}
+      />
 
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={payStaffSalaryModal.bankTransfer}
-                  onChange={(e) =>
-                    setPayStaffSalaryModal((prev) =>
-                      prev ? { ...prev, bankTransfer: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={payStaffSalaryModal.cashbox1}
-                  onChange={(e) =>
-                    setPayStaffSalaryModal((prev) =>
-                      prev ? { ...prev, cashbox1: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={payStaffSalaryModal.cashbox2}
-                  onChange={(e) =>
-                    setPayStaffSalaryModal((prev) =>
-                      prev ? { ...prev, cashbox2: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-            </div>
+      <ExpenseCreatePaidModal
+        open={Boolean(createOtherExpenseModal)}
+        title="Новый прочий расход"
+        nameValue={createOtherExpenseModal?.note ?? ''}
+        onNameChange={(value) =>
+          setCreateOtherExpenseModal((prev) => (prev ? { ...prev, note: value } : prev))
+        }
+        bankTransferPaid={createOtherExpenseModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setCreateOtherExpenseModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={createOtherExpenseModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setCreateOtherExpenseModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={createOtherExpenseModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setCreateOtherExpenseModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={otherExpenseSaving}
+        onClose={() => setCreateOtherExpenseModal(null)}
+        onSubmit={() => void handleCreateOtherExpense()}
+      />
 
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPayStaffSalaryModal(null)}
-                disabled={payStaffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={payStaffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {payStaffSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <ExpenseEditModal
+        open={Boolean(editOtherExpenseModal)}
+        title="Изменить прочий расход"
+        nameValue={editOtherExpenseModal?.note ?? ''}
+        onNameChange={(value) =>
+          setEditOtherExpenseModal((prev) => (prev ? { ...prev, note: value } : prev))
+        }
+        status={(editOtherExpenseModal?.status as 'UNPAID' | 'PAID') ?? 'UNPAID'}
+        onStatusChange={(status) =>
+          setEditOtherExpenseModal((prev) => (prev ? { ...prev, status } : prev))
+        }
+        bankTransferPaid={editOtherExpenseModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setEditOtherExpenseModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={editOtherExpenseModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setEditOtherExpenseModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={editOtherExpenseModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setEditOtherExpenseModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={otherExpenseSaving}
+        onClose={() => setEditOtherExpenseModal(null)}
+        onSubmit={() => void handleSaveEditedOtherExpense()}
+        onDelete={handleDeleteOtherExpenseFromEditModal}
+        showDelete={hasPermission(permissions, 'DELETE_CHARGES')}
+      />
 
-      {createHouseholdModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleCreateHouseholdExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Расход создается со статусом «Не оплачено».
-            </p>
+      <ExpenseCreatePaidModal
+        open={Boolean(createAdminExpenseModal)}
+        title={`${createAdminExpenseModal?.label ?? ''}: новый расход`}
+        nameValue={createAdminExpenseModal?.label ?? ''}
+        onNameChange={() => {}}
+        bankTransferPaid={createAdminExpenseModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setCreateAdminExpenseModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={createAdminExpenseModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setCreateAdminExpenseModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={createAdminExpenseModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setCreateAdminExpenseModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={adminExpenseSaving}
+        onClose={() => setCreateAdminExpenseModal(null)}
+        onSubmit={() => void handleCreateAdminExpense()}
+      />
 
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={createHouseholdModal.name}
-                  onChange={(e) =>
-                    setCreateHouseholdModal((prev) =>
-                      prev ? { ...prev, name: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={createHouseholdModal.amount}
-                  onChange={(e) =>
-                    setCreateHouseholdModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCreateHouseholdModal(null)}
-                disabled={householdSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={householdSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {householdSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {editHouseholdModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEditedHouseholdExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Изменить хозяйственный расход</h3>
-
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={editHouseholdModal.name}
-                  onChange={(e) =>
-                    setEditHouseholdModal((prev) =>
-                      prev ? { ...prev, name: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editHouseholdModal.amount}
-                  onChange={(e) =>
-                    setEditHouseholdModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Статус оплаты
-                </label>
-                <select
-                  value={editHouseholdModal.status}
-                  onChange={(e) => {
-                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                    setEditHouseholdModal((prev) => {
-                      if (!prev) return prev;
-                      if (nextStatus === 'UNPAID') {
-                        return { ...prev, status: 'UNPAID' };
-                      }
-                      const amount = Number(prev.amount || 0);
-                      const hasChannels =
-                        Number(prev.bankTransferPaid ?? 0) +
-                          Number(prev.cashbox1Paid ?? 0) +
-                          Number(prev.cashbox2Paid ?? 0) >
-                        0;
-                      return {
-                        ...prev,
-                        status: 'PAID',
-                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
-                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
-                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
-                      };
-                    });
-                  }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editHouseholdModal.status === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Безналичные
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editHouseholdModal.bankTransferPaid}
-                      onChange={(e) =>
-                        setEditHouseholdModal((prev) =>
-                          prev
-                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 1
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editHouseholdModal.cashbox1Paid}
-                      onChange={(e) =>
-                        setEditHouseholdModal((prev) =>
-                          prev ? { ...prev, cashbox1Paid: Number(e.target.value || 0) } : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 2
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editHouseholdModal.cashbox2Paid}
-                      onChange={(e) =>
-                        setEditHouseholdModal((prev) =>
-                          prev ? { ...prev, cashbox2Paid: Number(e.target.value || 0) } : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-2">
-              {hasPermission(permissions, 'DELETE_CHARGES') && (
-                <button
-                  type="button"
-                  onClick={handleDeleteHouseholdExpenseFromEditModal}
-                  disabled={householdSaving}
-                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Удалить
-                </button>
-              )}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditHouseholdModal(null)}
-                  disabled={householdSaving}
-                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={householdSaving}
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-                >
-                  {householdSaving ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {createOtherExpenseModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleCreateOtherExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Расход создается со статусом «Не оплачено».
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={createOtherExpenseModal.note}
-                  onChange={(e) =>
-                    setCreateOtherExpenseModal((prev) =>
-                      prev ? { ...prev, note: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={createOtherExpenseModal.amount}
-                  onChange={(e) =>
-                    setCreateOtherExpenseModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCreateOtherExpenseModal(null)}
-                disabled={otherExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={otherExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {editOtherExpenseModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEditedOtherExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Изменить прочий расход</h3>
-
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={editOtherExpenseModal.note}
-                  onChange={(e) =>
-                    setEditOtherExpenseModal((prev) =>
-                      prev ? { ...prev, note: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editOtherExpenseModal.amount}
-                  onChange={(e) =>
-                    setEditOtherExpenseModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Статус оплаты
-                </label>
-                <select
-                  value={editOtherExpenseModal.status}
-                  onChange={(e) => {
-                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                    setEditOtherExpenseModal((prev) => {
-                      if (!prev) return prev;
-                      if (nextStatus === 'UNPAID') {
-                        return { ...prev, status: 'UNPAID' };
-                      }
-                      const amount = Number(prev.amount || 0);
-                      const hasChannels =
-                        Number(prev.bankTransferPaid ?? 0) +
-                          Number(prev.cashbox1Paid ?? 0) +
-                          Number(prev.cashbox2Paid ?? 0) >
-                        0;
-                      return {
-                        ...prev,
-                        status: 'PAID',
-                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
-                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
-                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
-                      };
-                    });
-                  }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editOtherExpenseModal.status === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Безналичные
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editOtherExpenseModal.bankTransferPaid}
-                      onChange={(e) =>
-                        setEditOtherExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 1
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editOtherExpenseModal.cashbox1Paid}
-                      onChange={(e) =>
-                        setEditOtherExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, cashbox1Paid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 2
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editOtherExpenseModal.cashbox2Paid}
-                      onChange={(e) =>
-                        setEditOtherExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, cashbox2Paid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-2">
-              {hasPermission(permissions, 'DELETE_CHARGES') && (
-                <button
-                  type="button"
-                  onClick={handleDeleteOtherExpenseFromEditModal}
-                  disabled={otherExpenseSaving}
-                  className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Удалить
-                </button>
-              )}
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditOtherExpenseModal(null)}
-                  disabled={otherExpenseSaving}
-                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={otherExpenseSaving}
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-                >
-                  {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {createAdminExpenseModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleCreateAdminExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">
-              {createAdminExpenseModal.label}: новый расход
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Расход создается со статусом «Не оплачено».
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={createAdminExpenseModal.amount}
-                  onChange={(e) =>
-                    setCreateAdminExpenseModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCreateAdminExpenseModal(null)}
-                disabled={adminExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={adminExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {editAdminExpenseModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEditedAdminExpense();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">
-              {editAdminExpenseModal.label}: изменить расход
-            </h3>
-
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Название</label>
-                <input
-                  type="text"
-                  value={editAdminExpenseModal.note}
-                  onChange={(e) =>
-                    setEditAdminExpenseModal((prev) =>
-                      prev ? { ...prev, note: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={editAdminExpenseModal.amount}
-                  onChange={(e) =>
-                    setEditAdminExpenseModal((prev) =>
-                      prev ? { ...prev, amount: e.target.value } : prev,
-                    )
-                  }
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Статус оплаты
-                </label>
-                <select
-                  value={editAdminExpenseModal.status}
-                  onChange={(e) => {
-                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                    setEditAdminExpenseModal((prev) => {
-                      if (!prev) return prev;
-                      if (nextStatus === 'UNPAID') return { ...prev, status: 'UNPAID' };
-                      const amount = Number(prev.amount || 0);
-                      const hasChannels =
-                        Number(prev.bankTransferPaid ?? 0) +
-                          Number(prev.cashbox1Paid ?? 0) +
-                          Number(prev.cashbox2Paid ?? 0) >
-                        0;
-                      return {
-                        ...prev,
-                        status: 'PAID',
-                        bankTransferPaid: hasChannels ? prev.bankTransferPaid : amount,
-                        cashbox1Paid: hasChannels ? prev.cashbox1Paid : 0,
-                        cashbox2Paid: hasChannels ? prev.cashbox2Paid : 0,
-                      };
-                    });
-                  }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editAdminExpenseModal.status === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Безналичные
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editAdminExpenseModal.bankTransferPaid}
-                      onChange={(e) =>
-                        setEditAdminExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, bankTransferPaid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 1
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editAdminExpenseModal.cashbox1Paid}
-                      onChange={(e) =>
-                        setEditAdminExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, cashbox1Paid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 2
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editAdminExpenseModal.cashbox2Paid}
-                      onChange={(e) =>
-                        setEditAdminExpenseModal((prev) =>
-                          prev
-                            ? { ...prev, cashbox2Paid: Number(e.target.value || 0) }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setEditAdminExpenseModal(null)}
-                disabled={adminExpenseSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                type="submit"
-                disabled={adminExpenseSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <ExpenseEditModal
+        open={Boolean(editAdminExpenseModal)}
+        title={`${editAdminExpenseModal?.label ?? ''}: изменить расход`}
+        nameValue={editAdminExpenseModal?.note ?? ''}
+        onNameChange={(value) =>
+          setEditAdminExpenseModal((prev) => (prev ? { ...prev, note: value } : prev))
+        }
+        status={(editAdminExpenseModal?.status as 'UNPAID' | 'PAID') ?? 'UNPAID'}
+        onStatusChange={(status) =>
+          setEditAdminExpenseModal((prev) => (prev ? { ...prev, status } : prev))
+        }
+        bankTransferPaid={editAdminExpenseModal?.bankTransferPaid ?? ''}
+        onBankTransferPaidChange={(value) =>
+          setEditAdminExpenseModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        cashbox1Paid={editAdminExpenseModal?.cashbox1Paid ?? ''}
+        onCashbox1PaidChange={(value) =>
+          setEditAdminExpenseModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        cashbox2Paid={editAdminExpenseModal?.cashbox2Paid ?? ''}
+        onCashbox2PaidChange={(value) =>
+          setEditAdminExpenseModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        saving={adminExpenseSaving}
+        onClose={() => setEditAdminExpenseModal(null)}
+        onSubmit={() => void handleSaveEditedAdminExpense()}
+        onDelete={() => {
+          if (!editAdminExpenseModal) return;
+          void (async () => {
+            await handleDeleteManualExpense(editAdminExpenseModal.id);
+            setEditAdminExpenseModal(null);
+          })();
+        }}
+        showDelete={hasPermission(permissions, 'DELETE_CHARGES')}
+      />
 
       {showCreatePavilionModal && (
         <CreatePavilionModal
@@ -3349,178 +2590,63 @@ export default function StorePage() {
         />
       )}
 
-      {editStaffSalaryModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEditedStaffSalary();
-            }}
-            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Изменить зарплату</h3>
-            <p className="mt-1 text-sm text-slate-600">{editStaffSalaryModal.fullName}</p>
+      <EditStaffSalaryModal
+        open={Boolean(editStaffSalaryModal)}
+        fullName={editStaffSalaryModal?.fullName ?? ''}
+        salary={editStaffSalaryModal?.salary ?? ''}
+        salaryStatus={editStaffSalaryModal?.salaryStatus ?? 'UNPAID'}
+        salaryBankTransferPaid={editStaffSalaryModal?.salaryBankTransferPaid ?? 0}
+        salaryCashbox1Paid={editStaffSalaryModal?.salaryCashbox1Paid ?? 0}
+        salaryCashbox2Paid={editStaffSalaryModal?.salaryCashbox2Paid ?? 0}
+        onSalaryChange={(value) =>
+          setEditStaffSalaryModal((prev) => (prev ? { ...prev, salary: value } : prev))
+        }
+        onSalaryStatusChange={(nextStatus) =>
+          setEditStaffSalaryModal((prev) => {
+            if (!prev) return prev;
+            if (nextStatus === 'UNPAID') return { ...prev, salaryStatus: 'UNPAID' };
 
-            <div className="mt-4 grid grid-cols-1 gap-3">
-              <label className="mb-1 block text-sm font-medium text-slate-700">Новая зарплата</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={editStaffSalaryModal.salary}
-                onChange={(e) =>
-                  setEditStaffSalaryModal((prev) =>
-                    prev ? { ...prev, salary: e.target.value } : prev,
-                  )
-                }
-                className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-              />
+            const nextSalary = Number(prev.salary || 0);
+            const oldTotal =
+              Number(prev.salaryBankTransferPaid ?? 0) +
+              Number(prev.salaryCashbox1Paid ?? 0) +
+              Number(prev.salaryCashbox2Paid ?? 0);
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Статус оплаты
-                </label>
-                <select
-                  value={editStaffSalaryModal.salaryStatus}
-                  onChange={(e) => {
-                    const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                    setEditStaffSalaryModal((prev) => {
-                      if (!prev) return prev;
-                      if (nextStatus === 'UNPAID') {
-                        return { ...prev, salaryStatus: 'UNPAID' };
-                      }
+            if (oldTotal > 0) {
+              return { ...prev, salaryStatus: 'PAID' };
+            }
 
-                      const nextSalary = Number(prev.salary || 0);
-                      const oldTotal =
-                        Number(prev.salaryBankTransferPaid ?? 0) +
-                        Number(prev.salaryCashbox1Paid ?? 0) +
-                        Number(prev.salaryCashbox2Paid ?? 0);
-
-                      if (oldTotal > 0) {
-                        return { ...prev, salaryStatus: 'PAID' };
-                      }
-
-                      return {
-                        ...prev,
-                        salaryStatus: 'PAID',
-                        salaryBankTransferPaid: nextSalary,
-                        salaryCashbox1Paid: 0,
-                        salaryCashbox2Paid: 0,
-                      };
-                    });
-                  }}
-                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editStaffSalaryModal.salaryStatus === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Безналичные
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editStaffSalaryModal.salaryBankTransferPaid}
-                      onChange={(e) =>
-                        setEditStaffSalaryModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                salaryBankTransferPaid: Number(e.target.value || 0),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 1
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editStaffSalaryModal.salaryCashbox1Paid}
-                      onChange={(e) =>
-                        setEditStaffSalaryModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                salaryCashbox1Paid: Number(e.target.value || 0),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">
-                      Наличные касса 2
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editStaffSalaryModal.salaryCashbox2Paid}
-                      onChange={(e) =>
-                        setEditStaffSalaryModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                salaryCashbox2Paid: Number(e.target.value || 0),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  await handleDeleteStaff(editStaffSalaryModal.id);
-                  setEditStaffSalaryModal(null);
-                }}
-                disabled={staffSaving}
-                className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-              >
-                Удалить
-              </button>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditStaffSalaryModal(null)}
-                  disabled={staffSaving}
-                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={staffSaving}
-                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-                >
-                  {staffSaving ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+            return {
+              ...prev,
+              salaryStatus: 'PAID',
+              salaryBankTransferPaid: nextSalary,
+              salaryCashbox1Paid: 0,
+              salaryCashbox2Paid: 0,
+            };
+          })
+        }
+        onSalaryBankTransferPaidChange={(value) =>
+          setEditStaffSalaryModal((prev) =>
+            prev ? { ...prev, salaryBankTransferPaid: value } : prev,
+          )
+        }
+        onSalaryCashbox1PaidChange={(value) =>
+          setEditStaffSalaryModal((prev) => (prev ? { ...prev, salaryCashbox1Paid: value } : prev))
+        }
+        onSalaryCashbox2PaidChange={(value) =>
+          setEditStaffSalaryModal((prev) => (prev ? { ...prev, salaryCashbox2Paid: value } : prev))
+        }
+        saving={staffSaving}
+        onDelete={() => {
+          if (!editStaffSalaryModal) return;
+          void (async () => {
+            await handleDeleteStaff(editStaffSalaryModal.id);
+            setEditStaffSalaryModal(null);
+          })();
+        }}
+        onClose={() => setEditStaffSalaryModal(null)}
+        onSubmit={() => void handleSaveEditedStaffSalary()}
+      />
       <StoreExtraIncomeModal
         storeId={storeId}
         currency={store.currency}
