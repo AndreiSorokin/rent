@@ -1,12 +1,12 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { updatePavilion } from '@/lib/pavilions';
+import { StoreSidebar } from '../components/StoreSidebar';
 
 type Pavilion = {
   id: number;
@@ -45,13 +45,13 @@ export default function UtilitiesPage() {
           return;
         }
 
-        initialUtilities[p.id] =
-          p.utilitiesAmount == null ? '' : String(p.utilitiesAmount);
+        initialUtilities[p.id] = p.utilitiesAmount == null ? '' : String(p.utilitiesAmount);
         initialAdvertising[p.id] =
           p.advertisingAmount == null ? '' : String(p.advertisingAmount);
       });
       setUtilitiesById(initialUtilities);
       setAdvertisingById(initialAdvertising);
+      setError(null);
     } catch (err) {
       console.error(err);
       setError('Не удалось загрузить данные магазина');
@@ -61,7 +61,7 @@ export default function UtilitiesPage() {
   };
 
   useEffect(() => {
-    if (storeId) fetchData();
+    if (storeId) void fetchData();
   }, [storeId]);
 
   const defaultSortedPavilions: Pavilion[] = useMemo(() => {
@@ -128,6 +128,29 @@ export default function UtilitiesPage() {
     hasPermission(permissions, 'EDIT_PAYMENTS');
   const currencySymbol = getCurrencySymbol(store?.currency ?? 'RUB');
 
+  const pavilions = useMemo(() => {
+    if (!orderedPavilionIds.length) return defaultSortedPavilions;
+    const byId = new Map(defaultSortedPavilions.map((p) => [p.id, p]));
+    const ordered = orderedPavilionIds
+      .map((id) => byId.get(id))
+      .filter((p): p is Pavilion => Boolean(p));
+    const missing = defaultSortedPavilions.filter((p) => !ordered.some((o) => o.id === p.id));
+    return [...ordered, ...missing];
+  }, [defaultSortedPavilions, orderedPavilionIds]);
+
+  const movePavilion = (draggedId: number, targetId: number) => {
+    if (draggedId === targetId) return;
+    setOrderedPavilionIds((prev) => {
+      const current = prev.length ? [...prev] : defaultSortedPavilions.map((p) => p.id);
+      const from = current.indexOf(draggedId);
+      const to = current.indexOf(targetId);
+      if (from < 0 || to < 0) return prev;
+      current.splice(from, 1);
+      current.splice(to, 0, draggedId);
+      return current;
+    });
+  };
+
   const handleUtilitiesChange = (pavilionId: number, value: string) => {
     setUtilitiesById((prev) => ({ ...prev, [pavilionId]: value }));
   };
@@ -137,7 +160,6 @@ export default function UtilitiesPage() {
   };
 
   const handleSaveAll = async () => {
-    const pavilions: Pavilion[] = store?.pavilions || [];
     const updates: Array<{
       pavilion: Pavilion;
       payload: { utilitiesAmount: number | null; advertisingAmount: number | null };
@@ -180,11 +202,7 @@ export default function UtilitiesPage() {
 
     try {
       setSavingAll(true);
-      await Promise.all(
-        updates.map(({ pavilion, payload }) =>
-          updatePavilion(storeId, pavilion.id, payload),
-        ),
-      );
+      await Promise.all(updates.map(({ pavilion, payload }) => updatePavilion(storeId, pavilion.id, payload)));
 
       setStore((prev: any) => {
         if (!prev) return prev;
@@ -220,177 +238,144 @@ export default function UtilitiesPage() {
   if (!hasPaymentsAccess) {
     return (
       <div className="p-6">
-        <Link
-          href={`/stores/${storeId}`}
-          className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
-        >
-          Назад к объекту
-        </Link>
-        <div className="mt-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4 text-sm font-medium text-[#b91c1c]">
+        <div className="rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4 text-sm font-medium text-[#b91c1c]">
           Недостаточно прав для просмотра и редактирования коммунальных счетов.
         </div>
       </div>
     );
   }
 
-  const pavilionMap = new Map<number, Pavilion>(
-    (store.pavilions || []).map((p: Pavilion) => [p.id, p]),
-  );
-  const pavilions: Pavilion[] =
-    orderedPavilionIds.length > 0
-      ? orderedPavilionIds
-          .map((id) => pavilionMap.get(id))
-          .filter((p): p is Pavilion => Boolean(p))
-      : defaultSortedPavilions;
-
-  const movePavilion = (dragId: number, targetId: number) => {
-    if (dragId === targetId) return;
-    setOrderedPavilionIds((prev) => {
-      const source = prev.length > 0 ? [...prev] : defaultSortedPavilions.map((p) => p.id);
-      const fromIndex = source.indexOf(dragId);
-      const toIndex = source.indexOf(targetId);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
-
-      const [moved] = source.splice(fromIndex, 1);
-      source.splice(toIndex, 0, moved);
-      return source;
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-8">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <Link
-              href={`/stores/${storeId}`}
-              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
-            >
-              Назад к объекту
-            </Link>
-            <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
-              Начисления
-            </h1>
-            <p className="mt-1 text-sm text-[#6b6b6b]">
-              Валюта магазина: {store.currency} ({currencySymbol})
-            </p>
-          </div>
-          <button
-            onClick={handleSaveAll}
-            disabled={savingAll || pavilions.length === 0}
-            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
-          >
-            {savingAll ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
-          {pavilions.length === 0 ? (
-            <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[#ece4dd]">
-                <thead className="bg-[#f4efeb]">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Перенос
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Павильон
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Наименование организации
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Коммунальные
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Реклама
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#ece4dd] bg-white">
-                  {pavilions.map((p) => {
-                    const isAvailable = p.status === 'AVAILABLE';
-                    const isPrepaid = p.status === 'PREPAID';
-
-                    return (
-                      <tr
-                        key={p.id}
-                        onDragOver={(e) => {
-                          if (draggedPavilionId == null) return;
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = 'move';
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (draggedPavilionId == null) return;
-                          movePavilion(draggedPavilionId, p.id);
-                          setDraggedPavilionId(null);
-                        }}
-                      >
-                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
-                          <button
-                            type="button"
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedPavilionId(p.id);
-                              e.dataTransfer.effectAllowed = 'move';
-                            }}
-                            onDragEnd={() => setDraggedPavilionId(null)}
-                            className="cursor-grab select-none rounded-lg border border-[#d8d1cb] bg-white px-2 py-1 text-lg leading-none text-[#6b6b6b] transition hover:bg-[#f8f4ef] active:cursor-grabbing"
-                            title="Потяните, чтобы изменить порядок"
-                            aria-label={`Переместить павильон ${p.number}`}
-                          >
-                            ⋮⋮
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-[#111111]">
-                          Павильон {p.number}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">{p.tenantName || '-'}</td>
-                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
-                          {isAvailable || isPrepaid ? (
-                            <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
-                              {isAvailable ? '-' : 'Недоступно'}
-                            </div>
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={utilitiesById[p.id] ?? ''}
-                              onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
-                              className={inputClass}
-                              placeholder="0"
-                            />
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#6b6b6b]">
-                          {isAvailable || isPrepaid ? (
-                            <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
-                              {isAvailable ? '-' : 'Недоступно'}
-                            </div>
-                          ) : (
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={advertisingById[p.id] ?? ''}
-                              onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
-                              className={inputClass}
-                              placeholder="0"
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
+        <StoreSidebar storeId={storeId} store={store} />
+        <main className="min-w-0 flex-1">
+          <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-2">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Начисления</h1>
+                <p className="mt-1 text-sm text-[#6b6b6b]">
+                  Валюта магазина: {store.currency} ({currencySymbol})
+                </p>
+              </div>
+              <button
+                onClick={handleSaveAll}
+                disabled={savingAll || pavilions.length === 0}
+                className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
+              >
+                {savingAll ? 'Сохранение...' : 'Сохранить'}
+              </button>
             </div>
-          )}
-        </div>
+
+            <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+              {pavilions.length === 0 ? (
+                <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-[#ece4dd]">
+                    <thead className="bg-[#f4efeb]">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                          Перенос
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                          Павильон
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                          Наименование организации
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                          Коммунальные
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                          Реклама
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#ece4dd] bg-white">
+                      {pavilions.map((p) => {
+                        const isAvailable = p.status === 'AVAILABLE';
+                        const isPrepaid = p.status === 'PREPAID';
+
+                        return (
+                          <tr
+                            key={p.id}
+                            onDragOver={(e) => {
+                              if (draggedPavilionId == null) return;
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedPavilionId == null) return;
+                              movePavilion(draggedPavilionId, p.id);
+                              setDraggedPavilionId(null);
+                            }}
+                          >
+                            <td className="px-4 py-3 text-sm text-[#6b6b6b]">
+                              <button
+                                type="button"
+                                draggable
+                                onDragStart={(e) => {
+                                  setDraggedPavilionId(p.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                                }}
+                                onDragEnd={() => setDraggedPavilionId(null)}
+                                className="cursor-grab select-none rounded-lg border border-[#d8d1cb] bg-white px-2 py-1 text-lg leading-none text-[#6b6b6b] transition hover:bg-[#f8f4ef] active:cursor-grabbing"
+                                title="Потяните, чтобы изменить порядок"
+                                aria-label={`Переместить павильон ${p.number}`}
+                              >
+                                ⋮⋮
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold text-[#111111]">
+                              Павильон {p.number}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-[#6b6b6b]">{p.tenantName || '-'}</td>
+                            <td className="px-4 py-3 text-sm text-[#6b6b6b]">
+                              {isAvailable || isPrepaid ? (
+                                <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
+                                  {isAvailable ? '-' : 'Недоступно'}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={utilitiesById[p.id] ?? ''}
+                                  onChange={(e) => handleUtilitiesChange(p.id, e.target.value)}
+                                  className={inputClass}
+                                  placeholder="0"
+                                />
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-[#6b6b6b]">
+                              {isAvailable || isPrepaid ? (
+                                <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
+                                  {isAvailable ? '-' : 'Недоступно'}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={advertisingById[p.id] ?? ''}
+                                  onChange={(e) => handleAdvertisingChange(p.id, e.target.value)}
+                                  className={inputClass}
+                                  placeholder="0"
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

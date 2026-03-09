@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -13,6 +12,7 @@ import {
   updatePavilionExpense,
   type PavilionExpenseStatus,
 } from '@/lib/pavilionExpenses';
+import { StoreSidebar } from '../components/StoreSidebar';
 
 type EditModalState = {
   id: number;
@@ -214,16 +214,13 @@ export default function StoreOtherExpensesPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+      <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
+        <StoreSidebar storeId={storeId} store={store} active="other-expenses" />
+        <main className="min-w-0 flex-1">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link
-              href={`/stores/${storeId}`}
-              className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
-            >
-              Назад к объекту
-            </Link>
-            <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Все прочие расходы</h1>
+            <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Прочие расходы</h1>
             <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
           </div>
           {canCreate && (
@@ -241,8 +238,9 @@ export default function StoreOtherExpensesPage() {
             <p className="text-[#6b6b6b]">Расходов пока нет</p>
           ) : (
             <div className="space-y-2">
-              <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
-                <div className="text-center">Название и статус</div>
+              <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
+                <div className="text-center">Название</div>
+                <div className="text-center">Статус</div>
                 <div className="text-center">Каналы оплаты</div>
                 <div className="text-center">Сумма</div>
                 <div className="text-center">Действия</div>
@@ -250,11 +248,14 @@ export default function StoreOtherExpensesPage() {
 
               {otherExpenses.map((expense: any) => (
                 <article key={expense.id} className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5">
-                  <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
-                    <div className="min-w-0 md:text-center">
-                      <p className="truncate text-sm font-semibold text-slate-900 md:mx-auto md:max-w-[260px]">
+                  <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
+                    <div className="min-w-0 text-left">
+                      <p className="truncate text-sm font-semibold text-slate-900">
                         {expense.note || 'Прочий расход'}
                       </p>
+                    </div>
+
+                    <div className="min-w-0 md:text-center">
                       <span
                         className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           expense.status === 'PAID'
@@ -326,6 +327,8 @@ export default function StoreOtherExpensesPage() {
             </div>
           )}
         </section>
+      </div>
+        </main>
       </div>
 
       {createModal && (
@@ -556,3 +559,4 @@ export default function StoreOtherExpensesPage() {
     </div>
   );
 }
+

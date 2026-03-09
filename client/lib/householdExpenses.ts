@@ -20,7 +20,15 @@ export function getHouseholdExpenses(storeId: number) {
 
 export function createHouseholdExpense(
   storeId: number,
-  data: { name: string; amount: number },
+  data: {
+    name: string;
+    amount: number;
+    status?: 'UNPAID' | 'PAID';
+    paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
+  },
 ) {
   const idempotencyKey =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
