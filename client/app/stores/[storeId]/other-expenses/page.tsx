@@ -319,15 +319,6 @@ export default function StoreOtherExpensesPage() {
                           Оплатить/Изменить
                         </button>
                       )}
-
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                        >
-                          Удалить
-                        </button>
-                      )}
                     </div>
                   </div>
                 </article>
@@ -339,7 +330,13 @@ export default function StoreOtherExpensesPage() {
 
       {createModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
             <p className="mt-1 text-sm text-slate-600">
               Создаётся в статусе «Не оплачено». Каналы оплаты указываются при оплате.
@@ -370,6 +367,7 @@ export default function StoreOtherExpensesPage() {
 
             <div className="mt-5 flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setCreateModal(null)}
                 disabled={saving}
                 className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
@@ -377,20 +375,26 @@ export default function StoreOtherExpensesPage() {
                 Отмена
               </button>
               <button
-                onClick={handleCreate}
+                type="submit"
                 disabled={saving}
                 className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {saving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {editModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEdit();
+            }}
+            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Изменить прочий расход</h3>
 
             <div className="mt-4 space-y-3">
@@ -512,23 +516,41 @@ export default function StoreOtherExpensesPage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => setEditModal(null)}
-                disabled={saving}
-                className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={saving}
-                className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {saving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <div>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleDelete(editModal.id);
+                      setEditModal(null);
+                    }}
+                    disabled={saving}
+                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditModal(null)}
+                  disabled={saving}
+                  className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {saving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
     </div>

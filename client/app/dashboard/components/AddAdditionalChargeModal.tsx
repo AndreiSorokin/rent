@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { createAdditionalCharge } from '@/lib/additionalCharges';
@@ -47,7 +47,13 @@ export function AddAdditionalChargeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void save();
+        }}
+        className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+      >
         <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Добавить дополнительное начисление</h2>
 
         <input
@@ -69,6 +75,7 @@ export function AddAdditionalChargeModal({
 
         <div className="mt-6 flex justify-end gap-3">
           <button
+            type="button"
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={onClose}
             disabled={saving}
@@ -76,14 +83,14 @@ export function AddAdditionalChargeModal({
             Отмена
           </button>
           <button
+            type="submit"
             className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={save}
             disabled={saving}
           >
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

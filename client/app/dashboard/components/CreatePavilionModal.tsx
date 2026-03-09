@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { createPavilionPayment } from '@/lib/payments';
 
@@ -38,6 +38,14 @@ export function CreatePavilionModal({
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalScrollRef = useRef<HTMLFormElement | null>(null);
+
+  const setModalError = (message: string) => {
+    setError(message);
+    requestAnimationFrame(() => {
+      modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
 
   const handleSubmit = async () => {
     const category = newCategory.trim() || selectedCategory.trim();
@@ -45,12 +53,12 @@ export function CreatePavilionModal({
     const needsTenant = status === 'RENTED' || status === 'PREPAID';
 
     if (!number || !squareMeters || !pricePerSqM || !category) {
-      setError('Заполните все обязательные поля, включая категорию');
+      setModalError('Заполните все обязательные поля, включая категорию');
       return;
     }
 
     if (needsTenant && !tenantName.trim()) {
-      setError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
+      setModalError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
       return;
     }
 
@@ -70,12 +78,12 @@ export function CreatePavilionModal({
 
       if (status === 'PREPAID') {
         if (prepaymentTarget <= 0) {
-          setError('Сумма предоплаты должна быть больше 0');
+          setModalError('Сумма предоплаты должна быть больше 0');
           setLoading(false);
           return;
         }
         if (Math.abs(prepayChannelsTotal - prepaymentTarget) > 0.01) {
-          setError('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+          setModalError('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
           setLoading(false);
           return;
         }
@@ -113,7 +121,7 @@ export function CreatePavilionModal({
 
       onSaved();
     } catch (err: any) {
-      setError(err.message || 'Ошибка создания павильона');
+      setModalError(err.message || 'Ошибка создания павильона');
     } finally {
       setLoading(false);
     }
@@ -121,8 +129,26 @@ export function CreatePavilionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
-        <h2 className="mb-6 text-xl font-extrabold text-[#111111]">Создать новый павильон</h2>
+      <form
+        ref={modalScrollRef}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+      >
+        <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
+          <h2 className="text-xl font-extrabold text-[#111111]">Создать новый павильон</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            aria-label="Закрыть"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d8d1cb] bg-white text-xl leading-none text-[#6b6b6b] transition hover:bg-[#f4efeb] hover:text-[#111111] disabled:opacity-50"
+          >
+            ×
+          </button>
+        </div>
 
         {error && (
           <p className="mb-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
@@ -318,6 +344,7 @@ export function CreatePavilionModal({
 
         <div className="mt-8 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
           <button
+            type="button"
             onClick={onClose}
             disabled={loading}
             className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
@@ -325,14 +352,14 @@ export function CreatePavilionModal({
             Отмена
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
             className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
             {loading ? 'Создание...' : 'Создать павильон'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

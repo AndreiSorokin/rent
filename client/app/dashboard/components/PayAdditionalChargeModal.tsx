@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { payAdditionalCharge } from '@/lib/additionalCharges';
@@ -61,7 +61,13 @@ export function PayAdditionalChargeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+        className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+      >
         <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Оплата доп. начисления</h2>
         <p className="mb-2 font-semibold text-[#111111]">{chargeName}</p>
         <p className="mb-4 text-sm text-[#6b6b6b]">Начислено: {expectedAmount.toFixed(2)}</p>
@@ -117,20 +123,21 @@ export function PayAdditionalChargeModal({
 
         <div className="flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
             Отмена
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={!amountPaid || Number(amountPaid) <= 0}
             className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Записать платеж
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
