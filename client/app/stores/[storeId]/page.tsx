@@ -1699,7 +1699,7 @@ export default function StorePage() {
                 }
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Оплата</option>
+                <option value="">Статус оплаты</option>
                 <option value="PAID">Оплачено</option>
                 <option value="PARTIAL">Частично оплачено</option>
                 <option value="UNPAID">Не оплачено</option>

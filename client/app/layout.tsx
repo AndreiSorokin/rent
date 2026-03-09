@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   title: "Palaci",
   description: "Store and pavilion management",
   icons: {
-    icon: './logo1.png',
-    shortcut: './logo1.png',
-    apple: './logo1.png',
+    icon: '/logo1.png',
+    shortcut: '/logo1.png',
+    apple: '/logo1.png',
   },
 };
 
