@@ -332,10 +332,35 @@ export function EditPavilionModal({
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
   const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
 
+  const handleModalKeyDown = (
+    e: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return;
+
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+    if (target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+
+    const action = target.getAttribute('data-enter-action');
+    e.preventDefault();
+
+    if (action === 'add-charge') {
+      if (!chargeSaving && !saving && canManageAdditionalCharges) {
+        void handleAddAdditionalCharge();
+      }
+      return;
+    }
+
+    if (!saving && !chargeSaving) {
+      void handleSave();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
       <div
         ref={modalBodyRef}
+        onKeyDown={handleModalKeyDown}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur-sm">
@@ -560,6 +585,7 @@ export function EditPavilionModal({
                       <input
                         value={newChargeName}
                         onChange={(e) => setNewChargeName(e.target.value)}
+                        data-enter-action="add-charge"
                         className={inputClass}
                         placeholder="Название начисления"
                       />
@@ -569,6 +595,7 @@ export function EditPavilionModal({
                         step="0.01"
                         value={newChargeAmount}
                         onChange={(e) => setNewChargeAmount(e.target.value)}
+                        data-enter-action="add-charge"
                         className={inputClass}
                         placeholder="Сумма"
                       />

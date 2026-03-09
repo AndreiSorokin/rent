@@ -38,7 +38,7 @@ export function CreatePavilionModal({
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const modalScrollRef = useRef<HTMLDivElement | null>(null);
+  const modalScrollRef = useRef<HTMLFormElement | null>(null);
 
   const setModalError = (message: string) => {
     setError(message);
@@ -129,8 +129,12 @@ export function CreatePavilionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div
+      <form
         ref={modalScrollRef}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
         <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
@@ -340,6 +344,7 @@ export function CreatePavilionModal({
 
         <div className="mt-8 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
           <button
+            type="button"
             onClick={onClose}
             disabled={loading}
             className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
@@ -347,14 +352,14 @@ export function CreatePavilionModal({
             Отмена
           </button>
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
             className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
             {loading ? 'Создание...' : 'Создать павильон'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -79,7 +79,13 @@ export function CreateDiscountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSave();
+        }}
+        className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+      >
         <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Добавить скидку</h2>
 
         {error && (
@@ -153,6 +159,7 @@ export function CreateDiscountModal({
 
         <div className="mt-6 flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             disabled={saving}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
@@ -160,14 +167,14 @@ export function CreateDiscountModal({
             Отмена
           </button>
           <button
-            onClick={handleSave}
+            type="submit"
             disabled={saving}
             className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

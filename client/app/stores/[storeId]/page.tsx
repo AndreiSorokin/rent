@@ -2466,7 +2466,7 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
                           {hasPermission(permissions, 'MANAGE_STAFF') && (
-                            <div className="flex justify-end gap-3">
+                            <div className="flex justify-end gap-2">
                               <button
                                 onClick={() =>
                                   setEditStaffSalaryModal({
@@ -2484,15 +2484,9 @@ export default function StorePage() {
                                       (staff.salaryPaymentMethod as PaymentMethod | null) ?? null,
                                   })
                                 }
-                                className="text-[#2563EB] hover:underline"
+                                className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                               >
-                                Изменить зарплату
-                              </button>
-                              <button
-                                onClick={() => handleDeleteStaff(staff.id)}
-                                className="text-red-600 hover:underline"
-                              >
-                                Удалить
+                                Оплатить/Изменить
                               </button>
                             </div>
                           )}
@@ -2511,7 +2505,13 @@ export default function StorePage() {
 
       {addStaffModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleAddStaff();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
@@ -2562,21 +2562,26 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handleAddStaff}
+                type="submit"
                 disabled={staffSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {staffSaving ? 'Сохранение...' : 'Добавить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {payStaffSalaryModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handlePayStaffSalary();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Оплата зарплаты</h3>
             <p className="mt-1 text-sm text-slate-600">
               {payStaffSalaryModal.fullName}. Сумма: {formatMoney(payStaffSalaryModal.salary, store?.currency)}
@@ -2640,21 +2645,26 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handlePayStaffSalary}
+                type="submit"
                 disabled={payStaffSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {payStaffSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {createHouseholdModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreateHouseholdExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
             <p className="mt-1 text-sm text-slate-600">
               Расход создается со статусом «Не оплачено».
@@ -2701,21 +2711,26 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handleCreateHouseholdExpense}
+                type="submit"
                 disabled={householdSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {householdSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {editHouseholdModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEditedHouseholdExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Изменить хозяйственный расход</h3>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
@@ -2862,8 +2877,7 @@ export default function StorePage() {
                   Отмена
                 </button>
                 <button
-                  type="button"
-                  onClick={handleSaveEditedHouseholdExpense}
+                  type="submit"
                   disabled={householdSaving}
                   className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
                 >
@@ -2871,13 +2885,19 @@ export default function StorePage() {
                 </button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {createOtherExpenseModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreateOtherExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
             <p className="mt-1 text-sm text-slate-600">
               Расход создается со статусом «Не оплачено».
@@ -2924,21 +2944,26 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handleCreateOtherExpense}
+                type="submit"
                 disabled={otherExpenseSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {otherExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {editOtherExpenseModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEditedOtherExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Изменить прочий расход</h3>
 
             <div className="mt-4 grid grid-cols-1 gap-3">
@@ -3089,8 +3114,7 @@ export default function StorePage() {
                   Отмена
                 </button>
                 <button
-                  type="button"
-                  onClick={handleSaveEditedOtherExpense}
+                  type="submit"
                   disabled={otherExpenseSaving}
                   className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
                 >
@@ -3098,13 +3122,19 @@ export default function StorePage() {
                 </button>
               </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {createAdminExpenseModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreateAdminExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">
               {createAdminExpenseModal.label}: новый расход
             </h3>
@@ -3140,21 +3170,26 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handleCreateAdminExpense}
+                type="submit"
                 disabled={adminExpenseSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
       {editAdminExpenseModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEditedAdminExpense();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">
               {editAdminExpenseModal.label}: изменить расход
             </h3>
@@ -3294,15 +3329,14 @@ export default function StorePage() {
                 Отмена
               </button>
               <button
-                type="button"
-                onClick={handleSaveEditedAdminExpense}
+                type="submit"
                 disabled={adminExpenseSaving}
                 className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
                 {adminExpenseSaving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -3317,7 +3351,13 @@ export default function StorePage() {
 
       {editStaffSalaryModal && (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEditedStaffSalary();
+            }}
+            className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+          >
             <h3 className="text-lg font-semibold text-slate-900">Изменить зарплату</h3>
             <p className="mt-1 text-sm text-slate-600">{editStaffSalaryModal.fullName}</p>
 
@@ -3448,25 +3488,37 @@ export default function StorePage() {
               )}
             </div>
 
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => setEditStaffSalaryModal(null)}
+                onClick={async () => {
+                  await handleDeleteStaff(editStaffSalaryModal.id);
+                  setEditStaffSalaryModal(null);
+                }}
                 disabled={staffSaving}
-                className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
               >
-                Отмена
+                Удалить
               </button>
-              <button
-                type="button"
-                onClick={handleSaveEditedStaffSalary}
-                disabled={staffSaving}
-                className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-              >
-                {staffSaving ? 'Сохранение...' : 'Сохранить'}
-              </button>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditStaffSalaryModal(null)}
+                  disabled={staffSaving}
+                  className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={staffSaving}
+                  className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {staffSaving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       )}
       <StoreExtraIncomeModal

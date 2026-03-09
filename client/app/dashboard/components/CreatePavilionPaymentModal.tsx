@@ -155,7 +155,13 @@ export function CreatePavilionPaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handlePay();
+        }}
+        className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+      >
         <div className="border-b border-[#e8e1da] p-4 md:p-6">
           <h2 className="text-xl font-extrabold text-[#111111]">Записать платеж</h2>
         </div>
@@ -325,19 +331,20 @@ export function CreatePavilionPaymentModal({
 
         <div className="flex justify-end gap-3 border-t border-[#e8e1da] bg-white p-4 md:p-6">
           <button
+            type="button"
             onClick={onClose}
             className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
             Отмена
           </button>
           <button
-            onClick={handlePay}
+            type="submit"
             className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
           >
             Записать платеж
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
