@@ -70,6 +70,32 @@ const STATUS_LABELS: Record<string, string> = {
   PREPAID: 'Предоплата',
 };
 
+const PERMISSION_LABELS: Record<string, string> = {
+  VIEW_PAVILIONS: 'Просмотр павильонов',
+  VIEW_STAFF: 'Просмотр штатного расписания',
+  MANAGE_STAFF: 'Управление штатным расписанием',
+  CREATE_PAVILIONS: 'Создавать павильоны',
+  EXPORT_STORE_DATA: 'Выгружать данные',
+  EDIT_PAVILIONS: 'Изменять павильоны',
+  DELETE_PAVILIONS: 'Удалять павильоны',
+  VIEW_PAYMENTS: 'Просмотр оплат',
+  VIEW_SUMMARY: 'Просмотр сводки',
+  VIEW_ACTIVITY: 'Просмотр журнала действий',
+  CREATE_PAYMENTS: 'Записывать оплаты',
+  EDIT_PAYMENTS: 'Изменять оплаты',
+  CALCULATE_PAYMENTS: 'Рассчитывать оплаты',
+  VIEW_CHARGES: 'Просмотр начислений',
+  CREATE_CHARGES: 'Создавать начисления',
+  EDIT_CHARGES: 'Изменять статус начислений',
+  DELETE_CHARGES: 'Удалять начисления',
+  VIEW_CONTRACTS: 'Просмотр контрактов',
+  UPLOAD_CONTRACTS: 'Загружать контракты',
+  DELETE_CONTRACTS: 'Удалять контракты',
+  INVITE_USERS: 'Приглашать пользователей',
+  REMOVE_USERS: 'Удалять пользователей из объекта',
+  ASSIGN_PERMISSIONS: 'Управлять правами доступа',
+};
+
 const DETAIL_LABELS: Record<string, string> = {
   name: 'Название',
   note: 'Примечание',
@@ -206,7 +232,20 @@ const formatUtcDateTime = (value: unknown) => {
 
 const formatDetailValue = (key: string, value: unknown) => {
   if (value === null || value === undefined || value === '') return '-';
-  if (Array.isArray(value)) return value.join(', ');
+  if (Array.isArray(value)) {
+    if (key === 'permissions') {
+      return value
+        .map((permission) =>
+          PERMISSION_LABELS[String(permission)] ?? String(permission),
+        )
+        .join(', ');
+    }
+    return value.join(', ');
+  }
+
+  if (key === 'permissions') {
+    return PERMISSION_LABELS[String(value)] ?? String(value);
+  }
 
   if (key.toLowerCase().includes('status')) {
     return STATUS_LABELS[String(value)] ?? String(value);
