@@ -17,7 +17,7 @@ import { StoreSidebar } from '../components/StoreSidebar';
 type EditModalState = {
   id: number;
   note: string;
-  amount: string;
+  amount: number;
   status: 'UNPAID' | 'PAID';
   bankTransferPaid: number;
   cashbox1Paid: number;
@@ -59,7 +59,12 @@ export default function StoreOtherExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [createModal, setCreateModal] = useState<{ note: string; amount: string } | null>(null);
+  const [createModal, setCreateModal] = useState<{
+    note: string;
+    bankTransferPaid: string;
+    cashbox1Paid: string;
+    cashbox2Paid: string;
+  } | null>(null);
   const [editModal, setEditModal] = useState<EditModalState | null>(null);
 
   const fetchStore = async () => {
@@ -113,19 +118,30 @@ export default function StoreOtherExpensesPage() {
     if (!createModal) return;
 
     const note = createModal.note.trim();
-    const amount = Number(createModal.amount);
-    if (!note || Number.isNaN(amount) || amount <= 0) {
-      alert('Введите корректные название и сумму');
+    if (!note) {
+      alert('Введите название расхода');
       return;
     }
 
     try {
       setSaving(true);
+      const bank = Number(createModal.bankTransferPaid || 0);
+      const cash1 = Number(createModal.cashbox1Paid || 0);
+      const cash2 = Number(createModal.cashbox2Paid || 0);
+      const amount = bank + cash1 + cash2;
+      if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
+        alert('Введите корректные суммы по каналам оплаты');
+        return;
+      }
+
       await createPavilionExpense(storeId, {
         type: 'OTHER',
         amount,
         note,
-        status: 'UNPAID',
+        status: 'PAID',
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
       });
       setCreateModal(null);
       await fetchStore();
@@ -140,14 +156,14 @@ export default function StoreOtherExpensesPage() {
   const handleSaveEdit = async () => {
     if (!editModal) return;
 
-    const amount = Number(editModal.amount);
     const note = editModal.note.trim();
     const bank = Number(editModal.bankTransferPaid || 0);
     const cash1 = Number(editModal.cashbox1Paid || 0);
     const cash2 = Number(editModal.cashbox2Paid || 0);
+    const paidAmount = bank + cash1 + cash2;
 
-    if (!note || Number.isNaN(amount) || amount <= 0) {
-      alert('Введите корректные название и сумму');
+    if (!note) {
+      alert('Введите корректное название');
       return;
     }
 
@@ -156,8 +172,8 @@ export default function StoreOtherExpensesPage() {
         alert('Суммы по каналам оплаты должны быть неотрицательными');
         return;
       }
-      if (Math.abs(bank + cash1 + cash2 - amount) > 0.01) {
-        alert('Сумма по каналам оплаты должна совпадать с суммой расхода');
+      if (paidAmount <= 0) {
+        alert('Введите сумму хотя бы в одном канале оплаты');
         return;
       }
     }
@@ -173,7 +189,7 @@ export default function StoreOtherExpensesPage() {
         cashbox2Paid?: number;
       } = {
         note,
-        amount,
+        amount: editModal.status === 'PAID' ? paidAmount : Number(editModal.amount || 0),
         status: editModal.status,
       };
 
@@ -225,7 +241,14 @@ export default function StoreOtherExpensesPage() {
           </div>
           {canCreate && (
             <button
-              onClick={() => setCreateModal({ note: '', amount: '' })}
+              onClick={() =>
+                setCreateModal({
+                  note: '',
+                  bankTransferPaid: '',
+                  cashbox1Paid: '',
+                  cashbox2Paid: '',
+                })
+              }
               className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
             >
               Добавить
@@ -303,7 +326,7 @@ export default function StoreOtherExpensesPage() {
                             setEditModal({
                               id: Number(expense.id),
                               note: String(expense.note ?? ''),
-                              amount: String(amount),
+                              amount,
                               status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
                               bankTransferPaid:
                                 (expense.status as 'UNPAID' | 'PAID') === 'PAID'
@@ -342,7 +365,7 @@ export default function StoreOtherExpensesPage() {
           >
             <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Создаётся в статусе «Не оплачено». Каналы оплаты указываются при оплате.
+              Создаётся сразу в статусе «Оплачено».
             </p>
 
             <div className="mt-4 space-y-3">
@@ -355,17 +378,56 @@ export default function StoreOtherExpensesPage() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
                 placeholder="Название расхода"
               />
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={createModal.amount}
-                onChange={(e) =>
-                  setCreateModal((prev) => (prev ? { ...prev, amount: e.target.value } : prev))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Сумма"
-              />
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.bankTransferPaid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, bankTransferPaid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.cashbox1Paid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, cashbox1Paid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.cashbox2Paid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, cashbox2Paid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="mt-5 flex justify-end gap-3">
@@ -409,18 +471,6 @@ export default function StoreOtherExpensesPage() {
                 }
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
                 placeholder="Название расхода"
-              />
-
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={editModal.amount}
-                onChange={(e) =>
-                  setEditModal((prev) => (prev ? { ...prev, amount: e.target.value } : prev))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Сумма"
               />
 
               <div>

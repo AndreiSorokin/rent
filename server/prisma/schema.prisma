@@ -192,6 +192,7 @@ model AdditionalChargePayment {
 model Pavilion {
   id           Int            @id @default(autoincrement())
   number       String
+  sortIndex    Int?
   category     String?
   squareMeters Float
   pricePerSqM  Float

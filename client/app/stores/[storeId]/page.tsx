@@ -34,6 +34,7 @@ import {
   getHouseholdExpenses,
   updateHouseholdExpense,
 } from '@/lib/householdExpenses';
+import { reorderPavilions } from '@/lib/pavilions';
 import {
   createPavilionExpense,
   deletePavilionExpense,
@@ -477,24 +478,6 @@ export default function StorePage() {
       return;
     }
     const ids: number[] = (pavilions || []).map((p: any) => Number(p.id));
-    const key = `store-page-pavilions-order-${storeId}`;
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const parsed: unknown = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const idSet = new Set(ids);
-          const restored: number[] = parsed
-            .map((v) => Number(v))
-            .filter((id) => Number.isFinite(id) && idSet.has(id));
-          const missing: number[] = ids.filter((id) => !restored.includes(id));
-          setOrderedPavilionIds([...restored, ...missing]);
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to restore pavilion order on store page', err);
-    }
     setOrderedPavilionIds(ids);
   }, [storeId, pavilions]);
 
@@ -563,18 +546,6 @@ export default function StorePage() {
     pavilionPaymentStatusFilter,
     pavilionDisplayLimit,
   ]);
-
-  useEffect(() => {
-    if (!storeId || orderedPavilionIds.length === 0) return;
-    try {
-      localStorage.setItem(
-        `store-page-pavilions-order-${storeId}`,
-        JSON.stringify(orderedPavilionIds),
-      );
-    } catch (err) {
-      console.warn('Failed to persist pavilion order on store page', err);
-    }
-  }, [storeId, orderedPavilionIds]);
 
   useEffect(() => {
     if (!storeId || !store?.staff) {
@@ -1255,7 +1226,7 @@ export default function StorePage() {
           .map((id) => pavilionMap.get(id))
           .filter((p): p is any => Boolean(p))
       : (pavilions || []);
-  const canReorderPavilions = true;
+  const canReorderPavilions = hasPermission(permissions, 'EDIT_PAVILIONS');
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
       acc[category.type] = storeExpenses.filter((item: any) => item.type === category.type);
@@ -1335,18 +1306,28 @@ export default function StorePage() {
           .map((id) => staffMap.get(id))
           .filter((staff): staff is any => Boolean(staff))
       : (store.staff || []);
-  const movePavilion = (dragId: number, targetId: number) => {
+  const movePavilion = async (dragId: number, targetId: number) => {
     if (dragId === targetId) return;
-    setOrderedPavilionIds((prev) => {
-      const source = prev.length > 0 ? [...prev] : (pavilions || []).map((p: any) => p.id);
-      const fromIndex = source.indexOf(dragId);
-      const toIndex = source.indexOf(targetId);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return source;
+    const source =
+      orderedPavilionIds.length > 0
+        ? [...orderedPavilionIds]
+        : (pavilions || []).map((p: any) => Number(p.id));
+    const fromIndex = source.indexOf(dragId);
+    const toIndex = source.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
 
-      const [moved] = source.splice(fromIndex, 1);
-      source.splice(toIndex, 0, moved);
-      return source;
-    });
+    const [moved] = source.splice(fromIndex, 1);
+    source.splice(toIndex, 0, moved);
+
+    const previousOrder = orderedPavilionIds;
+    setOrderedPavilionIds(source);
+    try {
+      await reorderPavilions(storeId, source);
+    } catch (err) {
+      console.error(err);
+      setOrderedPavilionIds(previousOrder);
+      await fetchPavilions();
+    }
   };
 
   const moveStaff = (dragId: number, targetId: number) => {
@@ -1742,7 +1723,7 @@ export default function StorePage() {
                           if (!canReorderPavilions) return;
                           e.preventDefault();
                           if (draggedPavilionId == null) return;
-                          movePavilion(draggedPavilionId, p.id);
+                          void movePavilion(draggedPavilionId, p.id);
                           setDraggedPavilionId(null);
                         }}
                         onClick={() =>

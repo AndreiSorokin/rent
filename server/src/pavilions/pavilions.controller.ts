@@ -20,6 +20,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission, Prisma } from '@prisma/client';
 import { CreatePavilionDto } from './dto/create-pavilion.dto';
+import { ReorderPavilionsDto } from './dto/reorder-pavilions.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -89,6 +90,16 @@ export class PavilionsController {
           ? paymentStatus
           : undefined,
     });
+  }
+
+  @Patch('reorder')
+  @Permissions(Permission.EDIT_PAVILIONS)
+  reorder(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() dto: ReorderPavilionsDto,
+    @Req() req: any,
+  ) {
+    return this.service.reorder(storeId, dto.orderedIds, req.user.id);
   }
 
   @Get(':pavilionId')

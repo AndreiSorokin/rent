@@ -25,3 +25,10 @@ export function deletePavilion(storeId: number, pavilionId: number) {
     method: 'DELETE',
   });
 }
+
+export function reorderPavilions(storeId: number, orderedIds: number[]) {
+  return apiFetch(`/stores/${storeId}/pavilions/reorder`, {
+    method: 'PATCH',
+    body: JSON.stringify({ orderedIds }),
+  });
+}

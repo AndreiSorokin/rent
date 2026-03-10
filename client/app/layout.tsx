@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://palaci.ru'),
   title: "Palaci",
   description: "Store and pavilion management",
+  verification: {
+    yandex: 'b21ff933b81d7751',
+  },
   icons: {
     icon: '/logo1.png',
     shortcut: '/logo1.png',
