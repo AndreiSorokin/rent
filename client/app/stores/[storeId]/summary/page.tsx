@@ -1111,33 +1111,79 @@ export default function StoreSummaryPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-            {[
-              { key: 'salaries', label: 'Зарплаты' },
-              { key: 'payrollTax', label: 'Налоги с зарплаты' },
-              { key: 'profitTax', label: 'Налог на прибыль' },
-              { key: 'facilities', label: 'Коммуналка объекта' },
-              { key: 'dividends', label: 'Дивиденды' },
-              { key: 'bankServices', label: 'Услуги банка' },
-              { key: 'household', label: 'Хоз. расходы' },
-              { key: 'vat', label: 'НДС' },
-              { key: 'landRent', label: 'Аренда земли' },
-              { key: 'other', label: 'Прочие' },
-            ].map((item) => {
-              const channels = (data.expenseChannelsByType as any)?.[item.key] || {};
+          <div>
+            <p className="mb-3 text-sm font-semibold text-[#111111]">По сущностям</p>
+            {(() => {
+              const byType = (data.expenseByType || {}) as Record<string, number>;
+              const channelsByType = (data.expenseChannelsByType || {}) as Record<
+                string,
+                { bankTransfer?: number; cashbox1?: number; cashbox2?: number; total?: number }
+              >;
+              const adminKeys = [
+                'facilities',
+                'storeFacilities',
+                'payrollTax',
+                'profitTax',
+                'vat',
+                'landRent',
+                'dividends',
+                'bankServices',
+              ];
+
+              const sumGroup = (keys: string[]) => {
+                return keys.reduce(
+                  (acc, key) => {
+                    const channels = channelsByType[key] || {};
+                    acc.total += Number(byType[key] ?? 0);
+                    acc.bank += Number(channels.bankTransfer ?? 0);
+                    acc.cash1 += Number(channels.cashbox1 ?? 0);
+                    acc.cash2 += Number(channels.cashbox2 ?? 0);
+                    return acc;
+                  },
+                  { total: 0, bank: 0, cash1: 0, cash2: 0 },
+                );
+              };
+
+              const cards = [
+                { key: 'household', label: 'Хоз. расходы', ...sumGroup(['household']) },
+                { key: 'other', label: 'Прочие расходы', ...sumGroup(['other']) },
+                { key: 'admin', label: 'Административные расходы', ...sumGroup(adminKeys) },
+                { key: 'salaries', label: 'Зарплаты', ...sumGroup(['salaries']) },
+              ]
+                .filter(
+                  (item) =>
+                    Math.abs(item.total) > 0.009 ||
+                    Math.abs(item.bank) > 0.009 ||
+                    Math.abs(item.cash1) > 0.009 ||
+                    Math.abs(item.cash2) > 0.009,
+                );
+
+              if (!cards.length) {
+                return (
+                  <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4 text-sm text-[#6b6b6b]">
+                    Данных по сущностям пока нет
+                  </div>
+                );
+              }
+
               return (
-                <div key={item.key} className="rounded-lg border border-gray-200 bg-white p-3">
-                  <div className="font-medium text-gray-800">
-                    {item.label}: {formatMoney((data.expenseByType as any)?.[item.key] ?? 0, data.currency)}
-                  </div>
-                  <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                    <div>Безнал: {formatMoney(channels.bankTransfer ?? 0, data.currency)}</div>
-                    <div>Касса 1: {formatMoney(channels.cashbox1 ?? 0, data.currency)}</div>
-                    <div>Касса 2: {formatMoney(channels.cashbox2 ?? 0, data.currency)}</div>
-                  </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {cards.map((item) => (
+                    <div key={item.key} className="rounded-lg border border-gray-200 bg-white p-3">
+                      <p className="text-xs uppercase text-gray-500">{item.label}</p>
+                      <p className="mt-1 text-lg font-semibold">
+                        {formatMoney(item.total, data.currency)}
+                      </p>
+                      <div className="mt-2 space-y-1 text-[11px] text-gray-600">
+                        <div>Безнал: {formatMoney(item.bank, data.currency)}</div>
+                        <div>Касса 1: {formatMoney(item.cash1, data.currency)}</div>
+                        <div>Касса 2: {formatMoney(item.cash2, data.currency)}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               );
-            })}
+            })()}
           </div>
 
           <FinanceTrendChart

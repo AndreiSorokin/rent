@@ -51,7 +51,11 @@ export default function StoreStaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [addModal, setAddModal] = useState<{ fullName: string; position: string; salary: string } | null>(null);
+  const [addModal, setAddModal] = useState<{
+    fullName: string;
+    position: string;
+    salary: string;
+  } | null>(null);
   const [editModal, setEditModal] = useState<{
     id: number;
     fullName: string;
@@ -199,7 +203,13 @@ export default function StoreStaffPage() {
                 <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Штатное расписание</h1>
                 {canManage && (
                   <button
-                    onClick={() => setAddModal({ fullName: '', position: '', salary: '' })}
+                    onClick={() =>
+                      setAddModal({
+                        fullName: '',
+                        position: '',
+                        salary: '',
+                      })
+                    }
                     className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
                   >
                     <CirclePlus className="h-4 w-4" />
