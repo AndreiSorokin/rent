@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -7,6 +7,10 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { AddStaffModal, EditStaffSalaryModal } from '../components/StaffModals';
 import { StoreSidebar } from '../components/StoreSidebar';
+import {
+  CirclePlus,
+} from 'lucide-react';
+
 
 type StaffMember = {
   id: number;
@@ -19,6 +23,24 @@ type StaffMember = {
   salaryCashbox2Paid?: number;
 };
 
+function paymentChannelsLines(
+  bankTransferPaid: number | null | undefined,
+  cashbox1Paid: number | null | undefined,
+  cashbox2Paid: number | null | undefined,
+  currency: 'RUB' | 'KZT',
+) {
+  const lines: string[] = [];
+  const bank = Number(bankTransferPaid ?? 0);
+  const cash1 = Number(cashbox1Paid ?? 0);
+  const cash2 = Number(cashbox2Paid ?? 0);
+
+  if (bank > 0) lines.push(`Безналичные: ${formatMoney(bank, currency)}`);
+  if (cash1 > 0) lines.push(`Наличные касса 1: ${formatMoney(cash1, currency)}`);
+  if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
+
+  return lines;
+}
+
 export default function StoreStaffPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,7 +51,11 @@ export default function StoreStaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [addModal, setAddModal] = useState<{ fullName: string; position: string; salary: string } | null>(null);
+  const [addModal, setAddModal] = useState<{
+    fullName: string;
+    position: string;
+    salary: string;
+  } | null>(null);
   const [editModal, setEditModal] = useState<{
     id: number;
     fullName: string;
@@ -66,6 +92,7 @@ export default function StoreStaffPage() {
   const permissions = store?.permissions || [];
   const canManage = hasPermission(permissions, 'MANAGE_STAFF');
   const canView = hasPermission(permissions, 'VIEW_STAFF');
+  const currency: 'RUB' | 'KZT' = store?.currency ?? 'RUB';
 
   const staff: StaffMember[] = useMemo(() => (store?.staff || []) as StaffMember[], [store]);
 
@@ -169,74 +196,96 @@ export default function StoreStaffPage() {
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
         <StoreSidebar storeId={storeId} store={store} active="staff" />
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
-                  Штатное расписание
-                </h1>
-              </div>
-              {canManage && (
-                <button
-                  onClick={() => setAddModal({ fullName: '', position: '', salary: '' })}
-                  className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
-                >
-                  Добавить
-                </button>
-              )}
-            </div>
-
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Штатное расписание</h1>
+                {canManage && (
+                  <button
+                    onClick={() =>
+                      setAddModal({
+                        fullName: '',
+                        position: '',
+                        salary: '',
+                      })
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                  >
+                    <CirclePlus className="h-4 w-4" />
+                    Добавить сотрудника
+                  </button>
+                )}
+              </div>
+
               {!staff.length ? (
                 <p className="text-[#6b6b6b]">Сотрудников пока нет</p>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-[#d8d1cb]">
-                  <table className="min-w-full divide-y divide-[#e7e0d9]">
-                    <thead className="bg-[#f4efeb]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-[#F4EFEB]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
+                        <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                           Должность
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                          Имя фамилия
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Имя и фамилия
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Статус
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Каналы оплаты
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
                           Зарплата
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                          Статус оплаты
+                        <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                          Действия
                         </th>
-                        {canManage && (
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                            Действия
-                          </th>
-                        )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#f1ebe4] bg-white">
+                    <tbody className="divide-y divide-[#E5DED8] bg-white">
                       {staff.map((s) => (
-                        <tr key={s.id}>
-                          <td className="px-4 py-3 text-sm">{s.position}</td>
-                          <td className="px-4 py-3 text-sm">{s.fullName}</td>
-                          <td className="px-4 py-3 text-sm">
-                            {formatMoney(Number(s.salary ?? 0), store.currency)}
+                        <tr key={s.id} className="transition-colors hover:bg-[#f9f5f0]">
+                          <td className="px-4 py-2.5 align-middle text-sm font-medium text-[#111111]">
+                            {s.position}
                           </td>
-                          <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
+                            {s.fullName}
+                          </td>
+                          <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
                             <span
-                              className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                                 (s.salaryStatus ?? 'UNPAID') === 'PAID'
                                   ? 'bg-emerald-100 text-emerald-700'
                                   : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              {(s.salaryStatus ?? 'UNPAID') === 'PAID'
-                                ? 'Оплачено'
-                                : 'Не оплачено'}
+                              {(s.salaryStatus ?? 'UNPAID') === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                             </span>
                           </td>
-                          {canManage && (
-                            <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
+                            {(s.salaryStatus ?? 'UNPAID') === 'PAID' ? (
+                              (() => {
+                                const lines = paymentChannelsLines(
+                                  s.salaryBankTransferPaid,
+                                  s.salaryCashbox1Paid,
+                                  s.salaryCashbox2Paid,
+                                  currency,
+                                );
+                                if (!lines.length) return <div>Каналы оплаты не заданы</div>;
+                                return lines.map((line) => <div key={`${s.id}-${line}`}>{line}</div>);
+                              })()
+                            ) : (
+                              <div>Каналы оплаты не заданы</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
+                            {formatMoney(Number(s.salary ?? 0), currency)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle">
+                            {canManage ? (
                               <button
                                 onClick={() =>
                                   setEditModal({
@@ -249,12 +298,14 @@ export default function StoreStaffPage() {
                                     salaryCashbox2Paid: Number(s.salaryCashbox2Paid ?? 0),
                                   })
                                 }
-                                className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] hover:bg-[#f4efeb]"
+                                className="rounded-lg border border-[#d8d1cb] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] hover:bg-[#f4efeb]"
                               >
                                 Оплатить/Изменить
                               </button>
-                            </td>
-                          )}
+                            ) : (
+                              <span className="text-xs text-[#6B6B6B]">-</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

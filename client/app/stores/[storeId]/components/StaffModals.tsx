@@ -6,10 +6,16 @@ type AddStaffModalProps = {
   open: boolean;
   fullName: string;
   position: string;
-  salary: string;
+  salary?: string;
+  bankTransferPaid?: string;
+  cashbox1Paid?: string;
+  cashbox2Paid?: string;
   onFullNameChange: (value: string) => void;
   onPositionChange: (value: string) => void;
-  onSalaryChange: (value: string) => void;
+  onSalaryChange?: (value: string) => void;
+  onBankTransferPaidChange?: (value: string) => void;
+  onCashbox1PaidChange?: (value: string) => void;
+  onCashbox2PaidChange?: (value: string) => void;
   saving: boolean;
   onClose: () => void;
   onSubmit: () => void;
@@ -55,14 +61,26 @@ export function AddStaffModal({
   fullName,
   position,
   salary,
+  bankTransferPaid,
+  cashbox1Paid,
+  cashbox2Paid,
   onFullNameChange,
   onPositionChange,
   onSalaryChange,
+  onBankTransferPaidChange,
+  onCashbox1PaidChange,
+  onCashbox2PaidChange,
   saving,
   onClose,
   onSubmit,
 }: AddStaffModalProps) {
   if (!open) return null;
+
+  const totalByChannels =
+    Number(bankTransferPaid || 0) +
+    Number(cashbox1Paid || 0) +
+    Number(cashbox2Paid || 0);
+  const total = onSalaryChange ? Number(salary || 0) : totalByChannels;
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
@@ -74,6 +92,9 @@ export function AddStaffModal({
         className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
         <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Создаётся сразу в статусе «Оплачено»
+        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <div>
@@ -94,16 +115,63 @@ export function AddStaffModal({
               className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Зарплата</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={salary}
-              onChange={(e) => onSalaryChange(e.target.value)}
-              className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
-            />
+
+          {onSalaryChange ? (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Зарплата</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={salary}
+                onChange={(e) => onSalaryChange(e.target.value)}
+                className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                placeholder="0"
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={bankTransferPaid}
+                  onChange={(e) => onBankTransferPaidChange?.(e.target.value)}
+                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cashbox1Paid}
+                  onChange={(e) => onCashbox1PaidChange?.(e.target.value)}
+                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cashbox2Paid}
+                  onChange={(e) => onCashbox2PaidChange?.(e.target.value)}
+                  className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-[#D8D1CB] bg-[#f8f4ef] px-3 py-2 text-sm text-slate-700">
+            Итого зарплата: <span className="font-semibold">{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
           </div>
         </div>
 

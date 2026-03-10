@@ -14,6 +14,9 @@ import {
   type PavilionExpenseType,
 } from '@/lib/pavilionExpenses';
 import { StoreSidebar } from '../components/StoreSidebar';
+import {
+  CirclePlus,
+} from 'lucide-react';
 
 type AdminExpenseType = Exclude<PavilionExpenseType, 'SALARIES' | 'HOUSEHOLD' | 'OTHER'>;
 
@@ -81,9 +84,7 @@ export default function StoreAdminExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [createModal, setCreateModal] = useState<{
     note: string;
-    bankTransferPaid: string;
-    cashbox1Paid: string;
-    cashbox2Paid: string;
+    amount: string;
   } | null>(null);
   const [editModal, setEditModal] = useState<EditModalState | null>(null);
 
@@ -145,13 +146,9 @@ export default function StoreAdminExpensesPage() {
 
     try {
       setSaving(true);
-      const bank = Number(createModal.bankTransferPaid || 0);
-      const cash1 = Number(createModal.cashbox1Paid || 0);
-      const cash2 = Number(createModal.cashbox2Paid || 0);
-      const amount = bank + cash1 + cash2;
-
-      if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-        alert('Введите корректные суммы по каналам оплаты');
+      const amount = Number(createModal.amount || 0);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        alert('Введите корректную сумму');
         return;
       }
 
@@ -159,10 +156,7 @@ export default function StoreAdminExpensesPage() {
         type: 'STORE_FACILITIES',
         amount,
         note,
-        status: 'PAID',
-        bankTransferPaid: bank,
-        cashbox1Paid: cash1,
-        cashbox2Paid: cash2,
+        status: 'UNPAID',
       });
       setCreateModal(null);
       await fetchStore();
@@ -253,66 +247,74 @@ export default function StoreAdminExpensesPage() {
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
         <StoreSidebar storeId={storeId} store={store} active="admin-expenses" />
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Административные расходы</h1>
-                <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
-              </div>
-              {canCreate && (
-                <button
-                  onClick={() =>
+            <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Административные расходы</h1>
+                  <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
+                </div>
+                {canCreate && (
+                  <button
+                    onClick={() =>
                     setCreateModal({
                       note: '',
-                      bankTransferPaid: '',
-                      cashbox1Paid: '',
-                      cashbox2Paid: '',
+                      amount: '',
                     })
                   }
-                  className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
-                >
-                  Добавить
-                </button>
-              )}
-            </div>
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                  >
+                    <CirclePlus className="h-4 w-4" />
+                    Добавить расход
+                  </button>
+                )}
+              </div>
 
-            <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               {adminExpenses.length === 0 ? (
                 <p className="text-[#6b6b6b]">Расходов пока нет</p>
               ) : (
-                <div className="space-y-2">
-                  <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
-                    <div className="text-center">Название</div>
-                    <div className="text-center">Статус</div>
-                    <div className="text-center">Каналы оплаты</div>
-                    <div className="text-center">Сумма</div>
-                    <div className="text-center">Действия</div>
-                  </div>
-
-                  {adminExpenses.map((expense: any) => (
-                    <article key={expense.id} className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5">
-                      <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
-                        <div className="min-w-0 text-left">
-                          <p className="truncate text-sm font-semibold text-slate-900">
-                            {expense.note || 'Административный расход'}
-                          </p>
-                        </div>
-
-                        <div className="min-w-0 md:text-center">
-                          <span
-                            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              expense.status === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
-                          >
-                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
-                          <div className="md:mx-auto md:max-w-[260px] font-semibold text-slate-900">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="bg-[#F4EFEB]">
+                      <tr>
+                        <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Название
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Статус
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Каналы оплаты
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                          Сумма
+                        </th>
+                        <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                          Действия
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5DED8] bg-white">
+                      {adminExpenses.map((expense: any) => (
+                        <tr key={expense.id} className="transition-colors hover:bg-[#f9f5f0]">
+                          <td className="px-4 py-2.5 align-middle">
+                            <p className="max-w-[260px] truncate text-sm font-medium text-[#111111]">
+                              {expense.note || 'Административный расход'}
+                            </p>
+                          </td>
+                          <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                expense.status === 'PAID'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}
+                            >
+                              {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
                             {(expense.status ?? 'UNPAID') === 'PAID' ? (
                               (() => {
                                 const lines = paymentChannelsLines(
@@ -327,47 +329,47 @@ export default function StoreAdminExpensesPage() {
                             ) : (
                               <div>Каналы оплаты не заданы</div>
                             )}
-                          </div>
-                        </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
+                            {formatMoney(expense.amount, currency)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle">
+                            {canEdit ? (
+                              <button
+                                onClick={() => {
+                                  const amount = Number(expense.amount ?? 0);
+                                  const bank = Number(expense.bankTransferPaid ?? 0);
+                                  const cash1 = Number(expense.cashbox1Paid ?? 0);
+                                  const cash2 = Number(expense.cashbox2Paid ?? 0);
+                                  const hasChannels = bank + cash1 + cash2 > 0;
 
-                        <div className="text-left md:text-center">
-                          <p className="text-sm font-bold text-slate-900">{formatMoney(expense.amount, currency)}</p>
-                        </div>
-
-                        <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
-                          {canEdit && (
-                            <button
-                              onClick={() => {
-                                const amount = Number(expense.amount ?? 0);
-                                const bank = Number(expense.bankTransferPaid ?? 0);
-                                const cash1 = Number(expense.cashbox1Paid ?? 0);
-                                const cash2 = Number(expense.cashbox2Paid ?? 0);
-                                const hasChannels = bank + cash1 + cash2 > 0;
-
-                                setEditModal({
-                                  id: Number(expense.id),
-                                  note: String(expense.note ?? ''),
-                                  amount,
-                                  status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                  bankTransferPaid:
-                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                      ? hasChannels
-                                        ? bank
-                                        : amount
-                                      : bank,
-                                  cashbox1Paid: cash1,
-                                  cashbox2Paid: cash2,
-                                });
-                              }}
-                              className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
-                            >
-                              Оплатить/Изменить
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                                  setEditModal({
+                                    id: Number(expense.id),
+                                    note: String(expense.note ?? ''),
+                                    amount,
+                                    status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                    bankTransferPaid:
+                                      (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                        ? hasChannels
+                                          ? bank
+                                          : amount
+                                        : bank,
+                                    cashbox1Paid: cash1,
+                                    cashbox2Paid: cash2,
+                                  });
+                                }}
+                                className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                              >
+                                Оплатить/Изменить
+                              </button>
+                            ) : (
+                              <span className="text-xs text-[#6B6B6B]">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </section>
@@ -386,7 +388,7 @@ export default function StoreAdminExpensesPage() {
           >
             <h3 className="text-lg font-semibold text-slate-900">Новый административный расход</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Создаётся сразу в статусе «Оплачено».
+              Создаётся в статусе «Не оплачено».
             </p>
 
             <div className="mt-4 space-y-3">
@@ -399,55 +401,21 @@ export default function StoreAdminExpensesPage() {
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
                 placeholder="Название расхода"
               />
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={createModal.bankTransferPaid}
-                    onChange={(e) =>
-                      setCreateModal((prev) =>
-                        prev ? { ...prev, bankTransferPaid: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={createModal.cashbox1Paid}
-                    onChange={(e) =>
-                      setCreateModal((prev) =>
-                        prev ? { ...prev, cashbox1Paid: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={createModal.cashbox2Paid}
-                    onChange={(e) =>
-                      setCreateModal((prev) =>
-                        prev ? { ...prev, cashbox2Paid: e.target.value } : prev,
-                      )
-                    }
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
-                  />
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Сумма</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={createModal.amount}
+                  onChange={(e) =>
+                    setCreateModal((prev) =>
+                      prev ? { ...prev, amount: e.target.value } : prev,
+                    )
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  placeholder="0"
+                />
               </div>
             </div>
 

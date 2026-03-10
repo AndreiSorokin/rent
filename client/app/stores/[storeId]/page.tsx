@@ -8,20 +8,7 @@ import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
 import {
-  ArrowLeft,
-  BanknoteArrowDown,
-  CheckCheck,
   CirclePlus,
-  HandCoins,
-  LockKeyhole,
-  Menu,
-  Sigma,
-  SlidersHorizontal,
-  Store,
-  Toolbox,
-  UsersRound,
-  X,
-  type LucideIcon,
 } from 'lucide-react';
 import { CreatePavilionModal } from '@/app/dashboard/components/CreatePavilionModal';
 import { StoreExtraIncomeModal } from './components/StoreExtraIncomeModal';
@@ -163,7 +150,6 @@ export default function StorePage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreatePavilionModal, setShowCreatePavilionModal] = useState(false);
   const [showExtraIncomeModal, setShowExtraIncomeModal] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [addStaffModal, setAddStaffModal] = useState<{
     fullName: string;
     position: string;
@@ -271,7 +257,6 @@ export default function StorePage() {
   const [draggedPavilionId, setDraggedPavilionId] = useState<number | null>(null);
   const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
   const [draggedStaffId, setDraggedStaffId] = useState<number | null>(null);
-  const [activeSection, setActiveSection] = useState('pavilions');
 
   useEffect(() => {
     if (!storeId) return;
@@ -585,39 +570,6 @@ export default function StorePage() {
       console.warn('Failed to persist staff order on store page', err);
     }
   }, [storeId, orderedStaffIds]);
-
-  useEffect(() => {
-    const sections = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-store-section]'),
-    );
-    if (sections.length === 0) return;
-
-    const updateActiveSection = () => {
-      const scrollY = window.scrollY + 140;
-      let current = sections[0]?.id ?? 'pavilions';
-
-      for (const section of sections) {
-        if (section.offsetTop <= scrollY) {
-          current = section.id;
-        } else {
-          break;
-        }
-      }
-
-      setActiveSection(current);
-    };
-
-    updateActiveSection();
-    window.addEventListener('scroll', updateActiveSection, { passive: true });
-    window.addEventListener('resize', updateActiveSection);
-    window.addEventListener('hashchange', updateActiveSection);
-
-    return () => {
-      window.removeEventListener('scroll', updateActiveSection);
-      window.removeEventListener('resize', updateActiveSection);
-      window.removeEventListener('hashchange', updateActiveSection);
-    };
-  }, [storeId, loading]);
 
   const handlePavilionCreated = () => {
     fetchData(false);
@@ -1344,14 +1296,7 @@ export default function StorePage() {
     });
   };
 
-  const canManageStore =
-    hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
-    hasPermission(permissions, 'EDIT_PAVILIONS') ||
-    hasPermission(permissions, 'INVITE_USERS');
-  const canOpenUtilities =
-    hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
   const canCreatePavilion = hasPermission(permissions, 'CREATE_PAVILIONS');
-  const canViewAccounting = hasPermission(permissions, 'VIEW_PAYMENTS');
   const buildStoreReturnTo = () => {
     const query = new URLSearchParams();
     if (pavilionSearch.trim()) query.set('q', pavilionSearch.trim());
@@ -1366,50 +1311,6 @@ export default function StorePage() {
     return qs ? `${pathname}?${qs}` : pathname;
   };
 
-  const navSections: Array<{
-    id: string;
-    label: string;
-    visible: boolean;
-    icon: LucideIcon;
-    href: string;
-  }> = [
-    {
-      id: 'pavilions',
-      label: 'Павильоны',
-      visible: hasPermission(permissions, 'VIEW_PAVILIONS'),
-      icon: Store,
-      href: `/stores/${storeId}#pavilions`,
-    },
-    {
-      id: 'household',
-      label: 'Хоз расходы',
-      visible: hasPermission(permissions, 'VIEW_CHARGES'),
-      icon: Toolbox,
-      href: `/stores/${storeId}/household`,
-    },
-    {
-      id: 'other-expenses',
-      label: 'Прочие расходы',
-      visible: hasPermission(permissions, 'VIEW_CHARGES'),
-      icon: BanknoteArrowDown,
-      href: `/stores/${storeId}/other-expenses`,
-    },
-    {
-      id: 'admin-expenses',
-      label: 'Административные расходы',
-      visible: hasPermission(permissions, 'VIEW_CHARGES'),
-      icon: LockKeyhole,
-      href: `/stores/${storeId}/admin-expenses`,
-    },
-    {
-      id: 'staff',
-      label: 'Штатное расписание',
-      visible: hasPermission(permissions, 'VIEW_STAFF'),
-      icon: UsersRound,
-      href: `/stores/${storeId}/staff`,
-    },
-  ];
-
   return (
     <div className="min-h-screen scroll-smooth bg-[#f9f5f0]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
@@ -1420,158 +1321,7 @@ export default function StorePage() {
           onOpenExtraIncome={() => setShowExtraIncomeModal(true)}
         />
 
-        <main className="min-w-0 flex-1 space-y-3 pt-12 md:space-y-6 md:pt-0">
-          <div className="fixed right-3 top-3 z-30 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-3 py-2 text-sm text-slate-700 shadow-sm"
-            >
-              <Menu className="h-4 w-4" />
-              Меню
-            </button>
-          </div>
-
-          <div
-            className={`fixed inset-0 z-40 lg:hidden transition-opacity duration-300 ${
-              mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          >
-            <button
-              type="button"
-              aria-label="Закрыть меню"
-              onClick={() => setMobileMenuOpen(false)}
-              className="absolute inset-0 bg-black/35"
-            />
-            <aside
-              className={`relative z-10 h-full w-[88%] max-w-[360px] overflow-y-auto bg-white p-5 shadow-xl transition-transform duration-300 ease-out ${
-                mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-              }`}
-            >
-              <div className="mb-4 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
-                  <h2 className="text-lg font-bold text-slate-900">{store.name}</h2>
-                  <p className="text-xs text-slate-600">
-                    Валюта: {store.currency} ({getCurrencySymbol(store.currency)})
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-lg border border-[#D8D1CB] bg-white p-2 text-slate-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="space-y-2 border-b border-slate-100 pb-4">
-                <Link
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Назад к объектам
-                </Link>
-              </div>
-
-              <div className="mt-3 space-y-2 border-b border-slate-100 pb-4">
-                {hasPermission(permissions, 'VIEW_SUMMARY') && (
-                  <Link
-                    href={`/stores/${storeId}/summary`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white"
-                  >
-                    <Sigma className="h-4 w-4" />
-                    СВОДКА
-                  </Link>
-                )}
-                {canViewAccounting && (
-                  <Link
-                    href={`/stores/${storeId}/accounting`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Открытие/закрытие смены
-                  </Link>
-                )}
-                {(canOpenUtilities || canViewAccounting) && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {canOpenUtilities && (
-                      <Link
-                        href={`/stores/${storeId}/utilities`}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 ${
-                          canViewAccounting ? '' : 'col-span-2'
-                        }`}
-                      >
-                        <HandCoins className="h-3.5 w-3.5" />
-                        Начисления
-                      </Link>
-                    )}
-                    {canViewAccounting && (
-                      <button
-                        onClick={() => {
-                          setShowExtraIncomeModal(true);
-                          setMobileMenuOpen(false);
-                        }}
-                        className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 ${
-                          canOpenUtilities ? '' : 'col-span-2'
-                        }`}
-                      >
-                        <BanknoteArrowDown className="h-3.5 w-3.5" />
-                        Доп приход
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
-                <nav className="space-y-1">
-                  {navSections.filter((item) => item.visible).map((item) => (
-                    <Link
-                      key={`mobile-${item.id}`}
-                      href={item.href}
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
-                        activeSection === item.id
-                          ? 'bg-[#FFE8DB] text-[#C2410C]'
-                          : 'text-slate-600 hover:bg-[#F4EFEB] hover:text-slate-900'
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="font-medium">{item.label}</span>
-                    </Link>
-                  ))}
-                </nav>
-                {canManageStore && (
-                  <div className="mt-3 border-t border-slate-100 pt-3">
-                    <Link
-                      href={`/stores/${storeId}/settings`}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700"
-                    >
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Управление объектом
-                    </Link>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 border-t border-slate-100 pt-4">
-                <LogoutButton
-                  onLoggedOut={() => setMobileMenuOpen(false)}
-                  className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
-                />
-              </div>
-            </aside>
-          </div>
-
+        <main className="min-w-0 flex-1 space-y-3 pt-16 md:space-y-6 md:pt-0">
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <section
             id="pavilions"
@@ -1579,7 +1329,7 @@ export default function StorePage() {
             className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl">Павильоны</h2>
+              <h2 className="text-xl font-semibold md:text-2xl bor">Павильоны</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {canCreatePavilion && (
                   <button
@@ -1673,10 +1423,10 @@ export default function StorePage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-[#E5DED8]">
+                <table className="min-w-full divide-[#E5DED8]">
                   <thead className="bg-[#F4EFEB]">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                         Перенос
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
@@ -1697,7 +1447,7 @@ export default function StorePage() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                         Наименование организации
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                      <th className="rounded-r-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                         Группы
                       </th>
                     </tr>

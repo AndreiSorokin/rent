@@ -12,6 +12,10 @@ import {
   updateHouseholdExpense,
 } from '@/lib/householdExpenses';
 import { StoreSidebar } from '../components/StoreSidebar';
+import {
+  CirclePlus,
+} from 'lucide-react';
+
 
 type EditModalState = {
   id: number;
@@ -48,6 +52,19 @@ function isSameUtcMonth(dateValue: string | Date | null | undefined, year: numbe
   return date.getUTCFullYear() === year && date.getUTCMonth() === month;
 }
 
+function isSameUtcDay(dateValue: string | Date | null | undefined, dayValue: string) {
+  if (!dateValue || !dayValue) return true;
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return false;
+  const [year, month, day] = dayValue.split('-').map(Number);
+  if (!year || !month || !day) return true;
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
 export default function StoreHouseholdPage() {
   const params = useParams();
   const router = useRouter();
@@ -58,6 +75,7 @@ export default function StoreHouseholdPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [filterDate, setFilterDate] = useState('');
 
   const [createModal, setCreateModal] = useState<{
     name: string;
@@ -107,11 +125,12 @@ export default function StoreHouseholdPage() {
 
     return items
       .filter((item: any) => isSameUtcMonth(item.createdAt, year, month))
+      .filter((item: any) => isSameUtcDay(item.createdAt, filterDate))
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [items]);
+  }, [items, filterDate]);
 
   const handleCreate = async () => {
     if (!createModal) return;
@@ -220,66 +239,95 @@ export default function StoreHouseholdPage() {
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
         <StoreSidebar storeId={storeId} store={store} active="household" />
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
-                  Хозяйственные расходы
-                </h1>
-                <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
-              </div>
-              {canCreate && (
-                <button
-                  onClick={() =>
-                    setCreateModal({
-                      name: '',
-                      bankTransferPaid: '',
-                      cashbox1Paid: '',
-                      cashbox2Paid: '',
-                    })
-                  }
-                  className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
-                >
-                  Добавить
-                </button>
-              )}
-            </div>
-
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">
+                    Хозяйственные расходы
+                  </h1>
+                  <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111]"
+                    title="Фильтр по дате"
+                  />
+                  {filterDate && (
+                    <button
+                      onClick={() => setFilterDate('')}
+                      className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
+                    >
+                      Сбросить
+                    </button>
+                  )}
+                  {canCreate && (
+                    <button
+                      onClick={() =>
+                        setCreateModal({
+                          name: '',
+                          bankTransferPaid: '',
+                          cashbox1Paid: '',
+                          cashbox2Paid: '',
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                    >
+                      <CirclePlus className="h-4 w-4" />
+                      Добавить расход
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {householdExpenses.length === 0 ? (
                 <p className="text-[#6b6b6b]">Расходов пока нет</p>
               ) : (
-                <div className="space-y-2">
-                  <div className="hidden items-center gap-3 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#6B6B6B] md:grid md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)]">
-                    <div className="text-center">Название</div>
-                    <div className="text-center">Статус</div>
-                    <div className="text-center">Каналы оплаты</div>
-                    <div className="text-center">Сумма</div>
-                    <div className="text-center">Действия</div>
-                  </div>
-
-                  {householdExpenses.map((expense: any) => (
-                    <article key={expense.id} className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5">
-                      <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
-                        <div className="min-w-0 text-left">
-                          <p className="truncate text-sm font-semibold text-slate-900">{expense.name}</p>
-                        </div>
-
-                        <div className="min-w-0 md:text-center">
-                          <span
-                            className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              expense.status === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-amber-100 text-amber-700'
-                            }`}
-                          >
-                            {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
-                          </span>
-                        </div>
-
-                        <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
-                          <div className="md:mx-auto md:max-w-[260px] font-semibold text-slate-900">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full ">
+                    <thead className="bg-[#F4EFEB]">
+                      <tr>
+                        <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Название
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Статус
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Каналы оплаты
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                          Сумма
+                        </th>
+                        <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
+                          Действия
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E5DED8] bg-white">
+                      {householdExpenses.map((expense: any) => (
+                        <tr key={expense.id} className="transition-colors hover:bg-[#f9f5f0]">
+                          <td className="px-4 py-2.5 align-middle">
+                            <p className="max-w-[260px] truncate text-sm font-medium text-[#111111]">
+                              {expense.name}
+                            </p>
+                          </td>
+                          <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                expense.status === 'PAID'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}
+                            >
+                              {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
                             {(expense.status ?? 'UNPAID') === 'PAID' ? (
                               (() => {
                                 const lines = paymentChannelsLines(
@@ -294,47 +342,47 @@ export default function StoreHouseholdPage() {
                             ) : (
                               <div>Каналы оплаты не заданы</div>
                             )}
-                          </div>
-                        </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
+                            {formatMoney(expense.amount, currency)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right align-middle">
+                            {canEdit ? (
+                              <button
+                                onClick={() => {
+                                  const amount = Number(expense.amount ?? 0);
+                                  const bank = Number(expense.bankTransferPaid ?? 0);
+                                  const cash1 = Number(expense.cashbox1Paid ?? 0);
+                                  const cash2 = Number(expense.cashbox2Paid ?? 0);
+                                  const hasChannels = bank + cash1 + cash2 > 0;
 
-                        <div className="text-left md:text-center">
-                          <p className="text-sm font-bold text-slate-900">{formatMoney(expense.amount, currency)}</p>
-                        </div>
-
-                        <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
-                          {canEdit && (
-                            <button
-                              onClick={() => {
-                                const amount = Number(expense.amount ?? 0);
-                                const bank = Number(expense.bankTransferPaid ?? 0);
-                                const cash1 = Number(expense.cashbox1Paid ?? 0);
-                                const cash2 = Number(expense.cashbox2Paid ?? 0);
-                                const hasChannels = bank + cash1 + cash2 > 0;
-
-                                setEditModal({
-                                  id: Number(expense.id),
-                                  name: String(expense.name ?? ''),
-                                  amount,
-                                  status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
-                                  bankTransferPaid:
-                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
-                                      ? hasChannels
-                                        ? bank
-                                        : amount
-                                      : bank,
-                                  cashbox1Paid: cash1,
-                                  cashbox2Paid: cash2,
-                                });
-                              }}
-                              className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
-                            >
-                              Оплатить/Изменить
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  ))}
+                                  setEditModal({
+                                    id: Number(expense.id),
+                                    name: String(expense.name ?? ''),
+                                    amount,
+                                    status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                    bankTransferPaid:
+                                      (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                        ? hasChannels
+                                          ? bank
+                                          : amount
+                                        : bank,
+                                    cashbox1Paid: cash1,
+                                    cashbox2Paid: cash2,
+                                  });
+                                }}
+                                className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                              >
+                                Оплатить/Изменить
+                              </button>
+                            ) : (
+                              <span className="text-xs text-[#6B6B6B]">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </section>

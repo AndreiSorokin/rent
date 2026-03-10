@@ -1,24 +1,32 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import {
   ArrowLeft,
   BanknoteArrowDown,
   CheckCheck,
   HandCoins,
   LockKeyhole,
+  Menu,
   Sigma,
   SlidersHorizontal,
   Store,
   Toolbox,
   UsersRound,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
 
-type SidebarSection = 'pavilions' | 'household' | 'other-expenses' | 'admin-expenses' | 'staff';
+type SidebarSection =
+  | 'pavilions'
+  | 'household'
+  | 'other-expenses'
+  | 'admin-expenses'
+  | 'staff';
 
 type StoreSidebarProps = {
   storeId: number;
@@ -29,15 +37,25 @@ type StoreSidebarProps = {
   };
   active?: SidebarSection;
   onOpenExtraIncome?: () => void;
+  enableMobileMenu?: boolean;
 };
 
-export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: StoreSidebarProps) {
+export function StoreSidebar({
+  storeId,
+  store,
+  active,
+  onOpenExtraIncome,
+  enableMobileMenu = true,
+}: StoreSidebarProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const permissions = store.permissions || [];
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canViewSummary = hasPermission(permissions, 'VIEW_SUMMARY');
   const canViewAccounting = hasPermission(permissions, 'VIEW_PAYMENTS');
   const canOpenUtilities =
-    hasPermission(permissions, 'VIEW_PAYMENTS') && hasPermission(permissions, 'EDIT_PAYMENTS');
+    hasPermission(permissions, 'VIEW_PAYMENTS') &&
+    hasPermission(permissions, 'EDIT_PAYMENTS');
 
   const items: Array<{
     key: SidebarSection;
@@ -83,8 +101,8 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
     },
   ];
 
-  return (
-    <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
+  const renderMenuContent = (isMobile = false) => (
+    <>
       <div className="mb-5">
         <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
         <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name || 'Объект'}</h1>
@@ -93,6 +111,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
         </p>
         <Link
           href="/dashboard"
+          onClick={() => {
+            if (isMobile) setMobileMenuOpen(false);
+          }}
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-[#f9f5f0]"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -104,6 +125,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
         {canViewSummary && (
           <Link
             href={`/stores/${storeId}/summary`}
+            onClick={() => {
+              if (isMobile) setMobileMenuOpen(false);
+            }}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
           >
             <Sigma className="h-4 w-4" />
@@ -114,6 +138,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
         {canViewAccounting && (
           <Link
             href={`/stores/${storeId}/accounting`}
+            onClick={() => {
+              if (isMobile) setMobileMenuOpen(false);
+            }}
             className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#020617]"
           >
             <CheckCheck className="h-4 w-4" />
@@ -126,6 +153,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
             {canOpenUtilities && (
               <Link
                 href={`/stores/${storeId}/utilities`}
+                onClick={() => {
+                  if (isMobile) setMobileMenuOpen(false);
+                }}
                 className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
                   canViewAccounting ? '' : 'col-span-2'
                 }`}
@@ -137,7 +167,10 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
             {canViewAccounting &&
               (onOpenExtraIncome ? (
                 <button
-                  onClick={onOpenExtraIncome}
+                  onClick={() => {
+                    onOpenExtraIncome();
+                    if (isMobile) setMobileMenuOpen(false);
+                  }}
                   className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
                     canOpenUtilities ? '' : 'col-span-2'
                   }`}
@@ -148,6 +181,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
               ) : (
                 <Link
                   href={`/stores/${storeId}`}
+                  onClick={() => {
+                    if (isMobile) setMobileMenuOpen(false);
+                  }}
                   className={`flex items-center justify-center gap-1.5 rounded-lg border border-[#D8D1CB] bg-white px-2 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-[#f9f5f0] ${
                     canOpenUtilities ? '' : 'col-span-2'
                   }`}
@@ -169,6 +205,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
               <Link
                 key={item.key}
                 href={item.href}
+                onClick={() => {
+                  if (isMobile) setMobileMenuOpen(false);
+                }}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
                   active === item.key
                     ? 'bg-[#FFE8DB] text-[#C2410C]'
@@ -185,6 +224,9 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
           <div className="mt-3 border-t border-slate-100 pt-3">
             <Link
               href={`/stores/${storeId}/settings`}
+              onClick={() => {
+                if (isMobile) setMobileMenuOpen(false);
+              }}
               className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -195,8 +237,65 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-4">
-        <LogoutButton className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100" />
+        <LogoutButton
+          onLoggedOut={() => {
+            if (isMobile) setMobileMenuOpen(false);
+          }}
+          className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+        />
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {enableMobileMenu && (
+        <>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="fixed right-3 top-3 z-50 inline-flex items-center gap-1.5 rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] shadow-sm lg:hidden"
+          >
+            <Menu className="h-4 w-4" />
+            Меню
+          </button>
+
+          <div
+            className={`fixed inset-0 z-[60] bg-black/40 transition-opacity lg:hidden ${
+              mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+          >
+            <button
+              type="button"
+              aria-label="Закрыть меню"
+              className="absolute inset-0"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <aside
+              className={`absolute left-0 top-0 h-full w-[86%] max-w-sm overflow-y-auto border-r border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-xl transition-transform ${
+                mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-semibold text-[#111111]">Навигация</p>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg border border-[#d8d1cb] bg-white p-1.5 text-[#6b6b6b]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {renderMenuContent(true)}
+            </aside>
+          </div>
+        </>
+      )}
+
+      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[320px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
+        {renderMenuContent()}
+      </aside>
+    </>
   );
 }
+
