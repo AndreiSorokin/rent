@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { createAdditionalCharge, deleteAdditionalCharge } from '@/lib/additionalCharges';
+import { createAdditionalCharge, deleteAdditionalCharge, payAdditionalCharge } from '@/lib/additionalCharges';
 import { createPavilionPayment } from '@/lib/payments';
 import { updatePavilion } from '@/lib/pavilions';
 
@@ -293,6 +293,12 @@ export function EditPavilionModal({
       setChargeSaving(true);
       setError(null);
       const created = await createAdditionalCharge(pavilion.id, { name, amount });
+      await payAdditionalCharge(
+        pavilion.id,
+        Number((created as any).id),
+        amount,
+        { bankTransferPaid: amount, cashbox1Paid: 0, cashbox2Paid: 0 },
+      );
       setAdditionalCharges((prev) => [...prev, created as any]);
       setNewChargeName('');
       setNewChargeAmount('');

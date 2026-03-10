@@ -305,7 +305,7 @@ export default function StoreAccountingPage() {
           {dayReconciliation ? (
             <div className="grid grid-cols-1 gap-2 text-sm lg:grid-cols-2">
               <div className="space-y-2">
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
                   <div className="text-xs text-[#6b6b6b]">Открытие дня</div>
                   <div className="font-medium">
                     {dayReconciliation.opening
@@ -321,7 +321,7 @@ export default function StoreAccountingPage() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
                   <div className="text-xs text-[#6b6b6b]">Фактическое закрытие</div>
                   <div className="font-medium">
                     {dayReconciliation.closing
@@ -337,7 +337,7 @@ export default function StoreAccountingPage() {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
                   <div className="text-xs text-[#6b6b6b]">Ожидаемое закрытие</div>
                   <div className="font-medium">
                     {dayReconciliation.expectedClose ? (
@@ -380,7 +380,7 @@ export default function StoreAccountingPage() {
               </div>
 
               <div className="space-y-2">
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
                   <div className="text-xs text-[#6b6b6b]">Приход за день</div>
                   <div className="font-medium">
                     {formatMoney(dayIncomeByChannels.total ?? 0, store.currency)}
@@ -392,7 +392,7 @@ export default function StoreAccountingPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
                   <div className="text-xs text-[#6b6b6b]">Расход за день</div>
                   <div className="font-medium">
                     {formatMoney(dayExpenseByChannels.total ?? 0, store.currency)}
@@ -452,7 +452,7 @@ export default function StoreAccountingPage() {
           {hasPermission(permissions, 'CREATE_PAYMENTS') && dayReconciliation && (
             <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
               {!dayReconciliation.isOpened && (
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl bg-white p-3">
                   <p className="mb-2 text-sm font-semibold text-[#111111]">Открыть день</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
@@ -491,7 +491,7 @@ export default function StoreAccountingPage() {
               )}
 
               {dayReconciliation.isOpened && !dayReconciliation.isClosed && (
-                <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                <div className="rounded-xl bg-white p-3">
                   <p className="mb-2 text-sm font-semibold text-[#111111]">Закрыть день</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input

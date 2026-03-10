@@ -55,6 +55,7 @@ export default function PavilionPage() {
     getCurrentMonthLocal(),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
+  const [prepaymentTenantName, setPrepaymentTenantName] = useState('');
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
@@ -206,6 +207,7 @@ export default function PavilionPage() {
     if (!pavilion) return;
 
     const periodIso = prepaymentMonth;
+    const tenantName = prepaymentTenantName.trim();
     const defaultAmount = pavilion.squareMeters * pavilion.pricePerSqM;
     const targetRentPaid = prepaymentAmount ? Number(prepaymentAmount) : defaultAmount;
     const bank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;
@@ -215,6 +217,10 @@ export default function PavilionPage() {
 
     if (targetRentPaid <= 0) {
       alert('Сумма предоплаты должна быть больше 0');
+      return;
+    }
+    if (!tenantName) {
+      alert('Укажите наименование организации');
       return;
     }
     if (Math.abs(channelsTotal - targetRentPaid) > 0.01) {
@@ -267,6 +273,7 @@ export default function PavilionPage() {
       await updatePavilion(storeIdNum, pavilionIdNum, {
         status: 'PREPAID',
         prepaidUntil: periodIso,
+        tenantName,
       });
 
       if (Math.abs(nextRentDelta) > 0.0001) {
@@ -286,6 +293,7 @@ export default function PavilionPage() {
 
       setShowPrepaymentModal(false);
       setPrepaymentAmount('');
+      setPrepaymentTenantName('');
       setPrepaymentBankTransferPaid('');
       setPrepaymentCashbox1Paid('');
       setPrepaymentCashbox2Paid('');
@@ -508,7 +516,10 @@ export default function PavilionPage() {
           {hasPermission(permissions, 'EDIT_PAVILIONS') && (
             <div className="mt-4 flex flex-wrap gap-3">
               <button
-                onClick={() => setShowPrepaymentModal(true)}
+                onClick={() => {
+                  setPrepaymentTenantName(pavilion.tenantName || '');
+                  setShowPrepaymentModal(true);
+                }}
                 className="rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e85a0c]"
               >
                 {pavilion.status === 'PREPAID'
@@ -857,26 +868,27 @@ export default function PavilionPage() {
           </div>
         )}
 
-        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
-            {hasPermission(permissions, 'CREATE_CHARGES') && (
-              <button
-                onClick={() => setShowAddAdditionalChargeModal(true)}
-                className="rounded-xl bg-[#111111] px-3 py-2 text-sm text-white hover:bg-[#2a2a2a]"
-              >
-                + Новое начисление
-              </button>
-            )}
-          </div>
+        {pavilion.status === 'RENTED' && (
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
+              {hasPermission(permissions, 'CREATE_CHARGES') && (
+                <button
+                  onClick={() => setShowAddAdditionalChargeModal(true)}
+                  className="rounded-xl bg-[#111111] px-3 py-2 text-sm text-white hover:bg-[#2a2a2a]"
+                >
+                  + Новое начисление
+                </button>
+              )}
+            </div>
 
-          {currentMonthAdditionalCharges.length === 0 ? (
-            <p className="text-gray-500">
-              Начислений нет.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+            {currentMonthAdditionalCharges.length === 0 ? (
+              <p className="text-gray-500">
+                Начислений нет.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-[#f4efeb]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
@@ -1036,11 +1048,12 @@ export default function PavilionPage() {
                       </React.Fragment>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {showPaymentModal && (
           <CreatePavilionPaymentModal
@@ -1066,6 +1079,18 @@ export default function PavilionPage() {
             <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
               <h2 className="mb-5 text-xl font-extrabold text-[#111111]">Установить предоплату</h2>
               <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-[#111111]">
+                    Наименование организации
+                  </label>
+                  <input
+                    type="text"
+                    value={prepaymentTenantName}
+                    onChange={(e) => setPrepaymentTenantName(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Введите наименование организации"
+                  />
+                </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#111111]">Месяц предоплаты</label>
                   <input
@@ -1123,7 +1148,10 @@ export default function PavilionPage() {
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowPrepaymentModal(false)}
+                  onClick={() => {
+                    setShowPrepaymentModal(false);
+                    setPrepaymentTenantName('');
+                  }}
                   className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
                 >
                   Отмена

@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { createAdditionalCharge } from '@/lib/additionalCharges';
+import { createAdditionalCharge, payAdditionalCharge } from '@/lib/additionalCharges';
 
 export function AddAdditionalChargeModal({
   pavilionId,
@@ -31,10 +31,16 @@ export function AddAdditionalChargeModal({
 
     try {
       setSaving(true);
-      await createAdditionalCharge(pavilionId, {
+      const created = await createAdditionalCharge(pavilionId, {
         name: chargeName,
         amount: chargeAmount,
       });
+      await payAdditionalCharge(
+        pavilionId,
+        Number((created as any).id),
+        chargeAmount,
+        { bankTransferPaid: chargeAmount, cashbox1Paid: 0, cashbox2Paid: 0 },
+      );
       onSaved();
       onClose();
     } catch (err) {

@@ -552,7 +552,8 @@ export default function StoreSettingsPage() {
             {canViewActivity && (
               <Link
                 href={`/stores/${storeId}/activity`}
-                className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
+                className="inline-flex items-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
+
               >
                 Журнал действий
               </Link>
@@ -562,7 +563,7 @@ export default function StoreSettingsPage() {
                 {createPavilions && (
                 <button
                   onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
+                  className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
                 >
                   Загрузить данные
                 </button>
