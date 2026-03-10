@@ -1321,7 +1321,7 @@ export default function StorePage() {
           onOpenExtraIncome={() => setShowExtraIncomeModal(true)}
         />
 
-        <main className="min-w-0 flex-1 space-y-3 pt-12 md:space-y-6 md:pt-0">
+        <main className="min-w-0 flex-1 space-y-3 pt-16 md:space-y-6 md:pt-0">
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <section
             id="pavilions"

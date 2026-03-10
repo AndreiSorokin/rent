@@ -239,7 +239,7 @@ export default function StoreHouseholdPage() {
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto flex max-w-[1600px] gap-6 px-3 py-1 md:px-6 md:py-6">
         <StoreSidebar storeId={storeId} store={store} active="household" />
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
