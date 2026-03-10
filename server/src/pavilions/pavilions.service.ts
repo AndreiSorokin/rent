@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PavilionStatus, Prisma } from '@prisma/client';
 import { CreatePavilionDto } from './dto/create-pavilion.dto';
@@ -188,6 +188,33 @@ export class PavilionsService {
     return undefined;
   }
 
+  private comparePavilionNaturalOrder(
+    a: { id: number; number: string; sortIndex?: number | null },
+    b: { id: number; number: string; sortIndex?: number | null },
+  ) {
+    const hasCustomOrder =
+      a.sortIndex != null || b.sortIndex != null;
+
+    if (hasCustomOrder) {
+      const aSort = a.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      const bSort = b.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aSort !== bSort) return aSort - bSort;
+    }
+
+    const byNumber = String(a.number ?? '').localeCompare(String(b.number ?? ''), 'ru', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+    if (byNumber !== 0) return byNumber;
+    return a.id - b.id;
+  }
+
+  private sortPavilionsByStoredOrNaturalOrder<
+    T extends { id: number; number: string; sortIndex?: number | null },
+  >(items: T[]) {
+    return [...items].sort((a, b) => this.comparePavilionNaturalOrder(a, b));
+  }
+
   async create(storeId: number, dto: CreatePavilionDto, userId?: number) {
     const calculatedRent = dto.squareMeters * dto.pricePerSqM;
     const isPrepaid = dto.status === PavilionStatus.PREPAID;
@@ -195,11 +222,22 @@ export class PavilionsService {
       ? endOfMonth(new Date(dto.prepaidUntil))
       : endOfMonth(new Date());
 
+    const lastPavilionByOrder = await this.prisma.pavilion.findFirst({
+      where: { storeId },
+      orderBy: [{ sortIndex: 'desc' }, { id: 'desc' }],
+      select: { sortIndex: true },
+    });
+    const nextSortIndex =
+      Number(lastPavilionByOrder?.sortIndex ?? 0) > 0
+        ? Number(lastPavilionByOrder?.sortIndex ?? 0) + 1
+        : null;
+
     const created = await this.prisma.pavilion.create({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data: {
         ...dto,
         rentAmount: dto.rentAmount ?? calculatedRent,
+        sortIndex: nextSortIndex,
         status: dto.status ?? PavilionStatus.AVAILABLE,
         prepaidUntil: isPrepaid ? parsedPrepaidUntil : null,
         store: { connect: { id: storeId } },
@@ -312,78 +350,14 @@ export class PavilionsService {
       },
     } satisfies Prisma.PavilionInclude;
 
-    if (options?.paginated) {
-      if (sortBy === 'paymentStatus' || paymentStatus) {
-        const items = await this.prisma.pavilion.findMany({
-          where,
-          include,
-          orderBy: [{ id: 'asc' }],
-        });
-
-        let enriched = items.map((item) => this.enrichPavilionPaymentStatus(item));
-        if (paymentStatus) {
-          enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
-        }
-        const getRank = (
-          status: 'PAID' | 'PARTIAL' | 'UNPAID',
-        ): number => {
-          if (paymentStatusFirst) {
-            if (status === paymentStatusFirst) return 0;
-            if (status === 'PARTIAL') return 1;
-            if (status === 'UNPAID') return 2;
-            return 3;
-          }
-          if (status === 'UNPAID') return 0;
-          if (status === 'PARTIAL') return 1;
-          return 2;
-        };
-
-        enriched.sort((a, b) => {
-          const diff = getRank(a.paymentStatus) - getRank(b.paymentStatus);
-          if (diff !== 0) return sortDir === 'asc' ? diff : -diff;
-          const aNumber = String(a.number ?? '').trim();
-          const bNumber = String(b.number ?? '').trim();
-          return aNumber.localeCompare(bNumber, 'ru');
-        });
-
-        const start = (page - 1) * pageSize;
-        const end = start + pageSize;
-        const total = enriched.length;
-        return {
-          items: enriched.slice(start, end),
-          total,
-          page,
-          pageSize,
-          hasMore: page * pageSize < total,
-        };
-      }
-
-      const [items, total] = await Promise.all([
-        this.prisma.pavilion.findMany({
-          where,
-          include,
-          orderBy: [{ id: 'asc' }],
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
-        this.prisma.pavilion.count({ where }),
-      ]);
-
-      return {
-        items: items.map((item) => this.enrichPavilionPaymentStatus(item)),
-        total,
-        page,
-        pageSize,
-        hasMore: page * pageSize < total,
-      };
-    }
-
     const items = await this.prisma.pavilion.findMany({
       where,
       include,
       orderBy: [{ id: 'asc' }],
     });
-    let enriched = items.map((item) => this.enrichPavilionPaymentStatus(item));
+    let enriched = this.sortPavilionsByStoredOrNaturalOrder(
+      items.map((item) => this.enrichPavilionPaymentStatus(item)),
+    );
     if (paymentStatus) {
       enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
     }
@@ -402,12 +376,70 @@ export class PavilionsService {
       enriched.sort((a, b) => {
         const diff = getRank(a.paymentStatus) - getRank(b.paymentStatus);
         if (diff !== 0) return sortDir === 'asc' ? diff : -diff;
-        const aNumber = String(a.number ?? '').trim();
-        const bNumber = String(b.number ?? '').trim();
-        return aNumber.localeCompare(bNumber, 'ru');
+        return this.comparePavilionNaturalOrder(a, b);
       });
     }
-    return enriched;
+    if (!options?.paginated) {
+      return enriched;
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const total = enriched.length;
+    return {
+      items: enriched.slice(start, end),
+      total,
+      page,
+      pageSize,
+      hasMore: page * pageSize < total,
+    };
+  }
+
+  async reorder(storeId: number, orderedIds: number[], userId?: number) {
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      throw new BadRequestException('orderedIds must contain at least one pavilion id');
+    }
+
+    const normalizedIds = Array.from(
+      new Set(
+        orderedIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      ),
+    );
+
+    if (normalizedIds.length !== orderedIds.length) {
+      throw new BadRequestException('orderedIds must contain unique integer ids');
+    }
+
+    const existing = await this.prisma.pavilion.findMany({
+      where: { storeId, id: { in: normalizedIds } },
+      select: { id: true },
+    });
+    if (existing.length !== normalizedIds.length) {
+      throw new NotFoundException('Some pavilions were not found in this store');
+    }
+
+    await this.prisma.$transaction(
+      normalizedIds.map((id, index) =>
+        this.prisma.pavilion.update({
+          where: { id },
+          data: { sortIndex: index + 1 },
+        }),
+      ),
+    );
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'PAVILION_ORDER',
+      details: {
+        count: normalizedIds.length,
+      },
+    });
+
+    return { success: true };
   }
 
   async findOne(storeId: number, id: number) {

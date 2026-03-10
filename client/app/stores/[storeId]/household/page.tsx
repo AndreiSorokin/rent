@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -11,23 +11,41 @@ import {
   getHouseholdExpenses,
   updateHouseholdExpense,
 } from '@/lib/householdExpenses';
-import { ExpenseCreatePaidModal, ExpenseEditModal } from '../components/ExpenseModals';
 import { StoreSidebar } from '../components/StoreSidebar';
 
+type EditModalState = {
+  id: number;
+  name: string;
+  amount: number;
+  status: 'UNPAID' | 'PAID';
+  bankTransferPaid: number;
+  cashbox1Paid: number;
+  cashbox2Paid: number;
+};
+
 function paymentChannelsLines(
-  bankTransferPaid?: number | null,
-  cashbox1Paid?: number | null,
-  cashbox2Paid?: number | null,
-  currency: 'RUB' | 'KZT' = 'RUB',
+  bankTransferPaid: number | null | undefined,
+  cashbox1Paid: number | null | undefined,
+  cashbox2Paid: number | null | undefined,
+  currency: 'RUB' | 'KZT',
 ) {
   const lines: string[] = [];
   const bank = Number(bankTransferPaid ?? 0);
   const cash1 = Number(cashbox1Paid ?? 0);
   const cash2 = Number(cashbox2Paid ?? 0);
+
   if (bank > 0) lines.push(`Безналичные: ${formatMoney(bank, currency)}`);
   if (cash1 > 0) lines.push(`Наличные касса 1: ${formatMoney(cash1, currency)}`);
   if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
+
   return lines;
+}
+
+function isSameUtcMonth(dateValue: string | Date | null | undefined, year: number, month: number) {
+  if (!dateValue) return false;
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month;
 }
 
 export default function StoreHouseholdPage() {
@@ -47,15 +65,7 @@ export default function StoreHouseholdPage() {
     cashbox1Paid: string;
     cashbox2Paid: string;
   } | null>(null);
-  const [editModal, setEditModal] = useState<{
-    id: number;
-    name: string;
-    amount: number;
-    status: 'UNPAID' | 'PAID';
-    bankTransferPaid: string;
-    cashbox1Paid: string;
-    cashbox2Paid: string;
-  } | null>(null);
+  const [editModal, setEditModal] = useState<EditModalState | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -90,17 +100,38 @@ export default function StoreHouseholdPage() {
   const canEdit = hasPermission(permissions, 'EDIT_CHARGES');
   const canDelete = hasPermission(permissions, 'DELETE_CHARGES');
 
+  const householdExpenses = useMemo(() => {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = now.getUTCMonth();
+
+    return items
+      .filter((item: any) => isSameUtcMonth(item.createdAt, year, month))
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      );
+  }, [items]);
+
   const handleCreate = async () => {
     if (!createModal) return;
+
     const name = createModal.name.trim();
+    if (!name) {
+      alert('Введите название расхода');
+      return;
+    }
+
     const bank = Number(createModal.bankTransferPaid || 0);
     const cash1 = Number(createModal.cashbox1Paid || 0);
     const cash2 = Number(createModal.cashbox2Paid || 0);
     const amount = bank + cash1 + cash2;
-    if (!name || amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-      alert('Проверьте название и каналы оплаты');
+
+    if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
+      alert('Введите корректные суммы по каналам оплаты');
       return;
     }
+
     try {
       setSaving(true);
       await createHouseholdExpense(storeId, {
@@ -123,30 +154,35 @@ export default function StoreHouseholdPage() {
 
   const handleSaveEdit = async () => {
     if (!editModal) return;
+
     const name = editModal.name.trim();
     const status = editModal.status;
-    const baseAmount = Number(editModal.amount ?? 0);
     const bank = Number(editModal.bankTransferPaid || 0);
     const cash1 = Number(editModal.cashbox1Paid || 0);
     const cash2 = Number(editModal.cashbox2Paid || 0);
     const paidAmount = bank + cash1 + cash2;
-    if (!name || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-      alert('Проверьте данные');
+
+    if (!name) {
+      alert('Введите корректное название');
       return;
     }
-    if (status === 'PAID' && paidAmount <= 0) {
-      alert('Введите сумму хотя бы в одном канале оплаты');
-      return;
+
+    if (status === 'PAID') {
+      if ([bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
+        alert('Суммы по каналам оплаты должны быть неотрицательными');
+        return;
+      }
+      if (paidAmount <= 0) {
+        alert('Введите сумму хотя бы в одном канале оплаты');
+        return;
+      }
     }
-    if (status === 'UNPAID' && baseAmount <= 0) {
-      alert('Сумма расхода должна быть больше 0');
-      return;
-    }
+
     try {
       setSaving(true);
       await updateHouseholdExpense(storeId, editModal.id, {
         name,
-        amount: status === 'PAID' ? paidAmount : baseAmount,
+        amount: status === 'PAID' ? paidAmount : Number(editModal.amount || 0),
         status,
         bankTransferPaid: status === 'PAID' ? bank : 0,
         cashbox1Paid: status === 'PAID' ? cash1 : 0,
@@ -162,13 +198,11 @@ export default function StoreHouseholdPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!editModal) return;
+  const handleDelete = async (id: number) => {
     if (!confirm('Удалить этот расход?')) return;
     try {
       setSaving(true);
-      await deleteHouseholdExpense(storeId, editModal.id);
-      setEditModal(null);
+      await deleteHouseholdExpense(storeId, id);
       await fetchData();
     } catch (err) {
       console.error(err);
@@ -193,11 +227,17 @@ export default function StoreHouseholdPage() {
                 <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
                   Хозяйственные расходы
                 </h1>
+                <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
               </div>
               {canCreate && (
                 <button
                   onClick={() =>
-                    setCreateModal({ name: '', bankTransferPaid: '', cashbox1Paid: '', cashbox2Paid: '' })
+                    setCreateModal({
+                      name: '',
+                      bankTransferPaid: '',
+                      cashbox1Paid: '',
+                      cashbox2Paid: '',
+                    })
                   }
                   className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
                 >
@@ -207,7 +247,7 @@ export default function StoreHouseholdPage() {
             </div>
 
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
-              {items.length === 0 ? (
+              {householdExpenses.length === 0 ? (
                 <p className="text-[#6b6b6b]">Расходов пока нет</p>
               ) : (
                 <div className="space-y-2">
@@ -218,49 +258,72 @@ export default function StoreHouseholdPage() {
                     <div className="text-center">Сумма</div>
                     <div className="text-center">Действия</div>
                   </div>
-                  {items.map((expense) => (
+
+                  {householdExpenses.map((expense: any) => (
                     <article key={expense.id} className="rounded-xl border border-[#D8D1CB] bg-white px-4 py-2.5">
                       <div className="grid items-center gap-2 md:grid-cols-[minmax(180px,1.2fr)_minmax(140px,0.9fr)_minmax(240px,2fr)_minmax(110px,1fr)_minmax(170px,auto)] md:gap-3">
                         <div className="min-w-0 text-left">
                           <p className="truncate text-sm font-semibold text-slate-900">{expense.name}</p>
                         </div>
+
                         <div className="min-w-0 md:text-center">
                           <span
                             className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                              expense.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                              expense.status === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-amber-100 text-amber-700'
                             }`}
                           >
                             {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
                           </span>
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-900 md:text-center">
-                          {(expense.status ?? 'UNPAID') === 'PAID'
-                            ? paymentChannelsLines(
-                                expense.bankTransferPaid,
-                                expense.cashbox1Paid,
-                                expense.cashbox2Paid,
-                                currency,
-                              ).map((line) => <div key={`${expense.id}-${line}`}>{line}</div>)
-                            : 'Каналы оплаты не заданы'}
+
+                        <div className="min-w-0 text-[11px] text-slate-600 md:text-center">
+                          <div className="md:mx-auto md:max-w-[260px] font-semibold text-slate-900">
+                            {(expense.status ?? 'UNPAID') === 'PAID' ? (
+                              (() => {
+                                const lines = paymentChannelsLines(
+                                  expense.bankTransferPaid,
+                                  expense.cashbox1Paid,
+                                  expense.cashbox2Paid,
+                                  currency,
+                                );
+                                if (!lines.length) return <div>Каналы оплаты не заданы</div>;
+                                return lines.map((line) => <div key={`${expense.id}-${line}`}>{line}</div>);
+                              })()
+                            ) : (
+                              <div>Каналы оплаты не заданы</div>
+                            )}
+                          </div>
                         </div>
+
                         <div className="text-left md:text-center">
                           <p className="text-sm font-bold text-slate-900">{formatMoney(expense.amount, currency)}</p>
                         </div>
-                        <div className="flex items-center justify-start gap-2 md:flex-col md:items-center">
+
+                        <div className="flex items-center justify-start gap-2 md:flex-col md:items-center md:justify-center md:gap-1.5">
                           {canEdit && (
                             <button
                               onClick={() => {
+                                const amount = Number(expense.amount ?? 0);
                                 const bank = Number(expense.bankTransferPaid ?? 0);
                                 const cash1 = Number(expense.cashbox1Paid ?? 0);
                                 const cash2 = Number(expense.cashbox2Paid ?? 0);
+                                const hasChannels = bank + cash1 + cash2 > 0;
+
                                 setEditModal({
                                   id: Number(expense.id),
                                   name: String(expense.name ?? ''),
-                                  amount: Number(expense.amount ?? 0),
-                                  status: (expense.status ?? 'UNPAID') as 'UNPAID' | 'PAID',
-                                  bankTransferPaid: String(bank || ''),
-                                  cashbox1Paid: String(cash1 || ''),
-                                  cashbox2Paid: String(cash2 || ''),
+                                  amount,
+                                  status: (expense.status as 'UNPAID' | 'PAID') ?? 'UNPAID',
+                                  bankTransferPaid:
+                                    (expense.status as 'UNPAID' | 'PAID') === 'PAID'
+                                      ? hasChannels
+                                        ? bank
+                                        : amount
+                                      : bank,
+                                  cashbox1Paid: cash1,
+                                  cashbox2Paid: cash2,
                                 });
                               }}
                               className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
@@ -279,45 +342,257 @@ export default function StoreHouseholdPage() {
         </main>
       </div>
 
-      <ExpenseCreatePaidModal
-        open={Boolean(createModal)}
-        title="Новый хозяйственный расход"
-        nameValue={createModal?.name ?? ''}
-        onNameChange={(value) => setCreateModal((prev) => (prev ? { ...prev, name: value } : prev))}
-        bankTransferPaid={createModal?.bankTransferPaid ?? ''}
-        onBankTransferPaidChange={(value) =>
-          setCreateModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
-        }
-        cashbox1Paid={createModal?.cashbox1Paid ?? ''}
-        onCashbox1PaidChange={(value) => setCreateModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))}
-        cashbox2Paid={createModal?.cashbox2Paid ?? ''}
-        onCashbox2PaidChange={(value) => setCreateModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))}
-        saving={saving}
-        onClose={() => setCreateModal(null)}
-        onSubmit={() => void handleCreate()}
-      />
+      {createModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+          >
+            <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
+            <p className="mt-1 text-sm text-slate-600">Создаётся сразу в статусе «Оплачено».</p>
 
-      <ExpenseEditModal
-        open={Boolean(editModal)}
-        title="Изменить хозяйственный расход"
-        nameValue={editModal?.name ?? ''}
-        onNameChange={(value) => setEditModal((prev) => (prev ? { ...prev, name: value } : prev))}
-        status={editModal?.status ?? 'UNPAID'}
-        onStatusChange={(status) => setEditModal((prev) => (prev ? { ...prev, status } : prev))}
-        bankTransferPaid={editModal?.bankTransferPaid ?? ''}
-        onBankTransferPaidChange={(value) =>
-          setEditModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
-        }
-        cashbox1Paid={editModal?.cashbox1Paid ?? ''}
-        onCashbox1PaidChange={(value) => setEditModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))}
-        cashbox2Paid={editModal?.cashbox2Paid ?? ''}
-        onCashbox2PaidChange={(value) => setEditModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))}
-        saving={saving}
-        onClose={() => setEditModal(null)}
-        onSubmit={() => void handleSaveEdit()}
-        onDelete={canDelete ? () => void handleDelete() : undefined}
-        showDelete={canDelete}
-      />
+            <div className="mt-4 space-y-3">
+              <input
+                type="text"
+                value={createModal.name}
+                onChange={(e) =>
+                  setCreateModal((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                }
+                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                placeholder="Название расхода"
+              />
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.bankTransferPaid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, bankTransferPaid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.cashbox1Paid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, cashbox1Paid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createModal.cashbox2Paid}
+                    onChange={(e) =>
+                      setCreateModal((prev) =>
+                        prev ? { ...prev, cashbox2Paid: e.target.value } : prev,
+                      )
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCreateModal(null)}
+                disabled={saving}
+                className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+              >
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {editModal && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveEdit();
+            }}
+            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+          >
+            <h3 className="text-lg font-semibold text-slate-900">Изменить хозяйственный расход</h3>
+
+            <div className="mt-4 space-y-3">
+              <input
+                type="text"
+                value={editModal.name}
+                onChange={(e) =>
+                  setEditModal((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                }
+                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                placeholder="Название расхода"
+              />
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Статус оплаты</label>
+                <select
+                  value={editModal.status}
+                  onChange={(e) =>
+                    setEditModal((prev) => {
+                      if (!prev) return prev;
+                      const nextStatus = e.target.value as 'UNPAID' | 'PAID';
+                      if (nextStatus === 'UNPAID') {
+                        return { ...prev, status: 'UNPAID' };
+                      }
+                      const amountValue = Number(prev.amount || 0);
+                      return {
+                        ...prev,
+                        status: 'PAID',
+                        bankTransferPaid:
+                          Number.isFinite(amountValue) && amountValue > 0
+                            ? amountValue
+                            : prev.bankTransferPaid,
+                        cashbox1Paid: 0,
+                        cashbox2Paid: 0,
+                      };
+                    })
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                >
+                  <option value="UNPAID">Не оплачено</option>
+                  <option value="PAID">Оплачено</option>
+                </select>
+              </div>
+
+              {editModal.status === 'PAID' && (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editModal.bankTransferPaid}
+                      onChange={(e) =>
+                        setEditModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                bankTransferPaid: e.target.value === '' ? 0 : Number(e.target.value),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editModal.cashbox1Paid}
+                      onChange={(e) =>
+                        setEditModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                cashbox1Paid: e.target.value === '' ? 0 : Number(e.target.value),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editModal.cashbox2Paid}
+                      onChange={(e) =>
+                        setEditModal((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                cashbox2Paid: e.target.value === '' ? 0 : Number(e.target.value),
+                              }
+                            : prev,
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <div>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleDelete(editModal.id);
+                      setEditModal(null);
+                    }}
+                    disabled={saving}
+                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditModal(null)}
+                  disabled={saving}
+                  className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
+                >
+                  {saving ? 'Сохранение...' : 'Сохранить'}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

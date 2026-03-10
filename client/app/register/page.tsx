@@ -39,7 +39,7 @@ export default function RegisterPage() {
       return 'Неверный или просроченный код подтверждения';
     }
     if (normalized.includes('email already registered') || normalized.includes('already registered')) {
-      return 'Пользователь с таким электронным адресом уже зарегистрирован';
+      return 'Пользователь с таким email уже зарегистрирован';
     }
     if (normalized.includes('email verification service is not configured')) {
       return 'Сервис отправки email не настроен';

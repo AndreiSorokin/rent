@@ -71,9 +71,83 @@ export class HouseholdExpenseService {
 
   async create(
     storeId: number,
-    data: { name: string; amount: number; idempotencyKey?: string },
+    data: {
+      name: string;
+      amount: number;
+      status?: PavilionExpenseStatus;
+      paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2';
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      idempotencyKey?: string;
+    },
     userId?: number,
   ) {
+    const amount = Number(data.amount ?? 0);
+    const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
+    const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
+    const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
+
+    if (
+      Number.isNaN(amount) ||
+      Number.isNaN(bankTransferPaid) ||
+      Number.isNaN(cashbox1Paid) ||
+      Number.isNaN(cashbox2Paid) ||
+      amount < 0 ||
+      bankTransferPaid < 0 ||
+      cashbox1Paid < 0 ||
+      cashbox2Paid < 0
+    ) {
+      throw new BadRequestException('Amounts must be non-negative');
+    }
+
+    const channelsTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+    const status = data.status ?? PavilionExpenseStatus.UNPAID;
+    if (channelsTotal > 0 && Math.abs(channelsTotal - amount) > 0.01) {
+      throw new BadRequestException(
+        'Expense amount must equal selected payment channels total',
+      );
+    }
+
+    const effectiveStatus =
+      channelsTotal > 0 ? PavilionExpenseStatus.PAID : status;
+
+    const normalizedPaymentMethod =
+      effectiveStatus === PavilionExpenseStatus.PAID
+        ? channelsTotal > 0
+          ? this.deriveSingleMethod(bankTransferPaid, cashbox1Paid, cashbox2Paid)
+          : this.normalizePaymentMethod(data.paymentMethod)
+        : null;
+
+    const paidChannels =
+      effectiveStatus === PavilionExpenseStatus.PAID
+        ? channelsTotal > 0
+          ? {
+              bankTransferPaid,
+              cashbox1Paid,
+              cashbox2Paid,
+            }
+          : {
+              bankTransferPaid:
+                this.normalizePaymentMethod(data.paymentMethod) ===
+                'BANK_TRANSFER'
+                  ? amount
+                  : 0,
+              cashbox1Paid:
+                this.normalizePaymentMethod(data.paymentMethod) === 'CASHBOX1'
+                  ? amount
+                  : 0,
+              cashbox2Paid:
+                this.normalizePaymentMethod(data.paymentMethod) === 'CASHBOX2'
+                  ? amount
+                  : 0,
+            }
+        : {
+            bankTransferPaid: 0,
+            cashbox1Paid: 0,
+            cashbox2Paid: 0,
+          };
+
     const idempotencyKey = data.idempotencyKey?.trim();
     if (idempotencyKey) {
       const existing = await (this.prisma as any).pavilionExpense.findFirst({
@@ -106,12 +180,12 @@ export class HouseholdExpenseService {
           storeId,
           type: HOUSEHOLD_TYPE,
           note: data.name,
-          amount: data.amount,
-          status: PavilionExpenseStatus.UNPAID,
-          paymentMethod: null,
-          bankTransferPaid: 0,
-          cashbox1Paid: 0,
-          cashbox2Paid: 0,
+          amount,
+          status: effectiveStatus,
+          paymentMethod: normalizedPaymentMethod,
+          bankTransferPaid: paidChannels.bankTransferPaid,
+          cashbox1Paid: paidChannels.cashbox1Paid,
+          cashbox2Paid: paidChannels.cashbox2Paid,
           ...(idempotencyKey ? { idempotencyKey } : {}),
         },
       })

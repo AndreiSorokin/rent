@@ -1,7 +1,8 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import {
+  ArrowLeft,
   BanknoteArrowDown,
   CheckCheck,
   HandCoins,
@@ -90,7 +91,15 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
         <p className="mt-1 text-sm text-slate-600">
           Валюта: {store.currency} ({getCurrencySymbol((store.currency as any) || 'RUB')})
         </p>
+        <Link
+          href="/dashboard"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-[#f9f5f0]"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Назад к объектам
+        </Link>
       </div>
+
       <div className="space-y-2 border-b border-slate-100 pb-4">
         {canViewSummary && (
           <Link
@@ -171,6 +180,7 @@ export function StoreSidebar({ storeId, store, active, onOpenExtraIncome }: Stor
               </Link>
             ))}
         </nav>
+
         {canManageStore && (
           <div className="mt-3 border-t border-slate-100 pt-3">
             <Link

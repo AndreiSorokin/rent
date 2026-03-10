@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
-import { updatePavilion } from '@/lib/pavilions';
+import { reorderPavilions, updatePavilion } from '@/lib/pavilions';
 import { StoreSidebar } from '../components/StoreSidebar';
 
 type Pavilion = {
@@ -64,23 +64,10 @@ export default function UtilitiesPage() {
     if (storeId) void fetchData();
   }, [storeId]);
 
-  const defaultSortedPavilions: Pavilion[] = useMemo(() => {
-    return [...(store?.pavilions || [])].sort((a, b) => {
-      const aNumber = String(a.number ?? '').trim();
-      const bNumber = String(b.number ?? '').trim();
-      const aNum = Number(aNumber.replace(',', '.'));
-      const bNum = Number(bNumber.replace(',', '.'));
-
-      const aIsNum = Number.isFinite(aNum);
-      const bIsNum = Number.isFinite(bNum);
-      if (aIsNum && bIsNum && aNum !== bNum) return aNum - bNum;
-      if (aIsNum !== bIsNum) return aIsNum ? -1 : 1;
-
-      const textCompare = aNumber.localeCompare(bNumber, 'ru');
-      if (textCompare !== 0) return textCompare;
-      return a.id - b.id;
-    });
-  }, [store?.pavilions]);
+  const defaultSortedPavilions: Pavilion[] = useMemo(
+    () => [...(store?.pavilions || [])],
+    [store?.pavilions],
+  );
 
   useEffect(() => {
     if (!storeId || defaultSortedPavilions.length === 0) {
@@ -88,44 +75,14 @@ export default function UtilitiesPage() {
       return;
     }
 
-    const storageKey = `utilities-order-${storeId}`;
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed: unknown = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const idSet = new Set(defaultSortedPavilions.map((p) => p.id));
-          const restored = parsed
-            .map((v) => Number(v))
-            .filter((id) => Number.isFinite(id) && idSet.has(id));
-          const missing = defaultSortedPavilions
-            .map((p) => p.id)
-            .filter((id) => !restored.includes(id));
-          setOrderedPavilionIds([...restored, ...missing]);
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to restore pavilion order', err);
-    }
-
     setOrderedPavilionIds(defaultSortedPavilions.map((p) => p.id));
   }, [storeId, defaultSortedPavilions]);
-
-  useEffect(() => {
-    if (!storeId || orderedPavilionIds.length === 0) return;
-    const storageKey = `utilities-order-${storeId}`;
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(orderedPavilionIds));
-    } catch (err) {
-      console.warn('Failed to persist pavilion order', err);
-    }
-  }, [storeId, orderedPavilionIds]);
 
   const permissions = useMemo(() => store?.permissions || [], [store]);
   const hasPaymentsAccess =
     hasPermission(permissions, 'VIEW_PAYMENTS') &&
     hasPermission(permissions, 'EDIT_PAYMENTS');
+  const canReorderPavilions = hasPermission(permissions, 'EDIT_PAVILIONS');
   const currencySymbol = getCurrencySymbol(store?.currency ?? 'RUB');
 
   const pavilions = useMemo(() => {
@@ -138,17 +95,27 @@ export default function UtilitiesPage() {
     return [...ordered, ...missing];
   }, [defaultSortedPavilions, orderedPavilionIds]);
 
-  const movePavilion = (draggedId: number, targetId: number) => {
+  const movePavilion = async (draggedId: number, targetId: number) => {
     if (draggedId === targetId) return;
-    setOrderedPavilionIds((prev) => {
-      const current = prev.length ? [...prev] : defaultSortedPavilions.map((p) => p.id);
-      const from = current.indexOf(draggedId);
-      const to = current.indexOf(targetId);
-      if (from < 0 || to < 0) return prev;
-      current.splice(from, 1);
-      current.splice(to, 0, draggedId);
-      return current;
-    });
+    const current = orderedPavilionIds.length
+      ? [...orderedPavilionIds]
+      : defaultSortedPavilions.map((p) => p.id);
+    const from = current.indexOf(draggedId);
+    const to = current.indexOf(targetId);
+    if (from < 0 || to < 0 || from === to) return;
+
+    current.splice(from, 1);
+    current.splice(to, 0, draggedId);
+
+    const previousOrder = orderedPavilionIds;
+    setOrderedPavilionIds(current);
+    try {
+      await reorderPavilions(storeId, current);
+    } catch (err) {
+      console.error(err);
+      setOrderedPavilionIds(previousOrder);
+      await fetchData();
+    }
   };
 
   const handleUtilitiesChange = (pavilionId: number, value: string) => {
@@ -301,27 +268,34 @@ export default function UtilitiesPage() {
                           <tr
                             key={p.id}
                             onDragOver={(e) => {
+                              if (!canReorderPavilions) return;
                               if (draggedPavilionId == null) return;
                               e.preventDefault();
                               e.dataTransfer.dropEffect = 'move';
                             }}
                             onDrop={(e) => {
+                              if (!canReorderPavilions) return;
                               e.preventDefault();
                               if (draggedPavilionId == null) return;
-                              movePavilion(draggedPavilionId, p.id);
+                              void movePavilion(draggedPavilionId, p.id);
                               setDraggedPavilionId(null);
                             }}
                           >
                             <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                               <button
                                 type="button"
-                                draggable
+                                draggable={canReorderPavilions}
                                 onDragStart={(e) => {
+                                  if (!canReorderPavilions) return;
                                   setDraggedPavilionId(p.id);
                                   e.dataTransfer.effectAllowed = 'move';
                                 }}
                                 onDragEnd={() => setDraggedPavilionId(null)}
-                                className="cursor-grab select-none rounded-lg border border-[#d8d1cb] bg-white px-2 py-1 text-lg leading-none text-[#6b6b6b] transition hover:bg-[#f8f4ef] active:cursor-grabbing"
+                                className={`select-none rounded-lg border border-[#d8d1cb] bg-white px-2 py-1 text-lg leading-none transition ${
+                                  canReorderPavilions
+                                    ? 'cursor-grab text-[#6b6b6b] hover:bg-[#f8f4ef] active:cursor-grabbing'
+                                    : 'cursor-not-allowed text-gray-300'
+                                }`}
                                 title="Потяните, чтобы изменить порядок"
                                 aria-label={`Переместить павильон ${p.number}`}
                               >
@@ -329,7 +303,7 @@ export default function UtilitiesPage() {
                               </button>
                             </td>
                             <td className="px-4 py-3 text-sm font-semibold text-[#111111]">
-                              Павильон {p.number}
+                              {p.number}
                             </td>
                             <td className="px-4 py-3 text-sm text-[#6b6b6b]">{p.tenantName || '-'}</td>
                             <td className="px-4 py-3 text-sm text-[#6b6b6b]">

@@ -30,6 +30,25 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   private readonly activityCleanupIntervalMs = 12 * 60 * 60 * 1000;
   private readonly activityRetentionMonths = 6;
 
+  private comparePavilionOrder(
+    a: { id: number; number: string; sortIndex?: number | null },
+    b: { id: number; number: string; sortIndex?: number | null },
+  ) {
+    const hasCustomOrder = a.sortIndex != null || b.sortIndex != null;
+    if (hasCustomOrder) {
+      const aSort = a.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      const bSort = b.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aSort !== bSort) return aSort - bSort;
+    }
+
+    const byNumber = String(a.number ?? '').localeCompare(String(b.number ?? ''), 'ru', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+    if (byNumber !== 0) return byNumber;
+    return a.id - b.id;
+  }
+
   onModuleInit() {
     void this.runMonthlyRolloverForAllStores();
     void this.runActivityCleanupJob();
@@ -191,8 +210,15 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new ForbiddenException('No access to this store');
     }
 
+    const sortedPavilions = Array.isArray((store as any).pavilions)
+      ? [...((store as any).pavilions as Array<{ id: number; number: string; sortIndex?: number | null }>)].sort(
+          (a, b) => this.comparePavilionOrder(a, b),
+        )
+      : undefined;
+
     return {
       ...store,
+      ...(sortedPavilions ? { pavilions: sortedPavilions } : {}),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
     };
@@ -1314,11 +1340,37 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }],
     });
 
+    const recordIds = records.map((record) => record.id);
+    const dayActions =
+      recordIds.length > 0
+        ? await (this.prisma as any).storeActivity.findMany({
+            where: {
+              storeId,
+              entityType: 'ACCOUNTING_DAY',
+              entityId: { in: recordIds },
+              action: { in: ['OPEN', 'CLOSE'] },
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+            select: {
+              entityId: true,
+              action: true,
+            },
+          })
+        : [];
+    const recordTypeById = new Map<number, 'OPEN' | 'CLOSE'>();
+    for (const activity of dayActions) {
+      const id = Number(activity.entityId ?? 0);
+      if (!id || recordTypeById.has(id)) continue;
+      if (activity.action === 'OPEN' || activity.action === 'CLOSE') {
+        recordTypeById.set(id, activity.action);
+      }
+    }
+
     return Promise.all(
       records.map(async (record) => {
         const actual = await this.getActualAccountingByDay(
           storeId,
-          startOfDay(record.recordDate),
+          this.startOfUtcDay(record.recordDate),
         );
         const actualBank = actual.bankTransferPaid;
         const actualCashbox1 = actual.cashbox1Paid;
@@ -1329,6 +1381,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
         return {
           ...record,
+          recordType: recordTypeById.get(record.id) ?? null,
           manualTotal,
           actual: {
             bankTransferPaid: actualBank,
@@ -1343,12 +1396,61 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   private parseAccountingDay(date?: string) {
-    if (!date) return startOfDay(new Date());
-    const parsedDate = new Date(date);
+    if (!date) return this.startOfUtcDay(new Date());
+
+    const normalized = String(date).trim();
+    const dayOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
+    if (dayOnlyMatch) {
+      const year = Number(dayOnlyMatch[1]);
+      const month = Number(dayOnlyMatch[2]);
+      const day = Number(dayOnlyMatch[3]);
+      if (
+        !Number.isInteger(year) ||
+        !Number.isInteger(month) ||
+        !Number.isInteger(day) ||
+        month < 1 ||
+        month > 12 ||
+        day < 1 ||
+        day > 31
+      ) {
+        throw new BadRequestException('Invalid date');
+      }
+      return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    }
+
+    const parsedDate = new Date(normalized);
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException('Invalid date');
     }
-    return startOfDay(parsedDate);
+    return this.startOfUtcDay(parsedDate);
+  }
+
+  private startOfUtcDay(value: Date) {
+    return new Date(
+      Date.UTC(
+        value.getUTCFullYear(),
+        value.getUTCMonth(),
+        value.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+  }
+
+  private endOfUtcDay(value: Date) {
+    return new Date(
+      Date.UTC(
+        value.getUTCFullYear(),
+        value.getUTCMonth(),
+        value.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
   }
 
   private normalizeAccountingAmounts(data: {
@@ -1438,7 +1540,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async getActualAccountingByDay(storeId: number, dayStart: Date) {
-    const dayEnd = endOfDay(dayStart);
+    const dayEnd = this.endOfUtcDay(dayStart);
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
     const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, paidExpenses] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
@@ -1550,7 +1652,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async getAccountingDayReconciliation(storeId: number, date?: string) {
     const dayStart = this.parseAccountingDay(date);
-    const dayEnd = endOfDay(dayStart);
+    const dayEnd = this.endOfUtcDay(dayStart);
 
     const records = await this.prisma.storeAccountingRecord.findMany({
       where: {
@@ -1625,7 +1727,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async getAccountingExpectedCloseDetails(storeId: number, date?: string) {
     const dayStart = this.parseAccountingDay(date);
-    const dayEnd = endOfDay(dayStart);
+    const dayEnd = this.endOfUtcDay(dayStart);
 
     const records = await this.prisma.storeAccountingRecord.findMany({
       where: {
@@ -1928,7 +2030,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     },
   ) {
     const dayStart = this.parseAccountingDay(data.date);
-    const dayEnd = endOfDay(dayStart);
+    const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
     const existing = await this.prisma.storeAccountingRecord.count({
@@ -1983,7 +2085,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     },
   ) {
     const dayStart = this.parseAccountingDay(data.date);
-    const dayEnd = endOfDay(dayStart);
+    const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
     const records = await this.prisma.storeAccountingRecord.findMany({
@@ -2063,10 +2165,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid?: number;
     },
   ) {
-    const parsedDate = new Date(data.recordDate);
-    if (Number.isNaN(parsedDate.getTime())) {
-      throw new BadRequestException('Invalid recordDate');
-    }
+    const parsedDate = this.parseAccountingDay(data.recordDate);
 
     const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
     const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
@@ -2081,7 +2180,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const created = await this.prisma.storeAccountingRecord.create({
       data: {
         storeId,
-        recordDate: startOfDay(parsedDate),
+        recordDate: parsedDate,
         bankTransferPaid,
         cashbox1Paid,
         cashbox2Paid,
@@ -2364,12 +2463,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }
 
       for (const item of data.accounting ?? []) {
-        const parsedDate = new Date(item.recordDate);
-        if (Number.isNaN(parsedDate.getTime())) continue;
+        let parsedDate: Date;
+        try {
+          parsedDate = this.parseAccountingDay(item.recordDate);
+        } catch {
+          continue;
+        }
         await tx.storeAccountingRecord.create({
           data: {
             storeId,
-            recordDate: startOfDay(parsedDate),
+            recordDate: parsedDate,
             bankTransferPaid: Number(item.bankTransferPaid ?? 0),
             cashbox1Paid: Number(item.cashbox1Paid ?? 0),
             cashbox2Paid: Number(item.cashbox2Paid ?? 0),

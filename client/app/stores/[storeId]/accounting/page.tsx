@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -191,10 +191,18 @@ export default function StoreAccountingPage() {
         const sorted = [...rows].sort(
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
+        const openingByType = sorted.find((row) => row.recordType === 'OPEN') ?? null;
+        const closingByType = sorted.find((row) => row.recordType === 'CLOSE') ?? null;
+        const openingFallback =
+          sorted.length === 1 && sorted[0]?.recordType === 'CLOSE'
+            ? null
+            : (sorted[0] ?? null);
+        const closingFallback = sorted.length > 1 ? sorted[sorted.length - 1] : null;
+
         return {
           dayKey,
-          opening: sorted[0] ?? null,
-          closing: sorted.length > 1 ? sorted[sorted.length - 1] : null,
+          opening: openingByType ?? openingFallback,
+          closing: closingByType ?? closingFallback,
         };
       })
       .sort((a, b) => new Date(b.dayKey).getTime() - new Date(a.dayKey).getTime());
@@ -527,116 +535,87 @@ export default function StoreAccountingPage() {
         {accountingDays.length === 0 ? (
           <p className="text-gray-600">Записей пока нет</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-            <table className="min-w-full divide-y divide-[#ece4dd]">
-              <thead className="bg-[#f4efeb]">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Дата
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Тип записи
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Безналичные
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Наличные касса 1
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Наличные касса 2
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                    Итого
-                  </th>
-                  {hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
-                      Действия
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#ece4dd] bg-white">
-                {accountingDays.map((day: any) => (
-                  <Fragment key={day.dayKey}>
-                    {day.opening && (
-                      <tr>
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(day.dayKey).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-emerald-700">
-                          Открытие дня
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.opening.bankTransferPaid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.opening.cashbox1Paid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.opening.cashbox2Paid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {formatMoney(
-                            Number(day.opening.bankTransferPaid ?? 0) +
-                              Number(day.opening.cashbox1Paid ?? 0) +
-                              Number(day.opening.cashbox2Paid ?? 0),
-                            store.currency,
-                          )}
-                        </td>
-                        {hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                          <td className="px-4 py-3 text-right text-sm">
+          <div className="space-y-3">
+            {accountingDays.map((day: any) => {
+              const openingTotal =
+                Number(day.opening?.bankTransferPaid ?? 0) +
+                Number(day.opening?.cashbox1Paid ?? 0) +
+                Number(day.opening?.cashbox2Paid ?? 0);
+              const closingTotal =
+                Number(day.closing?.bankTransferPaid ?? 0) +
+                Number(day.closing?.cashbox1Paid ?? 0) +
+                Number(day.closing?.cashbox2Paid ?? 0);
+
+              return (
+                <section
+                  key={day.dayKey}
+                  className="rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]"
+                >
+                  <div className="mb-3 text-sm font-semibold text-[#111111]">
+                    {new Date(day.dayKey).toLocaleDateString()}
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    <article className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                        Открытие дня
+                      </div>
+                      {day.opening ? (
+                        <>
+                          <div className="space-y-1 text-sm text-[#111111]">
+                            <div>Безналичные: {formatMoney(day.opening.bankTransferPaid ?? 0, store.currency)}</div>
+                            <div>Наличные касса 1: {formatMoney(day.opening.cashbox1Paid ?? 0, store.currency)}</div>
+                            <div>Наличные касса 2: {formatMoney(day.opening.cashbox2Paid ?? 0, store.currency)}</div>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between border-t border-[#d8d1cb] pt-2">
+                            <span className="text-xs text-[#6b6b6b]">Итого</span>
+                            <span className="text-sm font-semibold">{formatMoney(openingTotal, store.currency)}</span>
+                          </div>
+                          {hasPermission(permissions, 'EDIT_PAYMENTS') && (
                             <button
                               onClick={() => handleDeleteAccountingRecord(day.opening.id)}
-                              className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
+                              className="mt-2 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
                               Удалить
                             </button>
-                          </td>
-                        )}
-                      </tr>
-                    )}
-                    {day.closing && (
-                      <tr className="bg-[#f8f4ef]">
-                        <td className="px-4 py-3 text-sm">
-                          {new Date(day.dayKey).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium text-indigo-700">
-                          Закрытие дня
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.closing.bankTransferPaid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.closing.cashbox1Paid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {formatMoney(day.closing.cashbox2Paid ?? 0, store.currency)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-medium">
-                          {formatMoney(
-                            Number(day.closing.bankTransferPaid ?? 0) +
-                              Number(day.closing.cashbox1Paid ?? 0) +
-                              Number(day.closing.cashbox2Paid ?? 0),
-                            store.currency,
                           )}
-                        </td>
-                        {hasPermission(permissions, 'EDIT_PAYMENTS') && (
-                          <td className="px-4 py-3 text-right text-sm">
+                        </>
+                      ) : (
+                        <div className="text-sm text-[#6b6b6b]">Нет записи открытия</div>
+                      )}
+                    </article>
+
+                    <article className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                        Закрытие дня
+                      </div>
+                      {day.closing ? (
+                        <>
+                          <div className="space-y-1 text-sm text-[#111111]">
+                            <div>Безналичные: {formatMoney(day.closing.bankTransferPaid ?? 0, store.currency)}</div>
+                            <div>Наличные касса 1: {formatMoney(day.closing.cashbox1Paid ?? 0, store.currency)}</div>
+                            <div>Наличные касса 2: {formatMoney(day.closing.cashbox2Paid ?? 0, store.currency)}</div>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between border-t border-[#d8d1cb] pt-2">
+                            <span className="text-xs text-[#6b6b6b]">Итого</span>
+                            <span className="text-sm font-semibold">{formatMoney(closingTotal, store.currency)}</span>
+                          </div>
+                          {hasPermission(permissions, 'EDIT_PAYMENTS') && (
                             <button
                               onClick={() => handleDeleteAccountingRecord(day.closing.id)}
-                              className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
+                              className="mt-2 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
                               Удалить
                             </button>
-                          </td>
-                        )}
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-sm text-[#6b6b6b]">Нет записи закрытия</div>
+                      )}
+                    </article>
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )}
       </div>
