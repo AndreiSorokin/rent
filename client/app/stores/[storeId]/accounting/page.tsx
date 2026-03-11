@@ -288,7 +288,7 @@ export default function StoreAccountingPage() {
           </div>
         )}
 
-        <div className="mb-5 rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+        {/* <div className="mb-5 rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-base font-semibold text-[#111111]">Сверка по дням</h3>
             <div className="flex items-center gap-2">
@@ -530,7 +530,48 @@ export default function StoreAccountingPage() {
               )}
             </div>
           )}
-        </div>
+        </div> */}
+        <div className="text-xs text-[#6b6b6b]">Ожидаемое закрытие</div>
+          <div className="font-medium">
+              {dayReconciliation.expectedClose ? (
+                  formatMoney(dayReconciliation.expectedClose.total ?? 0, store.currency)
+              ) : (
+                '-'
+              )}
+            </div>
+            {dayReconciliation.expectedClose && (
+              <div className="mt-1 space-y-0.5 text-xs text-[#6b6b6b]">
+                <div>
+                  Безналичные:{' '}
+                  {formatMoney(
+                    dayReconciliation.expectedClose.bankTransferPaid ?? 0,
+                    store.currency,
+                  )}
+                </div>
+                <div>
+                  Наличные касса 1:{' '}
+                  {formatMoney(
+                    dayReconciliation.expectedClose.cashbox1Paid ?? 0,
+                    store.currency,
+                  )}
+                </div>
+                <div>
+                  Наличные касса 2:{' '}
+                  {formatMoney(
+                    dayReconciliation.expectedClose.cashbox2Paid ?? 0,
+                    store.currency,
+                  )}
+                </div>
+                <div>
+                  <Link
+                    href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
+                    className="text-[#ff6a13] hover:underline"
+                  >
+                    Полная информация
+                  </Link>
+                </div>
+            </div>
+          )}
 
         {accountingDays.length === 0 ? (
           <p className="text-gray-600">Записей пока нет</p>
