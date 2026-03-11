@@ -1701,7 +1701,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   private async getActualAccountingByDay(storeId: number, dayStart: Date) {
     const dayEnd = this.endOfUtcDay(dayStart);
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
-    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, expenseLedgerTotals] = await Promise.all([
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, expenseSnapshot] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
         where: {
           pavilion: { storeId },
@@ -1756,31 +1756,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               cashbox2Paid: 0,
             },
           }),
-      (this.prisma as any).storeExpenseLedger.aggregate({
-        where: {
-          storeId,
-          occurredAt: {
-            gte: dayStart,
-            lte: dayEnd,
-          },
-        },
-        _sum: {
-          bankTransferPaid: true,
-          cashbox1Paid: true,
-          cashbox2Paid: true,
-        },
-      }),
+      this.getExpenseSnapshotForDay(storeId, dayStart, dayEnd),
     ]);
 
-    const expenseTotals = {
-      bankTransferPaid: Number(expenseLedgerTotals?._sum?.bankTransferPaid ?? 0),
-      cashbox1Paid: Number(expenseLedgerTotals?._sum?.cashbox1Paid ?? 0),
-      cashbox2Paid: Number(expenseLedgerTotals?._sum?.cashbox2Paid ?? 0),
-      total:
-        Number(expenseLedgerTotals?._sum?.bankTransferPaid ?? 0) +
-        Number(expenseLedgerTotals?._sum?.cashbox1Paid ?? 0) +
-        Number(expenseLedgerTotals?._sum?.cashbox2Paid ?? 0),
-    };
+    const expenseTotals = expenseSnapshot.totals;
 
     const bankTransferPaid =
       (pavilionPayments._sum.bankTransferPaid ?? 0) +
@@ -1803,6 +1782,166 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox1Paid,
       cashbox2Paid,
       total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+    };
+  }
+
+  private async getLedgerCutoverDayStart(storeId: number): Promise<Date | null> {
+    const ledgerMin = await (this.prisma as any).storeExpenseLedger.aggregate({
+      where: { storeId },
+      _min: { occurredAt: true },
+    });
+    const minOccurredAt = ledgerMin?._min?.occurredAt
+      ? new Date(ledgerMin._min.occurredAt)
+      : null;
+    return minOccurredAt ? this.parseAccountingDay(minOccurredAt.toISOString()) : null;
+  }
+
+  private async getLegacyExpenseSnapshotForDay(storeId: number, dayStart: Date, dayEnd: Date) {
+    const legacyExpenses = await this.prisma.pavilionExpense.findMany({
+      where: {
+        status: 'PAID' as any,
+        createdAt: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+        OR: [{ storeId }, { pavilion: { storeId } }],
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        createdAt: true,
+        type: true,
+        amount: true,
+        note: true,
+        paymentMethod: true,
+        bankTransferPaid: true,
+        cashbox1Paid: true,
+        cashbox2Paid: true,
+        pavilion: {
+          select: {
+            id: true,
+            number: true,
+          },
+        },
+      },
+    });
+
+    const items = legacyExpenses.map((expense) => {
+      const channels = this.mapExpenseToChannels({
+        amount: Number(expense.amount ?? 0),
+        paymentMethod: (expense.paymentMethod as any) ?? null,
+        bankTransferPaid: Number(expense.bankTransferPaid ?? 0),
+        cashbox1Paid: Number(expense.cashbox1Paid ?? 0),
+        cashbox2Paid: Number(expense.cashbox2Paid ?? 0),
+      });
+
+      return {
+        id: expense.id,
+        paidAt: expense.createdAt,
+        type: expense.type,
+        note: expense.note,
+        amount: Number(expense.amount ?? 0),
+        pavilionId: expense.pavilion?.id ?? null,
+        pavilionNumber: expense.pavilion?.number ?? null,
+        bankTransferPaid: channels.bankTransferPaid,
+        cashbox1Paid: channels.cashbox1Paid,
+        cashbox2Paid: channels.cashbox2Paid,
+        total: channels.total,
+      };
+    });
+
+    const totals = items.reduce(
+      (acc, item) => {
+        acc.bankTransferPaid += Number(item.bankTransferPaid ?? 0);
+        acc.cashbox1Paid += Number(item.cashbox1Paid ?? 0);
+        acc.cashbox2Paid += Number(item.cashbox2Paid ?? 0);
+        acc.total += Number(item.total ?? 0);
+        return acc;
+      },
+      {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        total: 0,
+      },
+    );
+
+    return { totals, items };
+  }
+
+  private async getExpenseSnapshotForDay(storeId: number, dayStart: Date, dayEnd: Date) {
+    const cutoverDayStart = await this.getLedgerCutoverDayStart(storeId);
+    const useLegacy = cutoverDayStart ? dayStart < cutoverDayStart : true;
+
+    if (useLegacy) {
+      return this.getLegacyExpenseSnapshotForDay(storeId, dayStart, dayEnd);
+    }
+
+    const ledgerItems = await (this.prisma as any).storeExpenseLedger.findMany({
+      where: {
+        storeId,
+        occurredAt: {
+          gte: dayStart,
+          lte: dayEnd,
+        },
+      },
+      orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        occurredAt: true,
+        expenseType: true,
+        note: true,
+        bankTransferPaid: true,
+        cashbox1Paid: true,
+        cashbox2Paid: true,
+      },
+    });
+
+    const items = ledgerItems.map((expense: any) => {
+      const bankTransferPaid = Number(expense.bankTransferPaid ?? 0);
+      const cashbox1Paid = Number(expense.cashbox1Paid ?? 0);
+      const cashbox2Paid = Number(expense.cashbox2Paid ?? 0);
+      const signedTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+
+      return {
+        id: expense.id,
+        paidAt: expense.occurredAt,
+        type: expense.expenseType,
+        note: expense.note,
+        amount: Math.abs(signedTotal),
+        pavilionId: null,
+        pavilionNumber: null,
+        bankTransferPaid,
+        cashbox1Paid,
+        cashbox2Paid,
+        total: Math.abs(signedTotal),
+      };
+    });
+
+    const totals = ledgerItems.reduce(
+      (acc: any, item: any) => {
+        acc.bankTransferPaid += Number(item.bankTransferPaid ?? 0);
+        acc.cashbox1Paid += Number(item.cashbox1Paid ?? 0);
+        acc.cashbox2Paid += Number(item.cashbox2Paid ?? 0);
+        return acc;
+      },
+      {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+      },
+    );
+
+    if (ledgerItems.length === 0) {
+      return this.getLegacyExpenseSnapshotForDay(storeId, dayStart, dayEnd);
+    }
+
+    return {
+      totals: {
+        ...totals,
+        total: totals.bankTransferPaid + totals.cashbox1Paid + totals.cashbox2Paid,
+      },
+      items,
     };
   }
 
@@ -1964,7 +2103,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         }
       : null;
 
-    const [pavilionPayments, additionalChargePayments, storeExtraIncomeItems, expenseLedgerItems] =
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomeItems, expenseSnapshot] =
       await Promise.all([
         this.prisma.paymentTransaction.findMany({
           where: {
@@ -2045,27 +2184,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               },
             })
           : Promise.resolve([]),
-        (this.prisma as any).storeExpenseLedger.findMany({
-          where: {
-            storeId,
-            occurredAt: {
-              gte: dayStart,
-              lte: dayEnd,
-            },
-          },
-          orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
-          select: {
-            id: true,
-            occurredAt: true,
-            expenseType: true,
-            note: true,
-            sourceType: true,
-            sourceId: true,
-            bankTransferPaid: true,
-            cashbox1Paid: true,
-            cashbox2Paid: true,
-          },
-        }),
+        this.getExpenseSnapshotForDay(storeId, dayStart, dayEnd),
       ]);
 
     const pavilionItems = pavilionPayments.map((payment) => {
@@ -2116,25 +2235,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid: Number(item.cashbox2Paid ?? 0),
     }));
 
-    const expenseItems = expenseLedgerItems.map((expense: any) => {
-      const bankTransferPaid = Number(expense.bankTransferPaid ?? 0);
-      const cashbox1Paid = Number(expense.cashbox1Paid ?? 0);
-      const cashbox2Paid = Number(expense.cashbox2Paid ?? 0);
-      const signedTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
-      return {
-        id: expense.id,
-        paidAt: expense.occurredAt,
-        type: expense.expenseType,
-        note: expense.note,
-        amount: Math.abs(signedTotal),
-        pavilionId: null,
-        pavilionNumber: null,
-        bankTransferPaid,
-        cashbox1Paid,
-        cashbox2Paid,
-        total: Math.abs(signedTotal),
-      };
-    });
+    const expenseItems = expenseSnapshot.items;
 
     const sumByChannels = (
       items: Array<{
@@ -2166,7 +2267,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const pavilionTotals = sumByChannels(pavilionItems);
     const additionalTotals = sumByChannels(additionalItems);
     const extraIncomeTotals = sumByChannels(extraIncomeItems);
-    const expenseTotals = sumByChannels(expenseItems);
+    const expenseTotals = expenseSnapshot.totals;
     const actual = {
       bankTransferPaid:
         pavilionTotals.bankTransferPaid +
