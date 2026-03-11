@@ -569,6 +569,109 @@ export default function StoreAccountingPage() {
           )}
         </div>
 
+        <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-white p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-base font-semibold text-[#111111]">Сверка по дням</h3>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#6b6b6b]">Дата:</span>
+              <input
+                type="date"
+                value={accountingDate}
+                onChange={(e) => setAccountingDate(e.target.value)}
+                className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 text-xs text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
+              />
+            </div>
+          </div>
+
+          {hasPermission(permissions, 'CREATE_PAYMENTS') && dayReconciliation && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {!dayReconciliation.isOpened && (
+                <div className="rounded-xl border border-[#e5ded8] bg-white p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">Открыть день</p>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayOpenBank}
+                      onChange={(e) => setDayOpenBank(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Безналичные"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayOpenCash1}
+                      onChange={(e) => setDayOpenCash1(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Касса 1"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayOpenCash2}
+                      onChange={(e) => setDayOpenCash2(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Касса 2"
+                    />
+                  </div>
+                  <button
+                    onClick={handleOpenDay}
+                    disabled={dayActionSaving}
+                    className="mt-3 rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-60"
+                  >
+                    Открыть день
+                  </button>
+                </div>
+              )}
+
+              {dayReconciliation.isOpened && !dayReconciliation.isClosed && (
+                <div className="rounded-xl border border-[#e5ded8] bg-white p-3">
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">Закрыть день</p>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayCloseBank}
+                      onChange={(e) => setDayCloseBank(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Безналичные"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayCloseCash1}
+                      onChange={(e) => setDayCloseCash1(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Касса 1"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={dayCloseCash2}
+                      onChange={(e) => setDayCloseCash2(e.target.value)}
+                      className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Касса 2"
+                    />
+                  </div>
+                  <button
+                    onClick={handleCloseDay}
+                    disabled={dayActionSaving}
+                    className="mt-3 rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
+                  >
+                    Закрыть день
+                  </button>
+                </div>
+              )}
+
+              {dayReconciliation.isClosed && (
+                <div className="rounded-xl border border-[#e5ded8] bg-[#f8f4ef] p-3 text-sm text-[#6b6b6b]">
+                  День уже закрыт для выбранной даты.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {accountingDays.length === 0 ? (
           <p className="text-[#6b6b6b]">Записей пока нет</p>
         ) : (
