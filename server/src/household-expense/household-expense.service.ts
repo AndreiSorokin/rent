@@ -43,6 +43,39 @@ export class HouseholdExpenseService {
     return null;
   }
 
+  private async appendExpenseLedgerEntry(args: {
+    storeId: number;
+    sourceType: string;
+    sourceId?: number | null;
+    expenseType: any;
+    note?: string | null;
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+    occurredAt?: Date;
+  }) {
+    const bank = Number(args.bankTransferPaid ?? 0);
+    const cash1 = Number(args.cashbox1Paid ?? 0);
+    const cash2 = Number(args.cashbox2Paid ?? 0);
+    if (Math.abs(bank) <= 0.009 && Math.abs(cash1) <= 0.009 && Math.abs(cash2) <= 0.009) {
+      return;
+    }
+
+    await (this.prisma as any).storeExpenseLedger.create({
+      data: {
+        storeId: args.storeId,
+        sourceType: args.sourceType,
+        sourceId: args.sourceId ?? null,
+        expenseType: args.expenseType,
+        note: args.note ?? null,
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
+        occurredAt: args.occurredAt ?? new Date(),
+      },
+    });
+  }
+
   list(storeId: number) {
     return (this.prisma.pavilionExpense as any)
       .findMany({
@@ -190,6 +223,19 @@ export class HouseholdExpenseService {
         },
       })
       .then(async (row: any) => {
+        if (row.status === PavilionExpenseStatus.PAID) {
+          await this.appendExpenseLedgerEntry({
+            storeId,
+            sourceType: 'HOUSEHOLD_EXPENSE',
+            sourceId: row.id,
+            expenseType: row.type,
+            note: row.note ?? null,
+            bankTransferPaid: Number(row.bankTransferPaid ?? 0),
+            cashbox1Paid: Number(row.cashbox1Paid ?? 0),
+            cashbox2Paid: Number(row.cashbox2Paid ?? 0),
+            occurredAt: row.createdAt,
+          });
+        }
         await this.storeActivity.log({
           storeId,
           userId,
@@ -234,6 +280,18 @@ export class HouseholdExpenseService {
     const deleted = await this.prisma.pavilionExpense.delete({
       where: { id: expenseId },
     });
+    if ((deleted as any).status === PavilionExpenseStatus.PAID) {
+      await this.appendExpenseLedgerEntry({
+        storeId,
+        sourceType: 'HOUSEHOLD_EXPENSE',
+        sourceId: deleted.id,
+        expenseType: (deleted as any).type,
+        note: (deleted as any).note ?? null,
+        bankTransferPaid: -Number((deleted as any).bankTransferPaid ?? 0),
+        cashbox1Paid: -Number((deleted as any).cashbox1Paid ?? 0),
+        cashbox2Paid: -Number((deleted as any).cashbox2Paid ?? 0),
+      });
+    }
     await this.storeActivity.log({
       storeId,
       userId,
@@ -362,6 +420,30 @@ export class HouseholdExpenseService {
       where: { id: expenseId },
       data: updateData,
     });
+    const previousBank =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.bankTransferPaid ?? 0) : 0;
+    const previousCash1 =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.cashbox1Paid ?? 0) : 0;
+    const previousCash2 =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.cashbox2Paid ?? 0) : 0;
+    const nextBank =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.bankTransferPaid ?? 0) : 0;
+    const nextCash1 =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.cashbox1Paid ?? 0) : 0;
+    const nextCash2 =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.cashbox2Paid ?? 0) : 0;
+
+    await this.appendExpenseLedgerEntry({
+      storeId,
+      sourceType: 'HOUSEHOLD_EXPENSE',
+      sourceId: updated.id,
+      expenseType: updated.type,
+      note: updated.note ?? null,
+      bankTransferPaid: nextBank - previousBank,
+      cashbox1Paid: nextCash1 - previousCash1,
+      cashbox2Paid: nextCash2 - previousCash2,
+    });
+
     await this.storeActivity.log({
       storeId,
       userId,
