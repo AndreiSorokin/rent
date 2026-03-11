@@ -1739,10 +1739,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async getAccountingDayReconciliation(storeId: number, date?: string) {
-    const dayStart = this.parseAccountingDay(date);
-    const dayEnd = this.endOfUtcDay(dayStart);
-
+  private async resolveAccountingDayOpenCloseRecords(
+    storeId: number,
+    dayStart: Date,
+    dayEnd: Date,
+  ) {
     const records = await this.prisma.storeAccountingRecord.findMany({
       where: {
         storeId,
@@ -1751,11 +1752,72 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           lte: dayEnd,
         },
       },
-      orderBy: [{ createdAt: 'asc' }],
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
-    const openRecord = records[0] ?? null;
-    const closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    if (records.length === 0) {
+      return {
+        records,
+        openRecord: null as (typeof records)[number] | null,
+        closeRecord: null as (typeof records)[number] | null,
+      };
+    }
+
+    const recordIds = records.map((record) => record.id);
+    const dayActions = await (this.prisma as any).storeActivity.findMany({
+      where: {
+        storeId,
+        entityType: 'ACCOUNTING_DAY',
+        entityId: { in: recordIds },
+        action: { in: ['OPEN', 'CLOSE'] },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        entityId: true,
+        action: true,
+      },
+    });
+
+    const recordTypeById = new Map<number, 'OPEN' | 'CLOSE'>();
+    for (const activity of dayActions) {
+      const id = Number(activity.entityId ?? 0);
+      if (!id || recordTypeById.has(id)) continue;
+      if (activity.action === 'OPEN' || activity.action === 'CLOSE') {
+        recordTypeById.set(id, activity.action);
+      }
+    }
+
+    const recordsWithType = records.map((record) => ({
+      record,
+      type: recordTypeById.get(record.id) ?? null,
+    }));
+    const hasTypedRecords = recordsWithType.some((item) => item.type !== null);
+
+    let openRecord =
+      [...recordsWithType]
+        .reverse()
+        .find((item) => item.type === 'OPEN')?.record ?? null;
+    let closeRecord =
+      [...recordsWithType].reverse().find((item) => item.type === 'CLOSE')?.record ??
+      null;
+
+    if (!hasTypedRecords) {
+      openRecord = records[0] ?? null;
+      closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    }
+
+    return { records, openRecord, closeRecord };
+  }
+
+  async getAccountingDayReconciliation(storeId: number, date?: string) {
+    const dayStart = this.parseAccountingDay(date);
+    const dayEnd = this.endOfUtcDay(dayStart);
+
+    const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
     const actual = await this.getActualAccountingByDay(storeId, dayStart);
 
     const opening = openRecord
@@ -1818,18 +1880,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayStart = this.parseAccountingDay(date);
     const dayEnd = this.endOfUtcDay(dayStart);
 
-    const records = await this.prisma.storeAccountingRecord.findMany({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-      orderBy: [{ createdAt: 'asc' }],
-    });
-
-    const openRecord = records[0] ?? null;
+    const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
     const opening = openRecord
       ? {
           bankTransferPaid: openRecord.bankTransferPaid,
@@ -2122,17 +2177,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
-    const existing = await this.prisma.storeAccountingRecord.count({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-    });
+    const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
 
-    if (existing > 0) {
+    if (openRecord) {
       throw new BadRequestException('День уже открыт');
     }
 
@@ -2177,30 +2228,24 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
-    const records = await this.prisma.storeAccountingRecord.findMany({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-      orderBy: [{ createdAt: 'asc' }],
-    });
+    const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
 
-    if (records.length === 0) {
+    if (!openRecord) {
       throw new BadRequestException('Сначала откройте день');
     }
-    if (records.length > 1) {
+    if (closeRecord) {
       throw new BadRequestException('День уже закрыт');
     }
 
-    const openingRecord = records[0];
     const actual = await this.getActualAccountingByDay(storeId, dayStart);
     const expectedCloseBank =
-      openingRecord.bankTransferPaid + actual.bankTransferPaid;
-    const expectedCloseCash1 = openingRecord.cashbox1Paid + actual.cashbox1Paid;
-    const expectedCloseCash2 = openingRecord.cashbox2Paid + actual.cashbox2Paid;
+      openRecord.bankTransferPaid + actual.bankTransferPaid;
+    const expectedCloseCash1 = openRecord.cashbox1Paid + actual.cashbox1Paid;
+    const expectedCloseCash2 = openRecord.cashbox2Paid + actual.cashbox2Paid;
     const diffBank = amounts.bankTransferPaid - expectedCloseBank;
     const diffCash1 = amounts.cashbox1Paid - expectedCloseCash1;
     const diffCash2 = amounts.cashbox2Paid - expectedCloseCash2;
