@@ -49,6 +49,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return a.id - b.id;
   }
 
+  private compareStaffOrder(
+    a: { id: number; createdAt: Date; sortIndex?: number | null },
+    b: { id: number; createdAt: Date; sortIndex?: number | null },
+  ) {
+    const hasCustomOrder = a.sortIndex != null || b.sortIndex != null;
+    if (hasCustomOrder) {
+      const aSort = a.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      const bSort = b.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aSort !== bSort) return aSort - bSort;
+    }
+
+    const createdDiff = b.createdAt.getTime() - a.createdAt.getTime();
+    if (createdDiff !== 0) return createdDiff;
+    return b.id - a.id;
+  }
+
   onModuleInit() {
     void this.runMonthlyRolloverForAllStores();
     void this.runActivityCleanupJob();
@@ -215,10 +231,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           (a, b) => this.comparePavilionOrder(a, b),
         )
       : undefined;
+    const sortedStaff = Array.isArray((store as any).staff)
+      ? [
+          ...((store as any).staff as Array<{
+            id: number;
+            createdAt: Date;
+            sortIndex?: number | null;
+          }>),
+        ].sort((a, b) => this.compareStaffOrder(a, b))
+      : undefined;
 
     return {
       ...store,
       ...(sortedPavilions ? { pavilions: sortedPavilions } : {}),
+      ...(sortedStaff ? { staff: sortedStaff } : {}),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
     };
@@ -569,12 +595,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const lastStaffByOrder = await (this.prisma.storeStaff as any).findFirst({
+      where: { storeId },
+      orderBy: [{ sortIndex: 'desc' }, { id: 'desc' }],
+      select: { sortIndex: true },
+    });
+    const nextSortIndex =
+      Number(lastStaffByOrder?.sortIndex ?? 0) > 0
+        ? Number(lastStaffByOrder?.sortIndex ?? 0) + 1
+        : null;
+
     const created = await (this.prisma as any).storeStaff.create({
       data: {
         storeId,
         fullName,
         position,
         salary,
+        sortIndex: nextSortIndex,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
@@ -1043,6 +1080,58 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return deletedStaff;
+  }
+
+  async reorderStaff(storeId: number, userId: number, orderedIds: number[]) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.MANAGE_STAFF,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      throw new BadRequestException('orderedIds must contain at least one staff id');
+    }
+
+    const normalizedIds = Array.from(
+      new Set(
+        orderedIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      ),
+    );
+
+    if (normalizedIds.length !== orderedIds.length) {
+      throw new BadRequestException('orderedIds must contain unique integer ids');
+    }
+
+    const existing = await (this.prisma.storeStaff as any).findMany({
+      where: { storeId, id: { in: normalizedIds } },
+      select: { id: true },
+    });
+    if (existing.length !== normalizedIds.length) {
+      throw new NotFoundException('Some staff records were not found in this store');
+    }
+
+    await this.prisma.$transaction(
+      normalizedIds.map((id, index) =>
+        (this.prisma.storeStaff as any).update({
+          where: { id },
+          data: { sortIndex: index + 1 },
+        }),
+      ),
+    );
+
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STAFF_ORDER',
+      details: {
+        count: normalizedIds.length,
+      },
+    });
+
+    return { success: true };
   }
 
   async updateExpenseStatuses(
@@ -2481,19 +2570,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         importedAccounting += 1;
       }
 
+      let importedStaffSortIndex = 0;
       for (const item of data.staff ?? []) {
         const fullName = item.fullName?.trim();
         const position = item.position?.trim();
         const salary = Number(item.salary ?? 0);
         if (!fullName || !position || Number.isNaN(salary)) continue;
+        importedStaffSortIndex += 1;
 
-        await tx.storeStaff.create({
+        await (tx.storeStaff as any).create({
           data: {
             storeId,
             fullName,
             position,
             salary,
             salaryStatus: item.salaryStatus ?? 'UNPAID',
+            sortIndex: importedStaffSortIndex,
           },
         });
         importedStaff += 1;
@@ -2615,9 +2707,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             cashbox2Paid: true,
           },
         }),
-        this.prisma.storeStaff.findMany({
+        (this.prisma.storeStaff as any).findMany({
           where: { storeId },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          orderBy: [{ sortIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
           select: {
             fullName: true,
             position: true,

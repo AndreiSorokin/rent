@@ -16,6 +16,7 @@ import { Currency, Permission, Prisma } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { Permissions } from 'src/auth/decorators/permissions.decorator';
+import { ReorderStaffDto } from './dto/reorder-staff.dto';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores')
@@ -187,6 +188,16 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.service.createStaff(storeId, req.user.id, data);
+  }
+
+  @Patch(':storeId/staff/reorder')
+  @Permissions(Permission.MANAGE_STAFF)
+  reorderStaff(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() dto: ReorderStaffDto,
+    @Req() req: any,
+  ) {
+    return this.service.reorderStaff(storeId, req.user.id, dto.orderedIds);
   }
 
   @Patch(':storeId/staff/:staffId')
