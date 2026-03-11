@@ -78,6 +78,7 @@ model Store {
   pavilionExpenses PavilionExpense[]
   pavilionGroups PavilionGroup[]
   activities StoreActivity[]
+  expenseLedger StoreExpenseLedger[]
 }
 
 model StoreActivity {
@@ -135,6 +136,28 @@ model StoreAccountingRecord {
   createdAt         DateTime @default(now())
 
   @@index([storeId, recordDate, createdAt])
+}
+
+model StoreExpenseLedger {
+  id Int @id @default(autoincrement())
+
+  storeId Int
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  sourceType String
+  sourceId Int?
+  expenseType PavilionExpenseType
+  note String?
+
+  bankTransferPaid Float @default(0)
+  cashbox1Paid Float @default(0)
+  cashbox2Paid Float @default(0)
+
+  occurredAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([storeId, occurredAt, createdAt])
+  @@index([sourceType, sourceId, occurredAt])
 }
 
 model StoreStaff {

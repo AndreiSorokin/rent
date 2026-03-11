@@ -40,6 +40,39 @@ export class PavilionExpensesService {
     return null;
   }
 
+  private async appendExpenseLedgerEntry(args: {
+    storeId: number;
+    sourceType: string;
+    sourceId?: number | null;
+    expenseType: any;
+    note?: string | null;
+    bankTransferPaid: number;
+    cashbox1Paid: number;
+    cashbox2Paid: number;
+    occurredAt?: Date;
+  }) {
+    const bank = Number(args.bankTransferPaid ?? 0);
+    const cash1 = Number(args.cashbox1Paid ?? 0);
+    const cash2 = Number(args.cashbox2Paid ?? 0);
+    if (Math.abs(bank) <= 0.009 && Math.abs(cash1) <= 0.009 && Math.abs(cash2) <= 0.009) {
+      return;
+    }
+
+    await (this.prisma as any).storeExpenseLedger.create({
+      data: {
+        storeId: args.storeId,
+        sourceType: args.sourceType,
+        sourceId: args.sourceId ?? null,
+        expenseType: args.expenseType,
+        note: args.note ?? null,
+        bankTransferPaid: bank,
+        cashbox1Paid: cash1,
+        cashbox2Paid: cash2,
+        occurredAt: args.occurredAt ?? new Date(),
+      },
+    });
+  }
+
   list(storeId: number) {
     return this.prisma.pavilionExpense.findMany({
       where: {
@@ -172,6 +205,19 @@ export class PavilionExpensesService {
             status: created.status,
           },
         });
+        if (created.status === PavilionExpenseStatus.PAID) {
+          await this.appendExpenseLedgerEntry({
+            storeId,
+            sourceType: 'PAVILION_EXPENSE',
+            sourceId: created.id,
+            expenseType: created.type,
+            note: created.note ?? null,
+            bankTransferPaid: Number(created.bankTransferPaid ?? 0),
+            cashbox1Paid: Number(created.cashbox1Paid ?? 0),
+            cashbox2Paid: Number(created.cashbox2Paid ?? 0),
+            occurredAt: created.createdAt,
+          });
+        }
         return created;
       })();
     }
@@ -189,6 +235,19 @@ export class PavilionExpensesService {
         cashbox2Paid: paidChannels.cashbox2Paid,
       },
     }).then(async (created: any) => {
+      if (created.status === PavilionExpenseStatus.PAID) {
+        await this.appendExpenseLedgerEntry({
+          storeId,
+          sourceType: 'PAVILION_EXPENSE',
+          sourceId: created.id,
+          expenseType: created.type,
+          note: created.note ?? null,
+          bankTransferPaid: Number(created.bankTransferPaid ?? 0),
+          cashbox1Paid: Number(created.cashbox1Paid ?? 0),
+          cashbox2Paid: Number(created.cashbox2Paid ?? 0),
+          occurredAt: created.createdAt,
+        });
+      }
       await this.storeActivity.log({
         storeId,
         userId,
@@ -338,6 +397,29 @@ export class PavilionExpensesService {
       where: { id: expenseId },
       data: updateData,
     });
+    const previousBank =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.bankTransferPaid ?? 0) : 0;
+    const previousCash1 =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.cashbox1Paid ?? 0) : 0;
+    const previousCash2 =
+      expense.status === PavilionExpenseStatus.PAID ? Number(expense.cashbox2Paid ?? 0) : 0;
+    const nextBank =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.bankTransferPaid ?? 0) : 0;
+    const nextCash1 =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.cashbox1Paid ?? 0) : 0;
+    const nextCash2 =
+      updated.status === PavilionExpenseStatus.PAID ? Number(updated.cashbox2Paid ?? 0) : 0;
+    await this.appendExpenseLedgerEntry({
+      storeId,
+      sourceType: 'PAVILION_EXPENSE',
+      sourceId: updated.id,
+      expenseType: updated.type,
+      note: updated.note ?? null,
+      bankTransferPaid: nextBank - previousBank,
+      cashbox1Paid: nextCash1 - previousCash1,
+      cashbox2Paid: nextCash2 - previousCash2,
+    });
+
     await this.storeActivity.log({
       storeId,
       userId,
@@ -370,6 +452,18 @@ export class PavilionExpensesService {
     const deleted = await this.prisma.pavilionExpense.delete({
       where: { id: expenseId },
     });
+    if (deleted.status === PavilionExpenseStatus.PAID) {
+      await this.appendExpenseLedgerEntry({
+        storeId,
+        sourceType: 'PAVILION_EXPENSE',
+        sourceId: deleted.id,
+        expenseType: deleted.type,
+        note: deleted.note ?? null,
+        bankTransferPaid: -Number(deleted.bankTransferPaid ?? 0),
+        cashbox1Paid: -Number(deleted.cashbox1Paid ?? 0),
+        cashbox2Paid: -Number(deleted.cashbox2Paid ?? 0),
+      });
+    }
     await this.storeActivity.log({
       storeId,
       userId,
