@@ -218,7 +218,8 @@ export default function UtilitiesPage() {
         <StoreSidebar storeId={storeId} store={store} />
         <main className="min-w-0 flex-1">
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:space-y-8 md:p-2">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Начисления</h1>
                 <p className="mt-1 text-sm text-[#6b6b6b]">
@@ -233,8 +234,6 @@ export default function UtilitiesPage() {
                 {savingAll ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
-
-            <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               {pavilions.length === 0 ? (
                 <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
               ) : (

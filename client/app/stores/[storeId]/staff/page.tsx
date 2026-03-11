@@ -5,15 +5,18 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { reorderStaff } from '@/lib/staff';
 import { AddStaffModal, EditStaffSalaryModal } from '../components/StaffModals';
 import { StoreSidebar } from '../components/StoreSidebar';
 import {
   CirclePlus,
+  GripVertical,
 } from 'lucide-react';
 
 
 type StaffMember = {
   id: number;
+  sortIndex?: number | null;
   position: string;
   fullName: string;
   salary: number;
@@ -65,6 +68,8 @@ export default function StoreStaffPage() {
     salaryCashbox1Paid: number;
     salaryCashbox2Paid: number;
   } | null>(null);
+  const [orderedStaffIds, setOrderedStaffIds] = useState<number[]>([]);
+  const [draggedStaffId, setDraggedStaffId] = useState<number | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -95,6 +100,43 @@ export default function StoreStaffPage() {
   const currency: 'RUB' | 'KZT' = store?.currency ?? 'RUB';
 
   const staff: StaffMember[] = useMemo(() => (store?.staff || []) as StaffMember[], [store]);
+
+  useEffect(() => {
+    setOrderedStaffIds(staff.map((s) => Number(s.id)));
+  }, [staff]);
+
+  const orderedStaff = useMemo(() => {
+    if (!orderedStaffIds.length) return staff;
+    const byId = new Map(staff.map((s) => [Number(s.id), s]));
+    const inOrder = orderedStaffIds
+      .map((id) => byId.get(id))
+      .filter((item): item is StaffMember => Boolean(item));
+    const missing = staff.filter((s) => !orderedStaffIds.includes(Number(s.id)));
+    return [...inOrder, ...missing];
+  }, [orderedStaffIds, staff]);
+
+  const moveStaff = async (dragId: number, targetId: number) => {
+    if (dragId === targetId) return;
+    const current = orderedStaffIds.length
+      ? [...orderedStaffIds]
+      : staff.map((s) => Number(s.id));
+    const from = current.indexOf(dragId);
+    const to = current.indexOf(targetId);
+    if (from < 0 || to < 0 || from === to) return;
+
+    current.splice(from, 1);
+    current.splice(to, 0, dragId);
+
+    const previous = orderedStaffIds;
+    setOrderedStaffIds(current);
+    try {
+      await reorderStaff(storeId, current);
+    } catch (err) {
+      console.error(err);
+      setOrderedStaffIds(previous);
+      await fetchData();
+    }
+  };
 
   const handleAdd = async () => {
     if (!addModal) return;
@@ -246,10 +288,47 @@ export default function StoreStaffPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#E5DED8] bg-white">
-                      {staff.map((s) => (
-                        <tr key={s.id} className="transition-colors hover:bg-[#f9f5f0]">
+                      {orderedStaff.map((s) => (
+                        <tr
+                          key={s.id}
+                          className="transition-colors hover:bg-[#f9f5f0]"
+                          onDragOver={(e) => {
+                            if (!canManage) return;
+                            if (draggedStaffId == null) return;
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                          }}
+                          onDrop={(e) => {
+                            if (!canManage) return;
+                            e.preventDefault();
+                            if (draggedStaffId == null) return;
+                            void moveStaff(draggedStaffId, Number(s.id));
+                            setDraggedStaffId(null);
+                          }}
+                        >
                           <td className="px-4 py-2.5 align-middle text-sm font-medium text-[#111111]">
-                            {s.position}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                draggable={canManage}
+                                onDragStart={(e) => {
+                                  if (!canManage) return;
+                                  setDraggedStaffId(Number(s.id));
+                                  e.dataTransfer.effectAllowed = 'move';
+                                }}
+                                onDragEnd={() => setDraggedStaffId(null)}
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#d8d1cb] bg-white transition ${
+                                  canManage
+                                    ? 'cursor-grab text-[#6b6b6b] hover:bg-[#f8f4ef] active:cursor-grabbing'
+                                    : 'cursor-not-allowed text-gray-300'
+                                }`}
+                                title="Потяните, чтобы изменить порядок"
+                                aria-label={`Переместить сотрудника ${s.fullName}`}
+                              >
+                                <GripVertical className="h-4 w-4" />
+                              </button>
+                              <span>{s.position}</span>
+                            </div>
                           </td>
                           <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
                             {s.fullName}

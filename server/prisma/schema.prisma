@@ -142,6 +142,7 @@ model StoreStaff {
   idempotencyKey String? @unique
   fullName String
   position String
+  sortIndex Int?
   salary   Float  @default(0)
   salaryStatus PavilionExpenseStatus @default(UNPAID)
   salaryPaymentMethod PaymentMethod?
@@ -154,7 +155,7 @@ model StoreStaff {
 
   createdAt DateTime @default(now())
 
-  @@index([storeId, createdAt])
+  @@index([storeId, sortIndex, createdAt])
 }
 
 enum Currency {

@@ -49,6 +49,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return a.id - b.id;
   }
 
+  private compareStaffOrder(
+    a: { id: number; createdAt: Date; sortIndex?: number | null },
+    b: { id: number; createdAt: Date; sortIndex?: number | null },
+  ) {
+    const hasCustomOrder = a.sortIndex != null || b.sortIndex != null;
+    if (hasCustomOrder) {
+      const aSort = a.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      const bSort = b.sortIndex ?? Number.MAX_SAFE_INTEGER;
+      if (aSort !== bSort) return aSort - bSort;
+    }
+
+    const createdDiff = b.createdAt.getTime() - a.createdAt.getTime();
+    if (createdDiff !== 0) return createdDiff;
+    return b.id - a.id;
+  }
+
   onModuleInit() {
     void this.runMonthlyRolloverForAllStores();
     void this.runActivityCleanupJob();
@@ -215,10 +231,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           (a, b) => this.comparePavilionOrder(a, b),
         )
       : undefined;
+    const sortedStaff = Array.isArray((store as any).staff)
+      ? [
+          ...((store as any).staff as Array<{
+            id: number;
+            createdAt: Date;
+            sortIndex?: number | null;
+          }>),
+        ].sort((a, b) => this.compareStaffOrder(a, b))
+      : undefined;
 
     return {
       ...store,
       ...(sortedPavilions ? { pavilions: sortedPavilions } : {}),
+      ...(sortedStaff ? { staff: sortedStaff } : {}),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
     };
@@ -569,12 +595,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
+    const lastStaffByOrder = await (this.prisma.storeStaff as any).findFirst({
+      where: { storeId },
+      orderBy: [{ sortIndex: 'desc' }, { id: 'desc' }],
+      select: { sortIndex: true },
+    });
+    const nextSortIndex =
+      Number(lastStaffByOrder?.sortIndex ?? 0) > 0
+        ? Number(lastStaffByOrder?.sortIndex ?? 0) + 1
+        : null;
+
     const created = await (this.prisma as any).storeStaff.create({
       data: {
         storeId,
         fullName,
         position,
         salary,
+        sortIndex: nextSortIndex,
         ...(idempotencyKey ? { idempotencyKey } : {}),
       },
     });
@@ -1043,6 +1080,58 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return deletedStaff;
+  }
+
+  async reorderStaff(storeId: number, userId: number, orderedIds: number[]) {
+    await this.assertStorePermission(storeId, userId, [
+      Permission.MANAGE_STAFF,
+      Permission.ASSIGN_PERMISSIONS,
+    ]);
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      throw new BadRequestException('orderedIds must contain at least one staff id');
+    }
+
+    const normalizedIds = Array.from(
+      new Set(
+        orderedIds
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0),
+      ),
+    );
+
+    if (normalizedIds.length !== orderedIds.length) {
+      throw new BadRequestException('orderedIds must contain unique integer ids');
+    }
+
+    const existing = await (this.prisma.storeStaff as any).findMany({
+      where: { storeId, id: { in: normalizedIds } },
+      select: { id: true },
+    });
+    if (existing.length !== normalizedIds.length) {
+      throw new NotFoundException('Some staff records were not found in this store');
+    }
+
+    await this.prisma.$transaction(
+      normalizedIds.map((id, index) =>
+        (this.prisma.storeStaff as any).update({
+          where: { id },
+          data: { sortIndex: index + 1 },
+        }),
+      ),
+    );
+
+    await this.logActivity({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STAFF_ORDER',
+      details: {
+        count: normalizedIds.length,
+      },
+    });
+
+    return { success: true };
   }
 
   async updateExpenseStatuses(
@@ -1650,10 +1739,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async getAccountingDayReconciliation(storeId: number, date?: string) {
-    const dayStart = this.parseAccountingDay(date);
-    const dayEnd = this.endOfUtcDay(dayStart);
-
+  private async resolveAccountingDayOpenCloseRecords(
+    storeId: number,
+    dayStart: Date,
+    dayEnd: Date,
+  ) {
     const records = await this.prisma.storeAccountingRecord.findMany({
       where: {
         storeId,
@@ -1662,11 +1752,72 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           lte: dayEnd,
         },
       },
-      orderBy: [{ createdAt: 'asc' }],
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
-    const openRecord = records[0] ?? null;
-    const closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    if (records.length === 0) {
+      return {
+        records,
+        openRecord: null as (typeof records)[number] | null,
+        closeRecord: null as (typeof records)[number] | null,
+      };
+    }
+
+    const recordIds = records.map((record) => record.id);
+    const dayActions = await (this.prisma as any).storeActivity.findMany({
+      where: {
+        storeId,
+        entityType: 'ACCOUNTING_DAY',
+        entityId: { in: recordIds },
+        action: { in: ['OPEN', 'CLOSE'] },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        entityId: true,
+        action: true,
+      },
+    });
+
+    const recordTypeById = new Map<number, 'OPEN' | 'CLOSE'>();
+    for (const activity of dayActions) {
+      const id = Number(activity.entityId ?? 0);
+      if (!id || recordTypeById.has(id)) continue;
+      if (activity.action === 'OPEN' || activity.action === 'CLOSE') {
+        recordTypeById.set(id, activity.action);
+      }
+    }
+
+    const recordsWithType = records.map((record) => ({
+      record,
+      type: recordTypeById.get(record.id) ?? null,
+    }));
+    const hasTypedRecords = recordsWithType.some((item) => item.type !== null);
+
+    let openRecord =
+      [...recordsWithType]
+        .reverse()
+        .find((item) => item.type === 'OPEN')?.record ?? null;
+    let closeRecord =
+      [...recordsWithType].reverse().find((item) => item.type === 'CLOSE')?.record ??
+      null;
+
+    if (!hasTypedRecords) {
+      openRecord = records[0] ?? null;
+      closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    }
+
+    return { records, openRecord, closeRecord };
+  }
+
+  async getAccountingDayReconciliation(storeId: number, date?: string) {
+    const dayStart = this.parseAccountingDay(date);
+    const dayEnd = this.endOfUtcDay(dayStart);
+
+    const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
     const actual = await this.getActualAccountingByDay(storeId, dayStart);
 
     const opening = openRecord
@@ -1729,18 +1880,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayStart = this.parseAccountingDay(date);
     const dayEnd = this.endOfUtcDay(dayStart);
 
-    const records = await this.prisma.storeAccountingRecord.findMany({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-      orderBy: [{ createdAt: 'asc' }],
-    });
-
-    const openRecord = records[0] ?? null;
+    const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
     const opening = openRecord
       ? {
           bankTransferPaid: openRecord.bankTransferPaid,
@@ -2033,17 +2177,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
-    const existing = await this.prisma.storeAccountingRecord.count({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-    });
+    const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
 
-    if (existing > 0) {
+    if (openRecord) {
       throw new BadRequestException('День уже открыт');
     }
 
@@ -2088,30 +2228,24 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayEnd = this.endOfUtcDay(dayStart);
     const amounts = this.normalizeAccountingAmounts(data);
 
-    const records = await this.prisma.storeAccountingRecord.findMany({
-      where: {
-        storeId,
-        recordDate: {
-          gte: dayStart,
-          lte: dayEnd,
-        },
-      },
-      orderBy: [{ createdAt: 'asc' }],
-    });
+    const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
+      storeId,
+      dayStart,
+      dayEnd,
+    );
 
-    if (records.length === 0) {
+    if (!openRecord) {
       throw new BadRequestException('Сначала откройте день');
     }
-    if (records.length > 1) {
+    if (closeRecord) {
       throw new BadRequestException('День уже закрыт');
     }
 
-    const openingRecord = records[0];
     const actual = await this.getActualAccountingByDay(storeId, dayStart);
     const expectedCloseBank =
-      openingRecord.bankTransferPaid + actual.bankTransferPaid;
-    const expectedCloseCash1 = openingRecord.cashbox1Paid + actual.cashbox1Paid;
-    const expectedCloseCash2 = openingRecord.cashbox2Paid + actual.cashbox2Paid;
+      openRecord.bankTransferPaid + actual.bankTransferPaid;
+    const expectedCloseCash1 = openRecord.cashbox1Paid + actual.cashbox1Paid;
+    const expectedCloseCash2 = openRecord.cashbox2Paid + actual.cashbox2Paid;
     const diffBank = amounts.bankTransferPaid - expectedCloseBank;
     const diffCash1 = amounts.cashbox1Paid - expectedCloseCash1;
     const diffCash2 = amounts.cashbox2Paid - expectedCloseCash2;
@@ -2481,19 +2615,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         importedAccounting += 1;
       }
 
+      let importedStaffSortIndex = 0;
       for (const item of data.staff ?? []) {
         const fullName = item.fullName?.trim();
         const position = item.position?.trim();
         const salary = Number(item.salary ?? 0);
         if (!fullName || !position || Number.isNaN(salary)) continue;
+        importedStaffSortIndex += 1;
 
-        await tx.storeStaff.create({
+        await (tx.storeStaff as any).create({
           data: {
             storeId,
             fullName,
             position,
             salary,
             salaryStatus: item.salaryStatus ?? 'UNPAID',
+            sortIndex: importedStaffSortIndex,
           },
         });
         importedStaff += 1;
@@ -2615,9 +2752,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             cashbox2Paid: true,
           },
         }),
-        this.prisma.storeStaff.findMany({
+        (this.prisma.storeStaff as any).findMany({
           where: { storeId },
-          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          orderBy: [{ sortIndex: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
           select: {
             fullName: true,
             position: true,
