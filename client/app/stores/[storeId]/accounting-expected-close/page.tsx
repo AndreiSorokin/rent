@@ -203,11 +203,11 @@ export default function AccountingExpectedClosePage() {
           >
             Назад в бух.таблицу
           </Link>
-          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl">Ожидаемое закрытие дня</h1>
-          <p className="text-sm text-[#6b6b6b]">{storeName}</p>
         </div>
 
         <div className="rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl">Ожидаемое закрытие дня</h1>
+          <p className="text-sm text-[#6b6b6b]">{storeName}</p>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-[#6b6b6b]">
               Дата: <span className="font-medium">{selectedDate}</span>
