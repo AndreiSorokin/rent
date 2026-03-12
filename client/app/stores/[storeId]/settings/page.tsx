@@ -10,6 +10,84 @@ import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection'
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreSidebar } from '../components/StoreSidebar';
 
+type TimeZoneOption = {
+  value: string;
+  label: string;
+  keywords: string[];
+};
+
+const TIME_ZONE_ALIASES: Record<string, string[]> = {
+  UTC: ['utc', 'гринвич', 'london'],
+  'Europe/Moscow': ['москва', 'moscow', 'msk'],
+  'Europe/Kiev': ['киев', 'kyiv', 'kiev', 'украина'],
+  'Asia/Almaty': ['алматы', 'almaty', 'казахстан'],
+  'Asia/Astana': ['астана', 'astana', 'nur-sultan', 'нурсултан', 'казахстан'],
+  'Asia/Tashkent': ['ташкент', 'tashkent', 'узбекистан'],
+  'Asia/Bishkek': ['бишкек', 'bishkek', 'кыргызстан'],
+  'Asia/Dubai': ['дубай', 'dubai', 'оаэ'],
+  'Europe/Istanbul': ['стамбул', 'istanbul', 'турция'],
+  'Europe/Berlin': ['берлин', 'berlin', 'германия'],
+  'Europe/Paris': ['париж', 'paris', 'франция'],
+  'America/New_York': ['нью-йорк', 'new york', 'usa', 'сша', 'восток сша'],
+  'America/Chicago': ['чикаго', 'chicago', 'usa', 'сша', 'центр сша'],
+  'America/Denver': ['денвер', 'denver', 'usa', 'сша', 'горы сша'],
+  'America/Los_Angeles': ['лос-анджелес', 'los angeles', 'la', 'usa', 'сша'],
+};
+
+function humanizeTimeZone(timeZone: string) {
+  if (timeZone === 'UTC') return 'UTC';
+  const city = timeZone.split('/').pop() || timeZone;
+  return city.replace(/_/g, ' ');
+}
+
+function getUtcOffsetLabel(timeZone: string) {
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'shortOffset',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const parts = dtf.formatToParts(new Date());
+    const offset = parts.find((part) => part.type === 'timeZoneName')?.value;
+    return offset ? offset.replace('GMT', 'UTC') : '';
+  } catch {
+    return '';
+  }
+}
+
+function buildTimeZoneOptions(): TimeZoneOption[] {
+  const supported =
+    typeof Intl !== 'undefined' &&
+    typeof (Intl as any).supportedValuesOf === 'function'
+      ? ((Intl as any).supportedValuesOf('timeZone') as string[])
+      : [];
+
+  const baseSet = new Set<string>([
+    'UTC',
+    ...supported,
+    ...Object.keys(TIME_ZONE_ALIASES),
+  ]);
+
+  return Array.from(baseSet)
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b))
+    .map((value) => {
+      const aliases = TIME_ZONE_ALIASES[value] || [];
+      const labelCity = humanizeTimeZone(value);
+      const offset = getUtcOffsetLabel(value);
+      const label = `${labelCity}${offset ? ` (${offset})` : ''} — ${value}`;
+      return {
+        value,
+        label,
+        keywords: [value, labelCity, ...aliases].map((item) => item.toLowerCase()),
+      };
+    });
+}
+
 export default function StoreSettingsPage() {
   const params = useParams();
   const router = useRouter();
@@ -22,6 +100,10 @@ export default function StoreSettingsPage() {
   const [nameDraft, setNameDraft] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
   const [currencySaving, setCurrencySaving] = useState(false);
+  const [timeZoneSaving, setTimeZoneSaving] = useState(false);
+  const [timeZoneQuery, setTimeZoneQuery] = useState('');
+  const [debouncedTimeZoneQuery, setDebouncedTimeZoneQuery] = useState('');
+  const [showTimeZoneSuggestions, setShowTimeZoneSuggestions] = useState(false);
 
   const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(false);
   const [deleteStoreInput, setDeleteStoreInput] = useState('');
@@ -89,6 +171,23 @@ export default function StoreSettingsPage() {
     setGroupRenameById(nextDrafts);
   }, [store?.pavilionGroups]);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedTimeZoneQuery(timeZoneQuery.trim().toLowerCase());
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [timeZoneQuery]);
+
+  const timeZoneOptions = useMemo(() => buildTimeZoneOptions(), []);
+  const filteredTimeZoneOptions = useMemo(() => {
+    if (!debouncedTimeZoneQuery) return timeZoneOptions.slice(0, 30);
+    return timeZoneOptions
+      .filter((option) =>
+        option.keywords.some((keyword) => keyword.includes(debouncedTimeZoneQuery)),
+      )
+      .slice(0, 30);
+  }, [timeZoneOptions, debouncedTimeZoneQuery]);
+
   const categoryList = useMemo(() => {
     const fromPavilions = (store?.pavilions || [])
       .map((p: any) => String(p.category || '').trim())
@@ -108,6 +207,10 @@ export default function StoreSettingsPage() {
     }
     setCategoryRenameByName(nextDrafts);
   }, [categoryList]);
+
+  useEffect(() => {
+    setTimeZoneQuery(store?.timeZone || 'UTC');
+  }, [store?.timeZone]);
 
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
@@ -158,6 +261,24 @@ export default function StoreSettingsPage() {
       alert(err?.message || 'Не удалось изменить валюту');
     } finally {
       setCurrencySaving(false);
+    }
+  };
+
+  const handleTimeZoneChange = async (timeZone: string) => {
+    try {
+      setTimeZoneSaving(true);
+      await apiFetch(`/stores/${storeId}/timezone`, {
+        method: 'PATCH',
+        body: JSON.stringify({ timeZone }),
+      });
+      setShowTimeZoneSuggestions(false);
+      setTimeZoneQuery(timeZone);
+      await fetchStore(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось изменить часовой пояс');
+    } finally {
+      setTimeZoneSaving(false);
     }
   };
 
@@ -619,6 +740,48 @@ export default function StoreSettingsPage() {
                   <option value="RUB">Российский рубль (₽)</option>
                   <option value="KZT">Казахстанский тенге (₸)</option>
                 </select>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Часовой пояс объекта</h3>
+                <p className="mb-2 text-sm text-[#6b6b6b]">
+                  Текущий часовой пояс: {store.timeZone || 'UTC'}
+                </p>
+                <input
+                  type="text"
+                  value={timeZoneQuery}
+                  onChange={(e) => {
+                    setTimeZoneQuery(e.target.value);
+                    setShowTimeZoneSuggestions(true);
+                  }}
+                  onFocus={() => setShowTimeZoneSuggestions(true)}
+                  onBlur={() => {
+                    setTimeout(() => setShowTimeZoneSuggestions(false), 120);
+                  }}
+                  disabled={timeZoneSaving}
+                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                  placeholder="Введите город или таймзону (например: Москва, Almaty, Europe/Moscow)"
+                />
+                {showTimeZoneSuggestions && (
+                  <div className="mt-2 max-h-64 overflow-auto rounded-xl border border-[#d8d1cb] bg-white">
+                    {filteredTimeZoneOptions.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-[#6b6b6b]">Ничего не найдено</p>
+                    ) : (
+                      filteredTimeZoneOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={timeZoneSaving}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => void handleTimeZoneChange(option.value)}
+                          className="block w-full border-b border-[#f4efeb] px-3 py-2 text-left text-sm text-[#111111] transition last:border-b-0 hover:bg-[#f8f4ef] disabled:opacity-60"
+                        >
+                          {option.label}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

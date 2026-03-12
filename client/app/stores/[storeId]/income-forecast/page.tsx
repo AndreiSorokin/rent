@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 type ForecastBreakdownResponse = {
   period: string;
@@ -43,10 +44,7 @@ function isValidPeriod(value: string | null | undefined) {
   return Boolean(value && /^\d{4}-\d{2}$/.test(value));
 }
 
-function currentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
+const currentPeriod = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
 const statusMap: Record<string, string> = {
   AVAILABLE: 'Свободен',
@@ -69,6 +67,7 @@ export default function IncomeForecastBreakdownPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState<'RUB' | 'KZT'>('RUB');
+  const [storeTimeZone, setStoreTimeZone] = useState('UTC');
   const [permissions, setPermissions] = useState<string[]>([]);
   const [storeName, setStoreName] = useState('');
   const [data, setData] = useState<ForecastBreakdownResponse | null>(null);
@@ -83,7 +82,7 @@ export default function IncomeForecastBreakdownPage() {
         setLoading(true);
         setError(null);
         const [store, breakdown] = await Promise.all([
-          apiFetch<{ name?: string; currency?: 'RUB' | 'KZT'; permissions?: string[] }>(
+          apiFetch<{ name?: string; currency?: 'RUB' | 'KZT'; permissions?: string[]; timeZone?: string }>(
             `/stores/${storeId}`,
           ),
           apiFetch<ForecastBreakdownResponse>(
@@ -100,6 +99,15 @@ export default function IncomeForecastBreakdownPage() {
         setPermissions(nextPermissions);
         setStoreName(store.name || `Объект #${storeId}`);
         setCurrency(store.currency || 'RUB');
+        setStoreTimeZone(store.timeZone || 'UTC');
+        if (!isValidPeriod(searchParams.get('period'))) {
+          const periodNow = currentPeriod(store.timeZone || 'UTC');
+          if (periodNow !== selectedPeriod) {
+            setSelectedPeriod(periodNow);
+            router.replace(`/stores/${storeId}/income-forecast?period=${encodeURIComponent(periodNow)}`);
+            return;
+          }
+        }
         setData(breakdown);
       } catch (err) {
         console.error(err);
@@ -112,7 +120,7 @@ export default function IncomeForecastBreakdownPage() {
     if (storeId && selectedPeriod) {
       void load();
     }
-  }, [router, selectedPeriod, storeId]);
+  }, [router, searchParams, selectedPeriod, storeId]);
 
   const handlePeriodChange = (value: string) => {
     setSelectedPeriod(value);
@@ -132,6 +140,7 @@ export default function IncomeForecastBreakdownPage() {
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">Расшифровка прогноза доходов</h1>
           <p className="text-sm text-gray-600">{storeName}</p>
+          <p className="text-xs text-gray-500">Часовой пояс: {storeTimeZone}</p>
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow md:p-6">
@@ -216,7 +225,9 @@ export default function IncomeForecastBreakdownPage() {
                     {(data?.storeItems || []).map((item) => (
                       <tr key={item.id}>
                         <td className="px-4 py-2 text-sm">
-                          {new Date(item.paidAt).toLocaleDateString('ru-RU')}
+                          {new Date(item.paidAt).toLocaleDateString('ru-RU', {
+                            timeZone: storeTimeZone,
+                          })}
                         </td>
                         <td className="px-4 py-2 text-sm">{item.name}</td>
                         <td className="px-4 py-2 text-sm">{formatMoney(item.amount, currency)}</td>

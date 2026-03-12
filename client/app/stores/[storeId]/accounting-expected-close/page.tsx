@@ -6,6 +6,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import {
+  getDateKeyInTimeZone,
+  getTodayDateKeyInTimeZone,
+} from '@/lib/dateTime';
 
 type ChannelTotals = {
   bankTransferPaid: number;
@@ -91,10 +95,10 @@ type DayReconciliation = {
 };
 
 function toDateInput(value?: string | null) {
-  if (!value) return new Date().toISOString().slice(0, 10);
+  if (!value) return getTodayDateKeyInTimeZone('UTC');
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return new Date().toISOString().slice(0, 10);
-  return parsed.toISOString().slice(0, 10);
+  if (Number.isNaN(parsed.getTime())) return getTodayDateKeyInTimeZone('UTC');
+  return getDateKeyInTimeZone(parsed, 'UTC');
 }
 
 function formatExpenseTitle(note: string | null, type: string) {
@@ -120,6 +124,7 @@ export default function AccountingExpectedClosePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currency, setCurrency] = useState<'RUB' | 'KZT'>('RUB');
+  const [storeTimeZone, setStoreTimeZone] = useState('UTC');
   const [permissions, setPermissions] = useState<string[]>([]);
   const [storeName, setStoreName] = useState('');
   const [details, setDetails] = useState<DetailsResponse | null>(null);
@@ -135,7 +140,7 @@ export default function AccountingExpectedClosePage() {
         setLoading(true);
         setError(null);
         const [store, data, reconciliationData] = await Promise.all([
-          apiFetch<{ name?: string; currency?: 'RUB' | 'KZT'; permissions?: string[] }>(
+          apiFetch<{ name?: string; currency?: 'RUB' | 'KZT'; permissions?: string[]; timeZone?: string }>(
             `/stores/${storeId}`,
           ),
           apiFetch<DetailsResponse>(
@@ -157,6 +162,10 @@ export default function AccountingExpectedClosePage() {
         setPermissions(userPermissions);
         setStoreName(store.name || `Объект #${storeId}`);
         setCurrency(store.currency || 'RUB');
+        setStoreTimeZone(store.timeZone || 'UTC');
+        if (!searchParams.get('date')) {
+          setSelectedDate(getTodayDateKeyInTimeZone(store.timeZone || 'UTC'));
+        }
         setDetails(data);
         setReconciliation(reconciliationData);
       } catch (err) {
@@ -170,7 +179,7 @@ export default function AccountingExpectedClosePage() {
     if (storeId && selectedDate) {
       void load();
     }
-  }, [router, selectedDate, storeId]);
+  }, [router, searchParams, selectedDate, storeId]);
 
   const updateDate = (value: string) => {
     setSelectedDate(value);
@@ -196,18 +205,18 @@ export default function AccountingExpectedClosePage() {
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
-        <div className="space-y-2">
+        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <div className="space-y-2">
           <Link
             href={`/stores/${storeId}/accounting?date=${encodeURIComponent(selectedDate)}`}
             className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
-            Назад в бух.таблицу
+            Назад к открытию/закрытию дня
           </Link>
         </div>
-
-        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
-          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl">Ожидаемое закрытие дня</h1>
+          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl mt-5">Ожидаемое закрытие дня</h1>
           <p className="text-sm text-[#6b6b6b]">{storeName}</p>
+          <p className="text-xs text-[#8b7f76]">Часовой пояс: {storeTimeZone}</p>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-[#6b6b6b]">
               Дата: <span className="font-medium">{selectedDate}</span>
@@ -378,7 +387,7 @@ export default function AccountingExpectedClosePage() {
                     <div key={item.id} className="rounded-lg border border-[#e5ded8] bg-[#f8f4ef] p-2 text-sm">
                       <div className="font-medium">{item.pavilionNumber}</div>
                       <div className="text-xs text-[#6b6b6b]">
-                        {new Date(item.paidAt).toLocaleString('ru-RU')}
+                        {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                       </div>
                       <div className="text-xs text-[#4b5563]">
                         Аренда: {formatMoney(item.rentPaid, currency)} | Коммуналка:{' '}
@@ -403,7 +412,7 @@ export default function AccountingExpectedClosePage() {
                         {item.pavilionNumber}: {item.additionalChargeName}
                       </div>
                       <div className="text-xs text-[#6b6b6b]">
-                        {new Date(item.paidAt).toLocaleString('ru-RU')}
+                        {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                       </div>
                       <div className="text-xs text-[#4b5563]">
                         Сумма: {formatMoney(item.amountPaid, currency)}
@@ -425,7 +434,7 @@ export default function AccountingExpectedClosePage() {
                   <div key={item.id} className="rounded-lg border border-[#e5ded8] bg-[#f8f4ef] p-2 text-sm">
                     <div className="font-medium">{item.name}</div>
                     <div className="text-xs text-[#6b6b6b]">
-                      {new Date(item.paidAt).toLocaleString('ru-RU')}
+                      {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                     </div>
                     <div className="text-xs text-[#4b5563]">
                       Сумма: {formatMoney(item.amount, currency)}
@@ -448,7 +457,7 @@ export default function AccountingExpectedClosePage() {
                       {formatExpenseTitle(item.note, item.type)}
                     </div>
                     <div className="text-xs text-[#6b6b6b]">
-                      {new Date(item.paidAt).toLocaleString('ru-RU')}
+                      {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                     </div>
                     <div className="text-xs text-rose-700">
                       Сумма: -{formatMoney(item.total, currency)}

@@ -16,6 +16,11 @@ import { StoreSidebar } from '../components/StoreSidebar';
 import {
   CirclePlus,
 } from 'lucide-react';
+import {
+  getDatePartsInTimeZone,
+  isSameDayKeyInTimeZone,
+  isSameMonthInTimeZone,
+} from '@/lib/dateTime';
 
 type EditModalState = {
   id: number;
@@ -43,26 +48,6 @@ function paymentChannelsLines(
   if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
 
   return lines;
-}
-
-function isSameUtcMonth(dateValue: string | Date | null | undefined, year: number, month: number) {
-  if (!dateValue) return false;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return false;
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month;
-}
-
-function isSameUtcDay(dateValue: string | Date | null | undefined, dayValue: string) {
-  if (!dateValue || !dayValue) return true;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return false;
-  const [year, month, day] = dayValue.split('-').map(Number);
-  if (!year || !month || !day) return true;
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
 }
 
 export default function StoreOtherExpensesPage() {
@@ -118,19 +103,21 @@ export default function StoreOtherExpensesPage() {
   const currency: 'RUB' | 'KZT' = store?.currency ?? 'RUB';
 
   const otherExpenses = useMemo(() => {
+    const timeZone = store?.timeZone || 'UTC';
     const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth();
+    const nowParts = getDatePartsInTimeZone(now, timeZone);
+    const year = nowParts?.year ?? now.getUTCFullYear();
+    const month = (nowParts?.month ?? now.getUTCMonth() + 1) - 1;
 
     return expenses
       .filter((item: any) => item.type === 'OTHER')
-      .filter((item: any) => isSameUtcMonth(item.createdAt, year, month))
-      .filter((item: any) => isSameUtcDay(item.createdAt, filterDate))
+      .filter((item: any) => isSameMonthInTimeZone(item.createdAt, year, month, timeZone))
+      .filter((item: any) => isSameDayKeyInTimeZone(item.createdAt, filterDate, timeZone))
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [expenses, filterDate]);
+  }, [expenses, filterDate, store?.timeZone]);
 
   const handleCreate = async () => {
     if (!createModal) return;

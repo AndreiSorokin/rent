@@ -17,6 +17,7 @@ import { StoreSidebar } from '../components/StoreSidebar';
 import {
   CirclePlus,
 } from 'lucide-react';
+import { getDatePartsInTimeZone, isSameMonthInTimeZone } from '@/lib/dateTime';
 
 type AdminExpenseType = Exclude<PavilionExpenseType, 'SALARIES' | 'HOUSEHOLD' | 'OTHER'>;
 
@@ -63,13 +64,6 @@ function paymentChannelsLines(
   if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
 
   return lines;
-}
-
-function isSameUtcMonth(dateValue: string | Date | null | undefined, year: number, month: number) {
-  if (!dateValue) return false;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return false;
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month;
 }
 
 export default function StoreAdminExpensesPage() {
@@ -122,18 +116,20 @@ export default function StoreAdminExpensesPage() {
   const currency: 'RUB' | 'KZT' = store?.currency ?? 'RUB';
 
   const adminExpenses = useMemo(() => {
+    const timeZone = store?.timeZone || 'UTC';
     const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth();
+    const nowParts = getDatePartsInTimeZone(now, timeZone);
+    const year = nowParts?.year ?? now.getUTCFullYear();
+    const month = (nowParts?.month ?? now.getUTCMonth() + 1) - 1;
 
     return expenses
       .filter((item: any) => ADMIN_TYPE_SET.has(item.type))
-      .filter((item: any) => isSameUtcMonth(item.createdAt, year, month))
+      .filter((item: any) => isSameMonthInTimeZone(item.createdAt, year, month, timeZone))
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [expenses]);
+  }, [expenses, store?.timeZone]);
 
   const handleCreate = async () => {
     if (!createModal) return;

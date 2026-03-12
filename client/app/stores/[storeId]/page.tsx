@@ -2381,6 +2381,7 @@ export default function StorePage() {
       <StoreExtraIncomeModal
         storeId={storeId}
         currency={store.currency}
+        timeZone={store.timeZone || 'UTC'}
         isOpen={showExtraIncomeModal}
         canCreate={hasPermission(permissions, 'CREATE_PAYMENTS')}
         canDelete={hasPermission(permissions, 'EDIT_PAYMENTS')}

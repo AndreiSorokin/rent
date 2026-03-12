@@ -219,18 +219,21 @@ const formatAmount = (value: unknown) => {
   })} ₽`;
 };
 
-const formatUtcDateTime = (value: unknown) => {
+const formatDateTime = (value: unknown, timeZone = 'UTC') => {
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return String(value ?? '-');
-  const dd = String(date.getUTCDate()).padStart(2, '0');
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = date.getUTCFullYear();
-  const hh = String(date.getUTCHours()).padStart(2, '0');
-  const min = String(date.getUTCMinutes()).padStart(2, '0');
-  return `${dd}.${mm}.${yyyy} ${hh}:${min} UTC`;
+  return new Intl.DateTimeFormat('ru-RU', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
 };
 
-const formatDetailValue = (key: string, value: unknown) => {
+const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
   if (value === null || value === undefined || value === '') return '-';
   if (Array.isArray(value)) {
     if (key === 'permissions') {
@@ -257,7 +260,7 @@ const formatDetailValue = (key: string, value: unknown) => {
     key === 'startsAt' ||
     key === 'endsAt'
   ) {
-    return formatUtcDateTime(value);
+    return formatDateTime(value, timeZone);
   }
 
   if (
@@ -277,6 +280,7 @@ const formatDetailValue = (key: string, value: unknown) => {
 const renderDiffDetails = (
   before: Record<string, unknown>,
   after: Record<string, unknown>,
+  timeZone = 'UTC',
 ) => {
   const changedKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
   const ordered = [
@@ -290,19 +294,19 @@ const renderDiffDetails = (
 
   return ordered.map((key) => {
     const label = DETAIL_LABELS[key] ?? key;
-    const beforeValue = formatDetailValue(key, before[key]);
-    const afterValue = formatDetailValue(key, after[key]);
+    const beforeValue = formatDetailValue(key, before[key], timeZone);
+    const afterValue = formatDetailValue(key, after[key], timeZone);
     return `${label}: ${beforeValue} -> ${afterValue}`;
   });
 };
 
-const renderDetails = (details?: Record<string, unknown> | null) => {
+const renderDetails = (details?: Record<string, unknown> | null, timeZone = 'UTC') => {
   if (!details) return ['-'];
 
   const before = isRecord(details.before) ? details.before : null;
   const after = isRecord(details.after) ? details.after : null;
   if (before && after) {
-    return renderDiffDetails(before, after);
+    return renderDiffDetails(before, after, timeZone);
   }
 
   const keys = [
@@ -322,7 +326,7 @@ const renderDetails = (details?: Record<string, unknown> | null) => {
 
   return keys.map((key) => {
     const label = DETAIL_LABELS[key] ?? key;
-    const value = formatDetailValue(key, details[key]);
+    const value = formatDetailValue(key, details[key], timeZone);
     return `${label}: ${value}`;
   });
 };
@@ -349,6 +353,7 @@ export default function StoreActivityPage() {
   const [loading, setLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const storeTimeZone = String(store?.timeZone || 'UTC');
 
   useEffect(() => {
     setFilterDate(queryDate);
@@ -500,6 +505,7 @@ export default function StoreActivityPage() {
               )}
             </div>
             <p className="text-sm text-slate-600">{store.name}</p>
+            <p className="text-xs text-slate-500">Часовой пояс: {storeTimeZone}</p>
           </div>
         </div>
 
@@ -603,7 +609,9 @@ export default function StoreActivityPage() {
                 data.items.map((item) => (
                   <tr key={item.id} className="border-t border-slate-100">
                     <td className="px-4 py-3 text-slate-700">
-                      {new Date(item.createdAt).toLocaleString('ru-RU')}
+                      {new Date(item.createdAt).toLocaleString('ru-RU', {
+                        timeZone: storeTimeZone,
+                      })}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {item.user?.email || 'Система'}
@@ -619,7 +627,7 @@ export default function StoreActivityPage() {
                     <td className="px-4 py-3 text-slate-700">{getEntityLabel(item)}</td>
                     <td className="max-w-[460px] px-4 py-3 text-xs text-slate-600">
                       <div className="space-y-0.5">
-                        {renderDetails(item.details).map((line, idx) => (
+                        {renderDetails(item.details, storeTimeZone).map((line, idx) => (
                           <div key={`${item.id}-line-${idx}`}>{line}</div>
                         ))}
                       </div>

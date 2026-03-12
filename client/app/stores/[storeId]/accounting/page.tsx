@@ -7,6 +7,16 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { StoreSidebar } from '../components/StoreSidebar';
+import {
+  getDateKeyInTimeZone,
+  getTodayDateKeyInTimeZone,
+} from '@/lib/dateTime';
+
+function formatDateKeyRu(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return dateKey;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
 
 export default function StoreAccountingPage() {
   const params = useParams();
@@ -19,7 +29,7 @@ export default function StoreAccountingPage() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [accountingRows, setAccountingRows] = useState<any[]>([]);
   const [accountingDate, setAccountingDate] = useState(
-    new Date().toISOString().slice(0, 10),
+    getTodayDateKeyInTimeZone('UTC'),
   );
   const [dayReconciliation, setDayReconciliation] = useState<any>(null);
   const [expectedCloseDetails, setExpectedCloseDetails] = useState<any>(null);
@@ -30,6 +40,8 @@ export default function StoreAccountingPage() {
   const [dayCloseCash1, setDayCloseCash1] = useState('');
   const [dayCloseCash2, setDayCloseCash2] = useState('');
   const [dayActionSaving, setDayActionSaving] = useState(false);
+  const [didInitDateFromStoreTz, setDidInitDateFromStoreTz] = useState(false);
+  const storeTimeZone = store?.timeZone || 'UTC';
 
   const fetchData = async (withLoader = true) => {
     if (!storeId) return;
@@ -89,6 +101,12 @@ export default function StoreAccountingPage() {
       })
       .catch((err) => console.error(err));
   }, [storeId, accountingDate, store]);
+
+  useEffect(() => {
+    if (!store?.timeZone || didInitDateFromStoreTz) return;
+    setAccountingDate(getTodayDateKeyInTimeZone(store.timeZone));
+    setDidInitDateFromStoreTz(true);
+  }, [store?.timeZone, didInitDateFromStoreTz]);
 
   const handleDeleteAccountingRecord = async (recordId: number) => {
     if (!confirm('Удалить эту запись из бух. таблицы?')) return;
@@ -178,7 +196,7 @@ export default function StoreAccountingPage() {
   const accountingDays = useMemo(() => {
     const entries = Array.from(
       (accountingRows || []).reduce((map, row: any) => {
-        const dayKey = new Date(row.recordDate).toISOString().slice(0, 10);
+        const dayKey = getDateKeyInTimeZone(row.recordDate, storeTimeZone);
         const list = map.get(dayKey) ?? [];
         list.push(row);
         map.set(dayKey, list);
@@ -205,8 +223,8 @@ export default function StoreAccountingPage() {
           closing: closingByType ?? closingFallback,
         };
       })
-      .sort((a, b) => new Date(b.dayKey).getTime() - new Date(a.dayKey).getTime());
-  }, [accountingRows]);
+      .sort((a, b) => b.dayKey.localeCompare(a.dayKey));
+  }, [accountingRows, storeTimeZone]);
 
   const permissions = store?.permissions || [];
   const difference = dayReconciliation?.difference ?? null;
@@ -692,7 +710,7 @@ export default function StoreAccountingPage() {
                   className="rounded-xl border border-[#e5ded8] bg-white p-4"
                 >
                   <div className="mb-3 text-sm font-semibold text-[#111111]">
-                    {new Date(day.dayKey).toLocaleDateString()}
+                    {formatDateKeyRu(day.dayKey)}
                   </div>
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     <article className="rounded-xl border border-[#e5ded8] bg-white p-3">
