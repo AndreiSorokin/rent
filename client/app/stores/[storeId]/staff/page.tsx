@@ -20,6 +20,7 @@ type StaffMember = {
   position: string;
   fullName: string;
   salary: number;
+  createdAt?: string;
   salaryStatus: 'UNPAID' | 'PAID';
   salaryBankTransferPaid?: number;
   salaryCashbox1Paid?: number;
@@ -42,6 +43,20 @@ function paymentChannelsLines(
   if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
 
   return lines;
+}
+
+function formatDateTime(value: string | Date | null | undefined, timeZone: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('ru-RU', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export default function StoreStaffPage() {
@@ -114,6 +129,10 @@ export default function StoreStaffPage() {
     const missing = staff.filter((s) => !orderedStaffIds.includes(Number(s.id)));
     return [...inOrder, ...missing];
   }, [orderedStaffIds, staff]);
+  const payrollTotal = useMemo(
+    () => orderedStaff.reduce((sum, item) => sum + Number(item.salary ?? 0), 0),
+    [orderedStaff],
+  );
 
   const moveStaff = async (dragId: number, targetId: number) => {
     if (dragId === targetId) return;
@@ -259,6 +278,14 @@ export default function StoreStaffPage() {
                   </button>
                 )}
               </div>
+              <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
+                  Общая сумма расходов
+                </p>
+                <p className="mt-1 text-xl font-semibold text-[#111111]">
+                  {formatMoney(payrollTotal, currency)}
+                </p>
+              </div>
 
               {!staff.length ? (
                 <p className="text-[#6b6b6b]">Сотрудников пока нет</p>
@@ -268,6 +295,9 @@ export default function StoreStaffPage() {
                     <thead className="bg-[#F4EFEB]">
                       <tr>
                         <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Дата
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                           Должность
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
@@ -306,6 +336,9 @@ export default function StoreStaffPage() {
                             setDraggedStaffId(null);
                           }}
                         >
+                          <td className="whitespace-nowrap px-4 py-2.5 align-middle text-xs text-[#6B6B6B]">
+                            {formatDateTime(s.createdAt, store?.timeZone || 'UTC')}
+                          </td>
                           <td className="px-4 py-2.5 align-middle text-sm font-medium text-[#111111]">
                             <div className="flex items-center gap-2">
                               <button
