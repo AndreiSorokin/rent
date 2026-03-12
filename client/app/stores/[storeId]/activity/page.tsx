@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -39,7 +39,7 @@ const ACTION_STYLES: Record<string, string> = {
   UPDATE: 'bg-amber-50 text-amber-700 border border-amber-100',
   DELETE: 'bg-rose-50 text-rose-700 border border-rose-100',
   OPEN: 'bg-sky-50 text-sky-700 border border-sky-100',
-  CLOSE: 'bg-slate-100 text-slate-700 border border-slate-200',
+  CLOSE: 'bg-[#f4efeb] text-[#6b6b6b] border border-[#d8d1cb]',
   IMPORT: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
 };
 
@@ -192,7 +192,6 @@ const DETAIL_ORDER = [
   'salaryCashbox1Paid',
   'salaryCashbox2Paid',
   'recordDate',
-  // intentionally hidden in activity details (kept in backend payload)
   'diffBank',
   'diffCash1',
   'diffCash2',
@@ -476,7 +475,7 @@ export default function StoreActivityPage() {
   }, [storeId, currentPage, queryDate, queryPavilion, queryAction, queryEntityType]);
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-600">Загрузка журнала действий...</div>;
+    return <div className="p-6 text-sm text-[#6b6b6b]">Загрузка журнала действий...</div>;
   }
 
   if (error) {
@@ -488,31 +487,31 @@ export default function StoreActivityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-4">
-        <div className="space-y-3">
+    <div className="min-h-screen bg-[#f6f1eb] p-4 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="rounded-2xl border border-[#d8d1cb] bg-white p-4 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+          <div className="space-y-3">
           <Link
-            href={`/stores/${storeId}`}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            href={`/stores/${storeId}/settings`}
+            className="inline-flex items-center justify-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
           >
-            Назад к объекту
+            Назад к управлению объектом
           </Link>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-xl font-semibold text-slate-900">Журнал действий</h1>
-              {isFetching && (
-                <span className="text-xs font-medium text-slate-500">Обновление...</span>
-              )}
-            </div>
-            <p className="text-sm text-slate-600">{store.name}</p>
-            <p className="text-xs text-slate-500">Часовой пояс: {storeTimeZone}</p>
-          </div>
         </div>
+          <div className="mb-4 flex items-center justify-between gap-3 mt-5">
+            <div>
+              <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Журнал действий</h1>
+              <p className="text-sm text-[#6b6b6b]">{store.name}</p>
+              <p className="text-xs text-[#8b7f76]">Часовой пояс: {storeTimeZone}</p>
+            </div>
+            {isFetching && (
+              <span className="text-xs font-medium text-[#6b6b6b]">Обновление...</span>
+            )}
+          </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
                 Дата
               </span>
               <input
@@ -523,11 +522,11 @@ export default function StoreActivityPage() {
                   setFilterDate(value);
                   applyFiltersToUrl(value, filterPavilion, filterAction, filterEntityType);
                 }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
                 Павильон
               </span>
               <input
@@ -535,11 +534,11 @@ export default function StoreActivityPage() {
                 value={filterPavilion}
                 onChange={(e) => setFilterPavilion(e.target.value)}
                 placeholder="Номер павильона"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               />
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
                 Действие
               </span>
               <select
@@ -549,7 +548,7 @@ export default function StoreActivityPage() {
                   setFilterAction(value);
                   applyFiltersToUrl(filterDate, filterPavilion, value, filterEntityType);
                 }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               >
                 <option value="">Все</option>
                 {Object.entries(ACTION_LABELS).map(([value, label]) => (
@@ -560,7 +559,7 @@ export default function StoreActivityPage() {
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
                 Сущность
               </span>
               <select
@@ -570,7 +569,7 @@ export default function StoreActivityPage() {
                   setFilterEntityType(value);
                   applyFiltersToUrl(filterDate, filterPavilion, filterAction, value);
                 }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+                className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               >
                 <option value="">Все</option>
                 {Object.entries(ENTITY_LABELS).map(([value, label]) => (
@@ -585,16 +584,15 @@ export default function StoreActivityPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
             >
               Сбросить
             </button>
           </div>
-        </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-[#d8d1cb] bg-white">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="bg-[#f4efeb] text-xs uppercase tracking-wide text-[#6b6b6b]">
               <tr>
                 <th className="px-4 py-3">Когда</th>
                 <th className="px-4 py-3">Пользователь</th>
@@ -607,25 +605,25 @@ export default function StoreActivityPage() {
             <tbody>
               {data?.items?.length ? (
                 data.items.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-100">
-                    <td className="px-4 py-3 text-slate-700">
+                  <tr key={item.id} className="border-t border-[#efe9e2]">
+                    <td className="px-4 py-3 text-[#111111]">
                       {new Date(item.createdAt).toLocaleString('ru-RU', {
                         timeZone: storeTimeZone,
                       })}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-[#111111]">
                       {item.user?.email || 'Система'}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{getPavilionLabel(item)}</td>
+                    <td className="px-4 py-3 text-[#111111]">{getPavilionLabel(item)}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[item.action] ?? 'bg-slate-100 text-slate-700 border border-slate-200'}`}
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[item.action] ?? 'bg-[#f4efeb] text-[#6b6b6b] border border-[#d8d1cb]'}`}
                       >
                         {ACTION_LABELS[item.action] || item.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{getEntityLabel(item)}</td>
-                    <td className="max-w-[460px] px-4 py-3 text-xs text-slate-600">
+                    <td className="px-4 py-3 text-[#111111]">{getEntityLabel(item)}</td>
+                    <td className="max-w-[460px] px-4 py-3 text-xs text-[#6b6b6b]">
                       <div className="space-y-0.5">
                         {renderDetails(item.details, storeTimeZone).map((line, idx) => (
                           <div key={`${item.id}-line-${idx}`}>{line}</div>
@@ -636,46 +634,47 @@ export default function StoreActivityPage() {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-6 text-sm text-slate-500" colSpan={6}>
+                  <td className="px-4 py-6 text-sm text-[#6b6b6b]" colSpan={6}>
                     Пока нет записей
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-
-        {data && data.totalPages > 1 && (
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-            <span className="text-slate-600">
-              Страница {data.page} из {data.totalPages}
-            </span>
-            <div className="flex gap-2">
-              <Link
-                href={`${pathname}?${buildQueryString(Math.max(1, data.page - 1))}`}
-                className={`rounded-lg border px-3 py-1.5 ${
-                  data.page <= 1
-                    ? 'pointer-events-none border-slate-200 text-slate-400'
-                    : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                Назад
-              </Link>
-              <Link
-                href={`${pathname}?${buildQueryString(
-                  Math.min(data.totalPages, data.page + 1),
-                )}`}
-                className={`rounded-lg border px-3 py-1.5 ${
-                  data.page >= data.totalPages
-                    ? 'pointer-events-none border-slate-200 text-slate-400'
-                    : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                Далее
-              </Link>
-            </div>
           </div>
-        )}
+
+          {data && data.totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm">
+              <span className="text-[#6b6b6b]">
+                Страница {data.page} из {data.totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Link
+                  href={`${pathname}?${buildQueryString(Math.max(1, data.page - 1))}`}
+                  className={`rounded-xl border px-3 py-1.5 ${
+                    data.page <= 1
+                      ? 'pointer-events-none border-[#e6dfd8] text-[#b5aaa0]'
+                      : 'border-[#d8d1cb] text-[#111111] hover:bg-white'
+                  }`}
+                >
+                  Назад
+                </Link>
+                <Link
+                  href={`${pathname}?${buildQueryString(
+                    Math.min(data.totalPages, data.page + 1),
+                  )}`}
+                  className={`rounded-xl border px-3 py-1.5 ${
+                    data.page >= data.totalPages
+                      ? 'pointer-events-none border-[#e6dfd8] text-[#b5aaa0]'
+                      : 'border-[#d8d1cb] text-[#111111] hover:bg-white'
+                  }`}
+                >
+                  Далее
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
