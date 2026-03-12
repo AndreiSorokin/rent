@@ -109,5 +109,6 @@ export type Pavilion = {
   }>;
   store?: {
     currency?: 'RUB' | 'KZT';
+    timeZone?: string;
   };
 };

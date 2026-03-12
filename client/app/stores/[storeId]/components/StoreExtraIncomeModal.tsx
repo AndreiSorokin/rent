@@ -7,10 +7,16 @@ import {
   deleteStoreExtraIncome,
   listStoreExtraIncome,
 } from '@/lib/storeExtraIncome';
+import {
+  formatDateInTimeZone,
+  getCurrentMonthKeyInTimeZone,
+  getTodayDateKeyInTimeZone,
+} from '@/lib/dateTime';
 
 type Props = {
   storeId: number;
   currency: 'RUB' | 'KZT';
+  timeZone?: string;
   isOpen: boolean;
   canCreate: boolean;
   canDelete: boolean;
@@ -19,14 +25,10 @@ type Props = {
   onChanged?: () => Promise<void> | void;
 };
 
-function getCurrentMonthValue() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
 export function StoreExtraIncomeModal({
   storeId,
   currency,
+  timeZone = 'UTC',
   isOpen,
   canCreate,
   canDelete,
@@ -40,13 +42,15 @@ export function StoreExtraIncomeModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState<any[]>([]);
-  const [period, setPeriod] = useState(getCurrentMonthValue());
+  const [period, setPeriod] = useState(() => getCurrentMonthKeyInTimeZone(timeZone));
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [bank, setBank] = useState('');
   const [cash1, setCash1] = useState('');
   const [cash2, setCash2] = useState('');
-  const [paidAtDate, setPaidAtDate] = useState(new Date().toISOString().slice(0, 10));
+  const [paidAtDate, setPaidAtDate] = useState(
+    () => defaultPaidAtDate || getTodayDateKeyInTimeZone(timeZone),
+  );
 
   const total = useMemo(
     () => items.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
@@ -71,10 +75,12 @@ export function StoreExtraIncomeModal({
     if (!isOpen) return;
     if (defaultPaidAtDate) {
       setPaidAtDate(defaultPaidAtDate);
+    } else {
+      setPaidAtDate(getTodayDateKeyInTimeZone(timeZone));
     }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, period, storeId, defaultPaidAtDate]);
+  }, [isOpen, period, storeId, defaultPaidAtDate, timeZone]);
 
   const handleCreate = async () => {
     const cleanName = name.trim();
@@ -254,7 +260,7 @@ export function StoreExtraIncomeModal({
                     <div>
                       <div className="font-semibold text-[#111111]">{item.name}</div>
                       <div className="text-xs text-[#6b6b6b]">
-                        {new Date(item.paidAt).toLocaleDateString('ru-RU')}
+                        {formatDateInTimeZone(item.paidAt, timeZone)}
                       </div>
                     </div>
                     <div className="text-sm font-semibold text-[#111111]">

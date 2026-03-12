@@ -17,11 +17,12 @@ import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payment
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
 import { Discount, Pavilion } from './pavilion.types';
-
-const getCurrentMonthLocal = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
+import {
+  formatDateInTimeZone as formatDateInStoreTimeZone,
+  formatMonthNumberYearInTimeZone,
+  getCurrentMonthKeyInTimeZone,
+  getMonthKeyInTimeZone,
+} from '@/lib/dateTime';
 
 export default function PavilionPage() {
   const { storeId, pavilionId } = useParams();
@@ -52,7 +53,7 @@ export default function PavilionPage() {
     amount: number;
   } | null>(null);
   const [prepaymentMonth, setPrepaymentMonth] = useState(
-    getCurrentMonthLocal(),
+    getCurrentMonthKeyInTimeZone('UTC'),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [prepaymentTenantName, setPrepaymentTenantName] = useState('');
@@ -106,6 +107,14 @@ export default function PavilionPage() {
       fetchPavilion();
     }
   }, [storeIdNum, pavilionIdNum]);
+
+  useEffect(() => {
+    if (!pavilion?.store?.timeZone) return;
+    setPrepaymentMonth((prev) => {
+      const next = getCurrentMonthKeyInTimeZone(pavilion.store?.timeZone || 'UTC');
+      return prev === next ? prev : next;
+    });
+  }, [pavilion?.store?.timeZone]);
 
   const handleActionSuccess = () => {
     fetchPavilion();
@@ -311,10 +320,10 @@ export default function PavilionPage() {
 
     try {
       if (pavilion.prepaidUntil) {
-        const prepaidPeriod = new Date(pavilion.prepaidUntil);
-        const prepaidPeriodMonth = `${prepaidPeriod.getFullYear()}-${String(
-          prepaidPeriod.getMonth() + 1,
-        ).padStart(2, '0')}`;
+        const prepaidPeriodMonth = getMonthKeyInTimeZone(
+          pavilion.prepaidUntil,
+          pavilion.store?.timeZone || 'UTC',
+        );
         const payments = await apiFetch<any[]>(
           `/stores/${storeIdNum}/pavilions/${pavilionIdNum}/payments?period=${encodeURIComponent(
             prepaidPeriodMonth,
@@ -353,15 +362,15 @@ export default function PavilionPage() {
 
   const getDiscountForPeriod = (period: Date) => {
     if (!pavilion) return 0;
-
-    const monthStart = new Date(period.getFullYear(), period.getMonth(), 1, 0, 0, 0, 0);
-    const monthEnd = new Date(period.getFullYear(), period.getMonth() + 1, 0, 23, 59, 59, 999);
+    const targetMonthKey = getMonthKeyInTimeZone(period, pavilion.store?.timeZone || 'UTC');
 
     return pavilion.discounts.reduce((sum, discount) => {
-      const startsAt = new Date(discount.startsAt);
-      const endsAt = discount.endsAt ? new Date(discount.endsAt) : null;
-      const startsBeforeMonthEnds = startsAt <= monthEnd;
-      const endsAfterMonthStarts = endsAt === null || endsAt >= monthStart;
+      const startsAtKey = getMonthKeyInTimeZone(discount.startsAt, pavilion.store?.timeZone || 'UTC');
+      const endsAtKey = discount.endsAt
+        ? getMonthKeyInTimeZone(discount.endsAt, pavilion.store?.timeZone || 'UTC')
+        : null;
+      const startsBeforeMonthEnds = startsAtKey <= targetMonthKey;
+      const endsAfterMonthStarts = endsAtKey === null || endsAtKey >= targetMonthKey;
       return startsBeforeMonthEnds && endsAfterMonthStarts
         ? sum + discount.amount * pavilion.squareMeters
         : sum;
@@ -375,14 +384,12 @@ export default function PavilionPage() {
     return startsAt <= now && (endsAt === null || endsAt >= now);
   };
 
-  const formatDate = (value: string | null) =>
-    value ? new Date(value).toLocaleDateString() : 'Бессрочно';
-
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
 
   const currency = pavilion.store?.currency ?? 'RUB';
+  const storeTimeZone = pavilion.store?.timeZone || 'UTC';
   const currencySymbol = getCurrencySymbol(currency);
   const allPayments = [...(pavilion.payments || [])].sort(
     (a: any, b: any) =>
@@ -392,24 +399,9 @@ export default function PavilionPage() {
     (a: any, b: any) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
-  const currentMonthStart = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1,
-  );
-  const currentMonthEnd = new Date(
-    currentMonthStart.getFullYear(),
-    currentMonthStart.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999,
-  );
+  const currentMonthKey = getCurrentMonthKeyInTimeZone(storeTimeZone);
   const currentMonthAdditionalCharges = (pavilion.additionalCharges || []).filter(
-    (charge: any) =>
-      new Date(charge.createdAt) >= currentMonthStart &&
-      new Date(charge.createdAt) <= currentMonthEnd,
+    (charge: any) => getMonthKeyInTimeZone(charge.createdAt, storeTimeZone) === currentMonthKey,
   );
   const currentMonthDiscount = getDiscountForPeriod(new Date());
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
@@ -536,7 +528,7 @@ export default function PavilionPage() {
               )}
               {pavilion.status === 'PREPAID' && pavilion.prepaidUntil && (
                 <span className="inline-flex items-center rounded bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                  Оплаченный месяц: {new Date(pavilion.prepaidUntil).toLocaleDateString()}
+                  Оплаченный месяц: {formatMonthNumberYearInTimeZone(pavilion.prepaidUntil, storeTimeZone)}
                 </span>
               )}
             </div>
@@ -575,32 +567,13 @@ export default function PavilionPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {allPayments.map((pay: any) => {
+                      const periodKey = getMonthKeyInTimeZone(pay.period, storeTimeZone);
                       const periodDate = new Date(pay.period);
-                      const periodStart = new Date(
-                        periodDate.getFullYear(),
-                        periodDate.getMonth(),
-                        1,
-                        0,
-                        0,
-                        0,
-                        0,
-                      );
-                      const periodEnd = new Date(
-                        periodDate.getFullYear(),
-                        periodDate.getMonth() + 1,
-                        0,
-                        23,
-                        59,
-                        59,
-                        999,
-                      );
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
                       const periodAdditionalCharges = (pavilion.additionalCharges || []).filter(
-                        (charge: any) => {
-                          const createdAt = new Date(charge.createdAt);
-                          return createdAt >= periodStart && createdAt <= periodEnd;
-                        },
+                        (charge: any) =>
+                          getMonthKeyInTimeZone(charge.createdAt, storeTimeZone) === periodKey,
                       );
                       const periodAdditionalExpected = periodAdditionalCharges.reduce(
                         (sum: number, charge: any) => sum + Number(charge.amount ?? 0),
@@ -611,8 +584,9 @@ export default function PavilionPage() {
                           sum +
                           (charge.payments || []).reduce(
                             (paymentSum: number, payment: any) => {
-                              const paidAt = new Date(payment.paidAt);
-                              if (paidAt < periodStart || paidAt > periodEnd) {
+                              if (
+                                getMonthKeyInTimeZone(payment.paidAt, storeTimeZone) !== periodKey
+                              ) {
                                 return paymentSum;
                               }
                               return paymentSum + Number(payment.amountPaid ?? 0);
@@ -642,7 +616,7 @@ export default function PavilionPage() {
                       return (
                         <tr key={pay.id}>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">
-                            {new Date(pay.period).toLocaleDateString()}
+                            {formatMonthNumberYearInTimeZone(pay.period, storeTimeZone)}
                           </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(expected, currency)}</td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(paid, currency)}</td>
@@ -688,10 +662,10 @@ export default function PavilionPage() {
                         {allPaymentTransactions.map((entry: any) => (
                           <tr key={entry.id}>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
-                              {new Date(entry.createdAt).toLocaleDateString()}
+                              {formatDateInStoreTimeZone(entry.createdAt, storeTimeZone)}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
-                              {new Date(entry.period).toLocaleDateString()}
+                              {formatMonthNumberYearInTimeZone(entry.period, storeTimeZone)}
                             </td>
                             <td className="whitespace-nowrap px-4 py-3 text-sm">
                               {formatMoney(entry.rentPaid, currency)}
@@ -779,7 +753,7 @@ export default function PavilionPage() {
                         </td>
                         <td className="px-6 py-4 text-sm">{contract.fileType}</td>
                         <td className="px-6 py-4 text-sm">
-                          {new Date(contract.uploadedAt).toLocaleDateString()}
+                          {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
                         </td>
                         <td className="px-6 py-4 text-right text-sm">
                           {hasPermission(permissions, 'DELETE_CONTRACTS') && (
@@ -839,8 +813,14 @@ export default function PavilionPage() {
                       <td className="px-6 py-4 text-sm font-medium">
                         {formatMoney(discount.amount * pavilion.squareMeters, currency)}
                       </td>
-                      <td className="px-6 py-4 text-sm">{formatDate(discount.startsAt)}</td>
-                      <td className="px-6 py-4 text-sm">{formatDate(discount.endsAt)}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {formatDateInStoreTimeZone(discount.startsAt, storeTimeZone)}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {discount.endsAt
+                          ? formatDateInStoreTimeZone(discount.endsAt, storeTimeZone)
+                          : 'Бессрочно'}
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         {isDiscountActiveNow(discount) ? (
                           <span className="font-semibold text-green-700">Активна</span>
@@ -907,8 +887,7 @@ export default function PavilionPage() {
                   {currentMonthAdditionalCharges.map((charge: any) => {
                     const currentMonthChargePayments = (charge.payments || []).filter(
                       (p: any) =>
-                        new Date(p.paidAt) >= currentMonthStart &&
-                        new Date(p.paidAt) <= currentMonthEnd,
+                        getMonthKeyInTimeZone(p.paidAt, storeTimeZone) === currentMonthKey,
                     );
                     const totalPaid =
                       currentMonthChargePayments.reduce(
@@ -1023,7 +1002,7 @@ export default function PavilionPage() {
                                       key={p.id}
                                       className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] items-center gap-3 rounded bg-white px-2 py-1"
                                     >
-                                      <span>{new Date(p.paidAt).toLocaleDateString()}</span>
+                                      <span>{formatDateInStoreTimeZone(p.paidAt, storeTimeZone)}</span>
                                       <span className="font-medium">{formatMoney(p.amountPaid, currency)}</span>
                                       <span>{formatMoney(p.bankTransferPaid ?? 0, currency)}</span>
                                       <span>{formatMoney(p.cashbox1Paid ?? 0, currency)}</span>

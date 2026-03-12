@@ -7,12 +7,19 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
-function getCurrentMonthValue() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+const getCurrentMonthValue = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
+
+function formatPeriodLabel(
+  period: string | Date,
+  timeZone: string,
+  options: Intl.DateTimeFormatOptions,
+) {
+  return new Date(period).toLocaleDateString('ru-RU', {
+    ...options,
+    timeZone,
+  });
 }
 
 type MetricCardProps = {
@@ -79,6 +86,7 @@ type MonthlyLineChartProps = {
   valueKey: 'pavilionsRented' | 'squareRented';
   totalKey: 'pavilionsTotal' | 'squareTotal';
   valueFormatter?: (value: number) => string;
+  timeZone?: string;
 };
 
 function MonthlyLineChart({
@@ -87,6 +95,7 @@ function MonthlyLineChart({
   valueKey,
   totalKey,
   valueFormatter = (value: number) => String(value),
+  timeZone = 'UTC',
 }: MonthlyLineChartProps) {
   const [tooltip, setTooltip] = useState<{
     x: number;
@@ -196,7 +205,7 @@ function MonthlyLineChart({
                 setTooltip({
                   x: event.clientX - bounds.left + 12,
                   y: event.clientY - bounds.top + 12,
-                  label: new Date(point.period).toLocaleDateString('ru-RU', {
+                  label: formatPeriodLabel(point.period, timeZone, {
                     month: 'long',
                     year: 'numeric',
                   }),
@@ -217,7 +226,7 @@ function MonthlyLineChart({
               fontSize="16"
               fill="#6b7280"
             >
-              {new Date(point.period).toLocaleDateString('ru-RU', {
+              {formatPeriodLabel(point.period, timeZone, {
                 month: 'short',
               })}
             </text>
@@ -259,6 +268,7 @@ type FinanceTrendChartProps = {
   actualKey: 'incomeActual' | 'expensesActual' | 'saldo';
   forecastKey?: 'incomeForecast' | 'expensesForecast';
   valueFormatter?: (value: number) => string;
+  timeZone?: string;
 };
 
 function FinanceTrendChart({
@@ -267,6 +277,7 @@ function FinanceTrendChart({
   actualKey,
   forecastKey,
   valueFormatter = (value: number) => String(Math.round(value)),
+  timeZone = 'UTC',
 }: FinanceTrendChartProps) {
   const [tooltip, setTooltip] = useState<{
     x: number;
@@ -407,7 +418,7 @@ function FinanceTrendChart({
                 setTooltip({
                   x: event.clientX - bounds.left + 12,
                   y: event.clientY - bounds.top + 12,
-                  label: new Date(point.period).toLocaleDateString('ru-RU', {
+                  label: formatPeriodLabel(point.period, timeZone, {
                     month: 'long',
                     year: 'numeric',
                   }),
@@ -431,7 +442,7 @@ function FinanceTrendChart({
               fontSize="16"
               fill="#6b7280"
             >
-              {new Date(point.period).toLocaleDateString('ru-RU', {
+              {formatPeriodLabel(point.period, timeZone, {
                 month: 'short',
               })}
             </text>
@@ -474,6 +485,7 @@ export default function StoreSummaryPage() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [activeSection, setActiveSection] = useState('summary-overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const storeTimeZone = store?.timeZone || 'UTC';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1054,6 +1066,7 @@ export default function StoreSummaryPage() {
             actualKey="incomeActual"
             forecastKey="incomeForecast"
             valueFormatter={(value) => formatMoney(value, data.currency)}
+            timeZone={storeTimeZone}
           />
         </section>
 
@@ -1192,6 +1205,7 @@ export default function StoreSummaryPage() {
             actualKey="expensesActual"
             forecastKey="expensesForecast"
             valueFormatter={(value) => formatMoney(value, data.currency)}
+            timeZone={storeTimeZone}
           />
         </section>
 
@@ -1270,6 +1284,7 @@ export default function StoreSummaryPage() {
               items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
               actualKey="saldo"
               valueFormatter={(value) => formatMoney(value, data.currency)}
+              timeZone={storeTimeZone}
             />
           </div>
         </section>
@@ -1291,6 +1306,7 @@ export default function StoreSummaryPage() {
             items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
             valueKey="pavilionsRented"
             totalKey="pavilionsTotal"
+            timeZone={storeTimeZone}
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1304,6 +1320,7 @@ export default function StoreSummaryPage() {
             valueKey="squareRented"
             totalKey="squareTotal"
             valueFormatter={(value) => `${Math.round(value)} м²`}
+            timeZone={storeTimeZone}
           />
         </section>
 

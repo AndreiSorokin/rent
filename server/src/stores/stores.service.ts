@@ -263,6 +263,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     },
   ) {
     await this.assertStorePermission(storeId, userId, ['VIEW_ACTIVITY' as Permission]);
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
     const page = Math.max(1, Number(options?.page ?? 1));
     const pageSize = Math.min(100, Math.max(1, Number(options?.pageSize ?? 30)));
     const where: Prisma.StoreActivityWhereInput = { storeId };
@@ -309,12 +310,19 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     const date = options?.date?.trim();
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      const from = new Date(`${date}T00:00:00.000Z`);
-      const to = new Date(`${date}T23:59:59.999Z`);
+      const [year, month, day] = date.split('-').map(Number);
+      const from = this.zonedLocalToUtc(
+        { year, month, day, hour: 0, minute: 0, second: 0, millisecond: 0 },
+        storeTimeZone,
+      );
+      const to = this.zonedLocalToUtc(
+        { year, month, day: day + 1, hour: 0, minute: 0, second: 0, millisecond: 0 },
+        storeTimeZone,
+      );
       if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime())) {
         where.createdAt = {
           gte: from,
-          lte: to,
+          lt: to,
         };
       }
     }
@@ -414,6 +422,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       where: { id: storeId },
       data: { currency },
       select: { id: true, currency: true },
+    });
+  }
+
+  async updateTimeZone(storeId: number, userId: number, timeZone: string) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+    const normalized = this.normalizeStoreTimeZone(timeZone);
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { timeZone: normalized },
+      select: { id: true, timeZone: true },
     });
   }
 
@@ -1493,6 +1511,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   async listAccountingTable(storeId: number) {
     await this.cleanupOldAccountingRecords(storeId);
+    const timeZone = await this.getStoreTimeZone(storeId);
 
     const records = await this.prisma.storeAccountingRecord.findMany({
       where: { storeId },
@@ -1527,10 +1546,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     return Promise.all(
       records.map(async (record) => {
-        const actual = await this.getActualAccountingByDay(
-          storeId,
-          this.startOfUtcDay(record.recordDate),
-        );
+        const actual = await this.getActualAccountingByDay(storeId, record.recordDate, timeZone);
         const actualBank = actual.bankTransferPaid;
         const actualCashbox1 = actual.cashbox1Paid;
         const actualCashbox2 = actual.cashbox2Paid;
@@ -1554,8 +1570,123 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private parseAccountingDay(date?: string) {
-    if (!date) return this.startOfUtcDay(new Date());
+  private normalizeStoreTimeZone(timeZone?: string | null): string {
+    const fallback = 'UTC';
+    const raw = String(timeZone ?? '').trim();
+    if (!raw) return fallback;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: raw }).format(new Date());
+      return raw;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private async getStoreTimeZone(storeId: number): Promise<string> {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { timeZone: true },
+    });
+    return this.normalizeStoreTimeZone(store?.timeZone);
+  }
+
+  private getTimeZoneParts(date: Date, timeZone: string) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(date);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    return {
+      year: Number(map.get('year')),
+      month: Number(map.get('month')),
+      day: Number(map.get('day')),
+      hour: Number(map.get('hour')),
+      minute: Number(map.get('minute')),
+      second: Number(map.get('second')),
+    };
+  }
+
+  private zonedLocalToUtc(
+    args: {
+      year: number;
+      month: number;
+      day: number;
+      hour?: number;
+      minute?: number;
+      second?: number;
+      millisecond?: number;
+    },
+    timeZone: string,
+  ) {
+    const hour = args.hour ?? 0;
+    const minute = args.minute ?? 0;
+    const second = args.second ?? 0;
+    const millisecond = args.millisecond ?? 0;
+    const utcGuess = Date.UTC(
+      args.year,
+      args.month - 1,
+      args.day,
+      hour,
+      minute,
+      second,
+      millisecond,
+    );
+    const guessDate = new Date(utcGuess);
+    const zoned = this.getTimeZoneParts(guessDate, timeZone);
+    const zonedAsUtc = Date.UTC(
+      zoned.year,
+      zoned.month - 1,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second,
+      millisecond,
+    );
+    const offsetMs = zonedAsUtc - utcGuess;
+    return new Date(utcGuess - offsetMs);
+  }
+
+  private getTimeZoneDayRange(date: Date, timeZone: string) {
+    const local = this.getTimeZoneParts(date, timeZone);
+    const dayStart = this.zonedLocalToUtc(
+      {
+        year: local.year,
+        month: local.month,
+        day: local.day,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      timeZone,
+    );
+    const nextDayStart = this.zonedLocalToUtc(
+      {
+        year: local.year,
+        month: local.month,
+        day: local.day + 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      timeZone,
+    );
+    return {
+      dayStart,
+      dayEnd: new Date(nextDayStart.getTime() - 1),
+    };
+  }
+
+  private parseAccountingDay(date: string | undefined, timeZone: string) {
+    if (!date) return this.getTimeZoneDayRange(new Date(), timeZone).dayStart;
 
     const normalized = String(date).trim();
     const dayOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
@@ -1574,42 +1705,25 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       ) {
         throw new BadRequestException('Invalid date');
       }
-      return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+      return this.zonedLocalToUtc(
+        {
+          year,
+          month,
+          day,
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+        },
+        timeZone,
+      );
     }
 
     const parsedDate = new Date(normalized);
     if (Number.isNaN(parsedDate.getTime())) {
       throw new BadRequestException('Invalid date');
     }
-    return this.startOfUtcDay(parsedDate);
-  }
-
-  private startOfUtcDay(value: Date) {
-    return new Date(
-      Date.UTC(
-        value.getUTCFullYear(),
-        value.getUTCMonth(),
-        value.getUTCDate(),
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-  }
-
-  private endOfUtcDay(value: Date) {
-    return new Date(
-      Date.UTC(
-        value.getUTCFullYear(),
-        value.getUTCMonth(),
-        value.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
+    return this.getTimeZoneDayRange(parsedDate, timeZone).dayStart;
   }
 
   private normalizeAccountingAmounts(data: {
@@ -1698,8 +1812,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private async getActualAccountingByDay(storeId: number, dayStart: Date) {
-    const dayEnd = this.endOfUtcDay(dayStart);
+  private async getActualAccountingByDay(storeId: number, dayStart: Date, timeZone: string) {
+    const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
     const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, expenseSnapshot] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
@@ -1793,7 +1907,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const minOccurredAt = ledgerMin?._min?.occurredAt
       ? new Date(ledgerMin._min.occurredAt)
       : null;
-    return minOccurredAt ? this.parseAccountingDay(minOccurredAt.toISOString()) : null;
+    return minOccurredAt ? this.parseAccountingDay(minOccurredAt.toISOString(), 'UTC') : null;
   }
 
   private async getLegacyExpenseSnapshotForDay(storeId: number, dayStart: Date, dayEnd: Date) {
@@ -2016,15 +2130,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getAccountingDayReconciliation(storeId: number, date?: string) {
-    const dayStart = this.parseAccountingDay(date);
-    const dayEnd = this.endOfUtcDay(dayStart);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const dayStart = this.parseAccountingDay(date, timeZone);
+    const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
 
     const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
       storeId,
       dayStart,
       dayEnd,
     );
-    const actual = await this.getActualAccountingByDay(storeId, dayStart);
+    const actual = await this.getActualAccountingByDay(storeId, dayStart, timeZone);
 
     const opening = openRecord
       ? {
@@ -2083,8 +2198,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getAccountingExpectedCloseDetails(storeId: number, date?: string) {
-    const dayStart = this.parseAccountingDay(date);
-    const dayEnd = this.endOfUtcDay(dayStart);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const dayStart = this.parseAccountingDay(date, timeZone);
+    const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
 
     const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
       storeId,
@@ -2331,8 +2447,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid?: number;
     },
   ) {
-    const dayStart = this.parseAccountingDay(data.date);
-    const dayEnd = this.endOfUtcDay(dayStart);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const dayStart = this.parseAccountingDay(data.date, timeZone);
+    const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
     const amounts = this.normalizeAccountingAmounts(data);
 
     const { openRecord } = await this.resolveAccountingDayOpenCloseRecords(
@@ -2382,8 +2499,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       forceClose?: boolean;
     },
   ) {
-    const dayStart = this.parseAccountingDay(data.date);
-    const dayEnd = this.endOfUtcDay(dayStart);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const dayStart = this.parseAccountingDay(data.date, timeZone);
+    const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
     const amounts = this.normalizeAccountingAmounts(data);
 
     const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
@@ -2399,7 +2517,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('День уже закрыт');
     }
 
-    const actual = await this.getActualAccountingByDay(storeId, dayStart);
+    const actual = await this.getActualAccountingByDay(storeId, dayStart, timeZone);
     const expectedCloseBank =
       openRecord.bankTransferPaid + actual.bankTransferPaid;
     const expectedCloseCash1 = openRecord.cashbox1Paid + actual.cashbox1Paid;
@@ -2457,7 +2575,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox2Paid?: number;
     },
   ) {
-    const parsedDate = this.parseAccountingDay(data.recordDate);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const parsedDate = this.parseAccountingDay(data.recordDate, timeZone);
 
     const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
     const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
@@ -2757,7 +2876,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       for (const item of data.accounting ?? []) {
         let parsedDate: Date;
         try {
-          parsedDate = this.parseAccountingDay(item.recordDate);
+          parsedDate = this.parseAccountingDay(item.recordDate, 'UTC');
         } catch {
           continue;
         }

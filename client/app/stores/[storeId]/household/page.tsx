@@ -15,6 +15,11 @@ import { StoreSidebar } from '../components/StoreSidebar';
 import {
   CirclePlus,
 } from 'lucide-react';
+import {
+  getDatePartsInTimeZone,
+  isSameDayKeyInTimeZone,
+  isSameMonthInTimeZone,
+} from '@/lib/dateTime';
 
 
 type EditModalState = {
@@ -45,24 +50,18 @@ function paymentChannelsLines(
   return lines;
 }
 
-function isSameUtcMonth(dateValue: string | Date | null | undefined, year: number, month: number) {
-  if (!dateValue) return false;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return false;
-  return date.getUTCFullYear() === year && date.getUTCMonth() === month;
-}
-
-function isSameUtcDay(dateValue: string | Date | null | undefined, dayValue: string) {
-  if (!dateValue || !dayValue) return true;
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return false;
-  const [year, month, day] = dayValue.split('-').map(Number);
-  if (!year || !month || !day) return true;
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
+function formatDateTime(value: string | Date | null | undefined, timeZone: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleString('ru-RU', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export default function StoreHouseholdPage() {
@@ -119,18 +118,24 @@ export default function StoreHouseholdPage() {
   const canDelete = hasPermission(permissions, 'DELETE_CHARGES');
 
   const householdExpenses = useMemo(() => {
+    const timeZone = store?.timeZone || 'UTC';
     const now = new Date();
-    const year = now.getUTCFullYear();
-    const month = now.getUTCMonth();
+    const nowParts = getDatePartsInTimeZone(now, timeZone);
+    const year = nowParts?.year ?? now.getUTCFullYear();
+    const month = (nowParts?.month ?? now.getUTCMonth() + 1) - 1;
 
     return items
-      .filter((item: any) => isSameUtcMonth(item.createdAt, year, month))
-      .filter((item: any) => isSameUtcDay(item.createdAt, filterDate))
+      .filter((item: any) => isSameMonthInTimeZone(item.createdAt, year, month, timeZone))
+      .filter((item: any) => isSameDayKeyInTimeZone(item.createdAt, filterDate, timeZone))
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [items, filterDate]);
+  }, [items, filterDate, store?.timeZone]);
+  const householdTotal = useMemo(
+    () => householdExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount ?? 0), 0),
+    [householdExpenses],
+  );
 
   const handleCreate = async () => {
     if (!createModal) return;
@@ -283,6 +288,14 @@ export default function StoreHouseholdPage() {
                   )}
                 </div>
               </div>
+              <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
+                  Общая сумма расходов
+                </p>
+                <p className="mt-1 text-xl font-semibold text-[#111111]">
+                  {formatMoney(householdTotal, currency)}
+                </p>
+              </div>
 
               {householdExpenses.length === 0 ? (
                 <p className="text-[#6b6b6b]">Расходов пока нет</p>
@@ -292,6 +305,9 @@ export default function StoreHouseholdPage() {
                     <thead className="bg-[#F4EFEB]">
                       <tr>
                         <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
+                          Дата
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                           Название
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
@@ -311,6 +327,9 @@ export default function StoreHouseholdPage() {
                     <tbody className="divide-y divide-[#E5DED8] bg-white">
                       {householdExpenses.map((expense: any) => (
                         <tr key={expense.id} className="transition-colors hover:bg-[#f9f5f0]">
+                          <td className="whitespace-nowrap px-4 py-2.5 align-middle text-xs text-[#6B6B6B]">
+                            {formatDateTime(expense.createdAt, store?.timeZone || 'UTC')}
+                          </td>
                           <td className="px-4 py-2.5 align-middle">
                             <p className="max-w-[260px] truncate text-sm font-medium text-[#111111]">
                               {expense.name}

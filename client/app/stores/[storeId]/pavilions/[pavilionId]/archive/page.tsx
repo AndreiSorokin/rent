@@ -15,6 +15,7 @@ import {
   deletePavilionPaymentEntry,
   updatePavilionPaymentEntry,
 } from '@/lib/payments';
+import { formatMonthLabelFromKey, getMonthKeyInTimeZone } from '@/lib/dateTime';
 import { Pavilion } from '../pavilion.types';
 
 type ArchiveMonth = {
@@ -65,24 +66,8 @@ type AdditionalEditDraft = {
   cashbox2: string;
 };
 
-function getMonthKey(value: Date) {
-  const y = value.getFullYear();
-  const m = String(value.getMonth() + 1).padStart(2, '0');
-  return `${y}-${m}`;
-}
-
-function getMonthLabel(monthKey: string) {
-  const [y, m] = monthKey.split('-').map(Number);
-  const date = new Date(y, (m || 1) - 1, 1);
-  return date.toLocaleDateString('ru-RU', {
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-function buildArchiveMonths(pavilion: Pavilion): ArchiveMonth[] {
-  const now = new Date();
-  const currentMonthKey = getMonthKey(new Date(now.getFullYear(), now.getMonth(), 1));
+function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[] {
+  const currentMonthKey = getMonthKeyInTimeZone(new Date(), timeZone);
   const map = new Map<string, ArchiveMonth>();
 
   const ensureMonth = (key: string) => {
@@ -91,7 +76,7 @@ function buildArchiveMonths(pavilion: Pavilion): ArchiveMonth[] {
 
     const next: ArchiveMonth = {
       key,
-      label: getMonthLabel(key),
+      label: formatMonthLabelFromKey(key, timeZone),
       totals: {
         rent: 0,
         utilities: 0,
@@ -110,8 +95,7 @@ function buildArchiveMonths(pavilion: Pavilion): ArchiveMonth[] {
   };
 
   for (const payment of pavilion.paymentTransactions || []) {
-    const paymentDate = new Date(payment.period || payment.createdAt);
-    const monthKey = getMonthKey(paymentDate);
+    const monthKey = getMonthKeyInTimeZone(payment.period || payment.createdAt, timeZone);
     if (monthKey >= currentMonthKey) continue;
 
     const month = ensureMonth(monthKey);
@@ -145,8 +129,7 @@ function buildArchiveMonths(pavilion: Pavilion): ArchiveMonth[] {
 
   for (const charge of pavilion.additionalCharges || []) {
     for (const chargePayment of charge.payments || []) {
-      const paidAt = new Date(chargePayment.paidAt);
-      const monthKey = getMonthKey(paidAt);
+      const monthKey = getMonthKeyInTimeZone(chargePayment.paidAt, timeZone);
       if (monthKey >= currentMonthKey) continue;
 
       const month = ensureMonth(monthKey);
@@ -202,6 +185,7 @@ export default function PavilionArchivePage() {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [pavilion, setPavilion] = useState<Pavilion | null>(null);
   const [currency, setCurrency] = useState<'RUB' | 'KZT'>('RUB');
+  const [storeTimeZone, setStoreTimeZone] = useState('UTC');
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [editingRentId, setEditingRentId] = useState<number | null>(null);
@@ -224,7 +208,7 @@ export default function PavilionArchivePage() {
       setLoading(true);
       setError(null);
       const [storeData, pavilionData] = await Promise.all([
-        apiFetch<{ permissions?: string[]; currency?: 'RUB' | 'KZT' }>(
+        apiFetch<{ permissions?: string[]; currency?: 'RUB' | 'KZT'; timeZone?: string }>(
           `/stores/${storeId}`,
         ),
         getPavilion<Pavilion>(storeId, pavilionId),
@@ -238,6 +222,7 @@ export default function PavilionArchivePage() {
 
       setPermissions(nextPermissions);
       setCurrency(storeData.currency || pavilionData.store?.currency || 'RUB');
+      setStoreTimeZone(storeData.timeZone || 'UTC');
       setPavilion(pavilionData);
     } catch (err) {
       console.error(err);
@@ -254,8 +239,8 @@ export default function PavilionArchivePage() {
   }, [loadData, pavilionId, storeId]);
 
   const months = useMemo(
-    () => (pavilion ? buildArchiveMonths(pavilion) : []),
-    [pavilion],
+    () => (pavilion ? buildArchiveMonths(pavilion, storeTimeZone) : []),
+    [pavilion, storeTimeZone],
   );
 
   const canEditRentPayments = hasPermission(permissions, 'EDIT_PAYMENTS');
@@ -463,7 +448,9 @@ export default function PavilionArchivePage() {
                             return (
                               <tr key={item.id}>
                                 <td className="px-4 py-2 text-sm">
-                                  {new Date(item.date).toLocaleDateString('ru-RU')}
+                                  {new Date(item.date).toLocaleDateString('ru-RU', {
+                                    timeZone: storeTimeZone,
+                                  })}
                                 </td>
                                 <td className="px-4 py-2 text-sm">
                                   {isEditing ? (
@@ -592,7 +579,9 @@ export default function PavilionArchivePage() {
                             return (
                               <tr key={`${item.id}-${item.chargeName}`}>
                                 <td className="px-4 py-2 text-sm">
-                                  {new Date(item.date).toLocaleDateString('ru-RU')}
+                                  {new Date(item.date).toLocaleDateString('ru-RU', {
+                                    timeZone: storeTimeZone,
+                                  })}
                                 </td>
                                 <td className="px-4 py-2 text-sm">{item.chargeName}</td>
                                 <td className="px-4 py-2 text-sm">

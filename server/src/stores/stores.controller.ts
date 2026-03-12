@@ -75,6 +75,16 @@ export class StoresController {
     return this.service.updateCurrency(storeId, req.user.id, data.currency);
   }
 
+  @Patch(':storeId/timezone')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateTimeZone(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { timeZone: string },
+    @Req() req: any,
+  ) {
+    return this.service.updateTimeZone(storeId, req.user.id, data.timeZone);
+  }
+
   @Patch(':storeId/name')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   updateName(
