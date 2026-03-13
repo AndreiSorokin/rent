@@ -257,4 +257,46 @@ describe('StoresService accounting day resolution', () => {
     expect(result.openRecord).toBeNull();
     expect(result.closeRecord).toBeNull();
   });
+
+  it('ignores legacy untyped accounting records for open-close resolution', async () => {
+    prisma.storeAccountingRecord.findMany.mockResolvedValue([
+      {
+        id: 30,
+        storeId: 1,
+        recordDate: new Date('2026-03-13T00:00:00.000Z'),
+        createdAt: new Date('2026-03-13T09:00:00.000Z'),
+        bankTransferPaid: 0,
+        cashbox1Paid: 500,
+        cashbox2Paid: 0,
+      },
+      {
+        id: 31,
+        storeId: 1,
+        recordDate: new Date('2026-03-13T00:00:00.000Z'),
+        createdAt: new Date('2026-03-13T18:00:00.000Z'),
+        bankTransferPaid: 0,
+        cashbox1Paid: 200,
+        cashbox2Paid: 0,
+      },
+    ]);
+    prisma.storeActivity.findMany.mockResolvedValue([]);
+
+    const result = await (service as any).resolveAccountingDayOpenCloseRecords(
+      1,
+      new Date('2026-03-13T00:00:00.000Z'),
+      new Date('2026-03-13T23:59:59.999Z'),
+    );
+
+    expect(result.openRecord).toBeNull();
+    expect(result.closeRecord).toBeNull();
+  });
+
+  it('does not shift UTC day-only accounting date to previous day', () => {
+    const prisma = {};
+    const service = new StoresService(prisma as any, {} as any);
+
+    const result = (service as any).parseAccountingDay('2026-03-13', 'UTC') as Date;
+
+    expect(result.toISOString()).toBe('2026-03-13T00:00:00.000Z');
+  });
 });
