@@ -207,3 +207,54 @@ describe('StoresService pavilion groups', () => {
     expect(result).toEqual({ id: 9 });
   });
 });
+
+describe('StoresService accounting day resolution', () => {
+  let service: StoresService;
+  let prisma: any;
+
+  beforeEach(() => {
+    prisma = {
+      storeAccountingRecord: {
+        findMany: jest.fn(),
+      },
+      storeActivity: {
+        findMany: jest.fn(),
+      },
+    };
+
+    service = new StoresService(prisma as any, {} as any);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('ignores orphan close record without a valid opening before it', async () => {
+    const closeRecord = {
+      id: 20,
+      storeId: 1,
+      recordDate: new Date('2026-03-13T00:00:00.000Z'),
+      createdAt: new Date('2026-03-13T10:00:00.000Z'),
+      bankTransferPaid: 100,
+      cashbox1Paid: 0,
+      cashbox2Paid: 0,
+    };
+
+    prisma.storeAccountingRecord.findMany.mockResolvedValue([closeRecord]);
+    prisma.storeActivity.findMany.mockResolvedValue([
+      {
+        entityId: 20,
+        action: 'CLOSE',
+      },
+    ]);
+
+    const result = await (service as any).resolveAccountingDayOpenCloseRecords(
+      1,
+      new Date('2026-03-13T00:00:00.000Z'),
+      new Date('2026-03-13T23:59:59.999Z'),
+    );
+
+    expect(result.openRecord).toBeNull();
+    expect(result.closeRecord).toBeNull();
+  });
+});
