@@ -11,12 +11,14 @@ import { deleteAdditionalCharge } from '@/lib/additionalCharges';
 
 export function PavilionList({
   storeId,
+  timeZone = 'UTC',
   pavilions,
   permissions,
   refresh,
   onDelete,
 }: {
   storeId: number;
+  timeZone?: string;
   pavilions: Pavilion[];
   permissions: string[];
   refresh: () => void;
@@ -170,6 +172,7 @@ export function PavilionList({
       {editingPavilion && (
         <EditPavilionModal
           storeId={storeId}
+          timeZone={timeZone}
           pavilion={editingPavilion}
           onClose={() => setEditingPavilion(null)}
           onSaved={refresh}
@@ -189,6 +192,7 @@ export function PavilionList({
           storeId={storeId}
           pavilionId={payingMonthlyPavilion.id}
           pavilionStatus={payingMonthlyPavilion.status}
+          timeZone={timeZone}
           onClose={() => setPayingMonthlyPavilion(null)}
           onSaved={refresh}
         />

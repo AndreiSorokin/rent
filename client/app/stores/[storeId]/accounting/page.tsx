@@ -28,9 +28,7 @@ export default function StoreAccountingPage() {
   const [store, setStore] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [accountingRows, setAccountingRows] = useState<any[]>([]);
-  const [accountingDate, setAccountingDate] = useState(
-    getTodayDateKeyInTimeZone('UTC'),
-  );
+  const [accountingDate, setAccountingDate] = useState('');
   const [dayReconciliation, setDayReconciliation] = useState<any>(null);
   const [expectedCloseDetails, setExpectedCloseDetails] = useState<any>(null);
   const [dayOpenBank, setDayOpenBank] = useState('');
@@ -53,19 +51,22 @@ export default function StoreAccountingPage() {
         router.replace(`/stores/${storeId}`);
         return;
       }
+      const resolvedAccountingDate =
+        accountingDate || getTodayDateKeyInTimeZone(storeData?.timeZone || 'UTC');
 
 
       const [analyticsData, accountingData, reconciliationData, expectedCloseData] = await Promise.all([
         apiFetch<any>(`/stores/${storeId}/analytics`),
         apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
         apiFetch<any>(
-          `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
+          `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(resolvedAccountingDate)}`,
         ),
         apiFetch<any>(
-          `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(accountingDate)}`,
+          `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(resolvedAccountingDate)}`,
         ),
       ]);
       setStore(storeData);
+      setAccountingDate((prev) => prev || resolvedAccountingDate);
       setAnalytics(analyticsData);
       setAccountingRows(accountingData || []);
       setDayReconciliation(reconciliationData);

@@ -5,11 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { createAdditionalCharge, deleteAdditionalCharge, payAdditionalCharge } from '@/lib/additionalCharges';
 import { createPavilionPayment } from '@/lib/payments';
 import { updatePavilion } from '@/lib/pavilions';
-
-const getCurrentMonthLocal = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 type PavilionStatus = 'AVAILABLE' | 'RENTED' | 'PREPAID';
 
@@ -41,6 +37,7 @@ export function EditPavilionModal({
   pavilion,
   existingCategories,
   canManageAdditionalCharges = false,
+  timeZone = 'UTC',
   onClose,
   onSaved,
 }: {
@@ -48,6 +45,7 @@ export function EditPavilionModal({
   pavilion: PavilionLike;
   existingCategories?: string[];
   canManageAdditionalCharges?: boolean;
+  timeZone?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -85,7 +83,7 @@ export function EditPavilionModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prepaymentMonth, setPrepaymentMonth] = useState(
-    getCurrentMonthLocal(),
+    getCurrentMonthKeyInTimeZone(timeZone),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] =
@@ -173,7 +171,7 @@ export function EditPavilionModal({
       return;
     }
 
-    const periodIso = prepaymentMonth;
+    const periodKey = prepaymentMonth;
     const targetPrepayment = prepaymentAmount ? Number(prepaymentAmount) : rentAmount;
     const prepayBank = prepaymentBankTransferPaid
       ? Number(prepaymentBankTransferPaid)
@@ -199,7 +197,7 @@ export function EditPavilionModal({
       squareMeters: parsedSquareMeters,
       pricePerSqM: parsedPricePerSqM,
       status: form.status,
-      prepaidUntil: form.status === 'PREPAID' ? periodIso : null,
+      prepaidUntil: form.status === 'PREPAID' ? `${periodKey}-01T00:00:00.000Z` : null,
       tenantName: form.status === 'AVAILABLE' ? null : form.tenantName.trim(),
       utilitiesAmount:
         form.status === 'RENTED'
@@ -222,7 +220,7 @@ export function EditPavilionModal({
       if (form.status === 'PREPAID') {
         const payments = await apiFetch<any[]>(
           `/stores/${storeId}/pavilions/${pavilion.id}/payments?period=${encodeURIComponent(
-            periodIso,
+            periodKey,
           )}`,
         );
         const existingForPeriod = payments[0];
@@ -255,7 +253,7 @@ export function EditPavilionModal({
 
         if (Math.abs(rentDelta) > 0.0001) {
           await createPavilionPayment(storeId, pavilion.id, {
-            period: periodIso,
+            period: periodKey,
             rentPaid: rentDelta,
             rentBankTransferPaid: rentBankDelta > 0 ? rentBankDelta : undefined,
             rentCashbox1Paid: rentCash1Delta > 0 ? rentCash1Delta : undefined,

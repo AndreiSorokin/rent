@@ -3,22 +3,20 @@
 import { useState, useEffect } from 'react';
 import { createPavilionPayment } from '@/lib/payments';
 import { apiFetch } from '@/lib/api';
-
-const getCurrentMonthLocal = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 export function CreatePavilionPaymentModal({
   storeId,
   pavilionId,
   pavilionStatus,
+  timeZone = 'UTC',
   onClose,
   onSaved,
 }: {
   storeId: number;
   pavilionId: number;
   pavilionStatus?: string;
+  timeZone?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -27,7 +25,7 @@ export function CreatePavilionPaymentModal({
   const sectionCardClass = 'rounded-xl border border-[#d8d1cb] bg-white p-3';
   const subLabelClass = 'mb-1 block text-xs font-medium text-[#6b6b6b]';
 
-  const currentMonth = getCurrentMonthLocal();
+  const currentMonth = getCurrentMonthKeyInTimeZone(timeZone);
   const [period, setPeriod] = useState(currentMonth);
   const [rentBankTransferPaid, setRentBankTransferPaid] = useState('');
   const [rentCashbox1Paid, setRentCashbox1Paid] = useState('');

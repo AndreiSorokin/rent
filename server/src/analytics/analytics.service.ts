@@ -7,6 +7,100 @@ import { PavilionStatus } from '@prisma/client';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
+  private normalizeStoreTimeZone(timeZone?: string | null): string {
+    const fallback = 'UTC';
+    const aliases: Record<string, string> = {
+      'Asia/Astana': 'Asia/Almaty',
+      'Asia/Nur-Sultan': 'Asia/Almaty',
+    };
+    const raw = String(timeZone ?? '').trim();
+    const normalizedCandidate = aliases[raw] ?? raw;
+    if (!normalizedCandidate) return fallback;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: normalizedCandidate }).format(new Date());
+      return normalizedCandidate;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private getCurrentMonthPeriodInTimeZone(timeZone: string, value = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(value);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    return startOfMonth(
+      new Date(Number(map.get('year')), Number(map.get('month')) - 1, 1),
+    );
+  }
+
+  private getTimeZoneOffsetMs(
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+    second: number,
+    timeZone: string,
+  ) {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, 0);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      hourCycle: 'h23',
+    });
+    const parts = formatter.formatToParts(new Date(utcGuess));
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    const localYear = Number(map.get('year'));
+    const localMonth = Number(map.get('month'));
+    const localDay = Number(map.get('day'));
+    const localHour = Number(map.get('hour')) === 24 ? 0 : Number(map.get('hour'));
+    const localMinute = Number(map.get('minute'));
+    const localSecond = Number(map.get('second'));
+    const zonedAsUtc = Date.UTC(
+      localYear,
+      localMonth - 1,
+      localDay,
+      localHour,
+      localMinute,
+      localSecond,
+      0,
+    );
+    return zonedAsUtc - utcGuess;
+  }
+
+  private zonedLocalToUtc(
+    year: number,
+    month: number,
+    day: number,
+    timeZone: string,
+  ) {
+    const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+    const offsetMs = this.getTimeZoneOffsetMs(year, month, day, 0, 0, 0, timeZone);
+    return new Date(utcGuess - offsetMs);
+  }
+
+  private getTimeZoneMonthRange(period: Date, timeZone: string) {
+    const year = period.getFullYear();
+    const month = period.getMonth() + 1;
+    const monthStart = this.zonedLocalToUtc(year, month, 1, timeZone);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextMonthYear = month === 12 ? year + 1 : year;
+    const nextMonthStart = this.zonedLocalToUtc(nextMonthYear, nextMonth, 1, timeZone);
+    return {
+      monthStart,
+      monthEnd: new Date(nextMonthStart.getTime() - 1),
+    };
+  }
+
   async getStoreName(storeId: number) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -19,6 +113,7 @@ export class AnalyticsService {
     const storeMeta = await this.prisma.store.findUnique({
       where: { id: storeId },
       select: {
+        timeZone: true,
         utilitiesExpenseStatus: true,
         householdExpenseStatus: true,
         staff: {
@@ -34,12 +129,15 @@ export class AnalyticsService {
       },
     });
 
+    const storeTimeZone = this.normalizeStoreTimeZone(storeMeta?.timeZone);
+    const currentPeriod = this.getCurrentMonthPeriodInTimeZone(storeTimeZone);
+
     await this.prisma.pavilion.updateMany({
       where: {
         storeId,
         status: PavilionStatus.PREPAID,
         prepaidUntil: {
-          lt: startOfMonth(new Date()),
+          lt: currentPeriod,
         },
       },
       data: {
@@ -48,18 +146,16 @@ export class AnalyticsService {
       },
     });
 
-    const period = this.parsePeriod(periodInput);
-    const periodStart = startOfMonth(period);
-    const periodEnd = endOfMonth(period);
+    const period = this.parsePeriod(periodInput, storeTimeZone);
+    const periodRange = this.getTimeZoneMonthRange(period, storeTimeZone);
     const prevPeriod = startOfMonth(subMonths(period, 1));
-    const prevPeriodStart = startOfMonth(prevPeriod);
-    const prevPeriodEnd = endOfMonth(prevPeriod);
+    const prevPeriodRange = this.getTimeZoneMonthRange(prevPeriod, storeTimeZone);
     const trendStart = startOfMonth(subMonths(period, 5));
     const additionalChargesForecastRows = await this.prisma.additionalCharge.findMany({
       where: {
         createdAt: {
-          gte: periodStart,
-          lte: periodEnd,
+          gte: periodRange.monthStart,
+          lte: periodRange.monthEnd,
         },
         pavilion: {
           storeId,
@@ -93,16 +189,16 @@ export class AnalyticsService {
         additionalCharges: {
           where: {
             createdAt: {
-              gte: periodStart,
-              lte: periodEnd,
+              gte: periodRange.monthStart,
+              lte: periodRange.monthEnd,
             },
           },
           include: {
             payments: {
               where: {
                 paidAt: {
-                  gte: periodStart,
-                  lte: periodEnd,
+                  gte: periodRange.monthStart,
+                  lte: periodRange.monthEnd,
                 },
               },
             },
@@ -130,16 +226,16 @@ export class AnalyticsService {
         additionalCharges: {
           where: {
             createdAt: {
-              gte: prevPeriodStart,
-              lte: prevPeriodEnd,
+              gte: prevPeriodRange.monthStart,
+              lte: prevPeriodRange.monthEnd,
             },
           },
           include: {
             payments: {
               where: {
                 paidAt: {
-                  gte: prevPeriodStart,
-                  lte: prevPeriodEnd,
+                  gte: prevPeriodRange.monthStart,
+                  lte: prevPeriodRange.monthEnd,
                 },
               },
             },
@@ -177,8 +273,8 @@ export class AnalyticsService {
         this.prisma.pavilionExpense.findMany({
           where: {
             createdAt: {
-              gte: periodStart,
-              lte: periodEnd,
+              gte: periodRange.monthStart,
+              lte: periodRange.monthEnd,
             },
             OR: [{ storeId }, { pavilion: { storeId } }],
           },
@@ -186,8 +282,8 @@ export class AnalyticsService {
         this.prisma.pavilionExpense.findMany({
           where: {
             createdAt: {
-              gte: prevPeriodStart,
-              lte: prevPeriodEnd,
+              gte: prevPeriodRange.monthStart,
+              lte: prevPeriodRange.monthEnd,
             },
             OR: [{ storeId }, { pavilion: { storeId } }],
           },
@@ -1129,7 +1225,7 @@ export class AnalyticsService {
       where: {
         createdAt: {
           gte: trendStart,
-          lte: periodEnd,
+          lte: periodRange.monthEnd,
         },
         OR: [{ storeId }, { pavilion: { storeId } }],
       },
@@ -1506,12 +1602,19 @@ export class AnalyticsService {
   }
 
   async getIncomeForecastBreakdown(storeId: number, periodInput?: string) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { timeZone: true },
+    });
+    const storeTimeZone = this.normalizeStoreTimeZone(store?.timeZone);
+    const currentPeriod = this.getCurrentMonthPeriodInTimeZone(storeTimeZone);
+
     await this.prisma.pavilion.updateMany({
       where: {
         storeId,
         status: PavilionStatus.PREPAID,
         prepaidUntil: {
-          lt: startOfMonth(new Date()),
+          lt: currentPeriod,
         },
       },
       data: {
@@ -1520,14 +1623,13 @@ export class AnalyticsService {
       },
     });
 
-    const period = this.parsePeriod(periodInput);
-    const periodStart = startOfMonth(period);
-    const periodEnd = endOfMonth(period);
+    const period = this.parsePeriod(periodInput, storeTimeZone);
+    const periodRange = this.getTimeZoneMonthRange(period, storeTimeZone);
     const additionalChargesForecastRows = await this.prisma.additionalCharge.findMany({
       where: {
         createdAt: {
-          gte: periodStart,
-          lte: periodEnd,
+          gte: periodRange.monthStart,
+          lte: periodRange.monthEnd,
         },
         pavilion: {
           storeId,
@@ -1568,8 +1670,8 @@ export class AnalyticsService {
         additionalCharges: {
           where: {
             createdAt: {
-              gte: periodStart,
-              lte: periodEnd,
+              gte: periodRange.monthStart,
+              lte: periodRange.monthEnd,
             },
           },
         },
@@ -1672,9 +1774,9 @@ export class AnalyticsService {
     };
   }
 
-  private parsePeriod(periodInput?: string) {
+  private parsePeriod(periodInput?: string, timeZone = 'UTC') {
     if (!periodInput) {
-      return startOfMonth(new Date());
+      return this.getCurrentMonthPeriodInTimeZone(timeZone);
     }
 
     const match = /^(\d{4})-(\d{2})$/.exec(periodInput.trim());
