@@ -2113,17 +2113,22 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }));
     const hasTypedRecords = recordsWithType.some((item) => item.type !== null);
 
-    let openRecord =
-      [...recordsWithType]
-        .reverse()
-        .find((item) => item.type === 'OPEN')?.record ?? null;
-    let closeRecord =
+    let openRecord: (typeof records)[number] | null =
+      [...recordsWithType].reverse().find((item) => item.type === 'OPEN')?.record ??
+      null;
+    let closeRecord: (typeof records)[number] | null =
       [...recordsWithType].reverse().find((item) => item.type === 'CLOSE')?.record ??
       null;
 
     if (!hasTypedRecords) {
       openRecord = records[0] ?? null;
       closeRecord = records.length > 1 ? records[records.length - 1] : null;
+    } else if (closeRecord) {
+      // Ignore orphan or stale CLOSE records that do not have a matching OPEN
+      // before them. Otherwise a deleted/missing opening blocks opening the day again.
+      if (!openRecord || closeRecord.createdAt.getTime() < openRecord.createdAt.getTime()) {
+        closeRecord = null;
+      }
     }
 
     return { records, openRecord, closeRecord };
