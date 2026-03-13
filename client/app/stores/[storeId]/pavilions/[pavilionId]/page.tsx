@@ -1039,6 +1039,7 @@ export default function PavilionPage() {
             storeId={storeIdNum}
             pavilionId={pavilionIdNum}
             pavilionStatus={pavilion.status}
+            timeZone={pavilion.store?.timeZone || 'UTC'}
             onClose={() => setShowPaymentModal(false)}
             onSaved={handleActionSuccess}
           />
@@ -1048,6 +1049,7 @@ export default function PavilionPage() {
           <CreateDiscountModal
             storeId={storeIdNum}
             pavilionId={pavilionIdNum}
+            timeZone={pavilion.store?.timeZone || 'UTC'}
             onClose={() => setShowDiscountModal(false)}
             onSaved={handleActionSuccess}
           />
@@ -1155,6 +1157,7 @@ export default function PavilionPage() {
               hasPermission(permissions, 'CREATE_CHARGES') ||
               hasPermission(permissions, 'DELETE_CHARGES')
             }
+            timeZone={pavilion.store?.timeZone || 'UTC'}
             onClose={() => setEditingPavilion(null)}
             onSaved={handleActionSuccess}
           />

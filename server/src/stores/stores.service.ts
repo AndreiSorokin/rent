@@ -936,7 +936,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       let nextBank = bankTransferPaid;
       let nextCash1 = cashbox1Paid;
       let nextCash2 = cashbox2Paid;
-      if (!hasAnyPaidChannels) {
+      if (!hasAnyPaidChannels && requestedStatus === 'PAID') {
         const method =
           data.salaryPaymentMethod ?? staff.salaryPaymentMethod ?? 'BANK_TRANSFER';
         nextBank = method === 'BANK_TRANSFER' ? effectiveSalaryAmount : 0;
@@ -945,13 +945,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }
 
       const nextChannelsTotal = nextBank + nextCash1 + nextCash2;
-      if (Math.abs(nextChannelsTotal - effectiveSalaryAmount) > 0.01) {
+      if (
+        requestedStatus === 'PAID' &&
+        Math.abs(nextChannelsTotal - effectiveSalaryAmount) > 0.01
+      ) {
         throw new BadRequestException(
           'Salary amount must equal selected payment channels total',
         );
       }
 
-      updateData.salaryStatus = 'PAID';
+      updateData.salaryStatus = requestedStatus;
       updateData.salaryBankTransferPaid = nextBank;
       updateData.salaryCashbox1Paid = nextCash1;
       updateData.salaryCashbox2Paid = nextCash2;
@@ -1006,8 +1009,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     // Track salary payment as a month-bound expense entry so analytics can
     // calculate previous-month balance from historical data instead of current staff status.
-    const currentMonthStart = startOfMonth(new Date());
-    const currentMonthEnd = endOfMonth(new Date());
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const currentMonthStart = this.getMonthPeriodInTimeZone(storeTimeZone);
+    const currentMonthRange = this.getTimeZoneMonthRange(
+      currentMonthStart,
+      storeTimeZone,
+    );
     const staffMonthExpenseNote = `STAFF:${staffId}:${currentMonthStart.toISOString()}`;
 
     const existingSalaryExpense = await this.prisma.pavilionExpense.findFirst({
@@ -1016,8 +1023,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         type: PavilionExpenseType.SALARIES,
         note: staffMonthExpenseNote,
         createdAt: {
-          gte: currentMonthStart,
-          lte: currentMonthEnd,
+          gte: currentMonthRange.monthStart,
+          lte: currentMonthRange.monthEnd,
         },
       },
       orderBy: { id: 'desc' },
@@ -1031,13 +1038,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         ? updatedStaff.salaryPaymentMethod ?? null
         : null;
 
-    if (effectiveSalaryStatus === 'PAID') {
+    if (effectiveSalaryStatus === 'PAID' && effectiveSalaryAmountForExpense > 0.01) {
       if (existingSalaryExpense) {
         await this.prisma.pavilionExpense.update({
           where: { id: existingSalaryExpense.id },
           data: {
             amount: effectiveSalaryAmountForExpense,
-            status: 'PAID',
+            status: effectiveSalaryStatus,
             note: staffMonthExpenseNote,
             paymentMethod: effectiveSalaryPaymentMethod,
             bankTransferPaid: Number(updatedStaff.salaryBankTransferPaid ?? 0),
@@ -1050,7 +1057,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           data: {
             storeId,
             type: PavilionExpenseType.SALARIES,
-            status: 'PAID',
+            status: effectiveSalaryStatus,
             amount: effectiveSalaryAmountForExpense,
             note: staffMonthExpenseNote,
             paymentMethod: effectiveSalaryPaymentMethod,
@@ -1119,7 +1126,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     const deletedStaff = await this.prisma.$transaction(async (tx) => {
-      if (staff.salaryStatus === 'PAID') {
+      if (staff.salaryStatus !== 'UNPAID') {
         const bank = Number(staff.salaryBankTransferPaid ?? 0);
         const cash1 = Number(staff.salaryCashbox1Paid ?? 0);
         const cash2 = Number(staff.salaryCashbox2Paid ?? 0);
@@ -1262,9 +1269,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private parseMonthPeriod(period?: string) {
+  private parseMonthPeriod(period?: string, timeZone = 'UTC') {
     if (!period) {
-      return startOfMonth(new Date());
+      return this.getMonthPeriodInTimeZone(timeZone);
     }
 
     const match = /^(\d{4})-(\d{2})$/.exec(period.trim());
@@ -1301,23 +1308,26 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private normalizeExtraIncomeInput(data: {
-    name?: string;
-    amount?: number;
-    bankTransferPaid?: number;
-    cashbox1Paid?: number;
-    cashbox2Paid?: number;
-    period?: string;
-    paidAt?: string;
-    idempotencyKey?: string;
-  }) {
+  private normalizeExtraIncomeInput(
+    data: {
+      name?: string;
+      amount?: number;
+      bankTransferPaid?: number;
+      cashbox1Paid?: number;
+      cashbox2Paid?: number;
+      period?: string;
+      paidAt?: string;
+      idempotencyKey?: string;
+    },
+    timeZone: string,
+  ) {
     const name = String(data.name ?? '').trim();
     const amount = Number(data.amount ?? 0);
     const bankTransferPaid = Number(data.bankTransferPaid ?? 0);
     const cashbox1Paid = Number(data.cashbox1Paid ?? 0);
     const cashbox2Paid = Number(data.cashbox2Paid ?? 0);
     const paidAt = data.paidAt ? new Date(data.paidAt) : new Date();
-    const period = this.parseMonthPeriod(data.period);
+    const period = this.parseMonthPeriod(data.period, timeZone);
     const idempotencyKey = String(data.idempotencyKey ?? '').trim();
 
     if (!name) {
@@ -1358,7 +1368,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   async listStoreExtraIncome(storeId: number, period?: string) {
-    const normalizedPeriod = this.parseMonthPeriod(period);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const normalizedPeriod = this.parseMonthPeriod(period, timeZone);
     return (this.prisma as any).storeExtraIncome.findMany({
       where: {
         storeId,
@@ -1382,7 +1393,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       idempotencyKey?: string;
     },
   ) {
-    const payload = this.normalizeExtraIncomeInput(data);
+    const timeZone = await this.getStoreTimeZone(storeId);
+    const payload = this.normalizeExtraIncomeInput(data, timeZone);
     if (payload.idempotencyKey) {
       const existing = await (this.prisma as any).storeExtraIncome.findFirst({
         where: {
@@ -1444,6 +1456,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Store extra income not found');
     }
 
+    const timeZone = await this.getStoreTimeZone(storeId);
     const payload = this.normalizeExtraIncomeInput({
       name: data.name ?? existing.name,
       amount: data.amount ?? existing.amount,
@@ -1456,7 +1469,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           existing.period.getMonth() + 1,
         ).padStart(2, '0')}`,
       paidAt: data.paidAt ?? existing.paidAt.toISOString(),
-    });
+    }, timeZone);
 
     const updated = await (this.prisma as any).storeExtraIncome.update({
       where: { id: incomeId },
@@ -1572,11 +1585,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   private normalizeStoreTimeZone(timeZone?: string | null): string {
     const fallback = 'UTC';
+    const aliases: Record<string, string> = {
+      'Asia/Astana': 'Asia/Almaty',
+      'Asia/Nur-Sultan': 'Asia/Almaty',
+    };
     const raw = String(timeZone ?? '').trim();
-    if (!raw) return fallback;
+    const normalizedCandidate = aliases[raw] ?? raw;
+    if (!normalizedCandidate) return fallback;
     try {
-      new Intl.DateTimeFormat('en-US', { timeZone: raw }).format(new Date());
-      return raw;
+      new Intl.DateTimeFormat('en-US', { timeZone: normalizedCandidate }).format(new Date());
+      return normalizedCandidate;
     } catch {
       return fallback;
     }
@@ -1686,6 +1704,38 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return {
       dayStart,
       dayEnd: new Date(nextDayStart.getTime() - 1),
+    };
+  }
+
+  private getMonthPeriodInTimeZone(timeZone: string, value = new Date()) {
+    const local = this.getTimeZoneParts(value, timeZone);
+    return startOfMonth(new Date(local.year, local.month - 1, 1));
+  }
+
+  private getTimeZoneMonthRange(period: Date, timeZone: string) {
+    const year = period.getFullYear();
+    const month = period.getMonth() + 1;
+    const monthStart = this.zonedLocalToUtc(
+      { year, month, day: 1, hour: 0, minute: 0, second: 0, millisecond: 0 },
+      timeZone,
+    );
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextMonthYear = month === 12 ? year + 1 : year;
+    const nextMonthStart = this.zonedLocalToUtc(
+      {
+        year: nextMonthYear,
+        month: nextMonth,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      timeZone,
+    );
+    return {
+      monthStart,
+      monthEnd: new Date(nextMonthStart.getTime() - 1),
     };
   }
 
@@ -1911,7 +1961,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const minOccurredAt = ledgerMin?._min?.occurredAt
       ? new Date(ledgerMin._min.occurredAt)
       : null;
-    return minOccurredAt ? this.parseAccountingDay(minOccurredAt.toISOString(), 'UTC') : null;
+    if (!minOccurredAt) return null;
+    const timeZone = await this.getStoreTimeZone(storeId);
+    return this.parseAccountingDay(minOccurredAt.toISOString(), timeZone);
   }
 
   private async getLegacyExpenseSnapshotForDay(storeId: number, dayStart: Date, dayEnd: Date) {
@@ -2727,6 +2779,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const timeZone = await this.getStoreTimeZone(storeId);
       const existingPavilions = await tx.pavilion.findMany({
         where: { storeId },
         select: { id: true, number: true },
@@ -2747,7 +2800,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       let importedAccounting = 0;
       let importedStaff = 0;
       const importedPavilionList: string[] = [];
-      const currentPeriod = startOfMonth(new Date());
+      const currentPeriod = this.getMonthPeriodInTimeZone(timeZone);
 
       for (const item of data.pavilions ?? []) {
         const number = item.number?.trim();
@@ -2803,7 +2856,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
                 : (item.advertisingAmount ?? 0),
           prepaidUntil:
             normalizedStatus === PavilionStatus.PREPAID
-              ? endOfMonth(new Date())
+              ? endOfMonth(currentPeriod)
               : null,
         };
 
@@ -2881,7 +2934,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       for (const item of data.accounting ?? []) {
         let parsedDate: Date;
         try {
-          parsedDate = this.parseAccountingDay(item.recordDate, 'UTC');
+          parsedDate = this.parseAccountingDay(item.recordDate, timeZone);
         } catch {
           continue;
         }
@@ -2966,10 +3019,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
     const toIsoDate = (value: Date) => {
-      const year = value.getUTCFullYear();
-      const month = String(value.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(value.getUTCDate()).padStart(2, '0');
+      const parts = this.getTimeZoneParts(value, storeTimeZone);
+      const year = parts.year;
+      const month = String(parts.month).padStart(2, '0');
+      const day = String(parts.day).padStart(2, '0');
       return `${year}-${month}-${day}`;
     };
 
@@ -3105,10 +3160,20 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async runMonthlyRolloverForStore(storeId: number) {
-    const currentPeriod = startOfMonth(new Date());
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        timeZone: true,
+        lastMonthlyResetPeriod: true,
+      },
+    });
+    if (!store) return;
+
+    const timeZone = this.normalizeStoreTimeZone(store.timeZone);
+    const currentPeriod = this.getMonthPeriodInTimeZone(timeZone);
     const previousPeriod = startOfMonth(subMonths(currentPeriod, 1));
-    const previousPeriodStart = startOfMonth(previousPeriod);
-    const previousPeriodEnd = endOfMonth(previousPeriod);
+    const previousPeriodRange = this.getTimeZoneMonthRange(previousPeriod, timeZone);
 
     // Always keep PREPAID state up to date.
     await this.prisma.pavilion.updateMany({
@@ -3125,15 +3190,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-      select: {
-        id: true,
-        lastMonthlyResetPeriod: true,
-      },
-    });
-    if (!store) return;
-
     const alreadyResetThisMonth =
       store.lastMonthlyResetPeriod &&
       startOfMonth(store.lastMonthlyResetPeriod).getTime() === currentPeriod.getTime();
@@ -3149,16 +3205,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         additionalCharges: {
           where: {
             createdAt: {
-              gte: previousPeriodStart,
-              lte: previousPeriodEnd,
+              gte: previousPeriodRange.monthStart,
+              lte: previousPeriodRange.monthEnd,
             },
           },
           include: {
             payments: {
               where: {
                 paidAt: {
-                  gte: previousPeriodStart,
-                  lte: previousPeriodEnd,
+                  gte: previousPeriodRange.monthStart,
+                  lte: previousPeriodRange.monthEnd,
                 },
               },
             },

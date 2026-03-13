@@ -3,16 +3,21 @@
 import { useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { createPavilionPayment } from '@/lib/payments';
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 type CreatePavilionModalProps = {
   storeId: number;
+  timeZone?: string;
   existingCategories: string[];
   onClose: () => void;
   onSaved: () => void;
 };
 
+const monthKeyToFirstDayIso = (monthKey: string) => `${monthKey}-01T00:00:00.000Z`;
+
 export function CreatePavilionModal({
   storeId,
+  timeZone = 'UTC',
   existingCategories,
   onClose,
   onSaved,
@@ -30,7 +35,7 @@ export function CreatePavilionModal({
   const [tenantName, setTenantName] = useState('');
   const [advertisingAmount, setAdvertisingAmount] = useState('');
   const [prepaymentMonth, setPrepaymentMonth] = useState(
-    new Date().toISOString().slice(0, 7),
+    getCurrentMonthKeyInTimeZone(timeZone),
   );
   const [prepaymentAmount, setPrepaymentAmount] = useState('');
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
@@ -69,7 +74,7 @@ export function CreatePavilionModal({
       const square = Number(squareMeters);
       const price = Number(pricePerSqM);
       const autoRent = square * price;
-      const prepaidPeriodIso = new Date(`${prepaymentMonth}-01`).toISOString();
+      const prepaidPeriodIso = monthKeyToFirstDayIso(prepaymentMonth);
       const prepaymentTarget = prepaymentAmount ? Number(prepaymentAmount) : autoRent;
       const prepayBank = prepaymentBankTransferPaid ? Number(prepaymentBankTransferPaid) : 0;
       const prepayCash1 = prepaymentCashbox1Paid ? Number(prepaymentCashbox1Paid) : 0;
@@ -110,7 +115,7 @@ export function CreatePavilionModal({
 
       if (status === 'PREPAID') {
         await createPavilionPayment(storeId, pavilion.id, {
-          period: prepaidPeriodIso,
+          period: prepaymentMonth,
           rentPaid: prepaymentTarget,
           rentBankTransferPaid: prepayBank > 0 ? prepayBank : undefined,
           rentCashbox1Paid: prepayCash1 > 0 ? prepayCash1 : undefined,

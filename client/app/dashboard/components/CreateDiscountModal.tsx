@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createPavilionDiscount } from '@/lib/discounts';
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 function monthToFirstDayISO(month: string) {
   return `${month}-01T00:00:00.000Z`;
@@ -16,15 +17,17 @@ function monthToLastDayISO(month: string) {
 export function CreateDiscountModal({
   storeId,
   pavilionId,
+  timeZone = 'UTC',
   onClose,
   onSaved,
 }: {
   storeId: number;
   pavilionId: number;
+  timeZone?: string;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = getCurrentMonthKeyInTimeZone(timeZone);
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
 

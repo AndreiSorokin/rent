@@ -14,6 +14,97 @@ export class PavilionsService {
     private readonly storeActivity: StoreActivityService,
   ) {}
 
+  private normalizeStoreTimeZone(timeZone?: string | null): string {
+    const fallback = 'UTC';
+    const aliases: Record<string, string> = {
+      'Asia/Astana': 'Asia/Almaty',
+      'Asia/Nur-Sultan': 'Asia/Almaty',
+    };
+    const raw = String(timeZone ?? '').trim();
+    const normalizedCandidate = aliases[raw] ?? raw;
+    if (!normalizedCandidate) return fallback;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: normalizedCandidate }).format(new Date());
+      return normalizedCandidate;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private async getStoreTimeZone(storeId: number) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { timeZone: true },
+    });
+    return this.normalizeStoreTimeZone(store?.timeZone);
+  }
+
+  private getTimeZoneMonthPeriod(timeZone: string, value = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+    }).formatToParts(value);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    return startOfMonth(
+      new Date(Number(map.get('year')), Number(map.get('month')) - 1, 1),
+    );
+  }
+
+  private getTimeZoneOffsetMs(
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+    second: number,
+    timeZone: string,
+  ) {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, 0);
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      hourCycle: 'h23',
+    });
+    const parts = formatter.formatToParts(new Date(utcGuess));
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    const zonedAsUtc = Date.UTC(
+      Number(map.get('year')),
+      Number(map.get('month')) - 1,
+      Number(map.get('day')),
+      Number(map.get('hour')) === 24 ? 0 : Number(map.get('hour')),
+      Number(map.get('minute')),
+      Number(map.get('second')),
+      0,
+    );
+    return zonedAsUtc - utcGuess;
+  }
+
+  private zonedLocalToUtc(year: number, month: number, day: number, timeZone: string) {
+    const utcGuess = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+    const offsetMs = this.getTimeZoneOffsetMs(year, month, day, 0, 0, 0, timeZone);
+    return new Date(utcGuess - offsetMs);
+  }
+
+  private getTimeZoneMonthRange(period: Date, timeZone: string) {
+    const year = period.getFullYear();
+    const month = period.getMonth() + 1;
+    const monthStart = this.zonedLocalToUtc(year, month, 1, timeZone);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextMonthYear = month === 12 ? year + 1 : year;
+    const nextMonthStart = this.zonedLocalToUtc(nextMonthYear, nextMonth, 1, timeZone);
+    return {
+      monthStart,
+      monthEnd: new Date(nextMonthStart.getTime() - 1),
+    };
+  }
+
   private enrichPavilionPaymentStatus<T extends {
     status: PavilionStatus;
     squareMeters: number;
@@ -47,18 +138,21 @@ export class PavilionsService {
       openingDebt: number;
       closingDebt: number;
     }>;
-  }>(pavilion: T) {
+  }>(pavilion: T, timeZone = 'UTC') {
     const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-    const monthStartTime = monthStart.getTime();
+    const monthStart = this.getTimeZoneMonthPeriod(timeZone, now);
+    const monthRange = this.getTimeZoneMonthRange(monthStart, timeZone);
     const previousMonthStartTime = startOfMonth(
       new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1),
     ).getTime();
 
-    const currentPayment = pavilion.payments.find(
-      (payment) => startOfMonth(payment.period).getTime() === monthStartTime,
-    );
+    const currentPayment = pavilion.payments.find((payment) => {
+      const period = startOfMonth(payment.period);
+      return (
+        period.getFullYear() === monthStart.getFullYear() &&
+        period.getMonth() === monthStart.getMonth()
+      );
+    });
 
     const baseRent =
       pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
@@ -84,7 +178,9 @@ export class PavilionsService {
         : 0;
 
     const currentMonthCharges = pavilion.additionalCharges.filter(
-      (charge) => charge.createdAt >= monthStart && charge.createdAt <= monthEnd,
+      (charge) =>
+        charge.createdAt >= monthRange.monthStart &&
+        charge.createdAt <= monthRange.monthEnd,
     );
     const expectedAdditional = currentMonthCharges.reduce(
       (sum, charge) => sum + Number(charge.amount ?? 0),
@@ -112,10 +208,15 @@ export class PavilionsService {
       (paidUtilitiesRaw > 0 ? paidUtilitiesRaw : paidUtilitiesChannels) +
       (paidAdvertisingRaw > 0 ? paidAdvertisingRaw : paidAdvertisingChannels);
     const paidAdditional = currentMonthCharges.reduce(
-      (sum, charge) =>
+          (sum, charge) =>
         sum +
         charge.payments.reduce((inner, payment) => {
-          if (payment.paidAt < monthStart || payment.paidAt > monthEnd) return inner;
+          if (
+            payment.paidAt < monthRange.monthStart ||
+            payment.paidAt > monthRange.monthEnd
+          ) {
+            return inner;
+          }
           return inner + Number(payment.amountPaid ?? 0);
         }, 0),
       0,
@@ -125,12 +226,17 @@ export class PavilionsService {
       expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
     const paidTotal = paidBase + paidAdditional;
 
-    const currentMonthLedger = (pavilion.monthlyLedgers ?? []).find(
-      (ledger) => startOfMonth(ledger.period).getTime() === monthStartTime,
-    );
-    const previousMonthLedger = (pavilion.monthlyLedgers ?? []).find(
-      (ledger) => startOfMonth(ledger.period).getTime() === previousMonthStartTime,
-    );
+    const currentMonthLedger = (pavilion.monthlyLedgers ?? []).find((ledger) => {
+      const period = startOfMonth(ledger.period);
+      return (
+        period.getFullYear() === monthStart.getFullYear() &&
+        period.getMonth() === monthStart.getMonth()
+      );
+    });
+    const previousMonthLedger = (pavilion.monthlyLedgers ?? []).find((ledger) => {
+      const period = startOfMonth(ledger.period);
+      return period.getTime() === previousMonthStartTime;
+    });
     const carryAdjustment = Number(
       previousMonthLedger?.closingDebt ?? currentMonthLedger?.openingDebt ?? 0,
     );
@@ -216,11 +322,13 @@ export class PavilionsService {
   }
 
   async create(storeId: number, dto: CreatePavilionDto, userId?: number) {
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const currentPeriod = this.getTimeZoneMonthPeriod(storeTimeZone);
     const calculatedRent = dto.squareMeters * dto.pricePerSqM;
     const isPrepaid = dto.status === PavilionStatus.PREPAID;
     const parsedPrepaidUntil = dto.prepaidUntil
       ? endOfMonth(new Date(dto.prepaidUntil))
-      : endOfMonth(new Date());
+      : endOfMonth(currentPeriod);
 
     const lastPavilionByOrder = await this.prisma.pavilion.findFirst({
       where: { storeId },
@@ -243,7 +351,7 @@ export class PavilionsService {
         store: { connect: { id: storeId } },
       },
     });
-    await this.refreshMonthlyLedger(created.id, startOfMonth(new Date()));
+    await this.refreshMonthlyLedger(created.id, currentPeriod);
     await this.storeActivity.log({
       storeId,
       userId,
@@ -276,6 +384,8 @@ export class PavilionsService {
     },
   ) {
     await this.syncExpiredPrepayments(storeId);
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const currentPeriod = this.getTimeZoneMonthPeriod(storeTimeZone);
 
     const normalizedStatus = this.toPavilionStatus(options?.status);
     const normalizedSearch = options?.search?.trim();
@@ -327,7 +437,7 @@ export class PavilionsService {
       monthlyLedgers: {
         where: {
           period: {
-            lte: startOfMonth(new Date()),
+            lte: currentPeriod,
           },
         },
         orderBy: { period: 'desc' },
@@ -356,7 +466,7 @@ export class PavilionsService {
       orderBy: [{ id: 'asc' }],
     });
     let enriched = this.sortPavilionsByStoredOrNaturalOrder(
-      items.map((item) => this.enrichPavilionPaymentStatus(item)),
+      items.map((item) => this.enrichPavilionPaymentStatus(item, storeTimeZone)),
     );
     if (paymentStatus) {
       enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
@@ -489,6 +599,8 @@ export class PavilionsService {
     data: Prisma.PavilionUpdateInput,
     userId?: number,
   ) {
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const currentPeriod = this.getTimeZoneMonthPeriod(storeTimeZone);
     const pavilion = await this.prisma.pavilion.findFirst({
       where: { id: pavilionId, storeId },
     });
@@ -545,7 +657,7 @@ export class PavilionsService {
     if (nextStatus === PavilionStatus.PREPAID) {
       data.prepaidUntil = normalizedPrepaidUntil
         ? endOfMonth(normalizedPrepaidUntil)
-        : endOfMonth(new Date());
+        : endOfMonth(currentPeriod);
     } else if (
       nextStatus === PavilionStatus.AVAILABLE ||
       nextStatus === PavilionStatus.RENTED
@@ -557,7 +669,7 @@ export class PavilionsService {
       where: { id: pavilionId },
       data,
     });
-    await this.refreshMonthlyLedger(updated.id, startOfMonth(new Date()));
+    await this.refreshMonthlyLedger(updated.id, currentPeriod);
 
     const snapshot = (item: {
       number: string;
@@ -789,12 +901,14 @@ export class PavilionsService {
   }
 
   private async syncExpiredPrepayments(storeId: number) {
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const currentPeriod = this.getTimeZoneMonthPeriod(storeTimeZone);
     await this.prisma.pavilion.updateMany({
       where: {
         storeId,
         status: PavilionStatus.PREPAID,
         prepaidUntil: {
-          lt: startOfMonth(new Date()),
+          lt: currentPeriod,
         },
       },
       data: {

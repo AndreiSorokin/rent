@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { getCurrentMonthKeyInTimeZone, getMonthKeyInTimeZone } from '@/lib/dateTime';
 import { LogoutButton } from '@/components/LogoutButton';
 import {
   CirclePlus,
@@ -328,13 +329,10 @@ export default function StorePage() {
       };
     }
 
-    const now = new Date();
+    const storeTimeZone = store?.timeZone || 'UTC';
+    const currentMonthKey = getCurrentMonthKeyInTimeZone(storeTimeZone);
     const currentMonthPayment = (pavilion.payments || []).find((payment: any) => {
-      const period = new Date(payment.period);
-      return (
-        period.getUTCFullYear() === now.getUTCFullYear() &&
-        period.getUTCMonth() === now.getUTCMonth()
-      );
+      return getMonthKeyInTimeZone(payment.period, storeTimeZone) === currentMonthKey;
     });
 
     const rentExpected = Number(
@@ -2315,6 +2313,7 @@ export default function StorePage() {
       {showCreatePavilionModal && (
         <CreatePavilionModal
           storeId={storeId}
+          timeZone={store?.timeZone || 'UTC'}
           existingCategories={allCategories}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}

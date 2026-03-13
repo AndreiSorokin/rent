@@ -341,7 +341,7 @@ export function EditStaffSalaryModal({
             </select>
           </div>
 
-          {salaryStatus === 'PAID' && (
+          {salaryStatus !== 'UNPAID' && (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
