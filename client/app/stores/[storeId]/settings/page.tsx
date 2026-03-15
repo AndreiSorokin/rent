@@ -108,6 +108,9 @@ export default function StoreSettingsPage() {
   const [nameSaving, setNameSaving] = useState(false);
   const [addressDraft, setAddressDraft] = useState('');
   const [addressSaving, setAddressSaving] = useState(false);
+  const [contactPhoneDraft, setContactPhoneDraft] = useState('');
+  const [contactEmailDraft, setContactEmailDraft] = useState('');
+  const [contactSaving, setContactSaving] = useState(false);
   const [currencySaving, setCurrencySaving] = useState(false);
   const [timeZoneSaving, setTimeZoneSaving] = useState(false);
   const [timeZoneQuery, setTimeZoneQuery] = useState('');
@@ -159,6 +162,8 @@ export default function StoreSettingsPage() {
       setStore(data);
       setNameDraft(data.name ?? '');
       setAddressDraft(data.address ?? '');
+      setContactPhoneDraft(data.contactPhone ?? '');
+      setContactEmailDraft(data.contactEmail ?? '');
     } catch (err) {
       console.error(err);
       setError('Не удалось загрузить настройки');
@@ -287,6 +292,25 @@ export default function StoreSettingsPage() {
       alert(err?.message || 'Не удалось изменить адрес');
     } finally {
       setAddressSaving(false);
+    }
+  };
+
+  const handleUpdateStoreContact = async () => {
+    try {
+      setContactSaving(true);
+      await apiFetch(`/stores/${storeId}/contact`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          contactPhone: contactPhoneDraft.trim() || null,
+          contactEmail: contactEmailDraft.trim() || null,
+        }),
+      });
+      await fetchStore(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось изменить контактные данные');
+    } finally {
+      setContactSaving(false);
     }
   };
 
@@ -772,6 +796,40 @@ export default function StoreSettingsPage() {
                 </div>
                 <p className="mt-2 text-sm text-[#6b6b6b]">
                   Оставьте поле пустым, чтобы удалить адрес.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Контактные данные объекта</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={contactPhoneDraft}
+                    onChange={(e) => setContactPhoneDraft(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Телефон объекта"
+                  />
+                  <input
+                    type="email"
+                    value={contactEmailDraft}
+                    onChange={(e) => setContactEmailDraft(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Почта объекта"
+                  />
+                  <button
+                    onClick={handleUpdateStoreContact}
+                    disabled={
+                      contactSaving ||
+                      (contactPhoneDraft.trim() === String(store.contactPhone ?? '').trim() &&
+                        contactEmailDraft.trim() === String(store.contactEmail ?? '').trim())
+                    }
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {contactSaving ? '...' : 'Сохранить'}
+                  </button>
+                </div>
+                <p className="mt-2 text-sm text-[#6b6b6b]">
+                  Оставьте поля пустыми, чтобы удалить контактные данные.
                 </p>
               </div>
 

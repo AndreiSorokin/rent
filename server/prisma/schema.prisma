@@ -64,6 +64,8 @@ model Store {
   id          Int          @id @default(autoincrement())
   name        String
   address     String?
+  contactPhone String?
+  contactEmail String?
   currency    Currency     @default(RUB)
   timeZone    String       @default("UTC")
   pavilionCategoryPresets String[] @default([])

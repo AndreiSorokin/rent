@@ -11,7 +11,9 @@ interface StoreSummary {
   id: number;
   name: string;
   permissions?: string[];
-  address?: string;
+  address?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
 }
 
 export default function StoresPage() {
@@ -118,7 +120,6 @@ export default function StoresPage() {
                   <div className="mb-8">
                     <div className="inline-flex rounded-full bg-[#F4EFEB] px-3 py-1 text-sm text-[#6B6B6B]">
                       Адрес: {store.address || 'Не указан'}
-                      {console.log(store)}
                     </div>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#ECE6E0] pt-4">

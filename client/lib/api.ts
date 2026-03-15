@@ -25,15 +25,17 @@ export async function apiFetch<T = any>(
     }
 
     const errorText = await res.text();
+    let parsedMessage: string | undefined;
     try {
       const parsed = JSON.parse(errorText) as { message?: string | string[] };
-      const message = Array.isArray(parsed.message)
+      parsedMessage = Array.isArray(parsed.message)
         ? parsed.message.join(', ')
         : parsed.message;
-      throw new Error(message || 'API error');
     } catch {
-      throw new Error(errorText || 'API error');
+      // Ignore JSON parse errors and fall back to raw response text below.
     }
+
+    throw new Error(parsedMessage || errorText || 'API error');
   }
 
   if (res.status === 204) {
