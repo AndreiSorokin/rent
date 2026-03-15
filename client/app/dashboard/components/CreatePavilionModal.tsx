@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { createPavilionPayment } from '@/lib/payments';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
+import { useToast } from '@/components/toast/ToastProvider';
 
 type CreatePavilionModalProps = {
   storeId: number;
@@ -22,6 +23,7 @@ export function CreatePavilionModal({
   onClose,
   onSaved,
 }: CreatePavilionModalProps) {
+  const toast = useToast();
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
   const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
@@ -42,33 +44,22 @@ export function CreatePavilionModal({
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const modalScrollRef = useRef<HTMLFormElement | null>(null);
-
-  const setModalError = (message: string) => {
-    setError(message);
-    requestAnimationFrame(() => {
-      modalScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  };
 
   const handleSubmit = async () => {
     const category = newCategory.trim() || selectedCategory.trim();
-
     const needsTenant = status === 'RENTED' || status === 'PREPAID';
 
     if (!number || !squareMeters || !pricePerSqM || !category) {
-      setModalError('Заполните все обязательные поля, включая категорию');
+      toast.error('Заполните все обязательные поля, включая категорию');
       return;
     }
 
     if (needsTenant && !tenantName.trim()) {
-      setModalError('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
+      toast.error('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
       return;
     }
 
     setLoading(true);
-    setError(null);
 
     try {
       const square = Number(squareMeters);
@@ -83,12 +74,13 @@ export function CreatePavilionModal({
 
       if (status === 'PREPAID') {
         if (prepaymentTarget <= 0) {
-          setModalError('Сумма предоплаты должна быть больше 0');
+          toast.error('Сумма предоплаты должна быть больше 0');
           setLoading(false);
           return;
         }
+
         if (Math.abs(prepayChannelsTotal - prepaymentTarget) > 0.01) {
-          setModalError('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+          toast.error('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
           setLoading(false);
           return;
         }
@@ -108,7 +100,9 @@ export function CreatePavilionModal({
               ? null
               : status === 'PREPAID'
                 ? 0
-                : (advertisingAmount ? Number(advertisingAmount) : 0),
+                : advertisingAmount
+                  ? Number(advertisingAmount)
+                  : 0,
           prepaidUntil: status === 'PREPAID' ? prepaidPeriodIso : undefined,
         }),
       });
@@ -124,9 +118,10 @@ export function CreatePavilionModal({
         });
       }
 
+      toast.success('Павильон успешно создан');
       onSaved();
     } catch (err: any) {
-      setModalError(err.message || 'Ошибка создания павильона');
+      toast.error(err.message || 'Ошибка создания павильона');
     } finally {
       setLoading(false);
     }
@@ -135,14 +130,13 @@ export function CreatePavilionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
       <form
-        ref={modalScrollRef}
         onSubmit={(e) => {
           e.preventDefault();
           void handleSubmit();
         }}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
-        <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
+        <div className="top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
           <h2 className="text-xl font-extrabold text-[#111111]">Создать новый павильон</h2>
           <button
             type="button"
@@ -154,12 +148,6 @@ export function CreatePavilionModal({
             ×
           </button>
         </div>
-
-        {error && (
-          <p className="mb-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
-            {error}
-          </p>
-        )}
 
         <div className="space-y-5">
           <div>
@@ -174,9 +162,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className={labelClass}>
-              Категория (из существующих)
-            </label>
+            <label className={labelClass}>Категория (из существующих)</label>
             {!newCategory.trim() ? (
               <select
                 value={selectedCategory}
@@ -198,9 +184,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className={labelClass}>
-              Или введите новую категорию
-            </label>
+            <label className={labelClass}>Или введите новую категорию</label>
             {!selectedCategory ? (
               <input
                 type="text"
@@ -255,9 +239,7 @@ export function CreatePavilionModal({
 
           {(status === 'RENTED' || status === 'PREPAID') && (
             <div>
-              <label className={labelClass}>
-                Наименование организации
-              </label>
+              <label className={labelClass}>Наименование организации</label>
               <input
                 type="text"
                 value={tenantName}
@@ -270,9 +252,7 @@ export function CreatePavilionModal({
 
           {status === 'RENTED' && (
             <div>
-              <label className={labelClass}>
-                Реклама
-              </label>
+              <label className={labelClass}>Реклама</label>
               <input
                 type="number"
                 step="0.01"
@@ -288,9 +268,7 @@ export function CreatePavilionModal({
           {status === 'PREPAID' && (
             <>
               <div>
-                <label className={labelClass}>
-                  Месяц предоплаты
-                </label>
+                <label className={labelClass}>Месяц предоплаты</label>
                 <input
                   type="month"
                   value={prepaymentMonth}
@@ -312,7 +290,9 @@ export function CreatePavilionModal({
                 />
               </div>
               <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-                <p className="mb-2 text-sm font-semibold text-[#111111]">Каналы оплаты предоплаты</p>
+                <p className="mb-2 text-sm font-semibold text-[#111111]">
+                  Каналы оплаты предоплаты
+                </p>
                 <div className="space-y-2">
                   <input
                     type="number"

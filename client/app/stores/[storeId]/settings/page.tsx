@@ -6,99 +6,17 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { TimeZoneAutocomplete } from '@/components/TimeZoneAutocomplete';
+import { useToast } from '@/components/toast/ToastProvider';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreSidebar } from '../components/StoreSidebar';
-
-type TimeZoneOption = {
-  value: string;
-  label: string;
-  keywords: string[];
-};
-
-const TIME_ZONE_ALIASES: Record<string, string[]> = {
-  UTC: ['utc', 'гринвич', 'london'],
-  'Europe/Moscow': ['москва', 'moscow', 'msk'],
-  'Europe/Kiev': ['киев', 'kyiv', 'kiev', 'украина'],
-  'Asia/Almaty': [
-    'алматы',
-    'almaty',
-    'астана',
-    'astana',
-    'nur-sultan',
-    'нурсултан',
-    'казахстан',
-  ],
-  'Asia/Tashkent': ['ташкент', 'tashkent', 'узбекистан'],
-  'Asia/Bishkek': ['бишкек', 'bishkek', 'кыргызстан'],
-  'Asia/Dubai': ['дубай', 'dubai', 'оаэ'],
-  'Europe/Istanbul': ['стамбул', 'istanbul', 'турция'],
-  'Europe/Berlin': ['берлин', 'berlin', 'германия'],
-  'Europe/Paris': ['париж', 'paris', 'франция'],
-  'America/New_York': ['нью-йорк', 'new york', 'usa', 'сша', 'восток сша'],
-  'America/Chicago': ['чикаго', 'chicago', 'usa', 'сша', 'центр сша'],
-  'America/Denver': ['денвер', 'denver', 'usa', 'сша', 'горы сша'],
-  'America/Los_Angeles': ['лос-анджелес', 'los angeles', 'la', 'usa', 'сша'],
-};
-
-function humanizeTimeZone(timeZone: string) {
-  if (timeZone === 'UTC') return 'UTC';
-  const city = timeZone.split('/').pop() || timeZone;
-  return city.replace(/_/g, ' ');
-}
-
-function getUtcOffsetLabel(timeZone: string) {
-  try {
-    const dtf = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      timeZoneName: 'shortOffset',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const parts = dtf.formatToParts(new Date());
-    const offset = parts.find((part) => part.type === 'timeZoneName')?.value;
-    return offset ? offset.replace('GMT', 'UTC') : '';
-  } catch {
-    return '';
-  }
-}
-
-function buildTimeZoneOptions(): TimeZoneOption[] {
-  const supported =
-    typeof Intl !== 'undefined' &&
-    typeof (Intl as any).supportedValuesOf === 'function'
-      ? ((Intl as any).supportedValuesOf('timeZone') as string[])
-      : [];
-
-  const baseSet = new Set<string>([
-    'UTC',
-    ...supported,
-    ...Object.keys(TIME_ZONE_ALIASES),
-  ]);
-
-  return Array.from(baseSet)
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b))
-    .map((value) => {
-      const aliases = TIME_ZONE_ALIASES[value] || [];
-      const labelCity = humanizeTimeZone(value);
-      const offset = getUtcOffsetLabel(value);
-      const label = `${labelCity}${offset ? ` (${offset})` : ''} — ${value}`;
-      return {
-        value,
-        label,
-        keywords: [value, labelCity, ...aliases].map((item) => item.toLowerCase()),
-      };
-    });
-}
 
 export default function StoreSettingsPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -111,11 +29,12 @@ export default function StoreSettingsPage() {
   const [contactPhoneDraft, setContactPhoneDraft] = useState('');
   const [contactEmailDraft, setContactEmailDraft] = useState('');
   const [contactSaving, setContactSaving] = useState(false);
+  const [currencyDraft, setCurrencyDraft] = useState<'RUB' | 'KZT'>('RUB');
   const [currencySaving, setCurrencySaving] = useState(false);
   const [timeZoneSaving, setTimeZoneSaving] = useState(false);
   const [timeZoneQuery, setTimeZoneQuery] = useState('');
-  const [debouncedTimeZoneQuery, setDebouncedTimeZoneQuery] = useState('');
-  const [showTimeZoneSuggestions, setShowTimeZoneSuggestions] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSuccess, setSettingsSuccess] = useState('');
 
   const [showDeleteStoreModal, setShowDeleteStoreModal] = useState(false);
   const [deleteStoreInput, setDeleteStoreInput] = useState('');
@@ -164,6 +83,7 @@ export default function StoreSettingsPage() {
       setAddressDraft(data.address ?? '');
       setContactPhoneDraft(data.contactPhone ?? '');
       setContactEmailDraft(data.contactEmail ?? '');
+      setCurrencyDraft(data.currency ?? 'RUB');
     } catch (err) {
       console.error(err);
       setError('Не удалось загрузить настройки');
@@ -185,23 +105,6 @@ export default function StoreSettingsPage() {
     }
     setGroupRenameById(nextDrafts);
   }, [store?.pavilionGroups]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedTimeZoneQuery(timeZoneQuery.trim().toLowerCase());
-    }, 250);
-    return () => clearTimeout(timeout);
-  }, [timeZoneQuery]);
-
-  const timeZoneOptions = useMemo(() => buildTimeZoneOptions(), []);
-  const filteredTimeZoneOptions = useMemo(() => {
-    if (!debouncedTimeZoneQuery) return timeZoneOptions.slice(0, 30);
-    return timeZoneOptions
-      .filter((option) =>
-        option.keywords.some((keyword) => keyword.includes(debouncedTimeZoneQuery)),
-      )
-      .slice(0, 30);
-  }, [timeZoneOptions, debouncedTimeZoneQuery]);
 
   const categoryList = useMemo(() => {
     const fromPavilions = (store?.pavilions || [])
@@ -227,6 +130,18 @@ export default function StoreSettingsPage() {
     setTimeZoneQuery(store?.timeZone || 'UTC');
   }, [store?.timeZone]);
 
+  useEffect(() => {
+    if (!settingsError) return;
+    toast.error(settingsError);
+    setSettingsError('');
+  }, [settingsError, toast]);
+
+  useEffect(() => {
+    if (!settingsSuccess) return;
+    toast.success(settingsSuccess);
+    setSettingsSuccess('');
+  }, [settingsSuccess, toast]);
+
   if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
@@ -245,35 +160,42 @@ export default function StoreSettingsPage() {
   const handleUpdateStoreName = async () => {
     const name = nameDraft.trim();
     if (!name) {
-      alert('Введите название объекта');
+      setSettingsError('Введите название объекта');
+      setSettingsSuccess('');
       return;
     }
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setNameSaving(true);
       await apiFetch(`/stores/${storeId}/name`, {
         method: 'PATCH',
         body: JSON.stringify({ name }),
       });
       await fetchStore(false);
+      setSettingsSuccess('Название объекта обновлено');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось изменить название');
+      setSettingsError(err?.message || 'Не удалось изменить название');
     } finally {
       setNameSaving(false);
     }
   };
 
-  const handleCurrencyChange = async (currency: 'RUB' | 'KZT') => {
+  const handleCurrencyChange = async () => {
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setCurrencySaving(true);
       await apiFetch(`/stores/${storeId}/currency`, {
         method: 'PATCH',
-        body: JSON.stringify({ currency }),
+        body: JSON.stringify({ currency: currencyDraft }),
       });
       await fetchStore(false);
+      setSettingsSuccess('Валюта объекта обновлена');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось изменить валюту');
+      setSettingsError(err?.message || 'Не удалось изменить валюту');
     } finally {
       setCurrencySaving(false);
     }
@@ -281,15 +203,20 @@ export default function StoreSettingsPage() {
 
   const handleUpdateStoreAddress = async () => {
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setAddressSaving(true);
       await apiFetch(`/stores/${storeId}/address`, {
         method: 'PATCH',
         body: JSON.stringify({ address: addressDraft.trim() || null }),
       });
       await fetchStore(false);
+      setSettingsSuccess(
+        addressDraft.trim() ? 'Адрес объекта обновлен' : 'Адрес объекта удален',
+      );
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось изменить адрес');
+      setSettingsError(err?.message || 'Не удалось изменить адрес');
     } finally {
       setAddressSaving(false);
     }
@@ -297,6 +224,8 @@ export default function StoreSettingsPage() {
 
   const handleUpdateStoreContact = async () => {
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setContactSaving(true);
       await apiFetch(`/stores/${storeId}/contact`, {
         method: 'PATCH',
@@ -306,9 +235,10 @@ export default function StoreSettingsPage() {
         }),
       });
       await fetchStore(false);
+      setSettingsSuccess('Контактные данные объекта обновлены');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось изменить контактные данные');
+      setSettingsError(err?.message || 'Не удалось изменить контактные данные');
     } finally {
       setContactSaving(false);
     }
@@ -316,17 +246,19 @@ export default function StoreSettingsPage() {
 
   const handleTimeZoneChange = async (timeZone: string) => {
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setTimeZoneSaving(true);
       await apiFetch(`/stores/${storeId}/timezone`, {
         method: 'PATCH',
         body: JSON.stringify({ timeZone }),
       });
-      setShowTimeZoneSuggestions(false);
       setTimeZoneQuery(timeZone);
       await fetchStore(false);
+      setSettingsSuccess('Часовой пояс объекта обновлен');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось изменить часовой пояс');
+      setSettingsError(err?.message || 'Не удалось изменить часовой пояс');
     } finally {
       setTimeZoneSaving(false);
     }
@@ -334,11 +266,14 @@ export default function StoreSettingsPage() {
 
   const handleDeleteStore = async () => {
     if (deleteStoreInput.trim().toUpperCase() !== 'УДАЛИТЬ') {
-      alert('Введите слово "УДАЛИТЬ" для подтверждения');
+      setSettingsError('Введите слово "УДАЛИТЬ" для подтверждения');
+      setSettingsSuccess('');
       return;
     }
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setDeletingStore(true);
       await apiFetch(`/stores/${storeId}`, { method: 'DELETE' });
       setShowDeleteStoreModal(false);
@@ -346,7 +281,7 @@ export default function StoreSettingsPage() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось удалить объект');
+      setSettingsError(err?.message || 'Не удалось удалить объект');
     } finally {
       setDeletingStore(false);
     }
@@ -355,11 +290,14 @@ export default function StoreSettingsPage() {
   const handleCreateCategory = async () => {
     const name = newCategoryName.trim();
     if (!name) {
-      alert('Введите название категории');
+      setSettingsError('Введите название категории');
+      setSettingsSuccess('');
       return;
     }
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setCategorySaving(true);
       await apiFetch(`/stores/${storeId}/pavilion-categories`, {
         method: 'POST',
@@ -367,9 +305,10 @@ export default function StoreSettingsPage() {
       });
       setNewCategoryName('');
       await fetchStore(false);
+      setSettingsSuccess('Категория добавлена');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось добавить категорию');
+      setSettingsError(err?.message || 'Не удалось добавить категорию');
     } finally {
       setCategorySaving(false);
     }
@@ -378,11 +317,14 @@ export default function StoreSettingsPage() {
   const handleRenameCategory = async (oldName: string) => {
     const newName = (categoryRenameByName[oldName] ?? '').trim();
     if (!newName) {
-      alert('Введите новое название категории');
+      setSettingsError('Введите новое название категории');
+      setSettingsSuccess('');
       return;
     }
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setCategoryRenameLoadingByName((prev) => ({ ...prev, [oldName]: true }));
       await apiFetch(
         `/stores/${storeId}/pavilion-categories/${encodeURIComponent(oldName)}`,
@@ -392,9 +334,10 @@ export default function StoreSettingsPage() {
         },
       );
       await fetchStore(false);
+      setSettingsSuccess('Категория переименована');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось переименовать категорию');
+      setSettingsError(err?.message || 'Не удалось переименовать категорию');
     } finally {
       setCategoryRenameLoadingByName((prev) => ({ ...prev, [oldName]: false }));
     }
@@ -404,6 +347,8 @@ export default function StoreSettingsPage() {
     if (!confirm(`Удалить категорию "${name}"?`)) return;
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setCategoryDeletingName(name);
       await apiFetch(
         `/stores/${storeId}/pavilion-categories/${encodeURIComponent(name)}`,
@@ -412,9 +357,10 @@ export default function StoreSettingsPage() {
         },
       );
       await fetchStore(false);
+      setSettingsSuccess('Категория удалена');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось удалить категорию');
+      setSettingsError(err?.message || 'Не удалось удалить категорию');
     } finally {
       setCategoryDeletingName(null);
     }
@@ -423,11 +369,14 @@ export default function StoreSettingsPage() {
   const handleCreatePavilionGroup = async () => {
     const name = newGroupName.trim();
     if (!name) {
-      alert('Введите название группы');
+      setSettingsError('Введите название группы');
+      setSettingsSuccess('');
       return;
     }
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setGroupSaving(true);
       await apiFetch(`/stores/${storeId}/pavilion-groups`, {
         method: 'POST',
@@ -435,9 +384,10 @@ export default function StoreSettingsPage() {
       });
       setNewGroupName('');
       await fetchStore(false);
+      setSettingsSuccess('Группа создана');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось создать группу');
+      setSettingsError(err?.message || 'Не удалось создать группу');
     } finally {
       setGroupSaving(false);
     }
@@ -446,20 +396,24 @@ export default function StoreSettingsPage() {
   const handleRenamePavilionGroup = async (groupId: number) => {
     const name = (groupRenameById[groupId] ?? '').trim();
     if (!name) {
-      alert('Введите название группы');
+      setSettingsError('Введите название группы');
+      setSettingsSuccess('');
       return;
     }
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: true }));
       await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
         method: 'PATCH',
         body: JSON.stringify({ name }),
       });
       await fetchStore(false);
+      setSettingsSuccess('Группа переименована');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось переименовать группу');
+      setSettingsError(err?.message || 'Не удалось переименовать группу');
     } finally {
       setGroupRenameLoadingById((prev) => ({ ...prev, [groupId]: false }));
     }
@@ -469,14 +423,17 @@ export default function StoreSettingsPage() {
     if (!confirm('Удалить эту группу?')) return;
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setGroupDeletingId(groupId);
       await apiFetch(`/stores/${storeId}/pavilion-groups/${groupId}`, {
         method: 'DELETE',
       });
       await fetchStore(false);
+      setSettingsSuccess('Группа удалена');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось удалить группу');
+      setSettingsError(err?.message || 'Не удалось удалить группу');
     } finally {
       setGroupDeletingId(null);
     }
@@ -517,6 +474,8 @@ export default function StoreSettingsPage() {
     const toRemove = Array.from(currentIds).filter((id) => !selectedIds.has(id));
 
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setGroupPavilionSavingById((prev) => ({ ...prev, [groupId]: true }));
 
       await Promise.all([
@@ -533,9 +492,10 @@ export default function StoreSettingsPage() {
       ]);
 
       await fetchStore(false);
+      setSettingsSuccess('Состав группы сохранен');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось сохранить состав группы');
+      setSettingsError(err?.message || 'Не удалось сохранить состав группы');
     } finally {
       setGroupPavilionSavingById((prev) => ({ ...prev, [groupId]: false }));
     }
@@ -543,6 +503,8 @@ export default function StoreSettingsPage() {
 
   const handleExportData = async () => {
     try {
+      setSettingsError('');
+      setSettingsSuccess('');
       setExportingData(true);
       const payload = await apiFetch<{
         pavilions: Array<{
@@ -699,9 +661,10 @@ export default function StoreSettingsPage() {
       XLSX.utils.book_append_sheet(wb, staffSheet, SHEETS.staff);
 
       XLSX.writeFile(wb, `store-export-${storeId}.xlsx`);
+      setSettingsSuccess('Данные объекта выгружены');
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось выгрузить данные');
+      setSettingsError(err?.message || 'Не удалось выгрузить данные');
     } finally {
       setExportingData(false);
     }
@@ -800,6 +763,60 @@ export default function StoreSettingsPage() {
               </div>
 
               <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Валюта</h3>
+                <p className="mb-2 text-sm text-[#6b6b6b]">
+                  Текущая валюта: {store.currency} ({getCurrencySymbol(store.currency)})
+                </p>
+                <select
+                  value={currencyDraft}
+                  onChange={(e) => setCurrencyDraft(e.target.value as 'RUB' | 'KZT')}
+                  disabled={currencySaving}
+                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                >
+                  <option value="RUB">Российский рубль (₽)</option>
+                  <option value="KZT">Казахстанский тенге (₸)</option>
+                </select>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleCurrencyChange()}
+                    disabled={currencySaving || currencyDraft === (store.currency ?? 'RUB')}
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {currencySaving ? '...' : 'Сохранить'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Часовой пояс объекта</h3>
+                <p className="mb-2 text-sm text-[#6b6b6b]">
+                  Текущий часовой пояс: {store.timeZone || 'UTC'}
+                </p>
+                <TimeZoneAutocomplete
+                  value={timeZoneQuery}
+                  onChange={setTimeZoneQuery}
+                  disabled={timeZoneSaving}
+                  inputClassName="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                  placeholder="Введите город или таймзону (например: Москва, Almaty, Europe/Moscow)"
+                  dropdownClassName="mt-2 max-h-64 overflow-auto rounded-xl border border-[#d8d1cb] bg-white"
+                  itemClassName="block w-full border-b border-[#f4efeb] px-3 py-2 text-left text-sm text-[#111111] transition last:border-b-0 hover:bg-[#f8f4ef] disabled:opacity-60"
+                  emptyTextClassName="px-3 py-2 text-sm text-[#6b6b6b]"
+                  fallbackTextClassName="border-b border-[#f4efeb] px-3 py-2 text-xs text-[#6b6b6b]"
+                />
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleTimeZoneChange(timeZoneQuery)}
+                    disabled={timeZoneSaving || timeZoneQuery.trim() === String(store.timeZone || 'UTC').trim()}
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {timeZoneSaving ? '...' : 'Сохранить'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
                 <h3 className="mb-2 font-medium">Контактные данные объекта</h3>
                 <div className="space-y-3">
                   <input
@@ -816,79 +833,23 @@ export default function StoreSettingsPage() {
                     className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                     placeholder="Почта объекта"
                   />
-                  <button
-                    onClick={handleUpdateStoreContact}
-                    disabled={
-                      contactSaving ||
-                      (contactPhoneDraft.trim() === String(store.contactPhone ?? '').trim() &&
-                        contactEmailDraft.trim() === String(store.contactEmail ?? '').trim())
-                    }
-                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {contactSaving ? '...' : 'Сохранить'}
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleUpdateStoreContact}
+                      disabled={
+                        contactSaving ||
+                        (contactPhoneDraft.trim() === String(store.contactPhone ?? '').trim() &&
+                          contactEmailDraft.trim() === String(store.contactEmail ?? '').trim())
+                      }
+                      className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {contactSaving ? '...' : 'Сохранить'}
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-[#6b6b6b]">
                   Оставьте поля пустыми, чтобы удалить контактные данные.
                 </p>
-              </div>
-
-              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
-                <h3 className="mb-2 font-medium">Валюта</h3>
-                <p className="mb-2 text-sm text-[#6b6b6b]">
-                  Текущая валюта: {store.currency} ({getCurrencySymbol(store.currency)})
-                </p>
-                <select
-                  value={store.currency ?? 'RUB'}
-                  onChange={(e) => handleCurrencyChange(e.target.value as 'RUB' | 'KZT')}
-                  disabled={currencySaving}
-                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                >
-                  <option value="RUB">Российский рубль (₽)</option>
-                  <option value="KZT">Казахстанский тенге (₸)</option>
-                </select>
-              </div>
-
-              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
-                <h3 className="mb-2 font-medium">Часовой пояс объекта</h3>
-                <p className="mb-2 text-sm text-[#6b6b6b]">
-                  Текущий часовой пояс: {store.timeZone || 'UTC'}
-                </p>
-                <input
-                  type="text"
-                  value={timeZoneQuery}
-                  onChange={(e) => {
-                    setTimeZoneQuery(e.target.value);
-                    setShowTimeZoneSuggestions(true);
-                  }}
-                  onFocus={() => setShowTimeZoneSuggestions(true)}
-                  onBlur={() => {
-                    setTimeout(() => setShowTimeZoneSuggestions(false), 120);
-                  }}
-                  disabled={timeZoneSaving}
-                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                  placeholder="Введите город или таймзону (например: Москва, Almaty, Europe/Moscow)"
-                />
-                {showTimeZoneSuggestions && (
-                  <div className="mt-2 max-h-64 overflow-auto rounded-xl border border-[#d8d1cb] bg-white">
-                    {filteredTimeZoneOptions.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-[#6b6b6b]">Ничего не найдено</p>
-                    ) : (
-                      filteredTimeZoneOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          disabled={timeZoneSaving}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => void handleTimeZoneChange(option.value)}
-                          className="block w-full border-b border-[#f4efeb] px-3 py-2 text-left text-sm text-[#111111] transition last:border-b-0 hover:bg-[#f8f4ef] disabled:opacity-60"
-                        >
-                          {option.label}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
