@@ -106,6 +106,8 @@ export default function StoreSettingsPage() {
 
   const [nameDraft, setNameDraft] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
+  const [addressDraft, setAddressDraft] = useState('');
+  const [addressSaving, setAddressSaving] = useState(false);
   const [currencySaving, setCurrencySaving] = useState(false);
   const [timeZoneSaving, setTimeZoneSaving] = useState(false);
   const [timeZoneQuery, setTimeZoneQuery] = useState('');
@@ -156,6 +158,7 @@ export default function StoreSettingsPage() {
       const data = await apiFetch(`/stores/${storeId}`);
       setStore(data);
       setNameDraft(data.name ?? '');
+      setAddressDraft(data.address ?? '');
     } catch (err) {
       console.error(err);
       setError('Не удалось загрузить настройки');
@@ -268,6 +271,22 @@ export default function StoreSettingsPage() {
       alert(err?.message || 'Не удалось изменить валюту');
     } finally {
       setCurrencySaving(false);
+    }
+  };
+
+  const handleUpdateStoreAddress = async () => {
+    try {
+      setAddressSaving(true);
+      await apiFetch(`/stores/${storeId}/address`, {
+        method: 'PATCH',
+        body: JSON.stringify({ address: addressDraft.trim() || null }),
+      });
+      await fetchStore(false);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || 'Не удалось изменить адрес');
+    } finally {
+      setAddressSaving(false);
     }
   };
 
@@ -731,6 +750,29 @@ export default function StoreSettingsPage() {
                     {nameSaving ? '...' : 'Сохранить'}
                   </button>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Адрес объекта</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={addressDraft}
+                    onChange={(e) => setAddressDraft(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Необязательно"
+                  />
+                  <button
+                    onClick={handleUpdateStoreAddress}
+                    disabled={addressSaving || addressDraft.trim() === String(store.address ?? '').trim()}
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {addressSaving ? '...' : 'Сохранить'}
+                  </button>
+                </div>
+                <p className="mt-2 text-sm text-[#6b6b6b]">
+                  Оставьте поле пустым, чтобы удалить адрес.
+                </p>
               </div>
 
               <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">

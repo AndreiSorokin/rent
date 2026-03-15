@@ -5,11 +5,13 @@ import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { CreateStoreModal } from './components/CreateStoreModal';
 import { getCurrentUserFromToken } from '@/lib/auth';
+import { Store } from 'lucide-react';
 
 interface StoreSummary {
   id: number;
   name: string;
   permissions?: string[];
+  address?: string;
 }
 
 export default function StoresPage() {
@@ -110,13 +112,14 @@ export default function StoresPage() {
                 <span className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-[#FF6A13]/8 blur-2xl transition duration-300 group-hover:bg-[#FF6A13]/18" />
                 <div className="relative z-10">
                   <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F4EFEB] text-lg font-bold text-[#FF6A13] transition group-hover:scale-105">
-                    {index + 1}
+                    <Store />
                   </div>
                   <h3 className="mb-3 truncate text-2xl font-bold text-[#111111]">{store.name}</h3>
                   <div className="mb-8">
-                    <span className="inline-flex rounded-full bg-[#F4EFEB] px-3 py-1 text-sm text-[#6B6B6B]">
-                      {store.permissions?.join(', ') || 'Сотрудник'}
-                    </span>
+                    <div className="inline-flex rounded-full bg-[#F4EFEB] px-3 py-1 text-sm text-[#6B6B6B]">
+                      Адрес: {store.address || 'Не указан'}
+                      {console.log(store)}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#ECE6E0] pt-4">
                     <span className="rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#15803d]">

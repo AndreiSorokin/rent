@@ -32,11 +32,20 @@ export class StoresController {
   }
 
   @Post()
-  create(@Body() data: Prisma.StoreCreateInput, @Req() req: any) {
+  create(
+    @Body() data: { name: string; address?: string | null },
+    @Req() req: any,
+  ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const userId = req.user.id;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return this.service.create(data, userId);
+    return this.service.create(
+      {
+        name: data.name,
+        address: data.address ?? null,
+      } as Prisma.StoreCreateInput,
+      userId,
+    );
   }
 
   @Get()
@@ -93,6 +102,16 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.service.updateName(storeId, req.user.id, data.name);
+  }
+
+  @Patch(':storeId/address')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateAddress(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { address?: string | null },
+    @Req() req: any,
+  ) {
+    return this.service.updateAddress(storeId, req.user.id, data.address ?? null);
   }
 
   @Post(':storeId/pavilion-categories')

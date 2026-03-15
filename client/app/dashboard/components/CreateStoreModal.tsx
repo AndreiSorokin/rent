@@ -27,6 +27,7 @@ export function CreateStoreModal({
   onSaved: (newStore: { id: number; name: string }) => void;
 }) {
   const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +43,10 @@ export function CreateStoreModal({
     try {
       const newStore = await apiFetch<{ id: number; name: string }>('/stores', {
         method: 'POST',
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          address: address.trim() || null,
+        }),
       });
 
       onSaved(newStore);
@@ -70,6 +74,18 @@ export function CreateStoreModal({
             onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Например: Торговый центр Альфа"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Адрес объекта(Не обязательно)
+          </label>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 

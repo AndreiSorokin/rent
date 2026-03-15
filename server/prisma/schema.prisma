@@ -63,6 +63,7 @@ model StoreUser {
 model Store {
   id          Int          @id @default(autoincrement())
   name        String
+  address     String?
   currency    Currency     @default(RUB)
   timeZone    String       @default("UTC")
   pavilionCategoryPresets String[] @default([])

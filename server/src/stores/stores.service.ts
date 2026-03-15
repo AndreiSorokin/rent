@@ -97,6 +97,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       select: {
         id: true,
         name: true,
+        address: true,
       },
     });
   }
@@ -105,9 +106,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
    * Create store + make creator store admin (all permissions)
    */
   async create(data: Prisma.StoreCreateInput, userId: number) {
+    const normalizedName = String(data.name ?? '').trim();
+    const normalizedAddress =
+      typeof data.address === 'string' && data.address.trim().length > 0
+        ? data.address.trim()
+        : null;
+
+    if (!normalizedName) {
+      throw new BadRequestException('Store name is required');
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const store = await tx.store.create({
-        data,
+        data: {
+          ...data,
+          name: normalizedName,
+          address: normalizedAddress,
+        },
       });
 
       await tx.storeUser.create({
@@ -447,6 +462,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       where: { id: storeId },
       data: { name: normalizedName },
       select: { id: true, name: true },
+    });
+  }
+
+  async updateAddress(
+    storeId: number,
+    userId: number,
+    address?: string | null,
+  ) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const normalizedAddress =
+      typeof address === 'string' && address.trim().length > 0 ? address.trim() : null;
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { address: normalizedAddress },
+      select: { id: true, address: true },
     });
   }
 
