@@ -97,6 +97,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       select: {
         id: true,
         name: true,
+        address: true,
       },
     });
   }
@@ -105,9 +106,47 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
    * Create store + make creator store admin (all permissions)
    */
   async create(data: Prisma.StoreCreateInput, userId: number) {
+    const normalizedName = String(data.name ?? '').trim();
+    const normalizedAddress =
+      typeof data.address === 'string' && data.address.trim().length > 0
+        ? data.address.trim()
+        : null;
+    const normalizedTimeZone =
+      typeof data.timeZone === 'string' && data.timeZone.trim().length > 0
+        ? this.normalizeStoreTimeZone(data.timeZone)
+        : undefined;
+    const normalizedContactPhone =
+      typeof (data as any).contactPhone === 'string' &&
+      String((data as any).contactPhone).trim().length > 0
+        ? String((data as any).contactPhone).trim()
+        : null;
+    const normalizedContactEmail =
+      typeof (data as any).contactEmail === 'string' &&
+      String((data as any).contactEmail).trim().length > 0
+        ? String((data as any).contactEmail).trim().toLowerCase()
+        : null;
+
+    if (!normalizedName) {
+      throw new BadRequestException('Store name is required');
+    }
+
+    if (
+      normalizedContactEmail &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedContactEmail)
+    ) {
+      throw new BadRequestException('Введите корректный email объекта');
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const store = await tx.store.create({
-        data,
+        data: {
+          ...data,
+          name: normalizedName,
+          address: normalizedAddress,
+          ...(normalizedTimeZone ? { timeZone: normalizedTimeZone } : {}),
+          contactPhone: normalizedContactPhone,
+          contactEmail: normalizedContactEmail,
+        },
       });
 
       await tx.storeUser.create({
@@ -447,6 +486,57 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       where: { id: storeId },
       data: { name: normalizedName },
       select: { id: true, name: true },
+    });
+  }
+
+  async updateAddress(
+    storeId: number,
+    userId: number,
+    address?: string | null,
+  ) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const normalizedAddress =
+      typeof address === 'string' && address.trim().length > 0 ? address.trim() : null;
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: { address: normalizedAddress },
+      select: { id: true, address: true },
+    });
+  }
+
+  async updateContact(
+    storeId: number,
+    userId: number,
+    contactPhone?: string | null,
+    contactEmail?: string | null,
+  ) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const normalizedContactPhone =
+      typeof contactPhone === 'string' && contactPhone.trim().length > 0
+        ? contactPhone.trim()
+        : null;
+    const normalizedContactEmail =
+      typeof contactEmail === 'string' && contactEmail.trim().length > 0
+        ? contactEmail.trim().toLowerCase()
+        : null;
+
+    if (
+      normalizedContactEmail &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedContactEmail)
+    ) {
+      throw new BadRequestException('Введите корректный email объекта');
+    }
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        contactPhone: normalizedContactPhone,
+        contactEmail: normalizedContactEmail,
+      },
+      select: { id: true, contactPhone: true, contactEmail: true },
     });
   }
 

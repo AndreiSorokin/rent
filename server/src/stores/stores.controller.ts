@@ -32,11 +32,32 @@ export class StoresController {
   }
 
   @Post()
-  create(@Body() data: Prisma.StoreCreateInput, @Req() req: any) {
+  create(
+    @Body()
+    data: {
+      name: string;
+      address?: string | null;
+      contactPhone?: string | null;
+      contactEmail?: string | null;
+      currency?: Currency;
+      timeZone?: string | null;
+    },
+    @Req() req: any,
+  ) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const userId = req.user.id;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return this.service.create(data, userId);
+    return this.service.create(
+      {
+        name: data.name,
+        address: data.address ?? null,
+        contactPhone: data.contactPhone ?? null,
+        contactEmail: data.contactEmail ?? null,
+        currency: data.currency,
+        timeZone: data.timeZone ?? undefined,
+      } as Prisma.StoreCreateInput,
+      userId,
+    );
   }
 
   @Get()
@@ -93,6 +114,31 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.service.updateName(storeId, req.user.id, data.name);
+  }
+
+  @Patch(':storeId/address')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateAddress(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { address?: string | null },
+    @Req() req: any,
+  ) {
+    return this.service.updateAddress(storeId, req.user.id, data.address ?? null);
+  }
+
+  @Patch(':storeId/contact')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateContact(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { contactPhone?: string | null; contactEmail?: string | null },
+    @Req() req: any,
+  ) {
+    return this.service.updateContact(
+      storeId,
+      req.user.id,
+      data.contactPhone ?? null,
+      data.contactEmail ?? null,
+    );
   }
 
   @Post(':storeId/pavilion-categories')

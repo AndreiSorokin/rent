@@ -2,6 +2,7 @@
 
 import { inviteUserByEmail } from '@/lib/storeUsers';
 import { useState } from 'react';
+import { ErrorMessage } from '@/components/messages/StatusMessage';
 
 type InviteUserModalProps = {
   storeId: number;
@@ -49,7 +50,7 @@ export function InviteUserModal({ storeId, onClose, onSuccess }: InviteUserModal
           disabled={loading}
         />
 
-        {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+        {error ? <ErrorMessage className="mb-4">{error}</ErrorMessage> : null}
 
         <div className="flex justify-end gap-3">
           <button
