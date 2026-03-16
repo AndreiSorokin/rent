@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { apiFetch } from '@/lib/api';
+import { useDialog } from '@/components/dialog/DialogProvider';
+import { useToast } from '@/components/toast/ToastProvider';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -68,6 +70,8 @@ export default function StoreHouseholdPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const dialog = useDialog();
+  const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -142,7 +146,7 @@ export default function StoreHouseholdPage() {
 
     const name = createModal.name.trim();
     if (!name) {
-      alert('Введите название расхода');
+      toast.error('Введите название расхода');
       return;
     }
 
@@ -152,7 +156,7 @@ export default function StoreHouseholdPage() {
     const amount = bank + cash1 + cash2;
 
     if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-      alert('Введите корректные суммы по каналам оплаты');
+      toast.error('Введите корректные суммы по каналам оплаты');
       return;
     }
 
@@ -170,7 +174,7 @@ export default function StoreHouseholdPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось добавить расход');
+      toast.error('Не удалось добавить расход');
     } finally {
       setSaving(false);
     }
@@ -187,17 +191,17 @@ export default function StoreHouseholdPage() {
     const paidAmount = bank + cash1 + cash2;
 
     if (!name) {
-      alert('Введите корректное название');
+      toast.error('Введите корректное название');
       return;
     }
 
     if (status === 'PAID') {
       if ([bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-        alert('Суммы по каналам оплаты должны быть неотрицательными');
+        toast.error('Суммы по каналам оплаты должны быть неотрицательными');
         return;
       }
       if (paidAmount <= 0) {
-        alert('Введите сумму хотя бы в одном канале оплаты');
+        toast.error('Введите сумму хотя бы в одном канале оплаты');
         return;
       }
     }
@@ -216,21 +220,27 @@ export default function StoreHouseholdPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить расход');
+      toast.error('Не удалось обновить расход');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить этот расход?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление расхода',
+      message: 'Удалить этот расход?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
     try {
       setSaving(true);
       await deleteHouseholdExpense(storeId, id);
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить расход');
+      toast.error('Не удалось удалить расход');
     } finally {
       setSaving(false);
     }

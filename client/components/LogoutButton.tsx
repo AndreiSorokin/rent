@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useDialog } from '@/components/dialog/DialogProvider';
 
 type LogoutButtonProps = {
   className?: string;
@@ -16,9 +17,16 @@ export function LogoutButton({
   onLoggedOut,
 }: LogoutButtonProps) {
   const router = useRouter();
+  const dialog = useDialog();
 
-  const handleLogout = () => {
-    if (!confirm(confirmMessage)) return;
+  const handleLogout = async () => {
+    const confirmed = await dialog.confirm({
+      title: 'Выход из аккаунта',
+      message: confirmMessage,
+      tone: 'warning',
+      confirmText: 'Выйти',
+    });
+    if (!confirmed) return;
     localStorage.removeItem('token');
     onLoggedOut?.();
     router.replace('/login');

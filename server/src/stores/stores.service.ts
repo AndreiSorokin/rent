@@ -17,6 +17,8 @@ import {
 } from '@prisma/client';
 import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
 import { StoreActivityService } from 'src/store-activity/store-activity.service';
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class StoresService implements OnModuleInit, OnModuleDestroy {
@@ -98,6 +100,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         id: true,
         name: true,
         address: true,
+        description: true,
+        imagePath: true,
+        images: {
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: { id: true, filePath: true, createdAt: true },
+        },
       },
     });
   }
@@ -253,6 +261,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
       staff: {
         orderBy: { createdAt: 'desc' },
+      },
+      images: {
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       },
     };
 
@@ -506,6 +517,18 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private removeUploadedFile(filePath?: string | null) {
+    if (!filePath) return;
+    try {
+      const absolutePath = join(process.cwd(), filePath.replace(/^\/+/, ''));
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to remove uploaded file ${filePath}: ${String(error)}`);
+    }
+  }
+
   async updateContact(
     storeId: number,
     userId: number,
@@ -538,6 +561,201 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
       select: { id: true, contactPhone: true, contactEmail: true },
     });
+  }
+
+  async updateDescription(
+    storeId: number,
+    userId: number,
+    description?: string | null,
+  ) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const normalizedDescription =
+      typeof description === 'string' && description.trim().length > 0
+        ? description.trim()
+        : null;
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { description: normalizedDescription },
+      select: { id: true, description: true },
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STORE_MEDIA',
+      details: {
+        changedFields: ['description'],
+        after: { description: normalizedDescription },
+      },
+    });
+
+    return updated;
+  }
+
+  async updateImage(storeId: number, userId: number, imagePath: string) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const currentStore = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { imagePath: true },
+    });
+    if (!currentStore) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { imagePath },
+      select: { id: true, imagePath: true },
+    });
+
+    if (currentStore.imagePath && currentStore.imagePath !== imagePath) {
+      this.removeUploadedFile(currentStore.imagePath);
+    }
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STORE_MEDIA',
+      details: {
+        changedFields: ['imagePath'],
+        after: { imagePath },
+      },
+    });
+
+    return updated;
+  }
+
+  async addImages(storeId: number, userId: number, imagePaths: string[]) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const normalizedPaths = imagePaths.filter(Boolean);
+    if (normalizedPaths.length === 0) {
+      throw new BadRequestException('Нужно выбрать хотя бы одно изображение');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.storeImage.createMany({
+        data: normalizedPaths.map((filePath) => ({ storeId, filePath })),
+      });
+      await tx.store.update({
+        where: { id: storeId },
+        data: { imagePath: normalizedPaths[0] },
+      });
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'CREATE',
+      entityType: 'STORE_IMAGE',
+      details: {
+        count: normalizedPaths.length,
+      },
+    });
+
+    return this.listMedia(storeId, userId);
+  }
+
+  async listMedia(storeId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        name: true,
+        images: {
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: { id: true, filePath: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    return store;
+  }
+
+  async deleteMediaItem(storeId: number, imageId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const image = await this.prisma.storeImage.findFirst({
+      where: { id: imageId, storeId },
+      select: { id: true, filePath: true },
+    });
+    if (!image) {
+      throw new NotFoundException('Изображение объекта не найдено');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.storeImage.delete({
+        where: { id: imageId },
+      });
+
+      const nextImage = await tx.storeImage.findFirst({
+        where: { storeId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { filePath: true },
+      });
+
+      await tx.store.update({
+        where: { id: storeId },
+        data: { imagePath: nextImage?.filePath ?? null },
+      });
+    });
+
+    this.removeUploadedFile(image.filePath);
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'STORE_IMAGE',
+      details: {
+        imageId,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async deleteImage(storeId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+
+    const currentStore = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { imagePath: true },
+    });
+    if (!currentStore) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const updated = await this.prisma.store.update({
+      where: { id: storeId },
+      data: { imagePath: null },
+      select: { id: true, imagePath: true },
+    });
+
+    this.removeUploadedFile(currentStore.imagePath);
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'DELETE',
+      entityType: 'STORE_MEDIA',
+      details: {
+        removed: ['imagePath'],
+      },
+    });
+
+    return updated;
   }
 
   async addPavilionCategory(storeId: number, userId: number, name: string) {

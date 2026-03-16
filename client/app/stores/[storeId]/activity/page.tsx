@@ -57,9 +57,13 @@ const ENTITY_LABELS: Record<string, string> = {
   CONTRACT: 'Договор',
   DISCOUNT: 'Скидка',
   PAVILION_IMPORT: 'Выгрузка павильонов',
+  STORE_MEDIA: 'Описание и фото объекта',
+  STORE_IMAGE: 'Фото объекта',
   STORE_USER_INVITE: 'Приглашение пользователя',
   STORE_USER_PERMISSIONS: 'Права пользователя',
   STORE_USER_REMOVE: 'Удаление пользователя из объекта',
+  PAVILION_MEDIA: 'Описание и фото павильона',
+  PAVILION_IMAGE: 'Фото павильона',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -76,6 +80,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   MANAGE_STAFF: 'Управление штатным расписанием',
   CREATE_PAVILIONS: 'Создавать павильоны',
   EXPORT_STORE_DATA: 'Выгружать данные',
+  MANAGE_MEDIA: 'Работа с описаниями и изображениями',
   EDIT_PAVILIONS: 'Изменять павильоны',
   DELETE_PAVILIONS: 'Удалять павильоны',
   VIEW_PAYMENTS: 'Просмотр оплат',
@@ -83,7 +88,6 @@ const PERMISSION_LABELS: Record<string, string> = {
   VIEW_ACTIVITY: 'Просмотр журнала действий',
   CREATE_PAYMENTS: 'Записывать оплаты',
   EDIT_PAYMENTS: 'Изменять оплаты',
-  CALCULATE_PAYMENTS: 'Рассчитывать оплаты',
   VIEW_CHARGES: 'Просмотр начислений',
   CREATE_CHARGES: 'Создавать начисления',
   EDIT_CHARGES: 'Изменять статус начислений',
@@ -101,6 +105,8 @@ const DETAIL_LABELS: Record<string, string> = {
   note: 'Примечание',
   number: 'Номер',
   category: 'Категория',
+  description: 'Описание',
+  imagePath: 'Фото',
   pavilionNumber: 'Павильон',
   position: 'Должность',
   fullName: 'Сотрудник',

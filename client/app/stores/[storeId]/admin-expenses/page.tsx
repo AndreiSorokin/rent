@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { useDialog } from '@/components/dialog/DialogProvider';
+import { useToast } from '@/components/toast/ToastProvider';
 import {
   createPavilionExpense,
   deletePavilionExpense,
@@ -84,6 +86,8 @@ export default function StoreAdminExpensesPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const dialog = useDialog();
+  const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -154,7 +158,7 @@ export default function StoreAdminExpensesPage() {
 
     const note = createModal.note.trim();
     if (!note) {
-      alert('Введите название расхода');
+      toast.error('Введите название расхода');
       return;
     }
 
@@ -162,7 +166,7 @@ export default function StoreAdminExpensesPage() {
       setSaving(true);
       const amount = Number(createModal.amount || 0);
       if (!Number.isFinite(amount) || amount <= 0) {
-        alert('Введите корректную сумму');
+        toast.error('Введите корректную сумму');
         return;
       }
 
@@ -176,7 +180,7 @@ export default function StoreAdminExpensesPage() {
       await fetchStore();
     } catch (err) {
       console.error(err);
-      alert('Не удалось добавить административный расход');
+      toast.error('Не удалось добавить административный расход');
     } finally {
       setSaving(false);
     }
@@ -192,17 +196,17 @@ export default function StoreAdminExpensesPage() {
     const paidAmount = bank + cash1 + cash2;
 
     if (!note) {
-      alert('Введите корректное название');
+      toast.error('Введите корректное название');
       return;
     }
 
     if (editModal.status === 'PAID') {
       if ([bank, cash1, cash2].some((value) => Number.isNaN(value) || value < 0)) {
-        alert('Суммы по каналам оплаты должны быть неотрицательными');
+        toast.error('Суммы по каналам оплаты должны быть неотрицательными');
         return;
       }
       if (paidAmount <= 0) {
-        alert('Введите сумму хотя бы в одном канале оплаты');
+        toast.error('Введите сумму хотя бы в одном канале оплаты');
         return;
       }
     }
@@ -233,21 +237,27 @@ export default function StoreAdminExpensesPage() {
       await fetchStore();
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить административный расход');
+      toast.error('Не удалось обновить административный расход');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (expenseId: number) => {
-    if (!confirm('Удалить этот расход?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление расхода',
+      message: 'Удалить этот расход?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
     try {
       setSaving(true);
       await deletePavilionExpense(storeId, expenseId);
       await fetchStore();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить расход');
+      toast.error('Не удалось удалить расход');
     } finally {
       setSaving(false);
     }

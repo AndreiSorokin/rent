@@ -31,6 +31,7 @@ export function CreatePavilionModal({
   const [number, setNumber] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [description, setDescription] = useState('');
   const [squareMeters, setSquareMeters] = useState('');
   const [pricePerSqM, setPricePerSqM] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
@@ -43,6 +44,7 @@ export function CreatePavilionModal({
   const [prepaymentBankTransferPaid, setPrepaymentBankTransferPaid] = useState('');
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
+  const [photos, setPhotos] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -55,7 +57,9 @@ export function CreatePavilionModal({
     }
 
     if (needsTenant && !tenantName.trim()) {
-      toast.error('Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации');
+      toast.error(
+        'Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации',
+      );
       return;
     }
 
@@ -91,6 +95,7 @@ export function CreatePavilionModal({
         body: JSON.stringify({
           number,
           category,
+          description: description.trim() || undefined,
           squareMeters: square,
           pricePerSqM: price,
           status,
@@ -115,6 +120,15 @@ export function CreatePavilionModal({
           rentCashbox1Paid: prepayCash1 > 0 ? prepayCash1 : undefined,
           rentCashbox2Paid: prepayCash2 > 0 ? prepayCash2 : undefined,
           utilitiesPaid: 0,
+        });
+      }
+
+      if (photos.length > 0) {
+        const formData = new FormData();
+        photos.forEach((photo) => formData.append('files', photo));
+        await apiFetch(`/stores/${storeId}/pavilions/${pavilion.id}/media`, {
+          method: 'POST',
+          body: formData,
         });
       }
 
@@ -198,6 +212,17 @@ export function CreatePavilionModal({
                 Выбрана существующая категория: поле новой категории скрыто.
               </p>
             )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Описание павильона</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className={inputClass}
+              placeholder="Короткое описание павильона"
+            />
           </div>
 
           <div>
@@ -325,6 +350,22 @@ export function CreatePavilionModal({
               </div>
             </>
           )}
+
+          <div>
+            <label className={labelClass}>Фотографии павильона</label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+              className={inputClass}
+            />
+            <p className="mt-2 text-xs text-[#6b6b6b]">
+              {photos.length > 0
+                ? `Выбрано фотографий: ${photos.length}`
+                : 'Можно добавить одну или несколько фотографий'}
+            </p>
+          </div>
         </div>
 
         <div className="mt-8 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { useToast } from '@/components/toast/ToastProvider';
 import { reorderPavilions, updatePavilion } from '@/lib/pavilions';
 import { StoreSidebar } from '../components/StoreSidebar';
 
@@ -21,6 +22,7 @@ type Pavilion = {
 export default function UtilitiesPage() {
   const params = useParams();
   const storeId = Number(params.storeId);
+  const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ export default function UtilitiesPage() {
         utilitiesAmount < 0 ||
         advertisingAmount < 0
       ) {
-        alert(`Некорректная сумма у павильона ${pavilion.number}`);
+        toast.error(`Некорректная сумма у павильона ${pavilion.number}`);
         return;
       }
 
@@ -186,10 +188,10 @@ export default function UtilitiesPage() {
           }),
         };
       });
-      alert('Все значения сохранены');
+      toast.success('Все значения сохранены');
     } catch (err) {
       console.error(err);
-      alert('Не удалось сохранить все значения');
+      toast.error('Не удалось сохранить все значения');
     } finally {
       setSavingAll(false);
     }

@@ -16,6 +16,9 @@ import { getPavilion, updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
+import { useDialog } from '@/components/dialog/DialogProvider';
+import { useToast } from '@/components/toast/ToastProvider';
+import { resolveApiMediaUrl } from '@/lib/media';
 import { Discount, Pavilion } from './pavilion.types';
 import {
   formatDateInTimeZone as formatDateInStoreTimeZone,
@@ -30,6 +33,8 @@ export default function PavilionPage() {
   const storeIdNum = Number(storeId);
   const pavilionIdNum = Number(pavilionId);
   const router = useRouter();
+  const dialog = useDialog();
+  const toast = useToast();
   const returnTo = searchParams.get('returnTo') || '';
   const backToStoreHref = returnTo.startsWith(`/stores/${storeIdNum}`)
     ? returnTo
@@ -62,6 +67,9 @@ export default function PavilionPage() {
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [uploadingContract, setUploadingContract] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [descriptionSaving, setDescriptionSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
@@ -82,6 +90,7 @@ export default function PavilionPage() {
         ),
       ]);
       setPavilion(data);
+      setDescriptionDraft(data.description ?? '');
       setPermissions(storeData.permissions || []);
       const categories = Array.from(
         new Set([
@@ -116,12 +125,22 @@ export default function PavilionPage() {
     });
   }, [pavilion?.store?.timeZone]);
 
+  useEffect(() => {
+    setDescriptionDraft(pavilion?.description ?? '');
+  }, [pavilion?.description]);
+
   const handleActionSuccess = () => {
     fetchPavilion();
   };
 
   const handleDeletePavilion = async () => {
-    if (!confirm('Удалить этот павильон?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление павильона',
+      message: 'Удалить этот павильон?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`, {
@@ -129,41 +148,80 @@ export default function PavilionPage() {
       });
       router.push(`/stores/${storeIdNum}`);
     } catch (err: any) {
-      setError(err.message || 'Не удалось удалить павильон');
+      await dialog.alert({
+        title: 'Не удалось удалить павильон',
+        message: err.message || 'Не удалось удалить павильон',
+        tone: 'danger',
+      });
     }
   };
 
   const handleDeleteCharge = async (chargeId: number) => {
-    if (!confirm('Удалить это начисление?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление начисления',
+      message: 'Удалить это начисление?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deleteAdditionalCharge(pavilionIdNum, chargeId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить начисление');
+      await dialog.alert({
+        title: 'Не удалось удалить начисление',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
   const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
-    if (!confirm('Удалить этот платеж начисления?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление оплаты начисления',
+      message: 'Удалить этот платеж начисления?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
-    await apiFetch(
-      `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
-      { method: 'DELETE' },
-    );
-    handleActionSuccess();
+    try {
+      await apiFetch(
+        `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
+        { method: 'DELETE' },
+      );
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      await dialog.alert({
+        title: 'Не удалось удалить оплату начисления',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
+    }
   };
 
   const handleDeleteDiscount = async (discountId: number) => {
-    if (!confirm('Удалить эту скидку?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление скидки',
+      message: 'Удалить эту скидку?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deletePavilionDiscount(storeIdNum, pavilionIdNum, discountId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить скидку');
+      await dialog.alert({
+        title: 'Не удалось удалить скидку',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -187,27 +245,47 @@ export default function PavilionPage() {
   };
 
   const handleDeleteContract = async (contractId: number) => {
-    if (!confirm('Удалить этот документ?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление документа',
+      message: 'Удалить этот документ?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deleteContract(storeIdNum, pavilionIdNum, contractId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить документ');
+      await dialog.alert({
+        title: 'Не удалось удалить документ',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
 
   const handleDeletePaymentEntry = async (entryId: number) => {
-    if (!confirm('Удалить этот платеж?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление платежа',
+      message: 'Удалить этот платеж?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deletePavilionPaymentEntry(storeIdNum, pavilionIdNum, entryId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить платеж');
+      await dialog.alert({
+        title: 'Не удалось удалить платеж',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -316,7 +394,13 @@ export default function PavilionPage() {
   const handleDeletePrepayment = async () => {
     if (!pavilion) return;
 
-    if (!confirm('Удалить предоплату? Статус будет изменен на ЗАНЯТ.')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление предоплаты',
+      message: 'Удалить предоплату? Статус будет изменен на ЗАНЯТ.',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       if (pavilion.prepaidUntil) {
@@ -348,6 +432,53 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       alert('Не удалось удалить предоплату');
+    }
+  };
+
+  const handleUpdateDescription = async () => {
+    try {
+      setDescriptionSaving(true);
+      await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/description`, {
+        method: 'PATCH',
+        body: JSON.stringify({ description: descriptionDraft.trim() || null }),
+      });
+      toast.success(
+        descriptionDraft.trim()
+          ? 'Описание павильона обновлено'
+          : 'Описание павильона удалено',
+      );
+      handleActionSuccess();
+    } catch (err: any) {
+      toast.error(err?.message || 'Не удалось сохранить описание павильона');
+    } finally {
+      setDescriptionSaving(false);
+    }
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    const formData = new FormData();
+    selectedFiles.forEach((file) => formData.append('files', file));
+
+    try {
+      setImageUploading(true);
+      await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/media`, {
+        method: 'POST',
+        body: formData,
+      });
+      toast.success(
+        selectedFiles.length === 1
+          ? 'Фото павильона добавлено'
+          : `Добавлено фотографий: ${selectedFiles.length}`,
+      );
+      handleActionSuccess();
+    } catch (err: any) {
+      toast.error(err?.message || 'Не удалось загрузить фото павильона');
+    } finally {
+      setImageUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -407,6 +538,15 @@ export default function PavilionPage() {
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
   const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
   const prepaidAmount = pavilion.prepaymentAmount ?? null;
+  const canManageMedia = hasPermission(permissions, 'MANAGE_MEDIA');
+  const pavilionImages: Array<{ id: number; filePath: string; createdAt: string }> =
+    pavilion.images && pavilion.images.length > 0
+      ? pavilion.images
+      : pavilion.imagePath
+        ? [{ id: -1, filePath: pavilion.imagePath, createdAt: new Date(0).toISOString() }]
+        : [];
+  const showMediaSection =
+    canManageMedia || Boolean(pavilion.description) || pavilionImages.length > 0;
 
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
@@ -534,6 +674,91 @@ export default function PavilionPage() {
             </div>
           )}
         </div>
+
+        {showMediaSection && (
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+            <h2 className="mb-4 text-xl font-semibold">Описание и фото павильона</h2>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Описание павильона</h3>
+                {canManageMedia ? (
+                  <>
+                    <textarea
+                      value={descriptionDraft}
+                      onChange={(e) => setDescriptionDraft(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                      placeholder="Добавьте описание павильона для арендаторов"
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => void handleUpdateDescription()}
+                        disabled={
+                          descriptionSaving ||
+                          descriptionDraft.trim() === String(pavilion.description ?? '').trim()
+                        }
+                        className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {descriptionSaving ? '...' : 'Сохранить'}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-sm text-[#6b6b6b]">
+                      Оставьте поле пустым, чтобы удалить описание.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm leading-6 text-[#111111]">
+                    {pavilion.description || 'Описание павильона пока не добавлено'}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-3 font-medium">Фото павильона</h3>
+                {pavilionImages[0] ? (
+                  <img
+                    src={resolveApiMediaUrl(pavilionImages[0].filePath) || undefined}
+                    alt={`Фото павильона ${pavilion.number}`}
+                    className="mb-4 h-56 w-full rounded-2xl border border-[#d8d1cb] object-cover"
+                  />
+                ) : (
+                  <div className="mb-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
+                    Фото павильона пока не загружено
+                  </div>
+                )}
+
+                {canManageMedia ? (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]">
+                        {imageUploading ? 'Загрузка...' : 'Добавить фото'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => void handleImageUpload(e)}
+                          disabled={imageUploading}
+                        />
+                      </label>
+                      <Link
+                        href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/media`}
+                        className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
+                      >
+                        Все фото
+                        {pavilionImages.length > 0 ? ` (${pavilionImages.length})` : ''}
+                      </Link>
+                    </div>
+                    <p className="mt-2 text-sm text-[#6b6b6b]">
+                      Поддерживаются JPG, PNG и WEBP до 10 МБ.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        )}
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
