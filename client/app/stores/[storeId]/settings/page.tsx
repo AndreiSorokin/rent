@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { TimeZoneAutocomplete } from '@/components/TimeZoneAutocomplete';
+import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
@@ -16,6 +17,7 @@ export default function StoreSettingsPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const dialog = useDialog();
   const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
@@ -344,7 +346,13 @@ export default function StoreSettingsPage() {
   };
 
   const handleDeleteCategory = async (name: string) => {
-    if (!confirm(`Удалить категорию "${name}"?`)) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление категории',
+      message: `Удалить категорию "${name}"?`,
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       setSettingsError('');
@@ -420,7 +428,13 @@ export default function StoreSettingsPage() {
   };
 
   const handleDeletePavilionGroup = async (groupId: number) => {
-    if (!confirm('Удалить эту группу?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление группы',
+      message: 'Удалить эту группу?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       setSettingsError('');

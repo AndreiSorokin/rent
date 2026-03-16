@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { useDialog } from '@/components/dialog/DialogProvider';
+import { useToast } from '@/components/toast/ToastProvider';
 import { reorderStaff } from '@/lib/staff';
 import { AddStaffModal, EditStaffSalaryModal } from '../components/StaffModals';
 import { StoreSidebar } from '../components/StoreSidebar';
@@ -63,6 +65,8 @@ export default function StoreStaffPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const dialog = useDialog();
+  const toast = useToast();
 
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -160,12 +164,12 @@ export default function StoreStaffPage() {
   const handleAdd = async () => {
     if (!addModal) return;
     if (!addModal.fullName.trim() || !addModal.position.trim() || !addModal.salary) {
-      alert('Заполните все поля');
+      toast.error('Заполните все поля');
       return;
     }
     const salary = Number(addModal.salary);
     if (!Number.isFinite(salary) || salary < 0) {
-      alert('Зарплата должна быть неотрицательным числом');
+      toast.error('Зарплата должна быть неотрицательным числом');
       return;
     }
     try {
@@ -182,21 +186,27 @@ export default function StoreStaffPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось добавить сотрудника');
+      toast.error('Не удалось добавить сотрудника');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить сотрудника?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление сотрудника',
+      message: 'Удалить сотрудника?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
     try {
       setSaving(true);
       await apiFetch(`/stores/${storeId}/staff/${id}`, { method: 'DELETE' });
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить сотрудника');
+      toast.error('Не удалось удалить сотрудника');
     } finally {
       setSaving(false);
     }
@@ -206,7 +216,7 @@ export default function StoreStaffPage() {
     if (!editModal) return;
     const nextSalary = Number(editModal.salary);
     if (!Number.isFinite(nextSalary) || nextSalary < 0) {
-      alert('Зарплата должна быть неотрицательным числом');
+      toast.error('Зарплата должна быть неотрицательным числом');
       return;
     }
 
@@ -218,11 +228,11 @@ export default function StoreStaffPage() {
       cash1 = Number(editModal.salaryCashbox1Paid ?? 0);
       cash2 = Number(editModal.salaryCashbox2Paid ?? 0);
       if ([bank, cash1, cash2].some((v) => !Number.isFinite(v) || v < 0)) {
-        alert('Каналы оплаты должны быть неотрицательными');
+        toast.error('Каналы оплаты должны быть неотрицательными');
         return;
       }
       if (Math.abs(bank + cash1 + cash2 - nextSalary) > 0.01) {
-        alert('Сумма каналов оплаты должна быть равна зарплате');
+        toast.error('Сумма каналов оплаты должна быть равна зарплате');
         return;
       }
     }
@@ -243,7 +253,7 @@ export default function StoreStaffPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      alert('Не удалось обновить сотрудника');
+      toast.error('Не удалось обновить сотрудника');
     } finally {
       setSaving(false);
     }

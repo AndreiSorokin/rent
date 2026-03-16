@@ -16,6 +16,7 @@ import { getPavilion, updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract } from '@/lib/contracts';
+import { useDialog } from '@/components/dialog/DialogProvider';
 import { Discount, Pavilion } from './pavilion.types';
 import {
   formatDateInTimeZone as formatDateInStoreTimeZone,
@@ -30,6 +31,7 @@ export default function PavilionPage() {
   const storeIdNum = Number(storeId);
   const pavilionIdNum = Number(pavilionId);
   const router = useRouter();
+  const dialog = useDialog();
   const returnTo = searchParams.get('returnTo') || '';
   const backToStoreHref = returnTo.startsWith(`/stores/${storeIdNum}`)
     ? returnTo
@@ -121,7 +123,13 @@ export default function PavilionPage() {
   };
 
   const handleDeletePavilion = async () => {
-    if (!confirm('Удалить этот павильон?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление павильона',
+      message: 'Удалить этот павильон?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}`, {
@@ -129,41 +137,80 @@ export default function PavilionPage() {
       });
       router.push(`/stores/${storeIdNum}`);
     } catch (err: any) {
-      setError(err.message || 'Не удалось удалить павильон');
+      await dialog.alert({
+        title: 'Не удалось удалить павильон',
+        message: err.message || 'Не удалось удалить павильон',
+        tone: 'danger',
+      });
     }
   };
 
   const handleDeleteCharge = async (chargeId: number) => {
-    if (!confirm('Удалить это начисление?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление начисления',
+      message: 'Удалить это начисление?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deleteAdditionalCharge(pavilionIdNum, chargeId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить начисление');
+      await dialog.alert({
+        title: 'Не удалось удалить начисление',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
   const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
-    if (!confirm('Удалить этот платеж начисления?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление оплаты начисления',
+      message: 'Удалить этот платеж начисления?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
-    await apiFetch(
-      `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
-      { method: 'DELETE' },
-    );
-    handleActionSuccess();
+    try {
+      await apiFetch(
+        `/pavilions/${pavilionIdNum}/additional-charges/${chargeId}/payments/${paymentId}`,
+        { method: 'DELETE' },
+      );
+      handleActionSuccess();
+    } catch (err) {
+      console.error(err);
+      await dialog.alert({
+        title: 'Не удалось удалить оплату начисления',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
+    }
   };
 
   const handleDeleteDiscount = async (discountId: number) => {
-    if (!confirm('Удалить эту скидку?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление скидки',
+      message: 'Удалить эту скидку?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deletePavilionDiscount(storeIdNum, pavilionIdNum, discountId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить скидку');
+      await dialog.alert({
+        title: 'Не удалось удалить скидку',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -187,27 +234,47 @@ export default function PavilionPage() {
   };
 
   const handleDeleteContract = async (contractId: number) => {
-    if (!confirm('Удалить этот документ?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление документа',
+      message: 'Удалить этот документ?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deleteContract(storeIdNum, pavilionIdNum, contractId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить документ');
+      await dialog.alert({
+        title: 'Не удалось удалить документ',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
 
   const handleDeletePaymentEntry = async (entryId: number) => {
-    if (!confirm('Удалить этот платеж?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление платежа',
+      message: 'Удалить этот платеж?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await deletePavilionPaymentEntry(storeIdNum, pavilionIdNum, entryId);
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить платеж');
+      await dialog.alert({
+        title: 'Не удалось удалить платеж',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -316,7 +383,13 @@ export default function PavilionPage() {
   const handleDeletePrepayment = async () => {
     if (!pavilion) return;
 
-    if (!confirm('Удалить предоплату? Статус будет изменен на ЗАНЯТ.')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление предоплаты',
+      message: 'Удалить предоплату? Статус будет изменен на ЗАНЯТ.',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       if (pavilion.prepaidUntil) {

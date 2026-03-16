@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { useDialog } from '@/components/dialog/DialogProvider';
 import { StoreSidebar } from '../components/StoreSidebar';
 import {
   getDateKeyInTimeZone,
@@ -22,6 +23,7 @@ export default function StoreAccountingPage() {
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
+  const dialog = useDialog();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +112,13 @@ export default function StoreAccountingPage() {
   }, [store?.timeZone, didInitDateFromStoreTz]);
 
   const handleDeleteAccountingRecord = async (recordId: number) => {
-    if (!confirm('Удалить эту запись из бух. таблицы?')) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление записи',
+      message: 'Удалить эту запись из бухгалтерской таблицы?',
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
     try {
       await apiFetch(`/stores/${storeId}/accounting-table/${recordId}`, {
         method: 'DELETE',
@@ -118,7 +126,11 @@ export default function StoreAccountingPage() {
       await fetchData(false);
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить запись');
+      await dialog.alert({
+        title: 'Не удалось удалить запись',
+        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -127,7 +139,7 @@ export default function StoreAccountingPage() {
     const cash1 = dayOpenCash1 ? Number(dayOpenCash1) : 0;
     const cash2 = dayOpenCash2 ? Number(dayOpenCash2) : 0;
     if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
-      alert('Введите корректные суммы');
+      await dialog.alert('Введите корректные суммы');
       return;
     }
 
@@ -146,7 +158,11 @@ export default function StoreAccountingPage() {
       await fetchData(false);
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось открыть день');
+      await dialog.alert({
+        title: 'Не удалось открыть день',
+        message: err?.message || 'Не удалось открыть день',
+        tone: 'danger',
+      });
     } finally {
       setDayActionSaving(false);
     }
@@ -157,7 +173,7 @@ export default function StoreAccountingPage() {
     const cash1 = dayCloseCash1 ? Number(dayCloseCash1) : 0;
     const cash2 = dayCloseCash2 ? Number(dayCloseCash2) : 0;
     if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
-      alert('Введите корректные суммы');
+      await dialog.alert('Введите корректные суммы');
       return;
     }
 
@@ -170,7 +186,15 @@ export default function StoreAccountingPage() {
       Math.abs(cash1 - expectedCash1) > 0.01 ||
       Math.abs(cash2 - expectedCash2) > 0.01;
 
-    if (isMismatch && !confirm('Вы уверены что хотите закрыть день с не схождением?')) return;
+    if (isMismatch) {
+      const confirmed = await dialog.confirm({
+        title: 'Закрытие дня с расхождением',
+        message: 'Вы уверены, что хотите закрыть день с несхождением?',
+        tone: 'warning',
+        confirmText: 'Закрыть день',
+      });
+      if (!confirmed) return;
+    }
 
     try {
       setDayActionSaving(true);
@@ -188,7 +212,11 @@ export default function StoreAccountingPage() {
       await fetchData(false);
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось закрыть день');
+      await dialog.alert({
+        title: 'Не удалось закрыть день',
+        message: err?.message || 'Не удалось закрыть день',
+        tone: 'danger',
+      });
     } finally {
       setDayActionSaving(false);
     }
