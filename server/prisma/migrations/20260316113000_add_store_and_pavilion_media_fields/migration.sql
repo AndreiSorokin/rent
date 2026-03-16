@@ -1,0 +1,9 @@
+ALTER TABLE "Store"
+ADD COLUMN "description" TEXT,
+ADD COLUMN "imagePath" TEXT;
+
+ALTER TABLE "Pavilion"
+ADD COLUMN "description" TEXT,
+ADD COLUMN "imagePath" TEXT;
+
+ALTER TYPE "Permission" ADD VALUE IF NOT EXISTS 'MANAGE_MEDIA';

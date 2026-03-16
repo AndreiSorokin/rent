@@ -1,6 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PavilionStatus, Prisma } from '@prisma/client';
+import { PavilionStatus, Permission, Prisma } from '@prisma/client';
 import { CreatePavilionDto } from './dto/create-pavilion.dto';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import * as fs from 'fs';
@@ -13,6 +18,42 @@ export class PavilionsService {
     private readonly prisma: PrismaService,
     private readonly storeActivity: StoreActivityService,
   ) {}
+
+  private removeUploadedFile(filePath?: string | null) {
+    if (!filePath) return;
+    try {
+      const absolutePath = join(process.cwd(), filePath.replace(/^\/+/, ''));
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+    } catch {
+      // ignore stale files
+    }
+  }
+
+  private async assertStorePermission(
+    storeId: number,
+    userId: number,
+    required: Permission[],
+  ) {
+    const storeUser = await this.prisma.storeUser.findUnique({
+      where: {
+        userId_storeId: { userId, storeId },
+      },
+      select: { permissions: true },
+    });
+
+    if (!storeUser) {
+      throw new NotFoundException('Store not found or access denied');
+    }
+
+    const hasAllPermissions = required.every((permission) =>
+      storeUser.permissions.includes(permission),
+    );
+    if (!hasAllPermissions) {
+      throw new ForbiddenException('Недостаточно прав для этого действия');
+    }
+  }
 
   private normalizeStoreTimeZone(timeZone?: string | null): string {
     const fallback = 'UTC';
@@ -561,6 +602,7 @@ export class PavilionsService {
         store: {
           select: {
             currency: true,
+            timeZone: true,
           },
         },
         contracts: { orderBy: { uploadedAt: 'desc' } },
@@ -569,6 +611,9 @@ export class PavilionsService {
           include: {
             payments: { orderBy: { paidAt: 'asc' } },
           },
+        },
+        images: {
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         },
         discounts: { orderBy: { createdAt: 'desc' } },
         payments: { orderBy: { period: 'asc' } },
@@ -727,6 +772,250 @@ export class PavilionsService {
       entityId: updated.id,
       details: detailsPayload,
     });
+    return updated;
+  }
+
+  async updateDescription(
+    storeId: number,
+    pavilionId: number,
+    description?: string | null,
+    userId?: number,
+  ) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    const normalizedDescription =
+      typeof description === 'string' && description.trim().length > 0
+        ? description.trim()
+        : null;
+
+    const updated = await this.prisma.pavilion.update({
+      where: { id: pavilionId },
+      data: { description: normalizedDescription },
+      select: { id: true, description: true },
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'UPDATE',
+      entityType: 'PAVILION_MEDIA',
+      entityId: pavilionId,
+      details: {
+        changedFields: ['description'],
+        after: { description: normalizedDescription },
+      },
+    });
+
+    return updated;
+  }
+
+  async updateImage(
+    storeId: number,
+    pavilionId: number,
+    imagePath: string,
+    userId?: number,
+  ) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true, imagePath: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    const updated = await this.prisma.pavilion.update({
+      where: { id: pavilionId },
+      data: { imagePath },
+      select: { id: true, imagePath: true },
+    });
+
+    if (pavilion.imagePath && pavilion.imagePath !== imagePath) {
+      this.removeUploadedFile(pavilion.imagePath);
+    }
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'UPDATE',
+      entityType: 'PAVILION_MEDIA',
+      entityId: pavilionId,
+      details: {
+        changedFields: ['imagePath'],
+        after: { imagePath },
+      },
+    });
+
+    return updated;
+  }
+
+  async addImages(
+    storeId: number,
+    pavilionId: number,
+    imagePaths: string[],
+    userId?: number,
+  ) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const normalizedPaths = imagePaths.filter(Boolean);
+    if (normalizedPaths.length === 0) {
+      throw new BadRequestException('Нужно выбрать хотя бы одно изображение');
+    }
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.pavilionImage.createMany({
+        data: normalizedPaths.map((filePath) => ({ pavilionId, filePath })),
+      });
+      await tx.pavilion.update({
+        where: { id: pavilionId },
+        data: { imagePath: normalizedPaths[0] },
+      });
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'CREATE',
+      entityType: 'PAVILION_IMAGE',
+      entityId: pavilionId,
+      details: {
+        count: normalizedPaths.length,
+      },
+    });
+
+    return this.listMedia(storeId, pavilionId, userId);
+  }
+
+  async listMedia(storeId: number, pavilionId: number, userId?: number) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: {
+        id: true,
+        number: true,
+        images: {
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: { id: true, filePath: true, createdAt: true },
+        },
+      },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    return pavilion;
+  }
+
+  async deleteMediaItem(
+    storeId: number,
+    pavilionId: number,
+    imageId: number,
+    userId?: number,
+  ) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const image = await this.prisma.pavilionImage.findFirst({
+      where: { id: imageId, pavilionId },
+      select: { id: true, filePath: true },
+    });
+    if (!image) {
+      throw new NotFoundException('Изображение павильона не найдено');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.pavilionImage.delete({ where: { id: imageId } });
+      const nextImage = await tx.pavilionImage.findFirst({
+        where: { pavilionId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { filePath: true },
+      });
+      await tx.pavilion.update({
+        where: { id: pavilionId },
+        data: { imagePath: nextImage?.filePath ?? null },
+      });
+    });
+
+    this.removeUploadedFile(image.filePath);
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'DELETE',
+      entityType: 'PAVILION_IMAGE',
+      entityId: pavilionId,
+      details: {
+        imageId,
+      },
+    });
+
+    return { success: true };
+  }
+
+  async deleteImage(storeId: number, pavilionId: number, userId?: number) {
+    if (typeof userId === 'number') {
+      await this.assertStorePermission(storeId, userId, ['MANAGE_MEDIA' as Permission]);
+    }
+
+    const pavilion = await this.prisma.pavilion.findFirst({
+      where: { id: pavilionId, storeId },
+      select: { id: true, imagePath: true },
+    });
+    if (!pavilion) {
+      throw new NotFoundException('Pavilion not found in this store');
+    }
+
+    const updated = await this.prisma.pavilion.update({
+      where: { id: pavilionId },
+      data: { imagePath: null },
+      select: { id: true, imagePath: true },
+    });
+
+    this.removeUploadedFile(pavilion.imagePath);
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      pavilionId,
+      action: 'DELETE',
+      entityType: 'PAVILION_MEDIA',
+      entityId: pavilionId,
+      details: {
+        removed: ['imagePath'],
+      },
+    });
+
     return updated;
   }
 

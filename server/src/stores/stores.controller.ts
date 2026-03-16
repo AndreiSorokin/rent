@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   Body,
@@ -10,6 +11,9 @@ import {
   UseGuards,
   Req,
   Query,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { Currency, Permission, Prisma } from '@prisma/client';
@@ -17,6 +21,19 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { Permissions } from 'src/auth/decorators/permissions.decorator';
 import { ReorderStaffDto } from './dto/reorder-staff.dto';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import * as fs from 'fs';
+
+const decodeUploadFileName = (value: string) => {
+  try {
+    const decoded = Buffer.from(value, 'latin1').toString('utf8');
+    return decoded.includes('\uFFFD') ? value : decoded;
+  } catch {
+    return value;
+  }
+};
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('stores')
@@ -37,6 +54,7 @@ export class StoresController {
     data: {
       name: string;
       address?: string | null;
+      description?: string | null;
       contactPhone?: string | null;
       contactEmail?: string | null;
       currency?: Currency;
@@ -51,6 +69,7 @@ export class StoresController {
       {
         name: data.name,
         address: data.address ?? null,
+        description: data.description ?? null,
         contactPhone: data.contactPhone ?? null,
         contactEmail: data.contactEmail ?? null,
         currency: data.currency,
@@ -139,6 +158,137 @@ export class StoresController {
       data.contactPhone ?? null,
       data.contactEmail ?? null,
     );
+  }
+
+  @Patch(':storeId/description')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  updateDescription(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body() data: { description?: string | null },
+    @Req() req: any,
+  ) {
+    return this.service.updateDescription(
+      storeId,
+      req.user.id,
+      data.description ?? null,
+    );
+  }
+
+  @Post(':storeId/image')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadDir = join(process.cwd(), 'uploads', 'store-media');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          cb(null, uploadDir);
+        },
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const decodedOriginalName = decodeUploadFileName(file.originalname);
+          cb(null, `${unique}${extname(decodedOriginalName)}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        const allowed = /\.(jpg|jpeg|png|webp)$/i;
+        if (!allowed.test(file.originalname)) {
+          return cb(new BadRequestException('Поддерживаются только изображения JPG, PNG и WEBP'), false);
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  uploadImage(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @UploadedFile() file: any,
+    @Req() req: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл изображения обязателен');
+    }
+
+    return this.service.updateImage(
+      storeId,
+      req.user.id,
+      `/uploads/store-media/${file.filename}`,
+    );
+  }
+
+  @Delete(':storeId/image')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  deleteImage(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+  ) {
+    return this.service.deleteImage(storeId, req.user.id);
+  }
+
+  @Get(':storeId/media')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  listMedia(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+  ) {
+    return this.service.listMedia(storeId, req.user.id);
+  }
+
+  @Post(':storeId/media')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  @UseInterceptors(
+    FileFieldsInterceptor([{ name: 'files', maxCount: 20 }], {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadDir = join(process.cwd(), 'uploads', 'store-media');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          cb(null, uploadDir);
+        },
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const decodedOriginalName = decodeUploadFileName(file.originalname);
+          cb(null, `${unique}${extname(decodedOriginalName)}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        const allowed = /\.(jpg|jpeg|png|webp)$/i;
+        if (!allowed.test(file.originalname)) {
+          return cb(new BadRequestException('Поддерживаются только изображения JPG, PNG и WEBP'), false);
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  uploadMedia(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @UploadedFiles() files: { files?: any[] },
+    @Req() req: any,
+  ) {
+    const uploaded = files?.files || [];
+    if (uploaded.length === 0) {
+      throw new BadRequestException('Нужно выбрать хотя бы одно изображение');
+    }
+
+    return this.service.addImages(
+      storeId,
+      req.user.id,
+      uploaded.map((file) => `/uploads/store-media/${file.filename}`),
+    );
+  }
+
+  @Delete(':storeId/media/:imageId')
+  @Permissions('MANAGE_MEDIA' as Permission)
+  deleteMediaItem(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('imageId', ParseIntPipe) imageId: number,
+    @Req() req: any,
+  ) {
+    return this.service.deleteMediaItem(storeId, imageId, req.user.id);
   }
 
   @Post(':storeId/pavilion-categories')

@@ -1,10 +1,11 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
+import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
 import { TimeZoneAutocomplete } from '@/components/TimeZoneAutocomplete';
 import { useDialog } from '@/components/dialog/DialogProvider';
@@ -31,6 +32,9 @@ export default function StoreSettingsPage() {
   const [contactPhoneDraft, setContactPhoneDraft] = useState('');
   const [contactEmailDraft, setContactEmailDraft] = useState('');
   const [contactSaving, setContactSaving] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [descriptionSaving, setDescriptionSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
   const [currencyDraft, setCurrencyDraft] = useState<'RUB' | 'KZT'>('RUB');
   const [currencySaving, setCurrencySaving] = useState(false);
   const [timeZoneSaving, setTimeZoneSaving] = useState(false);
@@ -83,6 +87,7 @@ export default function StoreSettingsPage() {
       setStore(data);
       setNameDraft(data.name ?? '');
       setAddressDraft(data.address ?? '');
+      setDescriptionDraft(data.description ?? '');
       setContactPhoneDraft(data.contactPhone ?? '');
       setContactEmailDraft(data.contactEmail ?? '');
       setCurrencyDraft(data.currency ?? 'RUB');
@@ -151,6 +156,7 @@ export default function StoreSettingsPage() {
   const permissions = store.permissions || [];
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canEditPavilions = hasPermission(permissions, 'EDIT_PAVILIONS');
+  const canManageMedia = hasPermission(permissions, 'MANAGE_MEDIA');
   const createPavilions = hasPermission(permissions, 'CREATE_PAVILIONS');
   const canExportData = hasPermission(permissions, 'EXPORT_STORE_DATA');
   const canManageUsers =
@@ -158,6 +164,12 @@ export default function StoreSettingsPage() {
     hasPermission(permissions, 'ASSIGN_PERMISSIONS') ||
     hasPermission(permissions, 'REMOVE_USERS');
   const canViewActivity = hasPermission(permissions, 'VIEW_ACTIVITY');
+  const storeImages: Array<{ id: number; filePath: string; createdAt: string }> =
+    store.images && store.images.length > 0
+      ? store.images
+      : store.imagePath
+        ? [{ id: -1, filePath: store.imagePath, createdAt: new Date(0).toISOString() }]
+        : [];
 
   const handleUpdateStoreName = async () => {
     const name = nameDraft.trim();
@@ -263,6 +275,59 @@ export default function StoreSettingsPage() {
       setSettingsError(err?.message || 'Не удалось изменить часовой пояс');
     } finally {
       setTimeZoneSaving(false);
+    }
+  };
+
+  const handleUpdateStoreDescription = async () => {
+    try {
+      setSettingsError('');
+      setSettingsSuccess('');
+      setDescriptionSaving(true);
+      await apiFetch(`/stores/${storeId}/description`, {
+        method: 'PATCH',
+        body: JSON.stringify({ description: descriptionDraft.trim() || null }),
+      });
+      await fetchStore(false);
+      setSettingsSuccess(
+        descriptionDraft.trim()
+          ? 'Описание объекта обновлено'
+          : 'Описание объекта удалено',
+      );
+    } catch (err: any) {
+      console.error(err);
+      setSettingsError(err?.message || 'Не удалось сохранить описание объекта');
+    } finally {
+      setDescriptionSaving(false);
+    }
+  };
+
+  const handleStoreImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (selectedFiles.length === 0) return;
+
+    const formData = new FormData();
+    selectedFiles.forEach((file) => formData.append('files', file));
+
+    try {
+      setSettingsError('');
+      setSettingsSuccess('');
+      setImageUploading(true);
+      await apiFetch(`/stores/${storeId}/media`, {
+        method: 'POST',
+        body: formData,
+      });
+      await fetchStore(false);
+      setSettingsSuccess(
+        selectedFiles.length === 1
+          ? 'Фото объекта добавлено'
+          : `Добавлено фотографий: ${selectedFiles.length}`,
+      );
+    } catch (err: any) {
+      console.error(err);
+      setSettingsError(err?.message || 'Не удалось загрузить фото объекта');
+    } finally {
+      setImageUploading(false);
+      event.target.value = '';
     }
   };
 
@@ -863,6 +928,79 @@ export default function StoreSettingsPage() {
                 </div>
                 <p className="mt-2 text-sm text-[#6b6b6b]">
                   Оставьте поля пустыми, чтобы удалить контактные данные.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {canManageMedia && (
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
+            <h2 className="mb-4 text-xl font-semibold md:text-2xl">
+              Описание и фото объекта
+            </h2>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Описание объекта</h3>
+                <textarea
+                  value={descriptionDraft}
+                  onChange={(e) => setDescriptionDraft(e.target.value)}
+                  rows={6}
+                  className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                  placeholder="Добавьте короткое описание объекта для будущей версии арендатора"
+                />
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleUpdateStoreDescription()}
+                    disabled={
+                      descriptionSaving ||
+                      descriptionDraft.trim() === String(store.description ?? '').trim()
+                    }
+                    className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {descriptionSaving ? '...' : 'Сохранить'}
+                  </button>
+                </div>
+                <p className="mt-2 text-sm text-[#6b6b6b]">
+                  Оставьте поле пустым, чтобы удалить описание.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-3 font-medium">Фото объекта</h3>
+                {storeImages[0] ? (
+                  <img
+                    src={resolveApiMediaUrl(storeImages[0].filePath) || undefined}
+                    alt={`Фото объекта ${store.name}`}
+                    className="mb-4 h-56 w-full rounded-2xl border border-[#d8d1cb] object-cover"
+                  />
+                ) : (
+                  <div className="mb-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
+                    Фото объекта пока не загружено
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]">
+                    {imageUploading ? 'Загрузка...' : 'Добавить фото'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => void handleStoreImageUpload(e)}
+                      disabled={imageUploading}
+                    />
+                  </label>
+                  <Link
+                    href={`/stores/${storeId}/media`}
+                    className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
+                  >
+                    Все фото{storeImages.length > 0 ? ` (${storeImages.length})` : ''}
+                  </Link>
+                </div>
+                <p className="mt-2 text-sm text-[#6b6b6b]">
+                  Поддерживаются JPG, PNG и WEBP до 10 МБ.
                 </p>
               </div>
             </div>

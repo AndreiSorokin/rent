@@ -51,6 +51,7 @@ export function StoreSidebar({
 
   const permissions = store.permissions || [];
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
+  const canManageMedia = hasPermission(permissions, 'MANAGE_MEDIA');
   const canViewSummary = hasPermission(permissions, 'VIEW_SUMMARY');
   const canViewAccounting = hasPermission(permissions, 'VIEW_PAYMENTS');
   const canOpenUtilities =
@@ -220,7 +221,7 @@ export function StoreSidebar({
             ))}
         </nav>
 
-        {canManageStore && (
+        {(canManageStore || canManageMedia) && (
           <div className="mt-3 border-t border-slate-100 pt-3">
             <Link
               href={`/stores/${storeId}/settings`}

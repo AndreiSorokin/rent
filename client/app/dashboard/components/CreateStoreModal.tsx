@@ -23,10 +23,12 @@ export function CreateStoreModal({
   const toast = useToast();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+  const [description, setDescription] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [currency, setCurrency] = useState<'' | StoreCurrency>('');
   const [timeZone, setTimeZone] = useState('');
+  const [photos, setPhotos] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -49,12 +51,22 @@ export function CreateStoreModal({
         body: JSON.stringify({
           name: name.trim(),
           address: address.trim() || null,
+          description: description.trim() || null,
           contactPhone: contactPhone.trim() || null,
           contactEmail: contactEmail.trim() || null,
           currency: currency || undefined,
           timeZone: timeZone.trim() || null,
         }),
       });
+
+      if (photos.length > 0) {
+        const formData = new FormData();
+        photos.forEach((photo) => formData.append('files', photo));
+        await apiFetch(`/stores/${newStore.id}/media`, {
+          method: 'POST',
+          body: formData,
+        });
+      }
 
       toast.success('Объект успешно создан');
       onSaved(newStore);
@@ -100,6 +112,19 @@ export function CreateStoreModal({
 
           <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-gray-700">
+              Описание объекта
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Короткое описание объекта"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
               Контактный телефон
             </label>
             <input
@@ -139,7 +164,7 @@ export function CreateStoreModal({
             </select>
           </div>
 
-          <div className="mb-2">
+          <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Часовой пояс объекта
             </label>
@@ -156,6 +181,24 @@ export function CreateStoreModal({
             <p className="mt-1 text-xs text-gray-500">
               Доступны крупные города России и Казахстана. Если не указывать,
               будет использоваться UTC.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Фотографии объекта
+            </label>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+              className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              {photos.length > 0
+                ? `Выбрано фотографий: ${photos.length}`
+                : 'Можно добавить одну или несколько фотографий'}
             </p>
           </div>
         </div>

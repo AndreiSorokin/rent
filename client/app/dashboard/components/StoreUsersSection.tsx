@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { getCurrentUserFromToken } from '@/lib/auth';
+import { useDialog } from '@/components/dialog/DialogProvider';
 import { hasPermission } from '@/lib/permissions';
 import {
   getStoreUsers,
@@ -22,6 +23,7 @@ export function StoreUsersSection({
   permissions,
   onUsersChanged,
 }: StoreUsersSectionProps) {
+  const dialog = useDialog();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -56,7 +58,7 @@ export function StoreUsersSection({
     setCurrentUserId(currentUser?.id ?? null);
 
     if (canManageUsers) {
-      fetchUsers();
+      void fetchUsers();
     }
   }, [storeId, canManageUsers]);
 
@@ -66,24 +68,38 @@ export function StoreUsersSection({
   ) => {
     try {
       await updateUserPermissions(storeId, userId, newPermissions);
-      fetchUsers();
+      await fetchUsers();
       onUsersChanged();
     } catch (err) {
       console.error('Failed to update permissions:', err);
-      alert('Не удалось обновить права. Попробуйте снова.');
+      await dialog.alert({
+        title: 'Не удалось обновить права',
+        message: 'Попробуйте снова.',
+        tone: 'danger',
+      });
     }
   };
 
   const handleRemove = async (userId: number, email: string) => {
-    if (!confirm(`Удалить ${email} из этого магазина?`)) return;
+    const confirmed = await dialog.confirm({
+      title: 'Удаление пользователя',
+      message: `Удалить ${email} из этого объекта?`,
+      tone: 'danger',
+      confirmText: 'Удалить',
+    });
+    if (!confirmed) return;
 
     try {
       await removeStoreUser(storeId, userId);
-      fetchUsers();
+      await fetchUsers();
       onUsersChanged();
     } catch (err) {
       console.error('Failed to remove user:', err);
-      alert('Не удалось удалить пользователя. Попробуйте снова.');
+      await dialog.alert({
+        title: 'Не удалось удалить пользователя',
+        message: 'Попробуйте снова.',
+        tone: 'danger',
+      });
     }
   };
 
@@ -115,7 +131,7 @@ export function StoreUsersSection({
           storeId={storeId}
           onClose={() => setShowInviteModal(false)}
           onSuccess={() => {
-            fetchUsers();
+            void fetchUsers();
             onUsersChanged();
           }}
         />
@@ -181,7 +197,7 @@ export function StoreUsersSection({
                         <span className="text-sm text-gray-500">—</span>
                       ) : (
                         <button
-                          onClick={() => handleRemove(su.user.id, su.user.email)}
+                          onClick={() => void handleRemove(su.user.id, su.user.email)}
                           className="text-red-600 transition-colors hover:text-red-800"
                         >
                           Удалить

@@ -64,6 +64,8 @@ model Store {
   id          Int          @id @default(autoincrement())
   name        String
   address     String?
+  description String?
+  imagePath   String?
   contactPhone String?
   contactEmail String?
   currency    Currency     @default(RUB)
@@ -83,6 +85,7 @@ model Store {
   pavilionGroups PavilionGroup[]
   activities StoreActivity[]
   expenseLedger StoreExpenseLedger[]
+  images      StoreImage[]
 }
 
 model StoreActivity {
@@ -222,6 +225,8 @@ model Pavilion {
   number       String
   sortIndex    Int?
   category     String?
+  description  String?
+  imagePath    String?
   squareMeters Float
   pricePerSqM  Float
   status       PavilionStatus @default(AVAILABLE)
@@ -242,9 +247,30 @@ model Pavilion {
   contracts         Contract[]
   groupMemberships PavilionGroupMembership[]
   activities        StoreActivity[]
+  images            PavilionImage[]
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id])
+}
+
+model StoreImage {
+  id        Int      @id @default(autoincrement())
+  storeId    Int
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  filePath   String
+  createdAt  DateTime @default(now())
+
+  @@index([storeId, createdAt])
+}
+
+model PavilionImage {
+  id         Int      @id @default(autoincrement())
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  filePath   String
+  createdAt  DateTime @default(now())
+
+  @@index([pavilionId, createdAt])
 }
 
 model PavilionGroup {
@@ -478,6 +504,7 @@ enum Permission {
   MANAGE_STAFF
   CREATE_PAVILIONS
   EXPORT_STORE_DATA
+  MANAGE_MEDIA
   EDIT_PAVILIONS
   DELETE_PAVILIONS
 

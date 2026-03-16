@@ -3,11 +3,13 @@ export async function apiFetch<T = any>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = localStorage.getItem('token');
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },

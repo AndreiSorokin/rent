@@ -35,6 +35,13 @@ export const MANUAL_EXPENSE_CATEGORIES: Array<{
 export type Pavilion = {
   id: number;
   number: string;
+  description?: string | null;
+  imagePath?: string | null;
+  images?: Array<{
+    id: number;
+    filePath: string;
+    createdAt: string;
+  }>;
   squareMeters: number;
   pricePerSqM: number;
   status: string;
