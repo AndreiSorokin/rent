@@ -7,23 +7,31 @@ import { useToast } from '@/components/toast/ToastProvider';
 
 type StoreCurrency = 'RUB' | 'KZT';
 
+type StoreSummary = {
+  id: number;
+  name: string;
+  address?: string | null;
+  billingCompanyName?: string | null;
+  billingLegalAddress?: string | null;
+  billingInn?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+};
+
 export function CreateStoreModal({
   onClose,
   onSaved,
 }: {
   onClose: () => void;
-  onSaved: (newStore: {
-    id: number;
-    name: string;
-    address?: string | null;
-    contactPhone?: string | null;
-    contactEmail?: string | null;
-  }) => void;
+  onSaved: (newStore: StoreSummary) => void;
 }) {
   const toast = useToast();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [description, setDescription] = useState('');
+  const [billingCompanyName, setBillingCompanyName] = useState('');
+  const [billingLegalAddress, setBillingLegalAddress] = useState('');
+  const [billingInn, setBillingInn] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [currency, setCurrency] = useState<'' | StoreCurrency>('');
@@ -40,18 +48,15 @@ export function CreateStoreModal({
     setLoading(true);
 
     try {
-      const newStore = await apiFetch<{
-        id: number;
-        name: string;
-        address?: string | null;
-        contactPhone?: string | null;
-        contactEmail?: string | null;
-      }>('/stores', {
+      const newStore = await apiFetch<StoreSummary>('/stores', {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
           address: address.trim() || null,
           description: description.trim() || null,
+          billingCompanyName: billingCompanyName.trim() || null,
+          billingLegalAddress: billingLegalAddress.trim() || null,
+          billingInn: billingInn.trim() || null,
           contactPhone: contactPhone.trim() || null,
           contactEmail: contactEmail.trim() || null,
           currency: currency || undefined,
@@ -123,6 +128,51 @@ export function CreateStoreModal({
             />
           </div>
 
+          <div className="mb-6 rounded-xl border border-[#D8D1CB] bg-[#F8F4EF] p-4">
+            <h3 className="mb-3 text-sm font-semibold text-[#111111]">
+              Реквизиты организации
+            </h3>
+
+            <div className="mb-3">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Название организации
+              </label>
+              <input
+                type="text"
+                value={billingCompanyName}
+                onChange={(e) => setBillingCompanyName(e.target.value)}
+                className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Для выставления счета"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                Юридический адрес организации
+              </label>
+              <textarea
+                value={billingLegalAddress}
+                onChange={(e) => setBillingLegalAddress(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Для выставления счета"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">
+                ИНН организации
+              </label>
+              <input
+                type="text"
+                value={billingInn}
+                onChange={(e) => setBillingInn(e.target.value)}
+                className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="10 или 12 цифр"
+              />
+            </div>
+          </div>
+
           <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-gray-700">
               Контактный телефон
@@ -132,7 +182,6 @@ export function CreateStoreModal({
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
               className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Необязательно"
             />
           </div>
 
@@ -145,7 +194,6 @@ export function CreateStoreModal({
               value={contactEmail}
               onChange={(e) => setContactEmail(e.target.value)}
               className="w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Необязательно"
             />
           </div>
 
@@ -179,8 +227,7 @@ export function CreateStoreModal({
               fallbackTextClassName="border-b px-3 py-2 text-xs text-gray-500"
             />
             <p className="mt-1 text-xs text-gray-500">
-              Доступны крупные города России и Казахстана. Если не указывать,
-              будет использоваться UTC.
+              Доступны крупные города России и Казахстана. Если не указывать, будет использоваться UTC.
             </p>
           </div>
 

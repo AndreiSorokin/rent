@@ -14,6 +14,7 @@ import {
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
+  Res,
 } from '@nestjs/common';
 import { StoresService } from './stores.service';
 import { Currency, Permission, Prisma } from '@prisma/client';
@@ -25,6 +26,11 @@ import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import * as fs from 'fs';
+import type { Response } from 'express';
+import { existsSync } from 'fs';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PDFDocument = require('pdfkit');
 
 const decodeUploadFileName = (value: string) => {
   try {
@@ -54,6 +60,9 @@ export class StoresController {
     data: {
       name: string;
       address?: string | null;
+      billingCompanyName?: string | null;
+      billingLegalAddress?: string | null;
+      billingInn?: string | null;
       description?: string | null;
       contactPhone?: string | null;
       contactEmail?: string | null;
@@ -69,6 +78,9 @@ export class StoresController {
       {
         name: data.name,
         address: data.address ?? null,
+        billingCompanyName: data.billingCompanyName ?? null,
+        billingLegalAddress: data.billingLegalAddress ?? null,
+        billingInn: data.billingInn ?? null,
         description: data.description ?? null,
         contactPhone: data.contactPhone ?? null,
         contactEmail: data.contactEmail ?? null,
@@ -158,6 +170,117 @@ export class StoresController {
       data.contactPhone ?? null,
       data.contactEmail ?? null,
     );
+  }
+
+  @Patch(':storeId/billing')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  updateBilling(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Body()
+    data: {
+      billingCompanyName?: string | null;
+      billingLegalAddress?: string | null;
+      billingInn?: string | null;
+    },
+    @Req() req: any,
+  ) {
+    return this.service.updateBillingDetails(
+      storeId,
+      req.user.id,
+      data.billingCompanyName ?? null,
+      data.billingLegalAddress ?? null,
+      data.billingInn ?? null,
+    );
+  }
+
+  @Post(':storeId/invoices')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  createInvoice(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+  ) {
+    return this.service.createSubscriptionInvoice(storeId, req.user.id);
+  }
+
+  @Get(':storeId/invoices/:invoiceId/pdf')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  async downloadInvoicePdf(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('invoiceId', ParseIntPipe) invoiceId: number,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const invoice = await this.service.getSubscriptionInvoice(
+      storeId,
+      invoiceId,
+      req.user.id,
+    );
+
+    const invoiceNumber = this.formatInvoiceNumber(invoice.id);
+    const invoiceDate = this.formatInvoiceDate(invoice.issuedAt);
+    const fileName = `invoice-${storeId}-${invoiceNumber}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const doc = new PDFDocument({ margin: 48, size: 'A4' });
+    doc.pipe(res);
+    this.registerPdfFonts(doc);
+
+    doc.font('MainBold').fontSize(14).text('Банк АО: «ТБанк»');
+    doc.font('Main').fontSize(12).text('БИК: 044525974');
+    doc.text('Счет №: 30101810145250000974');
+    doc.text('ИП ФЕДОРОВ ВЛАДИМИР СЕРГЕЕВИЧ (получатель)');
+    doc.moveDown(1.2);
+
+    doc
+      .font('MainBold')
+      .fontSize(16)
+      .text(`Счет на оплату №${invoiceNumber} от ${invoiceDate}`);
+    doc.moveDown(1.2);
+
+    doc.font('MainBold').fontSize(13).text('Исполнитель:');
+    doc.font('Main').fontSize(11).text('Название организации: ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ');
+    doc.text('ФЕДОРОВ ВЛАДИМИР СЕРГЕЕВИЧ');
+    doc.text(
+      'Юридический адрес организации: 125212, РОССИЯ, Г МОСКВА, УЛ АДМИРАЛА МАКАРОВА, Д 6Б, КОРП 2, КВ 102',
+    );
+    doc.text('ИНН: 366112533269');
+    doc.moveDown(1);
+
+    doc.font('MainBold').fontSize(13).text('Заказчик:');
+    doc.font('Main').fontSize(11).text(`Название организации: ${invoice.customerCompanyName}`);
+    doc.text(`Юридический адрес организации: ${invoice.customerLegalAddress}`);
+    doc.text(`ИНН: ${invoice.customerInn}`);
+    doc.moveDown(1);
+
+    doc
+      .font('MainBold')
+      .fontSize(13)
+      .text(`Итого к оплате, руб.: ${this.formatMoney(invoice.amountRub)}`);
+    doc.moveDown(0.8);
+
+    doc
+      .font('Main')
+      .fontSize(11)
+      .text(
+        `Назначение платежа: Оплата по счету №${invoiceNumber} от ${invoiceDate} за доступ к сервису Palaci`,
+      );
+    doc.moveDown(0.8);
+
+    doc.text(
+      'Оплачивая настоящий счет, вы присоединяетесь к Оферте на оказание услуг сервиса Palaci, размещенной по адресу:',
+      { continued: true },
+    );
+    doc
+      .fillColor('#2563EB')
+      .text(` ${invoice.offerUrl}`, {
+        link: invoice.offerUrl,
+        underline: true,
+      });
+    doc.fillColor('#111827');
+
+    doc.end();
   }
 
   @Patch(':storeId/description')
@@ -672,5 +795,45 @@ export class StoresController {
     @Req() req: any,
   ) {
     return this.service.exportData(storeId, req.user.id);
+  }
+
+  private formatInvoiceNumber(id: number) {
+    return String(id).padStart(6, '0');
+  }
+
+  private formatInvoiceDate(value: Date) {
+    const day = String(value.getDate()).padStart(2, '0');
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const year = value.getFullYear();
+    return `${day}.${month}.${year}`;
+  }
+
+  private formatMoney(value: number) {
+    return Number(value ?? 0).toFixed(2);
+  }
+
+  private registerPdfFonts(doc: InstanceType<typeof PDFDocument>) {
+    const regularCandidates = [
+      '/usr/share/fonts/TTF/DejaVuSans.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+      'C:\\Windows\\Fonts\\arial.ttf',
+    ];
+    const boldCandidates = [
+      '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+      'C:\\Windows\\Fonts\\arialbd.ttf',
+    ];
+
+    const regularPath = regularCandidates.find((path) => existsSync(path));
+    const boldPath = boldCandidates.find((path) => existsSync(path));
+
+    if (regularPath && boldPath) {
+      doc.registerFont('Main', regularPath);
+      doc.registerFont('MainBold', boldPath);
+      return;
+    }
+
+    doc.registerFont('Main', 'Helvetica');
+    doc.registerFont('MainBold', 'Helvetica-Bold');
   }
 }

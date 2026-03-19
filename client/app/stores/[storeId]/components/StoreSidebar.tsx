@@ -20,6 +20,8 @@ import {
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
+import { useToast } from '@/components/toast/ToastProvider';
+import { downloadStoreInvoicePdf } from '@/lib/invoices';
 
 type SidebarSection =
   | 'pavilions'
@@ -48,12 +50,14 @@ export function StoreSidebar({
   enableMobileMenu = true,
 }: StoreSidebarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const toast = useToast();
 
   const permissions = store.permissions || [];
   const canManageStore = hasPermission(permissions, 'ASSIGN_PERMISSIONS');
   const canManageMedia = hasPermission(permissions, 'MANAGE_MEDIA');
   const canViewSummary = hasPermission(permissions, 'VIEW_SUMMARY');
   const canViewAccounting = hasPermission(permissions, 'VIEW_PAYMENTS');
+  const canPayForService = canManageStore;
   const canOpenUtilities =
     hasPermission(permissions, 'VIEW_PAYMENTS') &&
     hasPermission(permissions, 'EDIT_PAYMENTS');
@@ -220,6 +224,28 @@ export function StoreSidebar({
               </Link>
             ))}
         </nav>
+
+        {canPayForService && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <button
+              type="button"
+              onClick={() => {
+                void downloadStoreInvoicePdf(storeId)
+                  .then(() => {
+                    toast.success('Счет на оплату сформирован');
+                    if (isMobile) setMobileMenuOpen(false);
+                  })
+                  .catch((err: any) => {
+                    toast.error(err?.message || 'Не удалось сформировать счет');
+                  });
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"
+            >
+              <HandCoins className="h-4 w-4" />
+              Оплатить
+            </button>
+          </div>
+        )}
 
         {(canManageStore || canManageMedia) && (
           <div className="mt-3 border-t border-slate-100 pt-3">
