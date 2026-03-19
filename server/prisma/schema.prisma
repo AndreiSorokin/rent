@@ -64,6 +64,9 @@ model Store {
   id          Int          @id @default(autoincrement())
   name        String
   address     String?
+  billingCompanyName String?
+  billingLegalAddress String?
+  billingInn String?
   description String?
   imagePath   String?
   contactPhone String?
@@ -86,6 +89,7 @@ model Store {
   activities StoreActivity[]
   expenseLedger StoreExpenseLedger[]
   images      StoreImage[]
+  invoices    StoreInvoice[]
 }
 
 model StoreActivity {
@@ -467,6 +471,22 @@ model PaymentTransaction {
   createdAt        DateTime @default(now())
 
   @@index([pavilionId, period, createdAt])
+}
+
+model StoreInvoice {
+  id                 Int      @id @default(autoincrement())
+  storeId            Int
+  store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  rentedPavilionsCount Int
+  amountRub          Int
+  issuedAt           DateTime @default(now())
+  offerUrl           String
+
+  customerCompanyName  String
+  customerLegalAddress String
+  customerInn          String
+
+  @@index([storeId, issuedAt])
 }
 
 model Invitation {

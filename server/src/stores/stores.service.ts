@@ -133,6 +133,21 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       String((data as any).contactEmail).trim().length > 0
         ? String((data as any).contactEmail).trim().toLowerCase()
         : null;
+    const normalizedBillingCompanyName =
+      typeof (data as any).billingCompanyName === 'string' &&
+      String((data as any).billingCompanyName).trim().length > 0
+        ? String((data as any).billingCompanyName).trim()
+        : null;
+    const normalizedBillingLegalAddress =
+      typeof (data as any).billingLegalAddress === 'string' &&
+      String((data as any).billingLegalAddress).trim().length > 0
+        ? String((data as any).billingLegalAddress).trim()
+        : null;
+    const normalizedBillingInn =
+      typeof (data as any).billingInn === 'string' &&
+      String((data as any).billingInn).trim().length > 0
+        ? String((data as any).billingInn).trim()
+        : null;
 
     if (!normalizedName) {
       throw new BadRequestException('Store name is required');
@@ -145,6 +160,12 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Введите корректный email объекта');
     }
 
+    this.validateBillingDetails(
+      normalizedBillingCompanyName,
+      normalizedBillingLegalAddress,
+      normalizedBillingInn,
+    );
+
     const result = await this.prisma.$transaction(async (tx) => {
       const store = await tx.store.create({
         data: {
@@ -154,7 +175,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           ...(normalizedTimeZone ? { timeZone: normalizedTimeZone } : {}),
           contactPhone: normalizedContactPhone,
           contactEmail: normalizedContactEmail,
-        },
+          billingCompanyName: normalizedBillingCompanyName,
+          billingLegalAddress: normalizedBillingLegalAddress,
+          billingInn: normalizedBillingInn,
+        } as any,
       });
 
       await tx.storeUser.create({
@@ -563,6 +587,48 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  async updateBillingDetails(
+    storeId: number,
+    userId: number,
+    companyName?: string | null,
+    legalAddress?: string | null,
+    inn?: string | null,
+  ) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const normalizedCompanyName =
+      typeof companyName === 'string' && companyName.trim().length > 0
+        ? companyName.trim()
+        : null;
+    const normalizedLegalAddress =
+      typeof legalAddress === 'string' && legalAddress.trim().length > 0
+        ? legalAddress.trim()
+        : null;
+    const normalizedInn =
+      typeof inn === 'string' && inn.trim().length > 0 ? inn.trim() : null;
+
+    this.validateBillingDetails(
+      normalizedCompanyName,
+      normalizedLegalAddress,
+      normalizedInn,
+    );
+
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data: {
+        billingCompanyName: normalizedCompanyName,
+        billingLegalAddress: normalizedLegalAddress,
+        billingInn: normalizedInn,
+      } as any,
+      select: {
+        id: true,
+        billingCompanyName: true,
+        billingLegalAddress: true,
+        billingInn: true,
+      } as any,
+    });
+  }
+
   async updateDescription(
     storeId: number,
     userId: number,
@@ -756,6 +822,92 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     });
 
     return updated;
+  }
+
+  async createSubscriptionInvoice(storeId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        name: true,
+        billingCompanyName: true,
+        billingLegalAddress: true,
+        billingInn: true,
+        pavilions: {
+          where: { status: PavilionStatus.RENTED },
+          select: { id: true },
+        },
+      } as any,
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const companyName = String((store as any).billingCompanyName ?? '').trim();
+    const legalAddress = String((store as any).billingLegalAddress ?? '').trim();
+    const inn = String((store as any).billingInn ?? '').trim();
+
+    if (!companyName || !legalAddress || !inn) {
+      throw new BadRequestException(
+        'Заполните реквизиты организации объекта перед выставлением счета',
+      );
+    }
+
+    const rentedPavilionsCount = Array.isArray(store.pavilions) ? store.pavilions.length : 0;
+    const amountRub = rentedPavilionsCount * 2000;
+    const offerUrl = process.env.PUBLIC_OFFER_URL?.trim() || 'https://palaci.ru/offer';
+
+    const invoice = await (this.prisma as any).storeInvoice.create({
+      data: {
+        storeId,
+        rentedPavilionsCount,
+        amountRub,
+        offerUrl,
+        customerCompanyName: companyName,
+        customerLegalAddress: legalAddress,
+        customerInn: inn,
+      },
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'CREATE',
+      entityType: 'STORE_INVOICE',
+      entityId: invoice.id,
+      details: {
+        invoiceId: invoice.id,
+        rentedPavilionsCount,
+        amountRub,
+      },
+    });
+
+    return invoice;
+  }
+
+  async getSubscriptionInvoice(storeId: number, invoiceId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const invoice = await (this.prisma as any).storeInvoice.findFirst({
+      where: { id: invoiceId, storeId },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    return invoice;
   }
 
   async addPavilionCategory(storeId: number, userId: number, name: string) {
@@ -3728,6 +3880,27 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
     if (!allowed) {
       throw new ForbiddenException('No permission for this action');
+    }
+  }
+
+  private validateBillingDetails(
+    companyName?: string | null,
+    legalAddress?: string | null,
+    inn?: string | null,
+  ) {
+    const hasAnyValue = Boolean(companyName || legalAddress || inn);
+    if (!hasAnyValue) {
+      return;
+    }
+
+    if (!companyName || !legalAddress || !inn) {
+      throw new BadRequestException(
+        'Заполните название организации, юридический адрес и ИНН полностью',
+      );
+    }
+
+    if (!/^\d{10}(\d{2})?$/.test(inn)) {
+      throw new BadRequestException('Введите корректный ИНН организации');
     }
   }
 }

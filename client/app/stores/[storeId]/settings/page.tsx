@@ -29,6 +29,10 @@ export default function StoreSettingsPage() {
   const [nameSaving, setNameSaving] = useState(false);
   const [addressDraft, setAddressDraft] = useState('');
   const [addressSaving, setAddressSaving] = useState(false);
+  const [billingCompanyNameDraft, setBillingCompanyNameDraft] = useState('');
+  const [billingLegalAddressDraft, setBillingLegalAddressDraft] = useState('');
+  const [billingInnDraft, setBillingInnDraft] = useState('');
+  const [billingSaving, setBillingSaving] = useState(false);
   const [contactPhoneDraft, setContactPhoneDraft] = useState('');
   const [contactEmailDraft, setContactEmailDraft] = useState('');
   const [contactSaving, setContactSaving] = useState(false);
@@ -87,6 +91,9 @@ export default function StoreSettingsPage() {
       setStore(data);
       setNameDraft(data.name ?? '');
       setAddressDraft(data.address ?? '');
+      setBillingCompanyNameDraft(data.billingCompanyName ?? '');
+      setBillingLegalAddressDraft(data.billingLegalAddress ?? '');
+      setBillingInnDraft(data.billingInn ?? '');
       setDescriptionDraft(data.description ?? '');
       setContactPhoneDraft(data.contactPhone ?? '');
       setContactEmailDraft(data.contactEmail ?? '');
@@ -233,6 +240,35 @@ export default function StoreSettingsPage() {
       setSettingsError(err?.message || 'Не удалось изменить адрес');
     } finally {
       setAddressSaving(false);
+    }
+  };
+
+  const handleUpdateBillingDetails = async () => {
+    try {
+      setSettingsError('');
+      setSettingsSuccess('');
+      setBillingSaving(true);
+      await apiFetch(`/stores/${storeId}/billing`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          billingCompanyName: billingCompanyNameDraft.trim() || null,
+          billingLegalAddress: billingLegalAddressDraft.trim() || null,
+          billingInn: billingInnDraft.trim() || null,
+        }),
+      });
+      await fetchStore(false);
+      setSettingsSuccess(
+        billingCompanyNameDraft.trim() ||
+          billingLegalAddressDraft.trim() ||
+          billingInnDraft.trim()
+          ? 'Реквизиты организации обновлены'
+          : 'Реквизиты организации удалены',
+      );
+    } catch (err: any) {
+      console.error(err);
+      setSettingsError(err?.message || 'Не удалось обновить реквизиты');
+    } finally {
+      setBillingSaving(false);
     }
   };
 
@@ -838,6 +874,50 @@ export default function StoreSettingsPage() {
                 </div>
                 <p className="mt-2 text-sm text-[#6b6b6b]">
                   Оставьте поле пустым, чтобы удалить адрес.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                <h3 className="mb-2 font-medium">Реквизиты организации</h3>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={billingCompanyNameDraft}
+                    onChange={(e) => setBillingCompanyNameDraft(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Название организации"
+                  />
+                  <textarea
+                    value={billingLegalAddressDraft}
+                    onChange={(e) => setBillingLegalAddressDraft(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="Юридический адрес организации"
+                  />
+                  <input
+                    type="text"
+                    value={billingInnDraft}
+                    onChange={(e) => setBillingInnDraft(e.target.value)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
+                    placeholder="ИНН организации"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleUpdateBillingDetails}
+                      disabled={
+                        billingSaving ||
+                        (billingCompanyNameDraft.trim() === String(store.billingCompanyName ?? '').trim() &&
+                          billingLegalAddressDraft.trim() === String(store.billingLegalAddress ?? '').trim() &&
+                          billingInnDraft.trim() === String(store.billingInn ?? '').trim())
+                      }
+                      className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {billingSaving ? '...' : 'Сохранить'}
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-sm text-[#6b6b6b]">
+                  Эти данные используются для автоматического выставления счета на оплату сервиса.
                 </p>
               </div>
 

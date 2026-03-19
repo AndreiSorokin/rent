@@ -12,6 +12,9 @@ interface StoreSummary {
   name: string;
   permissions?: string[];
   address?: string | null;
+  billingCompanyName?: string | null;
+  billingLegalAddress?: string | null;
+  billingInn?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
 }
