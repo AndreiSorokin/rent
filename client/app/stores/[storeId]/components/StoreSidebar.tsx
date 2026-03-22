@@ -21,7 +21,7 @@ import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
 import { useToast } from '@/components/toast/ToastProvider';
-import { downloadStoreInvoicePdf } from '@/lib/invoices';
+import { openStoreInvoiceView } from '@/lib/invoices';
 
 type SidebarSection =
   | 'pavilions'
@@ -230,13 +230,13 @@ export function StoreSidebar({
             <button
               type="button"
               onClick={() => {
-                void downloadStoreInvoicePdf(storeId)
+                void openStoreInvoiceView(storeId)
                   .then(() => {
-                    toast.success('Счет на оплату сформирован');
+                    toast.success('Счет открыт в новой вкладке');
                     if (isMobile) setMobileMenuOpen(false);
                   })
                   .catch((err: any) => {
-                    toast.error(err?.message || 'Не удалось сформировать счет');
+                    toast.error(err?.message || 'Не удалось открыть счет');
                   });
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"

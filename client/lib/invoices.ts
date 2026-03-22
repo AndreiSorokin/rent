@@ -1,6 +1,7 @@
-export async function downloadStoreInvoicePdf(storeId: number) {
+export async function openStoreInvoiceView(storeId: number) {
   const token = localStorage.getItem('token');
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+
   const toMessage = async (response: Response, fallback: string) => {
     const errorText = await response.text();
     try {
@@ -14,6 +15,16 @@ export async function downloadStoreInvoicePdf(storeId: number) {
     }
   };
 
+  const invoiceWindow = window.open('about:blank', '_blank');
+  if (!invoiceWindow) {
+    throw new Error('Браузер заблокировал новую вкладку для счета');
+  }
+  try {
+    invoiceWindow.opener = null;
+  } catch {
+    // Ignore browsers that disallow changing opener.
+  }
+
   const createResponse = await fetch(`${baseUrl}/stores/${storeId}/invoices`, {
     method: 'POST',
     headers: {
@@ -22,12 +33,13 @@ export async function downloadStoreInvoicePdf(storeId: number) {
   });
 
   if (!createResponse.ok) {
+    invoiceWindow.close();
     throw new Error(await toMessage(createResponse, 'Не удалось выставить счет'));
   }
 
   const createdInvoice = (await createResponse.json()) as { id: number };
-  const pdfResponse = await fetch(
-    `${baseUrl}/stores/${storeId}/invoices/${createdInvoice.id}/pdf`,
+  const viewResponse = await fetch(
+    `${baseUrl}/stores/${storeId}/invoices/${createdInvoice.id}/view`,
     {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -35,17 +47,13 @@ export async function downloadStoreInvoicePdf(storeId: number) {
     },
   );
 
-  if (!pdfResponse.ok) {
-    throw new Error(await toMessage(pdfResponse, 'Не удалось скачать счет'));
+  if (!viewResponse.ok) {
+    invoiceWindow.close();
+    throw new Error(await toMessage(viewResponse, 'Не удалось открыть счет'));
   }
 
-  const blob = await pdfResponse.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl;
-  anchor.download = `invoice-${storeId}-${createdInvoice.id}.pdf`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(objectUrl);
+  const html = await viewResponse.text();
+  invoiceWindow.document.open();
+  invoiceWindow.document.write(html);
+  invoiceWindow.document.close();
 }
