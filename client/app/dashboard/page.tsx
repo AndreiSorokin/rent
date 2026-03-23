@@ -140,21 +140,6 @@ export default function StoresPage() {
         )}
       </div>
 
-      <div className='justify-center items-center flex mt-10 wodth-full'>
-        <tr className='border border-black'>
-          <td className='border border-black'>
-            <tr className='border border-black'></tr>
-            <tr className='border border-black'>
-              <td className='border border-black'>1</td>
-              <td className='border border-black'>2</td>
-            </tr>
-            <tr className='border border-black'></tr>
-          </td>
-          <td className='border border-black'></td>
-          <td className='border border-black'></td>
-        </tr>
-      </div>
-
       {showCreateModal && (
         <CreateStoreModal
           onClose={() => setShowCreateModal(false)}
