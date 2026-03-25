@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
+import { openStoreInvoiceView } from '@/lib/invoices';
 import { TimeZoneAutocomplete } from '@/components/TimeZoneAutocomplete';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -806,6 +807,23 @@ export default function StoreSettingsPage() {
               >
                 Журнал действий
               </Link>
+            )}
+            {canManageStore && (
+              <button
+                type="button"
+                onClick={() => {
+                  void openStoreInvoiceView(storeId)
+                    .then(() => {
+                      toast.success('Счет открыт в новой вкладке');
+                    })
+                    .catch((err: any) => {
+                      toast.error(err?.message || 'Не удалось открыть счет');
+                    });
+                }}
+                className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
+              >
+                Оплатить
+              </button>
             )}
             {(createPavilions || canExportData) && (
               <div className="inline-flex items-center gap-2">

@@ -27,10 +27,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import * as fs from 'fs';
 import type { Response } from 'express';
-import { existsSync } from 'fs';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PDFDocument = require('pdfkit');
+import { renderSubscriptionInvoiceTemplate } from './templates/subscription-invoice.template';
 
 const decodeUploadFileName = (value: string) => {
   try {
@@ -202,9 +199,9 @@ export class StoresController {
     return this.service.createSubscriptionInvoice(storeId, req.user.id);
   }
 
-  @Get(':storeId/invoices/:invoiceId/pdf')
+  @Get(':storeId/invoices/:invoiceId/view')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
-  async downloadInvoicePdf(
+  async viewInvoice(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('invoiceId', ParseIntPipe) invoiceId: number,
     @Req() req: any,
@@ -218,69 +215,18 @@ export class StoresController {
 
     const invoiceNumber = this.formatInvoiceNumber(invoice.id);
     const invoiceDate = this.formatInvoiceDate(invoice.issuedAt);
-    const fileName = `invoice-${storeId}-${invoiceNumber}.pdf`;
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    const doc = new PDFDocument({ margin: 48, size: 'A4' });
-    doc.pipe(res);
-    this.registerPdfFonts(doc);
-
-    doc.font('MainBold').fontSize(14).text('Банк АО: «ТБанк»');
-    doc.font('Main').fontSize(12).text('БИК: 044525974');
-    doc.text('Счет №: 30101810145250000974');
-    doc.text('ИП ФЕДОРОВ ВЛАДИМИР СЕРГЕЕВИЧ (получатель)');
-    doc.moveDown(1.2);
-
-    doc
-      .font('MainBold')
-      .fontSize(16)
-      .text(`Счет на оплату №${invoiceNumber} от ${invoiceDate}`);
-    doc.moveDown(1.2);
-
-    doc.font('MainBold').fontSize(13).text('Исполнитель:');
-    doc.font('Main').fontSize(11).text('Название организации: ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ');
-    doc.text('ФЕДОРОВ ВЛАДИМИР СЕРГЕЕВИЧ');
-    doc.text(
-      'Юридический адрес организации: 125212, РОССИЯ, Г МОСКВА, УЛ АДМИРАЛА МАКАРОВА, Д 6Б, КОРП 2, КВ 102',
-    );
-    doc.text('ИНН: 366112533269');
-    doc.moveDown(1);
-
-    doc.font('MainBold').fontSize(13).text('Заказчик:');
-    doc.font('Main').fontSize(11).text(`Название организации: ${invoice.customerCompanyName}`);
-    doc.text(`Юридический адрес организации: ${invoice.customerLegalAddress}`);
-    doc.text(`ИНН: ${invoice.customerInn}`);
-    doc.moveDown(1);
-
-    doc
-      .font('MainBold')
-      .fontSize(13)
-      .text(`Итого к оплате, руб.: ${this.formatMoney(invoice.amountRub)}`);
-    doc.moveDown(0.8);
-
-    doc
-      .font('Main')
-      .fontSize(11)
-      .text(
-        `Назначение платежа: Оплата по счету №${invoiceNumber} от ${invoiceDate} за доступ к сервису Palaci`,
-      );
-    doc.moveDown(0.8);
-
-    doc.text(
-      'Оплачивая настоящий счет, вы присоединяетесь к Оферте на оказание услуг сервиса Palaci, размещенной по адресу:',
-      { continued: true },
-    );
-    doc
-      .fillColor('#2563EB')
-      .text(` ${invoice.offerUrl}`, {
-        link: invoice.offerUrl,
-        underline: true,
-      });
-    doc.fillColor('#111827');
-
-    doc.end();
+    const html = renderSubscriptionInvoiceTemplate({
+      invoiceNumber,
+      invoiceDate,
+      amountRub: Number(invoice.amountRub ?? 0),
+      rentedPavilionsCount: Number(invoice.rentedPavilionsCount ?? 0),
+      customerCompanyName: String(invoice.customerCompanyName ?? ''),
+      customerLegalAddress: String(invoice.customerLegalAddress ?? ''),
+      customerInn: String(invoice.customerInn ?? ''),
+      offerUrl: String(invoice.offerUrl ?? ''),
+    });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   }
 
   @Patch(':storeId/description')
@@ -806,34 +752,5 @@ export class StoresController {
     const month = String(value.getMonth() + 1).padStart(2, '0');
     const year = value.getFullYear();
     return `${day}.${month}.${year}`;
-  }
-
-  private formatMoney(value: number) {
-    return Number(value ?? 0).toFixed(2);
-  }
-
-  private registerPdfFonts(doc: InstanceType<typeof PDFDocument>) {
-    const regularCandidates = [
-      '/usr/share/fonts/TTF/DejaVuSans.ttf',
-      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-      'C:\\Windows\\Fonts\\arial.ttf',
-    ];
-    const boldCandidates = [
-      '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf',
-      '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-      'C:\\Windows\\Fonts\\arialbd.ttf',
-    ];
-
-    const regularPath = regularCandidates.find((path) => existsSync(path));
-    const boldPath = boldCandidates.find((path) => existsSync(path));
-
-    if (regularPath && boldPath) {
-      doc.registerFont('Main', regularPath);
-      doc.registerFont('MainBold', boldPath);
-      return;
-    }
-
-    doc.registerFont('Main', 'Helvetica');
-    doc.registerFont('MainBold', 'Helvetica-Bold');
   }
 }
