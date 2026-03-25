@@ -2518,6 +2518,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
+        sourceType: true,
+        sourceId: true,
         occurredAt: true,
         expenseType: true,
         note: true,
@@ -2527,26 +2529,66 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    const items = ledgerItems.map((expense: any) => {
-      const bankTransferPaid = Number(expense.bankTransferPaid ?? 0);
-      const cashbox1Paid = Number(expense.cashbox1Paid ?? 0);
-      const cashbox2Paid = Number(expense.cashbox2Paid ?? 0);
-      const signedTotal = bankTransferPaid + cashbox1Paid + cashbox2Paid;
+    const groupedItems = new Map<
+      string,
+      {
+        id: number;
+        paidAt: Date;
+        type: any;
+        note: string | null;
+        pavilionId: null;
+        pavilionNumber: null;
+        bankTransferPaid: number;
+        cashbox1Paid: number;
+        cashbox2Paid: number;
+      }
+    >();
 
-      return {
-        id: expense.id,
+    for (const expense of ledgerItems as any[]) {
+      const key =
+        expense.sourceType && expense.sourceId != null
+          ? `${String(expense.sourceType)}:${String(expense.sourceId)}`
+          : `LEDGER:${String(expense.id)}`;
+
+      const current = groupedItems.get(key) ?? {
+        id: expense.sourceId ?? expense.id,
         paidAt: expense.occurredAt,
         type: expense.expenseType,
-        note: expense.note,
-        amount: Math.abs(signedTotal),
+        note: expense.note ?? null,
         pavilionId: null,
         pavilionNumber: null,
-        bankTransferPaid,
-        cashbox1Paid,
-        cashbox2Paid,
-        total: Math.abs(signedTotal),
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
       };
-    });
+
+      current.bankTransferPaid += Number(expense.bankTransferPaid ?? 0);
+      current.cashbox1Paid += Number(expense.cashbox1Paid ?? 0);
+      current.cashbox2Paid += Number(expense.cashbox2Paid ?? 0);
+      current.paidAt = expense.occurredAt;
+      current.type = expense.expenseType;
+      current.note = expense.note ?? current.note;
+
+      groupedItems.set(key, current);
+    }
+
+    const items = Array.from(groupedItems.values())
+      .map((expense) => {
+        const signedTotal =
+          Number(expense.bankTransferPaid ?? 0) +
+          Number(expense.cashbox1Paid ?? 0) +
+          Number(expense.cashbox2Paid ?? 0);
+
+        return {
+          ...expense,
+          amount: Math.abs(signedTotal),
+          total: Math.abs(signedTotal),
+          signedTotal,
+        };
+      })
+      .filter((expense) => Math.abs(expense.signedTotal) > 0.009)
+      .sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime())
+      .map(({ signedTotal: _signedTotal, ...expense }) => expense);
 
     const totals = ledgerItems.reduce(
       (acc: any, item: any) => {
@@ -3521,6 +3563,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             storeId,
             type: {
               in: [
+                'STORE_FACILITIES',
                 'PAYROLL_TAX',
                 'PROFIT_TAX',
                 'DIVIDENDS',

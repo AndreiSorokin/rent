@@ -673,7 +673,7 @@ export default function StoreSettingsPage() {
         householdExpenses: 'ХозяйственныеРасходы',
         otherExpenses: 'ПрочиеРасходы',
         adminExpenses: 'АдминистративныеРасходы',
-        accounting: 'БухТаблица',
+        accounting: 'Закрытие дня',
         staff: 'Сотрудники',
       } as const;
 
@@ -720,15 +720,17 @@ export default function StoreSettingsPage() {
           Статус: item.status === 'PAID' ? 'Оплачено' : 'Не оплачено',
         }));
       const accountingRows = (payload.accounting || []).map((item) => ({
-        recordDate: item.recordDate,
-        bankTransferPaid: Number(item.bankTransferPaid ?? 0),
-        cashbox1Paid: Number(item.cashbox1Paid ?? 0),
-        cashbox2Paid: Number(item.cashbox2Paid ?? 0),
+        Дата: item.recordDate,
+        Безналичные: Number(item.bankTransferPaid ?? 0),
+        'Наличные касса 1': Number(item.cashbox1Paid ?? 0),
+        'Наличные касса 2': Number(item.cashbox2Paid ?? 0),
       }));
       const staffRows = (payload.staff || []).map((item) => ({
         Должность: item.position ?? '',
         'Имя Фамилия': item.fullName ?? '',
         Зарплата: Number(item.salary ?? 0),
+        'Статус оплаты':
+          item.salaryStatus === 'PAID' ? 'Оплачено' : 'Не оплачено',
       }));
 
       const pavilionsSheet =
@@ -762,12 +764,14 @@ export default function StoreSettingsPage() {
         accountingRows.length > 0
           ? XLSX.utils.json_to_sheet(accountingRows)
           : XLSX.utils.aoa_to_sheet([
-              ['recordDate', 'bankTransferPaid', 'cashbox1Paid', 'cashbox2Paid'],
+              ['Дата', 'Безналичные', 'Наличные касса 1', 'Наличные касса 2'],
             ]);
       const staffSheet =
         staffRows.length > 0
           ? XLSX.utils.json_to_sheet(staffRows)
-          : XLSX.utils.aoa_to_sheet([['Должность', 'Имя Фамилия', 'Зарплата']]);
+          : XLSX.utils.aoa_to_sheet([
+              ['Должность', 'Имя Фамилия', 'Зарплата', 'Статус оплаты'],
+            ]);
 
       XLSX.utils.book_append_sheet(wb, pavilionsSheet, SHEETS.pavilions);
       XLSX.utils.book_append_sheet(wb, householdSheet, SHEETS.householdExpenses);
