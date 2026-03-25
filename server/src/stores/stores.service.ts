@@ -3563,6 +3563,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             storeId,
             type: {
               in: [
+                'STORE_FACILITIES',
                 'PAYROLL_TAX',
                 'PROFIT_TAX',
                 'DIVIDENDS',
