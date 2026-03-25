@@ -299,4 +299,63 @@ describe('StoresService accounting day resolution', () => {
 
     expect(result.toISOString()).toBe('2026-03-13T00:00:00.000Z');
   });
+
+  it('collapses same-day expense ledger entries into current net expense items', async () => {
+    prisma.storeExpenseLedger = {
+      aggregate: jest.fn().mockResolvedValue({
+        _min: { occurredAt: new Date('2026-03-13T08:00:00.000Z') },
+      }),
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: 1,
+          sourceType: 'HOUSEHOLD_EXPENSE',
+          sourceId: 101,
+          occurredAt: new Date('2026-03-13T08:00:00.000Z'),
+          expenseType: 'HOUSEHOLD',
+          note: 'Хоз расход',
+          bankTransferPaid: 0,
+          cashbox1Paid: 1000,
+          cashbox2Paid: 0,
+        },
+        {
+          id: 2,
+          sourceType: 'HOUSEHOLD_EXPENSE',
+          sourceId: 101,
+          occurredAt: new Date('2026-03-13T08:30:00.000Z'),
+          expenseType: 'HOUSEHOLD',
+          note: 'Хоз расход',
+          bankTransferPaid: 0,
+          cashbox1Paid: -1000,
+          cashbox2Paid: 0,
+        },
+        {
+          id: 3,
+          sourceType: 'HOUSEHOLD_EXPENSE',
+          sourceId: 102,
+          occurredAt: new Date('2026-03-13T09:00:00.000Z'),
+          expenseType: 'HOUSEHOLD',
+          note: 'Хоз расход',
+          bankTransferPaid: 0,
+          cashbox1Paid: 1000,
+          cashbox2Paid: 0,
+        },
+      ]),
+    };
+    jest.spyOn(service as any, 'getStoreTimeZone').mockResolvedValue('UTC');
+
+    const result = await (service as any).getExpenseSnapshotForDay(
+      1,
+      new Date('2026-03-13T00:00:00.000Z'),
+      new Date('2026-03-13T23:59:59.999Z'),
+    );
+
+    expect(result.totals.cashbox1Paid).toBe(1000);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      id: 102,
+      note: 'Хоз расход',
+      cashbox1Paid: 1000,
+      total: 1000,
+    });
+  });
 });
