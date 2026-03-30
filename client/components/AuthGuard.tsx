@@ -10,6 +10,7 @@ function isPublicPath(pathname: string | null) {
   if (!pathname) return false;
   if (pathname === '/') return true;
   if (pathname === '/privacy') return true;
+  if (pathname === '/content-rules') return true;
   if (ANON_ONLY_PATHS.has(pathname)) return true;
   return pathname.startsWith('/forgot-password');
 }

@@ -15,16 +15,20 @@ import { hasPermission } from '@/lib/permissions';
 import { getPavilion, updatePavilion } from '@/lib/pavilions';
 import { createPavilionPayment, deletePavilionPaymentEntry } from '@/lib/payments';
 import { formatMoney, getCurrencySymbol } from '@/lib/currency';
-import { deleteContract, uploadContract } from '@/lib/contracts';
+import { deleteContract, uploadContract, validateContractUploadMeta } from '@/lib/contracts';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { Discount, Pavilion } from './pavilion.types';
 import {
+  formatDateInputDisplay,
+  formatDateKey,
   formatDateInTimeZone as formatDateInStoreTimeZone,
   formatMonthNumberYearInTimeZone,
   getCurrentMonthKeyInTimeZone,
   getMonthKeyInTimeZone,
+  normalizeDateInputToDateKey,
+  getTodayDateKeyInTimeZone,
 } from '@/lib/dateTime';
 
 export default function PavilionPage() {
@@ -66,6 +70,9 @@ export default function PavilionPage() {
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [uploadingContract, setUploadingContract] = useState(false);
+  const [contractNumberDraft, setContractNumberDraft] = useState('');
+  const [contractExpiresOnDraft, setContractExpiresOnDraft] = useState('');
+  const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [descriptionSaving, setDescriptionSaving] = useState(false);
@@ -76,6 +83,15 @@ export default function PavilionPage() {
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
+  const requiresContract =
+    pavilion?.status === 'RENTED' || pavilion?.status === 'PREPAID';
+  const hasContract =
+    Array.isArray(pavilion?.contracts) && pavilion.contracts.length > 0;
+  const missingContract = requiresContract && !hasContract;
+  const contractExpiresOnInvalid =
+    contractExpiresOnTouched &&
+    contractExpiresOnDraft.trim().length > 0 &&
+    !normalizeDateInputToDateKey(contractExpiresOnDraft);
 
   const fetchPavilion = async () => {
     try {
@@ -231,13 +247,36 @@ export default function PavilionPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const todayDateKey = getTodayDateKeyInTimeZone(pavilion?.store?.timeZone || 'UTC');
+    const normalizedExpiresOn = normalizeDateInputToDateKey(contractExpiresOnDraft);
+    const validationMessage = validateContractUploadMeta(
+      {
+        contractNumber: contractNumberDraft,
+        expiresOn: normalizedExpiresOn,
+      },
+      todayDateKey,
+    );
+
+    if (validationMessage) {
+      toast.error(validationMessage);
+      e.target.value = '';
+      return;
+    }
+
     try {
       setUploadingContract(true);
-      await uploadContract(storeIdNum, pavilionIdNum, file);
+      await uploadContract(storeIdNum, pavilionIdNum, file, {
+        contractNumber: contractNumberDraft,
+        expiresOn: normalizedExpiresOn,
+      });
+      setContractNumberDraft('');
+      setContractExpiresOnDraft('');
+      setContractExpiresOnTouched(false);
+      toast.success('Договор загружен');
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось загрузить документ');
+      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить документ');
     } finally {
       setUploadingContract(false);
       e.target.value = '';
@@ -673,6 +712,16 @@ export default function PavilionPage() {
               )}
             </div>
           )}
+
+          {missingContract && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Для павильона со статусом «{statusLabel[pavilion.status] ?? pavilion.status}» договор пока не загружен.
+              {hasPermission(permissions, 'UPLOAD_CONTRACTS')
+                ? ' Добавьте его в разделе «Договоры».'
+                : ' Загрузить его может пользователь с правом «Загружать договоры».'
+              }
+            </div>
+          )}
         </div>
 
         {showMediaSection && (
@@ -933,36 +982,87 @@ export default function PavilionPage() {
         )}
 
         {hasPermission(permissions, 'VIEW_CONTRACTS') && (
-          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Договоры</h2>
-              {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
-                <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
-                  {uploadingContract ? 'Загрузка...' : '+ Загрузить документ'}
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleContractUpload}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
-                    disabled={uploadingContract}
-                  />
-                </label>
-              )}
-            </div>
+            <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Договоры</h2>
+                {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                        Номер договора
+                      </label>
+                      <input
+                        type="text"
+                        value={contractNumberDraft}
+                        onChange={(e) => setContractNumberDraft(e.target.value)}
+                        className="min-w-[180px] rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
+                        placeholder="Например: 12/2026"
+                        disabled={uploadingContract}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                        Дата окончания
+                      </label>
+                      <input
+                        type="text"
+                        value={contractExpiresOnDraft}
+                        onChange={(e) =>
+                          setContractExpiresOnDraft(
+                            formatDateInputDisplay(e.target.value),
+                          )
+                        }
+                        onBlur={() => {
+                          setContractExpiresOnTouched(true);
+                          const normalized = normalizeDateInputToDateKey(contractExpiresOnDraft);
+                          if (normalized) {
+                            setContractExpiresOnDraft(formatDateKey(normalized));
+                          }
+                        }}
+                        className={`min-w-[180px] rounded-xl border bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:bg-white focus:ring-2 ${
+                          contractExpiresOnInvalid
+                            ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
+                            : 'border-[#d8d1cb] focus:border-[#ff6a13] focus:ring-[#ff6a13]/20'
+                        }`}
+                        placeholder="дд.мм.гггг"
+                        inputMode="numeric"
+                        disabled={uploadingContract}
+                      />
+                      {contractExpiresOnInvalid && (
+                        <p className="mt-1 text-xs text-[#b91c1c]">
+                          Введите дату в формате дд.мм.гггг
+                        </p>
+                      )}
+                    </div>
+                    <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
+                      {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={handleContractUpload}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                        disabled={uploadingContract}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
 
-            {!pavilion.contracts || pavilion.contracts.length === 0 ? (
-              <p className="text-gray-500">Документы не загружены</p>
+              {!pavilion.contracts || pavilion.contracts.length === 0 ? (
+                <p className="text-gray-500">Документы не загружены</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-[#f4efeb]">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                    </tr>
-                  </thead>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                      </tr>
+                    </thead>
                   <tbody className="divide-y divide-gray-200">
                     {pavilion.contracts.map((contract) => (
                       <tr key={contract.id}>
@@ -972,14 +1072,18 @@ export default function PavilionPage() {
                             target="_blank"
                             rel="noreferrer"
                             className="text-blue-600 hover:underline"
-                          >
-                            {contract.fileName}
-                          </a>
-                        </td>
-                        <td className="px-6 py-4 text-sm">{contract.fileType}</td>
-                        <td className="px-6 py-4 text-sm">
-                          {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
-                        </td>
+                            >
+                              {contract.fileName}
+                            </a>
+                          </td>
+                          <td className="px-6 py-4 text-sm">{contract.contractNumber || '—'}</td>
+                          <td className="px-6 py-4 text-sm">
+                            {formatDateKey(contract.expiresOn)}
+                          </td>
+                          <td className="px-6 py-4 text-sm">{contract.fileType}</td>
+                          <td className="px-6 py-4 text-sm">
+                            {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
+                          </td>
                         <td className="px-6 py-4 text-right text-sm">
                           {hasPermission(permissions, 'DELETE_CONTRACTS') && (
                             <button
@@ -1382,6 +1486,7 @@ export default function PavilionPage() {
               hasPermission(permissions, 'CREATE_CHARGES') ||
               hasPermission(permissions, 'DELETE_CHARGES')
             }
+            canUploadContracts={hasPermission(permissions, 'UPLOAD_CONTRACTS')}
             timeZone={pavilion.store?.timeZone || 'UTC'}
             onClose={() => setEditingPavilion(null)}
             onSaved={handleActionSuccess}

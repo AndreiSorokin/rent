@@ -623,8 +623,14 @@ export class PavilionsService {
 
     if (!pavilion) return null;
 
+    const contracts = await (this.prisma.contract as any).findMany({
+      where: { pavilionId: pavilion.id },
+      orderBy: { uploadedAt: 'desc' },
+    });
+
     return {
       ...pavilion,
+      contracts,
       prepaymentAmount: this.calculatePrepaymentAmount(
         pavilion.prepaidUntil,
         pavilion.payments.map((payment) => ({
@@ -1093,16 +1099,69 @@ export class PavilionsService {
   async listContracts(storeId: number, pavilionId: number) {
     await this.ensureExists(storeId, pavilionId);
 
-    return this.prisma.contract.findMany({
+    return (this.prisma.contract as any).findMany({
       where: { pavilionId },
       orderBy: { uploadedAt: 'desc' },
     });
   }
 
+  private validateContractMetadata(
+    contractNumber: string | null | undefined,
+    expiresOn: string | null | undefined,
+    todayDateKey: string,
+  ) {
+    const normalizedNumber = String(contractNumber ?? '').trim();
+    const normalizedExpiresOn = String(expiresOn ?? '').trim();
+
+    if (!normalizedNumber) {
+      throw new BadRequestException('Укажите номер договора');
+    }
+
+    if (!normalizedExpiresOn) {
+      throw new BadRequestException('Укажите дату окончания договора');
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedExpiresOn)) {
+      throw new BadRequestException('Укажите корректную дату окончания договора');
+    }
+
+    if (normalizedExpiresOn < todayDateKey) {
+      throw new BadRequestException('Дата окончания договора не может быть в прошлом');
+    }
+
+    return {
+      contractNumber: normalizedNumber,
+      expiresOn: normalizedExpiresOn,
+    };
+  }
+
+  private getTodayDateKeyInTimeZone(timeZone: string, value = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    const year = map.get('year');
+    const month = map.get('month');
+    const day = map.get('day');
+    if (!year || !month || !day) {
+      return new Date().toISOString().slice(0, 10);
+    }
+    return `${year}-${month}-${day}`;
+  }
+
   async createContract(
     storeId: number,
     pavilionId: number,
-    data: { fileName: string; filePath: string; fileType: string },
+    data: {
+      fileName: string;
+      filePath: string;
+      fileType: string;
+      contractNumber?: string | null;
+      expiresOn?: string | null;
+    },
     userId?: number,
   ) {
     const pavilion = await this.prisma.pavilion.findFirst({
@@ -1113,12 +1172,22 @@ export class PavilionsService {
       throw new NotFoundException('Pavilion not found');
     }
 
-    const created = await this.prisma.contract.create({
+    const storeTimeZone = await this.getStoreTimeZone(storeId);
+    const todayDateKey = this.getTodayDateKeyInTimeZone(storeTimeZone);
+    const metadata = this.validateContractMetadata(
+      data.contractNumber,
+      data.expiresOn,
+      todayDateKey,
+    );
+
+    const created = await (this.prisma.contract as any).create({
       data: {
         pavilionId,
         fileName: data.fileName,
         filePath: data.filePath,
         fileType: data.fileType,
+        contractNumber: metadata.contractNumber,
+        expiresOn: metadata.expiresOn,
       },
     });
     await this.storeActivity.log({
@@ -1132,6 +1201,8 @@ export class PavilionsService {
         pavilionNumber: pavilion.number,
         fileName: created.fileName,
         fileType: created.fileType,
+        contractNumber: created.contractNumber,
+        expiresOn: created.expiresOn,
       },
     });
     return created;
@@ -1184,6 +1255,8 @@ export class PavilionsService {
         pavilionNumber: pavilion.number,
         fileName: deleted.fileName,
         fileType: deleted.fileType,
+        contractNumber: (deleted as any).contractNumber,
+        expiresOn: (deleted as any).expiresOn,
       },
     });
     return deleted;

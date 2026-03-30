@@ -98,6 +98,8 @@ export type Pavilion = {
     fileName: string;
     filePath: string;
     fileType: string;
+    contractNumber?: string | null;
+    expiresOn?: string | null;
     uploadedAt: string;
   }>;
   householdExpenses?: Array<{
