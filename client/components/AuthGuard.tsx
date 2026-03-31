@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -13,6 +13,8 @@ function isPublicPath(pathname: string | null) {
   if (pathname === '/content-rules') return true;
   if (pathname === '/operator') return true;
   if (pathname === '/cookies') return true;
+  if (pathname === '/site-consent') return true;
+  if (pathname === '/user-agreement') return true;
   if (ANON_ONLY_PATHS.has(pathname)) return true;
   return pathname.startsWith('/forgot-password');
 }
