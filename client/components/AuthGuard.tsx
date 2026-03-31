@@ -10,6 +10,8 @@ function isPublicPath(pathname: string | null) {
   if (!pathname) return false;
   if (pathname === '/') return true;
   if (pathname === '/privacy') return true;
+  if (pathname === '/offer') return true;
+  if (pathname === '/tariffs') return true;
   if (pathname === '/content-rules') return true;
   if (pathname === '/operator') return true;
   if (pathname === '/cookies') return true;

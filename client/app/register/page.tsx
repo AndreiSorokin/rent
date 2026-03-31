@@ -206,6 +206,13 @@ export default function RegisterPage() {
           <span>
             Я ознакомился и принимаю{' '}
             <Link
+              href="/offer"
+              className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
+            >
+              Публичную оферту
+            </Link>
+            ,{' '}
+            <Link
               href="/user-agreement"
               className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
             >

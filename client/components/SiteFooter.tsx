@@ -16,6 +16,12 @@ export function SiteFooter() {
             <p className="mt-2 leading-6 text-[#6B6B6B]">{operatorText}</p>
           </div>
           <div className="flex flex-col gap-2 text-sm">
+            <Link href="/tariffs" target="_blank" className="hover:text-[#111111]">
+              Тарифы
+            </Link>
+            <Link href="/offer" target="_blank" className="hover:text-[#111111]">
+              Публичная оферта
+            </Link>
             <Link href="/user-agreement" target="_blank" className="hover:text-[#111111]">
               Пользовательское соглашение
             </Link>
