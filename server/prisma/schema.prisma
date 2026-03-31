@@ -438,6 +438,8 @@ model Contract {
   fileName String
   filePath String
   fileType String
+  contractNumber String?
+  expiresOn      String?
 
   pavilionId Int
   pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)

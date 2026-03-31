@@ -317,6 +317,7 @@ export class PavilionsController {
   async uploadContract(
     @Param('storeId', ParseIntPipe) storeId: number,
     @Param('pavilionId', ParseIntPipe) pavilionId: number,
+    @Body() body: { contractNumber?: string; expiresOn?: string },
     @UploadedFile() file?: any,
     @Req() req?: any,
   ) {
@@ -329,6 +330,8 @@ export class PavilionsController {
       fileName: decodedOriginalName,
       fileType: file.mimetype,
       filePath: `/uploads/contracts/${file.filename}`,
+      contractNumber: body?.contractNumber,
+      expiresOn: body?.expiresOn,
     }, req?.user?.id);
   }
 

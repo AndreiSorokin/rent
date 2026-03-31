@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [acceptedConsent, setAcceptedConsent] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -44,6 +45,9 @@ export default function RegisterPage() {
     if (normalized.includes('email verification service is not configured')) {
       return 'Сервис отправки email не настроен';
     }
+    if (normalized.includes('consent to personal data processing is required')) {
+      return 'Для регистрации нужно принять пользовательское соглашение и подтвердить согласие на обработку персональных данных';
+    }
     return 'Не удалось выполнить регистрацию. Попробуйте снова.';
   };
 
@@ -68,6 +72,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!acceptedConsent) {
+      setError('Для регистрации нужно принять пользовательское соглашение и подтвердить согласие на обработку персональных данных');
+      return;
+    }
+
     try {
       setLoading(true);
       await apiFetch('/auth/register', {
@@ -77,6 +86,7 @@ export default function RegisterPage() {
           email: email.trim().toLowerCase(),
           password,
           verificationCode: verificationCode.trim(),
+          personalDataConsent: true,
         }),
       });
       router.push('/login');
@@ -117,7 +127,7 @@ export default function RegisterPage() {
       subtitle="Заполните данные и подтвердите email"
       sideTitle="Создайте аккаунт для команды"
       sideDescription="После регистрации вы сможете управлять объектами, начислениями и доступами в единой системе."
-      sideFooter="Для завершения регистрации нужен код подтверждения из email."
+      sideFooter="Для завершения регистрации нужен код подтверждения из email, принятие пользовательского соглашения и согласие с условиями обработки персональных данных."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField
@@ -145,7 +155,11 @@ export default function RegisterPage() {
           disabled={sendingCode || !email.trim()}
           className="w-full rounded-xl border border-[#ff6a13] bg-white px-4 py-2.5 font-semibold text-[#ff6a13] transition hover:bg-[#ff6a13] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {sendingCode ? 'Отправка...' : codeSent ? 'Отправить код повторно' : 'Отправить код подтверждения'}
+          {sendingCode
+            ? 'Отправка...'
+            : codeSent
+              ? 'Отправить код повторно'
+              : 'Отправить код подтверждения'}
         </button>
 
         <AuthField
@@ -178,16 +192,56 @@ export default function RegisterPage() {
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
-        <p className="text-xs text-[#6b6b6b]">
+        <p className="text-xs leading-6 text-[#6b6b6b]">
           Пароль: минимум 6 символов, буквы, цифры и специальный символ.
         </p>
+
+        <label className="flex items-start gap-3 rounded-2xl border border-[#E8E1DA] bg-[#F9F5F0] px-4 py-4 text-sm leading-6 text-[#374151]">
+          <input
+            type="checkbox"
+            checked={acceptedConsent}
+            onChange={(e) => setAcceptedConsent(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[#CFC6BF] text-[#FF6A13] focus:ring-[#FF6A13]"
+          />
+          <span>
+            Я ознакомился и принимаю{' '}
+            <Link
+              href="/offer"
+              className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
+            >
+              Публичную оферту
+            </Link>
+            ,{' '}
+            <Link
+              href="/user-agreement"
+              className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
+            >
+              Пользовательское соглашение
+            </Link>
+            ,{' '}
+            <Link
+              href="/site-consent"
+              className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
+            >
+              Согласие пользователя сайта на обработку персональных данных
+            </Link>{' '}
+            и{' '}
+            <Link
+              href="/privacy"
+              className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
+            >
+              Политику обработки персональных данных
+            </Link>
+            .
+          </span>
+        </label>
 
         {successMessage ? <AuthMessage tone="success">{successMessage}</AuthMessage> : null}
         {error ? <AuthMessage>{error}</AuthMessage> : null}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !acceptedConsent}
           className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? 'Регистрация...' : 'Зарегистрироваться'}

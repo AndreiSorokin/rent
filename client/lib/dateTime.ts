@@ -74,6 +74,60 @@ export function formatDateInTimeZone(
   });
 }
 
+export function formatDateKey(value: string | null | undefined): string {
+  if (!value) return '-';
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return value;
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+export function normalizeDateInputToDateKey(
+  value: string | null | undefined,
+): string {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return normalized;
+  }
+
+  const displayMatch = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.exec(normalized);
+  if (!displayMatch) return '';
+
+  const day = displayMatch[1].padStart(2, '0');
+  const month = displayMatch[2].padStart(2, '0');
+  const year = displayMatch[3];
+
+  if (Number(day) < 1 || Number(day) > 31 || Number(month) < 1 || Number(month) > 12) {
+    return '';
+  }
+
+  const candidate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (
+    Number.isNaN(candidate.getTime()) ||
+    candidate.getUTCFullYear() !== Number(year) ||
+    candidate.getUTCMonth() !== Number(month) - 1 ||
+    candidate.getUTCDate() !== Number(day)
+  ) {
+    return '';
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+export function formatDateInputDisplay(
+  value: string | null | undefined,
+): string {
+  const digits = String(value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, 8);
+
+  if (!digits) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+}
+
 export function formatMonthLabelFromKey(
   monthKey: string,
   timeZone: string,

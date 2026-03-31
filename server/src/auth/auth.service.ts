@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
@@ -63,8 +63,8 @@ export class AuthService {
   private async sendVerificationEmail(email: string, code: string) {
     await this.sendEmail(
       email,
-      'Код подтверждения регистрации',
-      `Ваш код подтверждения: ${code}. Код действует 15 минут.`,
+      'РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ СЂРµРіРёСЃС‚СЂР°С†РёРё',
+      `Р’Р°С€ РєРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ: ${code}. РљРѕРґ РґРµР№СЃС‚РІСѓРµС‚ 15 РјРёРЅСѓС‚.`,
     );
   }
 
@@ -120,12 +120,17 @@ export class AuthService {
     email: string,
     password: string,
     verificationCode: string,
+    personalDataConsent: boolean,
     name?: string,
   ) {
     const normalizedEmail = this.normalizeEmail(email);
 
     if (!verificationCode || !verificationCode.trim()) {
       throw new BadRequestException('Verification code is required');
+    }
+
+    if (!personalDataConsent) {
+      throw new BadRequestException('Consent to personal data processing is required');
     }
 
     if (!isPasswordStrong(password)) {
@@ -261,8 +266,8 @@ export class AuthService {
     const link = `${this.getPasswordResetBaseUrl()}?token=${rawToken}`;
     await this.sendEmail(
       normalizedEmail,
-      'Сброс пароля',
-      `Чтобы задать новый пароль, откройте ссылку: ${link}\n\nСсылка действует 30 минут.`,
+      'РЎР±СЂРѕСЃ РїР°СЂРѕР»СЏ',
+      `Р§С‚РѕР±С‹ Р·Р°РґР°С‚СЊ РЅРѕРІС‹Р№ РїР°СЂРѕР»СЊ, РѕС‚РєСЂРѕР№С‚Рµ СЃСЃС‹Р»РєСѓ: ${link}\n\nРЎСЃС‹Р»РєР° РґРµР№СЃС‚РІСѓРµС‚ 30 РјРёРЅСѓС‚.`,
     );
 
     return {
@@ -330,4 +335,5 @@ export class AuthService {
     return { success: true };
   }
 }
+
 

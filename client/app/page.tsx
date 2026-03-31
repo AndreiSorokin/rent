@@ -111,9 +111,8 @@ export default function HomePage() {
               Управление торговыми объектами без хаоса в таблицах
             </h1>
             <p className="mt-5 max-w-2xl text-base text-[#4B5563] md:text-lg">
-              Платформа для владельцев и управляющих: павильоны, начисления,
-              платежи, сводка, бухгалтерская сверка и журнал действий в одном
-              рабочем контуре.
+              Платформа для владельцев и управляющих: павильоны, начисления, платежи,
+              сводка, бухгалтерская сверка и журнал действий в одном рабочем контуре.
             </p>
           </div>
 
@@ -141,24 +140,16 @@ export default function HomePage() {
 
         <div className="mb-12 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-[#D8D1CB] bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">
-              Фокус
-            </p>
+            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">Фокус</p>
             <p className="mt-2 text-xl font-bold">Павильоны и начисления</p>
           </div>
           <div className="rounded-2xl border border-[#D8D1CB] bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">
-              Прозрачность
-            </p>
+            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">Прозрачность</p>
             <p className="mt-2 text-xl font-bold">Сводка и кассовая сверка</p>
           </div>
           <div className="rounded-2xl border border-[#D8D1CB] bg-white p-5 shadow-sm">
-            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">
-              Безопасность
-            </p>
-            <p className="mt-2 text-xl font-bold">
-              Права доступа и журнал действий
-            </p>
+            <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">Безопасность</p>
+            <p className="mt-2 text-xl font-bold">Права доступа и журнал действий</p>
           </div>
         </div>
 
@@ -178,12 +169,10 @@ export default function HomePage() {
         </section>
 
         <section className="mt-12 rounded-[1.75rem] border border-[#D8D1CB] bg-white p-7 shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
-          <h2 className="text-2xl font-extrabold md:text-3xl">
-            Преимущества Palaci
-          </h2>
+          <h2 className="text-2xl font-extrabold md:text-3xl">Преимущества Palaci</h2>
           <p className="mt-2 max-w-3xl text-sm text-[#4B5563] md:text-base">
-            Система создана для практической работы: меньше ручных операций,
-            больше контроля и прозрачности в ежедневном учете.
+            Система создана для практической работы: меньше ручных операций, больше
+            контроля и прозрачности в ежедневном учете.
           </p>
           <ul className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
             {advantages.map((item) => (
@@ -202,13 +191,10 @@ export default function HomePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">
               Кому подойдет
             </p>
-            <h3 className="mt-2 text-3xl font-extrabold">
-              Для объектов и управляющих
-            </h3>
+            <h3 className="mt-2 text-3xl font-extrabold">Для объектов и управляющих</h3>
             <p className="mt-2 text-[#4B5563]">
-              Сервис подходит для торговых центров, рынков, галерей и других
-              объектов, где важно контролировать аренду, начисления и движение
-              денег.
+              Сервис подходит для торговых центров, рынков, галерей и других объектов,
+              где важно контролировать аренду, начисления и движение денег.
             </p>
             <ul className="mt-4 space-y-2 text-sm text-[#374151]">
               <li>• Учет павильонов и арендаторов</li>
@@ -221,12 +207,10 @@ export default function HomePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#6B6B6B]">
               Старт
             </p>
-            <h3 className="mt-2 text-3xl font-extrabold">
-              Подключитесь и запустите учет
-            </h3>
+            <h3 className="mt-2 text-3xl font-extrabold">Подключитесь и запустите учет</h3>
             <p className="mt-2 text-[#4B5563]">
-              Создайте аккаунт, добавьте объект и начните вести платежи,
-              расходы и начисления без ручной рутины.
+              Создайте аккаунт, добавьте объект и начните вести платежи, расходы и
+              начисления без ручной рутины.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
@@ -246,9 +230,7 @@ export default function HomePage() {
         </section>
 
         <section className="mt-12 rounded-[1.75rem] border border-[#D8D1CB] bg-white p-7 shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
-          <h2 className="text-2xl font-extrabold md:text-3xl">
-            Частые вопросы
-          </h2>
+          <h2 className="text-2xl font-extrabold md:text-3xl">Частые вопросы</h2>
           <div className="mt-5 space-y-3">
             {faqItems.map((item) => (
               <details
@@ -264,45 +246,6 @@ export default function HomePage() {
           </div>
         </section>
       </section>
-
-      <footer className="border-t border-[#D8D1CB] bg-[#F4EFEB]">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 py-10 md:grid-cols-3 md:px-10">
-          <div>
-            <p className="text-lg font-extrabold">Palaci</p>
-            <p className="mt-2 text-sm text-[#6B6B6B]">
-              Управление объектами, платежами и сверкой в одном рабочем
-              пространстве.
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-[#6B6B6B]">
-              Разделы
-            </p>
-            <div className="mt-3 flex flex-col gap-2 text-sm">
-              <Link href="/login" className="text-[#374151] hover:text-[#111111]">
-                Вход
-              </Link>
-              <Link href="/register" className="text-[#374151] hover:text-[#111111]">
-                Регистрация
-              </Link>
-              <Link href="/dashboard" className="text-[#374151] hover:text-[#111111]">
-                Панель
-              </Link>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-widest text-[#6B6B6B]">
-              Документы
-            </p>
-            <div className="mt-3 flex flex-col gap-2 text-sm text-[#374151]">
-              <Link href="/privacy" className="hover:text-[#111111]">
-                Политика конфиденциальности
-              </Link>
-              <span>Пользовательское соглашение</span>
-            </div>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }

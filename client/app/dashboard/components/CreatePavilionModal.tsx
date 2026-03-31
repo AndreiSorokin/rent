@@ -1,15 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { apiFetch } from '@/lib/api';
-import { createPavilionPayment } from '@/lib/payments';
-import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 import { useToast } from '@/components/toast/ToastProvider';
+import { apiFetch } from '@/lib/api';
+import {
+  uploadContract,
+  validateContractUploadMeta,
+} from '@/lib/contracts';
+import {
+  formatDateInputDisplay,
+  formatDateKey,
+  getCurrentMonthKeyInTimeZone,
+  getTodayDateKeyInTimeZone,
+  normalizeDateInputToDateKey,
+} from '@/lib/dateTime';
+import { createPavilionPayment } from '@/lib/payments';
 
 type CreatePavilionModalProps = {
   storeId: number;
   timeZone?: string;
   existingCategories: string[];
+  canUploadContracts?: boolean;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -20,6 +31,7 @@ export function CreatePavilionModal({
   storeId,
   timeZone = 'UTC',
   existingCategories,
+  canUploadContracts = false,
   onClose,
   onSaved,
 }: CreatePavilionModalProps) {
@@ -45,7 +57,15 @@ export function CreatePavilionModal({
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [contractNumber, setContractNumber] = useState('');
+  const [contractExpiresOn, setContractExpiresOn] = useState('');
+  const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const contractExpiresOnInvalid =
+    contractExpiresOnTouched &&
+    contractExpiresOn.trim().length > 0 &&
+    !normalizeDateInputToDateKey(contractExpiresOn);
 
   const handleSubmit = async () => {
     const category = newCategory.trim() || selectedCategory.trim();
@@ -58,9 +78,24 @@ export function CreatePavilionModal({
 
     if (needsTenant && !tenantName.trim()) {
       toast.error(
-        'Для статуса "ЗАНЯТ" или "ПРЕДОПЛАТА" укажите наименование организации',
+        'Для статуса «ЗАНЯТ» или «ПРЕДОПЛАТА» укажите наименование организации',
       );
       return;
+    }
+
+    if (contractFile) {
+      const normalizedExpiresOn = normalizeDateInputToDateKey(contractExpiresOn);
+      const validationMessage = validateContractUploadMeta(
+        {
+          contractNumber,
+          expiresOn: normalizedExpiresOn,
+        },
+        getTodayDateKeyInTimeZone(timeZone),
+      );
+      if (validationMessage) {
+        toast.error(validationMessage);
+        return;
+      }
     }
 
     setLoading(true);
@@ -132,6 +167,14 @@ export function CreatePavilionModal({
         });
       }
 
+      if (contractFile && needsTenant) {
+        await uploadContract(storeId, pavilion.id, contractFile, {
+          contractNumber,
+          expiresOn: normalizeDateInputToDateKey(contractExpiresOn),
+        });
+        setContractExpiresOnTouched(false);
+      }
+
       toast.success('Павильон успешно создан');
       onSaved();
     } catch (err: any) {
@@ -176,7 +219,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Категория (из существующих)</label>
+            <label className={labelClass}>Категория из существующих</label>
             {!newCategory.trim() ? (
               <select
                 value={selectedCategory}
@@ -192,7 +235,7 @@ export function CreatePavilionModal({
               </select>
             ) : (
               <p className="text-sm text-gray-500">
-                Введите новую категорию: выбор из существующих скрыт.
+                Вы вводите новую категорию, поэтому выбор из списка скрыт.
               </p>
             )}
           </div>
@@ -209,7 +252,7 @@ export function CreatePavilionModal({
               />
             ) : (
               <p className="text-sm text-gray-500">
-                Выбрана существующая категория: поле новой категории скрыто.
+                Выбрана существующая категория, поле новой категории скрыто.
               </p>
             )}
           </div>
@@ -270,8 +313,82 @@ export function CreatePavilionModal({
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
                 className={inputClass}
-                placeholder="Например: Иван Петров"
+                placeholder="Например: ООО Ромашка"
               />
+            </div>
+          )}
+
+          {(status === 'RENTED' || status === 'PREPAID') && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-800">Договор для этого статуса</p>
+              <p className="mt-1 text-sm text-amber-700">
+                Для статусов «ЗАНЯТ» и «ПРЕДОПЛАТА» рекомендуется загрузить договор сразу.
+                Если сохранить без договора, павильон позже будет отмечен как требующий внимания.
+              </p>
+              {canUploadContracts ? (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <label className={labelClass}>Номер договора</label>
+                      <input
+                        type="text"
+                        value={contractNumber}
+                        onChange={(e) => setContractNumber(e.target.value)}
+                        className={inputClass}
+                        placeholder="Например: 12/2026"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Дата окончания договора</label>
+                      <input
+                        type="text"
+                        value={contractExpiresOn}
+                        onChange={(e) =>
+                          setContractExpiresOn(formatDateInputDisplay(e.target.value))
+                        }
+                        onBlur={() => {
+                          setContractExpiresOnTouched(true);
+                          const normalized = normalizeDateInputToDateKey(contractExpiresOn);
+                          if (normalized) {
+                            setContractExpiresOn(formatDateKey(normalized));
+                          }
+                        }}
+                        className={`${inputClass} ${
+                          contractExpiresOnInvalid
+                            ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
+                            : ''
+                        }`}
+                        placeholder="дд.мм.гггг"
+                        inputMode="numeric"
+                      />
+                      {contractExpiresOnInvalid && (
+                        <p className="mt-1 text-xs text-[#b91c1c]">
+                          Введите дату в формате дд.мм.гггг
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Файл договора</label>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                      onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                      className={inputClass}
+                    />
+                    <p className="mt-2 text-xs text-[#6b6b6b]">
+                      {contractFile
+                        ? `Выбран файл: ${contractFile.name}`
+                        : 'Файл можно добавить сейчас или позже на странице павильона'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-amber-700">
+                  У вас нет права на загрузку договоров. При необходимости договор можно
+                  добавить позже пользователем с правом «Загружать договоры».
+                </p>
+              )}
             </div>
           )}
 
@@ -303,7 +420,7 @@ export function CreatePavilionModal({
               </div>
               <div>
                 <label className={labelClass}>
-                  Сумма предоплаты (если пусто - полная аренда)
+                  Сумма предоплаты (если пусто, будет полная аренда)
                 </label>
                 <input
                   type="number"

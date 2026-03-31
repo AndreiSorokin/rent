@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DialogProvider } from "@/components/dialog/DialogProvider";
 import { ToastProvider } from "@/components/toast/ToastProvider";
+import { SiteFooter } from "@/components/SiteFooter";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,11 +39,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
         <DialogProvider>
           <ToastProvider>
-            <AuthGuard>{children}</AuthGuard>
+            <div className="flex min-h-screen flex-col">
+              <div className="flex-1">
+                <AuthGuard>{children}</AuthGuard>
+              </div>
+              <SiteFooter />
+              <CookieConsentBanner />
+            </div>
           </ToastProvider>
         </DialogProvider>
       </body>

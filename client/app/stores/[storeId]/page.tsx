@@ -1457,6 +1457,10 @@ export default function StorePage() {
                         const carryAdjustment = Number(p.paymentCarryAdjustment ?? 0);
                         const carryBalance = -carryAdjustment;
                         const hasCarryAdjustment = Math.abs(carryBalance) > 0.009;
+                        const requiresContract =
+                          p.status === 'RENTED' || p.status === 'PREPAID';
+                        const hasContract = Array.isArray(p.contracts) && p.contracts.length > 0;
+                        const missingContract = requiresContract && !hasContract;
                         return (
                       <tr
                         key={p.id}
@@ -1553,7 +1557,14 @@ export default function StorePage() {
                           {p.category || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-[#374151]">
-                          {p.tenantName || 'Свободен'}
+                          <div className="space-y-1">
+                            <div>{p.tenantName || 'Свободен'}</div>
+                            {missingContract && (
+                              <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                                Нет договора
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-[#374151]">
                           <div
@@ -2315,6 +2326,7 @@ export default function StorePage() {
           storeId={storeId}
           timeZone={store?.timeZone || 'UTC'}
           existingCategories={allCategories}
+          canUploadContracts={hasPermission(permissions, 'UPLOAD_CONTRACTS')}
           onClose={() => setShowCreatePavilionModal(false)}
           onSaved={handlePavilionCreated}
         />
