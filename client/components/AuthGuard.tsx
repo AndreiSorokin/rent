@@ -11,6 +11,8 @@ function isPublicPath(pathname: string | null) {
   if (pathname === '/') return true;
   if (pathname === '/privacy') return true;
   if (pathname === '/content-rules') return true;
+  if (pathname === '/operator') return true;
+  if (pathname === '/cookies') return true;
   if (ANON_ONLY_PATHS.has(pathname)) return true;
   return pathname.startsWith('/forgot-password');
 }
