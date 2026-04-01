@@ -581,13 +581,13 @@ export default function StoreSummaryPage() {
           return fallback;
         })();
 
-    const carryAdjustment = Number(
-      income.carryAdjustment ?? income.previousMonthBalance ?? 0,
-    );
+    const previousMonthBalance = Number(income.previousMonthBalance ?? 0);
+    const carryAdjustment = Number(income.carryAdjustment ?? 0);
     const incomeTotalRaw = Number(income.total ?? 0);
-    const incomeTotalWithPrevious = incomeTotalRaw + carryAdjustment;
+    const incomeTotalWithPrevious = incomeTotalRaw + previousMonthBalance;
     const incomeWithAdjustedTotal = {
       ...income,
+      previousMonthBalance,
       carryAdjustment,
       totalWithPrevious: incomeTotalWithPrevious,
     };
@@ -873,6 +873,10 @@ export default function StoreSummaryPage() {
                 </Link>
               </div>
               <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div>
+              <div>
+                Факт с учетом остатка:{' '}
+                {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+              </div>
             </div>
           </div>
           <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
@@ -966,7 +970,7 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <MetricCard
                   title="Корректировка переносом"
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
@@ -978,6 +982,12 @@ export default function StoreSummaryPage() {
                   value={formatMoney(data.income.total ?? 0, data.currency)}
                   subtitle="Факт текущего месяца"
                   tone="success"
+                />
+                <MetricCard
+                  title="Доход с учетом остатка"
+                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+                  subtitle="Факт текущего месяца + остаток прошлого"
+                  tone="primary"
                 />
               </div>
               <p className="mt-2 text-xs text-[#6b6b6b]">
