@@ -2068,6 +2068,67 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return this.normalizeStoreTimeZone(store?.timeZone);
   }
 
+  private async syncCurrentMonthStaffPaymentState(
+    storeId: number,
+    currentPeriod: Date,
+    timeZone: string,
+  ) {
+    const currentMonthRange = this.getTimeZoneMonthRange(currentPeriod, timeZone);
+    const [paidStaff, currentMonthSalaryExpenses] = await Promise.all([
+      (this.prisma.storeStaff as any).findMany({
+        where: {
+          storeId,
+          salaryStatus: 'PAID',
+        },
+        select: {
+          id: true,
+        },
+      }),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          storeId,
+          type: PavilionExpenseType.SALARIES,
+          createdAt: {
+            gte: currentMonthRange.monthStart,
+            lte: currentMonthRange.monthEnd,
+          },
+        },
+        select: {
+          note: true,
+        },
+      }),
+    ]);
+
+    if (!paidStaff.length) return;
+
+    const expenseStaffIds = new Set<number>();
+    for (const expense of currentMonthSalaryExpenses) {
+      const match = /^STAFF:(\d+):/.exec(String(expense.note ?? ''));
+      if (!match) continue;
+      expenseStaffIds.add(Number(match[1]));
+    }
+
+    const stalePaidStaffIds = paidStaff
+      .map((item: { id: number }) => Number(item.id))
+      .filter((staffId) => !expenseStaffIds.has(staffId));
+
+    if (!stalePaidStaffIds.length) return;
+
+    await (this.prisma.storeStaff as any).updateMany({
+      where: {
+        storeId,
+        id: { in: stalePaidStaffIds },
+      },
+      data: {
+        salaryStatus: 'UNPAID',
+        salaryPaymentMethod: null,
+        salaryBankTransferPaid: 0,
+        salaryCashbox1Paid: 0,
+        salaryCashbox2Paid: 0,
+      },
+    });
+  }
+
   private getTimeZoneParts(date: Date, timeZone: string) {
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone,
@@ -2586,11 +2647,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           signedTotal,
         };
       })
-      .filter((expense) => Math.abs(expense.signedTotal) > 0.009)
+      .filter((expense) => expense.signedTotal > 0.009)
       .sort((a, b) => a.paidAt.getTime() - b.paidAt.getTime())
       .map(({ signedTotal: _signedTotal, ...expense }) => expense);
 
-    const totals = ledgerItems.reduce(
+    const totals = items.reduce(
       (acc: any, item: any) => {
         acc.bankTransferPaid += Number(item.bankTransferPaid ?? 0);
         acc.cashbox1Paid += Number(item.cashbox1Paid ?? 0);
@@ -3696,7 +3757,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const alreadyResetThisMonth =
       store.lastMonthlyResetPeriod &&
       startOfMonth(store.lastMonthlyResetPeriod).getTime() === currentPeriod.getTime();
-    if (alreadyResetThisMonth) return;
+    if (alreadyResetThisMonth) {
+      await this.syncCurrentMonthStaffPaymentState(storeId, currentPeriod, timeZone);
+      return;
+    }
 
     const pavilions = await this.prisma.pavilion.findMany({
       where: { storeId },
@@ -3844,13 +3908,26 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      await tx.pavilion.updateMany({
-        where: {
-          storeId,
-          status: PavilionStatus.PREPAID,
-        },
+        await tx.pavilion.updateMany({
+          where: {
+            storeId,
+            status: PavilionStatus.PREPAID,
+          },
         data: {
           utilitiesAmount: 0,
+          },
+        });
+
+      await (tx.storeStaff as any).updateMany({
+        where: {
+          storeId,
+        },
+        data: {
+          salaryStatus: 'UNPAID',
+          salaryPaymentMethod: null,
+          salaryBankTransferPaid: 0,
+          salaryCashbox1Paid: 0,
+          salaryCashbox2Paid: 0,
         },
       });
 

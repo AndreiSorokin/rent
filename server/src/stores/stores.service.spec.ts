@@ -16,6 +16,10 @@ describe('StoresService monthly rollover', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
+      storeStaff: {
+        findMany: jest.fn(),
+        updateMany: jest.fn(),
+      },
       pavilion: {
         updateMany: jest.fn(),
         findMany: jest.fn(),
@@ -30,6 +34,7 @@ describe('StoresService monthly rollover', () => {
       callback({
         pavilionMonthlyLedger: prisma.pavilionMonthlyLedger,
         pavilion: prisma.pavilion,
+        storeStaff: prisma.storeStaff,
         store: prisma.store,
       }),
     );
@@ -94,6 +99,7 @@ describe('StoresService monthly rollover', () => {
       lastMonthlyResetPeriod: null,
     });
     prisma.pavilion.findMany.mockResolvedValue([]);
+    prisma.storeStaff.findMany.mockResolvedValue([]);
     prisma.store.update.mockResolvedValue({});
 
     await (service as any).runMonthlyRolloverForStore(10);
@@ -120,6 +126,16 @@ describe('StoresService monthly rollover', () => {
         }),
       }),
     );
+    expect(prisma.storeStaff.updateMany).toHaveBeenCalledWith({
+      where: { storeId: 10 },
+      data: {
+        salaryStatus: 'UNPAID',
+        salaryPaymentMethod: null,
+        salaryBankTransferPaid: 0,
+        salaryCashbox1Paid: 0,
+        salaryCashbox2Paid: 0,
+      },
+    });
   });
 
   it('changes pavilion status from PREPAID to RENTED when prepaid period expired', async () => {
@@ -129,6 +145,10 @@ describe('StoresService monthly rollover', () => {
       id: 10,
       lastMonthlyResetPeriod: currentPeriod,
     });
+    prisma.storeStaff.findMany.mockResolvedValue([]);
+    prisma.pavilionExpense = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
 
     await (service as any).runMonthlyRolloverForStore(10);
 
@@ -145,6 +165,36 @@ describe('StoresService monthly rollover', () => {
         },
       }),
     );
+  });
+
+  it('repairs stale paid staff state after current month reset when no current-month salary entry exists', async () => {
+    const currentPeriod = startOfMonth(new Date());
+    prisma.pavilion.updateMany.mockResolvedValue({ count: 0 });
+    prisma.store.findUnique.mockResolvedValue({
+      id: 10,
+      timeZone: 'UTC',
+      lastMonthlyResetPeriod: currentPeriod,
+    });
+    prisma.storeStaff.findMany.mockResolvedValue([{ id: 7 }]);
+    prisma.pavilionExpense = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
+
+    await (service as any).runMonthlyRolloverForStore(10);
+
+    expect(prisma.storeStaff.updateMany).toHaveBeenCalledWith({
+      where: {
+        storeId: 10,
+        id: { in: [7] },
+      },
+      data: {
+        salaryStatus: 'UNPAID',
+        salaryPaymentMethod: null,
+        salaryBankTransferPaid: 0,
+        salaryCashbox1Paid: 0,
+        salaryCashbox2Paid: 0,
+      },
+    });
   });
 });
 
@@ -205,6 +255,66 @@ describe('StoresService pavilion groups', () => {
       where: { id: 9 },
     });
     expect(result).toEqual({ id: 9 });
+  });
+});
+
+describe('StoresService expense snapshot', () => {
+  let service: StoresService;
+  let prisma: any;
+
+  beforeEach(() => {
+    prisma = {
+      store: {
+        findUnique: jest.fn(),
+      },
+      storeExpenseLedger: {
+        aggregate: jest.fn(),
+        findMany: jest.fn(),
+      },
+      pavilionExpense: {
+        findMany: jest.fn(),
+      },
+    };
+
+    service = new StoresService(prisma as any, {} as any);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('ignores negative-only ledger reversals in expected close expenses', async () => {
+    prisma.store.findUnique.mockResolvedValue({ timeZone: 'UTC' });
+    prisma.storeExpenseLedger.aggregate.mockResolvedValue({
+      _min: { occurredAt: new Date('2026-04-01T08:00:00.000Z') },
+    });
+    prisma.storeExpenseLedger.findMany.mockResolvedValue([
+      {
+        id: 1,
+        sourceType: 'STAFF',
+        sourceId: 5,
+        occurredAt: new Date('2026-04-01T09:00:00.000Z'),
+        expenseType: 'SALARIES',
+        note: 'STAFF:5:Иван',
+        bankTransferPaid: -100,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+      },
+    ]);
+
+    const result = await (service as any).getExpenseSnapshotForDay(
+      10,
+      new Date('2026-04-01T00:00:00.000Z'),
+      new Date('2026-04-01T23:59:59.999Z'),
+    );
+
+    expect(result.items).toEqual([]);
+    expect(result.totals).toEqual({
+      bankTransferPaid: 0,
+      cashbox1Paid: 0,
+      cashbox2Paid: 0,
+      total: 0,
+    });
   });
 });
 
