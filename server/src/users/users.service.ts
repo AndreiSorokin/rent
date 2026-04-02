@@ -11,6 +11,14 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { id },
       include: {
+        tenantProfile: {
+          select: {
+            id: true,
+            type: true,
+            fullName: true,
+            phone: true,
+          },
+        },
         stores: {
           select: {
             permissions: true,

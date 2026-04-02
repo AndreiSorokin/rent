@@ -12,6 +12,7 @@ model User {
   email           String       @unique
   password        String
   name            String?
+  tenantProfile   TenantProfile?
   stores          StoreUser[]
   activities      StoreActivity[]
   passwordResetTokens PasswordResetToken[]
@@ -90,6 +91,7 @@ model Store {
   expenseLedger StoreExpenseLedger[]
   images      StoreImage[]
   invoices    StoreInvoice[]
+  tenantApplications TenantPavilionApplication[]
 }
 
 model StoreActivity {
@@ -252,9 +254,76 @@ model Pavilion {
   groupMemberships PavilionGroupMembership[]
   activities        StoreActivity[]
   images            PavilionImage[]
+  tenantLeases      TenantPavilionLease[]
+  tenantApplications TenantPavilionApplication[]
 
   storeId Int
   store   Store @relation(fields: [storeId], references: [id])
+}
+
+model TenantProfile {
+  id              Int                        @id @default(autoincrement())
+  userId          Int                        @unique
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            TenantProfileType          @default(INDIVIDUAL)
+  fullName        String?
+  phone           String?
+  requisites      String?
+  organizations   TenantOrganization[]
+  pavilionLeases  TenantPavilionLease[]
+  applications    TenantPavilionApplication[]
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+}
+
+model TenantOrganization {
+  id                 Int                    @id @default(autoincrement())
+  tenantProfileId    Int
+  tenantProfile      TenantProfile          @relation(fields: [tenantProfileId], references: [id], onDelete: Cascade)
+  type               TenantOrganizationType
+  name               String
+  taxId              String?
+  registrationNumber String?
+  legalAddress       String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@index([tenantProfileId, createdAt])
+}
+
+model TenantPavilionLease {
+  id              Int               @id @default(autoincrement())
+  tenantProfileId Int
+  tenantProfile   TenantProfile     @relation(fields: [tenantProfileId], references: [id], onDelete: Cascade)
+  pavilionId      Int
+  pavilion        Pavilion          @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  status          TenantLeaseStatus @default(ACTIVE)
+  startedAt       DateTime          @default(now())
+  endedAt         DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([tenantProfileId, status, startedAt])
+  @@index([pavilionId, status, startedAt])
+}
+
+model TenantPavilionApplication {
+  id              Int                     @id @default(autoincrement())
+  tenantProfileId Int
+  tenantProfile   TenantProfile           @relation(fields: [tenantProfileId], references: [id], onDelete: Cascade)
+  storeId         Int?
+  store           Store?                  @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  pavilionId      Int?
+  pavilion        Pavilion?               @relation(fields: [pavilionId], references: [id], onDelete: SetNull)
+  status          TenantApplicationStatus @default(PENDING)
+  note            String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  reviewedAt      DateTime?
+
+  @@index([tenantProfileId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([pavilionId, createdAt])
 }
 
 model StoreImage {
@@ -555,4 +624,24 @@ enum PaymentMethod {
   BANK_TRANSFER
   CASHBOX1
   CASHBOX2
+}
+
+enum TenantProfileType {
+  INDIVIDUAL
+}
+
+enum TenantOrganizationType {
+  IE
+  LLC
+}
+
+enum TenantLeaseStatus {
+  ACTIVE
+  ENDED
+}
+
+enum TenantApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

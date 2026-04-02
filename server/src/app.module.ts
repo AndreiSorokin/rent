@@ -14,6 +14,7 @@ import { DiscountsModule } from './discounts/discounts.module';
 import { HouseholdExpenseModule } from './household-expense/household-expense.module';
 import { PavilionExpensesModule } from './pavilion-expenses/pavilion-expenses.module';
 import { StoreActivityModule } from './store-activity/store-activity.module';
+import { TenantProfileModule } from './tenant-profile/tenant-profile.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { StoreActivityModule } from './store-activity/store-activity.module';
     HouseholdExpenseModule,
     PavilionExpensesModule,
     StoreActivityModule,
+    TenantProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
