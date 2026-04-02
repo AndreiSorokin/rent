@@ -872,9 +872,9 @@ export default function StoreSummaryPage() {
                   Прогноз: {formatMoney(data.income.forecast?.total ?? 0, data.currency)}
                 </Link>
               </div>
-              <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div>
+              {/* <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div> */}
               <div>
-                Факт с учетом остатка:{' '}
+                Факт:{' '}
                 {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
               </div>
             </div>
@@ -977,16 +977,17 @@ export default function StoreSummaryPage() {
                   subtitle="Баланс после переноса переплаты/долга"
                   tone="primary"
                 />
-                <MetricCard
+                {/* <MetricCard
                   title="Итого приход"
                   value={formatMoney(data.income.total ?? 0, data.currency)}
                   subtitle="Факт текущего месяца"
                   tone="success"
-                />
+                /> */}
                 <MetricCard
-                  title="Доход с учетом остатка"
+                  // title="Доход с учетом остатка"
+                  title="Итого приход"
                   value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
-                  subtitle="Факт текущего месяца + остаток прошлого"
+                  // subtitle="Факт текущего месяца + остаток прошлого"
                   tone="primary"
                 />
               </div>
