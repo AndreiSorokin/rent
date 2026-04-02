@@ -874,7 +874,8 @@ export default function StoreSummaryPage() {
               </div>
               {/* <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div> */}
               <div>
-                Факт:{' '}
+                {/* Факт с учетом остатка:{' '} */}
+                Факт: {' '}
                 {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
               </div>
             </div>
