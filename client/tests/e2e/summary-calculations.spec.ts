@@ -59,7 +59,6 @@ async function mockSummaryApi(page: Page) {
               forecast: { total: 210000 },
               total: 200000,
               previousMonthBalance: 10000,
-              channels: { bankTransfer: 80000, cashbox1: 70000, cashbox2: 50000, total: 200000 },
               previousMonthChannels: {
                 bankTransfer: 3000,
                 cashbox1: 4000,
@@ -67,17 +66,33 @@ async function mockSummaryApi(page: Page) {
                 total: 10000,
               },
               carryAdjustment: 0,
+              channels: {
+                bankTransfer: 80000,
+                cashbox1: 70000,
+                cashbox2: 50000,
+                total: 200000,
+              },
             },
             expenses: {
               totals: { forecast: 70000, actual: 50000 },
               byType: {},
-              channels: { bankTransfer: 25000, cashbox1: 15000, cashbox2: 10000, total: 50000 },
+              channels: {
+                bankTransfer: 25000,
+                cashbox1: 15000,
+                cashbox2: 10000,
+                total: 50000,
+              },
               channelsByType: {},
             },
             tradeArea: {},
             groupedByPavilionGroups: [],
             saldo: 150000,
-            saldoChannels: { bankTransfer: 55000, cashbox1: 55000, cashbox2: 40000, total: 150000 },
+            saldoChannels: {
+              bankTransfer: 55000,
+              cashbox1: 55000,
+              cashbox2: 40000,
+              total: 150000,
+            },
             financeTrend: [],
           },
         }),
@@ -89,15 +104,27 @@ async function mockSummaryApi(page: Page) {
   });
 }
 
+<<<<<<< HEAD
 test('summary shows money totals using temporary income-with-previous logic', async ({ page }) => {
+=======
+test.skip('summary shows money totals using actual income and actual expenses', async ({
+  page,
+}) => {
+>>>>>>> ac4dab1e5b7ec83cc7a5323076c696ec668cde3d
   await setAuthorizedSession(page);
   await mockSummaryApi(page);
 
   await page.goto(`/stores/${STORE_ID}/summary`);
 
+<<<<<<< HEAD
   const overview = page.locator('section').filter({ has: page.getByRole('heading', { name: /Доходы/i }) }).first();
 
   await expect(overview.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i)).toBeVisible();
   await expect(overview.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i)).toBeVisible();
   await expect(overview.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+=======
+  await expect(page.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+>>>>>>> ac4dab1e5b7ec83cc7a5323076c696ec668cde3d
 });
