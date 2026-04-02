@@ -89,13 +89,15 @@ async function mockSummaryApi(page: Page) {
   });
 }
 
-test('summary shows money totals using actual income and actual expenses', async ({ page }) => {
+test('summary shows money totals using temporary income-with-previous logic', async ({ page }) => {
   await setAuthorizedSession(page);
   await mockSummaryApi(page);
 
   await page.goto(`/stores/${STORE_ID}/summary`);
 
-  await expect(page.getByText(/Факт:\s*200[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-  await expect(page.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-  await expect(page.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  const overview = page.locator('section').filter({ has: page.getByRole('heading', { name: /Доходы/i }) }).first();
+
+  await expect(overview.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+  await expect(overview.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+  await expect(overview.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i)).toBeVisible();
 });
