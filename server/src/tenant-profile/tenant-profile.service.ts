@@ -13,25 +13,40 @@ type UpdateTenantProfileInput = {
   requisites?: string | null;
 };
 
-type CreateTenantOrganizationInput = {
-  type: TenantOrganizationType;
-  name: string;
-  taxId?: string | null;
-  registrationNumber?: string | null;
-  legalAddress?: string | null;
-};
+type CreateTenantOrganizationInput =
+  | {
+      type: 'IE';
+      fullName: string;
+      inn?: string | null;
+      ogrnip?: string | null;
+      legalAddress?: string | null;
+    }
+  | {
+      type: 'LLC';
+      companyName: string;
+      inn?: string | null;
+      kpp?: string | null;
+      ogrn?: string | null;
+      legalAddress?: string | null;
+    };
 
 type UpdateTenantOrganizationInput = {
-  type?: TenantOrganizationType;
-  name?: string | null;
-  taxId?: string | null;
-  registrationNumber?: string | null;
+  fullName?: string | null;
+  companyName?: string | null;
+  inn?: string | null;
+  ogrnip?: string | null;
+  kpp?: string | null;
+  ogrn?: string | null;
   legalAddress?: string | null;
 };
 
 @Injectable()
 export class TenantProfileService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private get prismaAny() {
+    return this.prisma as any;
+  }
 
   private trimNullable(value: string | null | undefined) {
     const normalized = String(value ?? '').trim();
@@ -43,6 +58,37 @@ export class TenantProfileService {
       return value;
     }
     throw new BadRequestException('Допустимые типы организации: IE или LLC');
+  }
+
+  private mapOrganization(organization: any) {
+    if (!organization) return null;
+
+    if (organization.type === 'IE') {
+      return {
+        id: organization.id,
+        type: organization.type,
+        displayName: organization.ieProfile?.fullName ?? '',
+        fullName: organization.ieProfile?.fullName ?? null,
+        inn: organization.ieProfile?.inn ?? null,
+        ogrnip: organization.ieProfile?.ogrnip ?? null,
+        legalAddress: organization.ieProfile?.legalAddress ?? null,
+        createdAt: organization.createdAt,
+        updatedAt: organization.updatedAt,
+      };
+    }
+
+    return {
+      id: organization.id,
+      type: organization.type,
+      displayName: organization.llcProfile?.companyName ?? '',
+      companyName: organization.llcProfile?.companyName ?? null,
+      inn: organization.llcProfile?.inn ?? null,
+      kpp: organization.llcProfile?.kpp ?? null,
+      ogrn: organization.llcProfile?.ogrn ?? null,
+      legalAddress: organization.llcProfile?.legalAddress ?? null,
+      createdAt: organization.createdAt,
+      updatedAt: organization.updatedAt,
+    };
   }
 
   private async ensureTenantProfile(userId: number) {
@@ -74,17 +120,42 @@ export class TenantProfileService {
     return created.id;
   }
 
-  private normalizeOrganizationInput(input: CreateTenantOrganizationInput) {
-    const name = this.trimNullable(input.name);
-    if (!name) {
-      throw new BadRequestException('Укажите название организации');
+  private normalizeIeInput(input: {
+    fullName?: string | null;
+    inn?: string | null;
+    ogrnip?: string | null;
+    legalAddress?: string | null;
+  }) {
+    const fullName = this.trimNullable(input.fullName);
+    if (!fullName) {
+      throw new BadRequestException('Укажите ФИО ИП');
     }
 
     return {
-      type: this.validateOrganizationType(String(input.type)),
-      name,
-      taxId: this.trimNullable(input.taxId),
-      registrationNumber: this.trimNullable(input.registrationNumber),
+      fullName,
+      inn: this.trimNullable(input.inn),
+      ogrnip: this.trimNullable(input.ogrnip),
+      legalAddress: this.trimNullable(input.legalAddress),
+    };
+  }
+
+  private normalizeLlcInput(input: {
+    companyName?: string | null;
+    inn?: string | null;
+    kpp?: string | null;
+    ogrn?: string | null;
+    legalAddress?: string | null;
+  }) {
+    const companyName = this.trimNullable(input.companyName);
+    if (!companyName) {
+      throw new BadRequestException('Укажите название ООО');
+    }
+
+    return {
+      companyName,
+      inn: this.trimNullable(input.inn),
+      kpp: this.trimNullable(input.kpp),
+      ogrn: this.trimNullable(input.ogrn),
       legalAddress: this.trimNullable(input.legalAddress),
     };
   }
@@ -95,7 +166,7 @@ export class TenantProfileService {
     const oneYearAgo = subYears(new Date(), 1);
     const debtHistoryFrom = subYears(new Date(), 1);
 
-    const profile = await this.prisma.tenantProfile.findUnique({
+    const profile = await this.prismaAny.tenantProfile.findUnique({
       where: { userId },
       include: {
         user: {
@@ -107,6 +178,10 @@ export class TenantProfileService {
         },
         organizations: {
           orderBy: { createdAt: 'desc' },
+          include: {
+            ieProfile: true,
+            llcProfile: true,
+          },
         },
         pavilionLeases: {
           where: {
@@ -176,8 +251,8 @@ export class TenantProfileService {
       throw new NotFoundException('Профиль арендатора не найден');
     }
 
-    const pavilionIds = Array.from(
-      new Set(profile.pavilionLeases.map((lease) => lease.pavilionId)),
+    const pavilionIds: number[] = Array.from(
+      new Set(profile.pavilionLeases.map((lease: any) => lease.pavilionId)),
     );
 
     const [paymentTransactions, monthlyLedgers] = await Promise.all([
@@ -263,15 +338,17 @@ export class TenantProfileService {
       requisites: profile.requisites,
       type: profile.type,
       createdAt: profile.createdAt,
-      organizations: profile.organizations,
-      pavilions: profile.pavilionLeases.map((lease) => ({
+      organizations: profile.organizations.map((organization: any) =>
+        this.mapOrganization(organization),
+      ),
+      pavilions: profile.pavilionLeases.map((lease: any) => ({
         leaseId: lease.id,
         status: lease.status,
         startedAt: lease.startedAt,
         endedAt: lease.endedAt,
         pavilion: lease.pavilion,
       })),
-      applicationHistory: profile.applications.map((application) => ({
+      applicationHistory: profile.applications.map((application: any) => ({
         id: application.id,
         status: application.status,
         note: application.note,
@@ -288,7 +365,8 @@ export class TenantProfileService {
         store: payment.pavilion.store,
         period: payment.period,
         createdAt: payment.createdAt,
-        amount: Number(payment.rentPaid ?? 0) +
+        amount:
+          Number(payment.rentPaid ?? 0) +
           Number(payment.utilitiesPaid ?? 0) +
           Number(payment.advertisingPaid ?? 0),
         rentPaid: payment.rentPaid,
@@ -298,7 +376,7 @@ export class TenantProfileService {
         cashbox1Paid: payment.cashbox1Paid,
         cashbox2Paid: payment.cashbox2Paid,
       })),
-      debts: profile.pavilionLeases.map((lease) => {
+      debts: profile.pavilionLeases.map((lease: any) => {
         const history = debtHistoryByPavilion.get(lease.pavilionId) ?? [];
         return {
           pavilionId: lease.pavilionId,
@@ -342,14 +420,43 @@ export class TenantProfileService {
 
   async createOrganization(userId: number, input: CreateTenantOrganizationInput) {
     const tenantProfileId = await this.ensureTenantProfile(userId);
-    const normalized = this.normalizeOrganizationInput(input);
+    const type = this.validateOrganizationType(String(input.type));
 
-    return this.prisma.tenantOrganization.create({
+    if (type === 'IE') {
+      const normalized = this.normalizeIeInput(input);
+      const organization = await this.prismaAny.tenantOrganization.create({
+        data: {
+          tenantProfileId,
+          type,
+          ieProfile: {
+            create: normalized,
+          },
+        },
+        include: {
+          ieProfile: true,
+          llcProfile: true,
+        },
+      });
+
+      return this.mapOrganization(organization);
+    }
+
+    const normalized = this.normalizeLlcInput(input);
+    const organization = await this.prismaAny.tenantOrganization.create({
       data: {
         tenantProfileId,
-        ...normalized,
+        type,
+        llcProfile: {
+          create: normalized,
+        },
+      },
+      include: {
+        ieProfile: true,
+        llcProfile: true,
       },
     });
+
+    return this.mapOrganization(organization);
   }
 
   async updateOrganization(
@@ -359,47 +466,66 @@ export class TenantProfileService {
   ) {
     const tenantProfileId = await this.ensureTenantProfile(userId);
 
-    const organization = await this.prisma.tenantOrganization.findUnique({
+    const organization = await this.prismaAny.tenantOrganization.findUnique({
       where: { id: organizationId },
-      select: { id: true, tenantProfileId: true },
+      include: {
+        ieProfile: true,
+        llcProfile: true,
+      },
     });
 
     if (!organization || organization.tenantProfileId !== tenantProfileId) {
       throw new NotFoundException('Организация не найдена');
     }
 
-    const data: {
-      type?: TenantOrganizationType;
-      name?: string;
-      taxId?: string | null;
-      registrationNumber?: string | null;
-      legalAddress?: string | null;
-    } = {};
+    if (organization.type === TenantOrganizationType.IE) {
+      const current = organization.ieProfile;
+      const normalized = this.normalizeIeInput({
+        fullName: input.fullName ?? current?.fullName,
+        inn: input.inn ?? current?.inn,
+        ogrnip: input.ogrnip ?? current?.ogrnip,
+        legalAddress: input.legalAddress ?? current?.legalAddress,
+      });
 
-    if (input.type !== undefined) {
-      data.type = this.validateOrganizationType(String(input.type));
-    }
-    if (input.name !== undefined) {
-      const name = this.trimNullable(input.name);
-      if (!name) {
-        throw new BadRequestException('Укажите название организации');
-      }
-      data.name = name;
-    }
-    if (input.taxId !== undefined) {
-      data.taxId = this.trimNullable(input.taxId);
-    }
-    if (input.registrationNumber !== undefined) {
-      data.registrationNumber = this.trimNullable(input.registrationNumber);
-    }
-    if (input.legalAddress !== undefined) {
-      data.legalAddress = this.trimNullable(input.legalAddress);
+      const updated = await this.prismaAny.tenantOrganization.update({
+        where: { id: organizationId },
+        data: {
+          ieProfile: {
+            update: normalized,
+          },
+        },
+        include: {
+          ieProfile: true,
+          llcProfile: true,
+        },
+      });
+
+      return this.mapOrganization(updated);
     }
 
-    return this.prisma.tenantOrganization.update({
-      where: { id: organizationId },
-      data,
+    const current = organization.llcProfile;
+    const normalized = this.normalizeLlcInput({
+      companyName: input.companyName ?? current?.companyName,
+      inn: input.inn ?? current?.inn,
+      kpp: input.kpp ?? current?.kpp,
+      ogrn: input.ogrn ?? current?.ogrn,
+      legalAddress: input.legalAddress ?? current?.legalAddress,
     });
+
+    const updated = await this.prismaAny.tenantOrganization.update({
+      where: { id: organizationId },
+      data: {
+        llcProfile: {
+          update: normalized,
+        },
+      },
+      include: {
+        ieProfile: true,
+        llcProfile: true,
+      },
+    });
+
+    return this.mapOrganization(updated);
   }
 
   async deleteOrganization(userId: number, organizationId: number) {

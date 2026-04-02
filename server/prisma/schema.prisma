@@ -277,18 +277,41 @@ model TenantProfile {
 }
 
 model TenantOrganization {
-  id                 Int                    @id @default(autoincrement())
-  tenantProfileId    Int
-  tenantProfile      TenantProfile          @relation(fields: [tenantProfileId], references: [id], onDelete: Cascade)
-  type               TenantOrganizationType
-  name               String
-  taxId              String?
-  registrationNumber String?
-  legalAddress       String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
+  id              Int                    @id @default(autoincrement())
+  tenantProfileId Int
+  tenantProfile   TenantProfile          @relation(fields: [tenantProfileId], references: [id], onDelete: Cascade)
+  type            TenantOrganizationType
+  ieProfile       TenantOrganizationIE?
+  llcProfile      TenantOrganizationLLC?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
   @@index([tenantProfileId, createdAt])
+}
+
+model TenantOrganizationIE {
+  id                   Int                @id @default(autoincrement())
+  tenantOrganizationId Int                @unique
+  tenantOrganization   TenantOrganization @relation(fields: [tenantOrganizationId], references: [id], onDelete: Cascade)
+  fullName             String
+  inn                  String?
+  ogrnip               String?
+  legalAddress         String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model TenantOrganizationLLC {
+  id                   Int                @id @default(autoincrement())
+  tenantOrganizationId Int                @unique
+  tenantOrganization   TenantOrganization @relation(fields: [tenantOrganizationId], references: [id], onDelete: Cascade)
+  companyName          String
+  inn                  String?
+  kpp                  String?
+  ogrn                 String?
+  legalAddress         String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 }
 
 model TenantPavilionLease {

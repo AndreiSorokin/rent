@@ -10,7 +10,6 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { TenantOrganizationType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantProfileService } from './tenant-profile.service';
 
@@ -41,13 +40,22 @@ export class TenantProfileController {
   createOrganization(
     @Req() req: any,
     @Body()
-    body: {
-      type: TenantOrganizationType;
-      name: string;
-      taxId?: string | null;
-      registrationNumber?: string | null;
-      legalAddress?: string | null;
-    },
+    body:
+      | {
+          type: 'IE';
+          fullName: string;
+          inn?: string | null;
+          ogrnip?: string | null;
+          legalAddress?: string | null;
+        }
+      | {
+          type: 'LLC';
+          companyName: string;
+          inn?: string | null;
+          kpp?: string | null;
+          ogrn?: string | null;
+          legalAddress?: string | null;
+        },
   ) {
     return this.tenantProfileService.createOrganization(req.user.id, body);
   }
@@ -58,10 +66,12 @@ export class TenantProfileController {
     @Param('organizationId', ParseIntPipe) organizationId: number,
     @Body()
     body: {
-      type?: TenantOrganizationType;
-      name?: string | null;
-      taxId?: string | null;
-      registrationNumber?: string | null;
+      fullName?: string | null;
+      companyName?: string | null;
+      inn?: string | null;
+      ogrnip?: string | null;
+      kpp?: string | null;
+      ogrn?: string | null;
       legalAddress?: string | null;
     },
   ) {
