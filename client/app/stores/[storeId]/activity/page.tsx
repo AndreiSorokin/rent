@@ -149,6 +149,8 @@ const DETAIL_LABELS: Record<string, string> = {
   diffCash2: 'Расхождение касса 2',
   fileName: 'Файл',
   fileType: 'Тип файла',
+  contractNumber: 'Номер договора',
+  expiresOn: 'Дата окончания договора',
   invitedUserId: 'ID пользователя',
   invitedUserEmail: 'Email пользователя',
   invitedUserName: 'Имя пользователя',
@@ -203,6 +205,8 @@ const DETAIL_ORDER = [
   'diffCash2',
   'fileName',
   'fileType',
+  'contractNumber',
+  'expiresOn',
   'invitedUserId',
   'invitedUserEmail',
   'invitedUserName',
@@ -238,6 +242,17 @@ const formatDateTime = (value: unknown, timeZone = 'UTC') => {
   }).format(date);
 };
 
+const formatDateKey = (value: unknown) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '-';
+
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return raw;
+
+  const [, year, month, day] = match;
+  return `${day}.${month}.${year}`;
+};
+
 const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
   if (value === null || value === undefined || value === '') return '-';
   if (Array.isArray(value)) {
@@ -257,6 +272,10 @@ const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
 
   if (key.toLowerCase().includes('status')) {
     return STATUS_LABELS[String(value)] ?? String(value);
+  }
+
+  if (key === 'expiresOn') {
+    return formatDateKey(value);
   }
 
   if (
