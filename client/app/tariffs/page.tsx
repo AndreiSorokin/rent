@@ -38,7 +38,7 @@ export default function TariffsPage() {
                 Текущий тариф Palaci
               </h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-[#4B5563]">
-                На данный момент стоимость доступа к платформе рассчитывается просто:
+                Стоимость доступа к платформе рассчитывается просто:
                 мы берем количество павильонов со статусом <span className="font-semibold text-[#111111]">«ЗАНЯТ»</span> и
                 умножаем его на <span className="font-semibold text-[#111111]">2 000 рублей</span>.
               </p>

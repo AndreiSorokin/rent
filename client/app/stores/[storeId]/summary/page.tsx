@@ -8,6 +8,7 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
+import { authorizedFetch, ensureAccessToken } from '@/lib/session';
 
 const getCurrentMonthValue = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
@@ -670,19 +671,14 @@ export default function StoreSummaryPage() {
   const handleDownloadSummaryPdf = async () => {
     try {
       setDownloadingPdf(true);
-      const token = localStorage.getItem('token');
+      const token = await ensureAccessToken();
       if (!token) {
         window.location.href = '/login';
         return;
       }
 
-      const response = await fetch(
+      const response = await authorizedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/analytics/summary-view/pdf?period=${encodeURIComponent(downloadMonth)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
       );
 
       if (!response.ok) {

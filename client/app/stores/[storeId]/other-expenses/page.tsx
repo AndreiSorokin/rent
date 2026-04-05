@@ -271,7 +271,6 @@ export default function StoreOtherExpensesPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Прочие расходы</h1>
-              <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <input

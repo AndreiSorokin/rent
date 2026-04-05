@@ -240,10 +240,10 @@ export default function UtilitiesPage() {
                 <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-[#ece4dd]">
+                  <table className="min-w-full divide-[#E5DED8]">
                     <thead className="bg-[#f4efeb]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                           Перенос
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -255,7 +255,7 @@ export default function UtilitiesPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                           Коммунальные
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        <th className="rounded-r-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                           Реклама
                         </th>
                       </tr>

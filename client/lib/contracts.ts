@@ -1,3 +1,5 @@
+import { authorizedFetch } from './session';
+
 export type ContractFile = {
   id: number;
   fileName: string;
@@ -13,6 +15,18 @@ export type ContractUploadMeta = {
   contractNumber: string;
   expiresOn: string;
 };
+
+async function toErrorMessage(response: Response, fallback = 'API error') {
+  const raw = await response.text();
+  try {
+    const parsed = JSON.parse(raw) as { message?: string | string[] };
+    return Array.isArray(parsed.message)
+      ? parsed.message.join(', ')
+      : parsed.message || fallback;
+  } catch {
+    return raw || fallback;
+  }
+}
 
 export function validateContractUploadMeta(
   meta: ContractUploadMeta,
@@ -37,18 +51,12 @@ export async function getContracts(
   storeId: number,
   pavilionId: number,
 ): Promise<ContractFile[]> {
-  const token = localStorage.getItem('token');
-  const res = await fetch(
+  const res = await authorizedFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/pavilions/${pavilionId}/contracts`,
-    {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    },
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(await toErrorMessage(res));
   }
 
   return res.json();
@@ -60,25 +68,21 @@ export async function uploadContract(
   file: File,
   meta: ContractUploadMeta,
 ): Promise<ContractFile> {
-  const token = localStorage.getItem('token');
   const formData = new FormData();
   formData.append('file', file);
   formData.append('contractNumber', meta.contractNumber.trim());
   formData.append('expiresOn', meta.expiresOn.trim());
 
-  const res = await fetch(
+  const res = await authorizedFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/pavilions/${pavilionId}/contracts`,
     {
       method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
       body: formData,
     },
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(await toErrorMessage(res));
   }
 
   return res.json();
@@ -89,19 +93,15 @@ export async function deleteContract(
   pavilionId: number,
   contractId: number,
 ) {
-  const token = localStorage.getItem('token');
-  const res = await fetch(
+  const res = await authorizedFetch(
     `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/pavilions/${pavilionId}/contracts/${contractId}`,
     {
       method: 'DELETE',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
     },
   );
 
   if (!res.ok) {
-    throw new Error(await res.text());
+    throw new Error(await toErrorMessage(res));
   }
 
   return res.json();
