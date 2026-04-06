@@ -27,13 +27,13 @@ describe('apiFetch', () => {
     const result = await apiFetch('/stores/my');
 
     expect(result).toEqual({ ok: true });
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${process.env.NEXT_PUBLIC_API_URL}/stores/my`,
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: 'Bearer token-123',
-        }),
-      }),
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${process.env.NEXT_PUBLIC_API_URL}/stores/my`);
+    expect(options.credentials).toBe('include');
+    expect(options.headers).toBeInstanceOf(Headers);
+    expect((options.headers as Headers).get('Authorization')).toBe(
+      'Bearer token-123',
     );
   });
 
