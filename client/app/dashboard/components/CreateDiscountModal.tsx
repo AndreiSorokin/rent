@@ -42,22 +42,22 @@ export function CreateDiscountModal({
   const handleSave = async () => {
     const amountNumber = Number(amount);
     if (!amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
-      setError('Введите корректную сумму скидки за кв. метр');
+      setError('Введите корректную сумму скидки.');
       return;
     }
 
     if (!startsAtMonth) {
-      setError('Выберите начальный месяц');
+      setError('Выберите начальный месяц.');
       return;
     }
 
     if (hasEndDate && !endsAtMonth) {
-      setError('Выберите конечный месяц или отключите ограничение по сроку');
+      setError('Выберите конечный месяц или отключите ограничение по сроку.');
       return;
     }
 
     if (hasEndDate && endsAtMonth < startsAtMonth) {
-      setError('Конечный месяц не может быть раньше начального');
+      setError('Конечный месяц не может быть раньше начального.');
       return;
     }
 
@@ -74,7 +74,7 @@ export function CreateDiscountModal({
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Не удалось создать скидку');
+      setError(err.message || 'Не удалось создать скидку.');
     } finally {
       setSaving(false);
     }
@@ -100,7 +100,7 @@ export function CreateDiscountModal({
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#111111]">
-              Скидка за кв. метр (₽)
+              Сумма скидки
             </label>
             <input
               type="number"
@@ -109,15 +109,17 @@ export function CreateDiscountModal({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className={inputClass}
-              placeholder="1"
+              placeholder="100"
             />
             <p className="mt-1 text-xs text-[#6b6b6b]">
-              Пример: при 100 м² и скидке 1 ₽/м² ежемесячная скидка составит 100 ₽.
+              Скидка применяется как фиксированная сумма за месяц.
             </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#111111]">Начальный месяц</label>
+            <label className="mb-1 block text-sm font-semibold text-[#111111]">
+              Начальный месяц
+            </label>
             <input
               type="month"
               value={startsAtMonth}
@@ -138,7 +140,9 @@ export function CreateDiscountModal({
 
           {hasEndDate && (
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[#111111]">Конечный месяц</label>
+              <label className="mb-1 block text-sm font-semibold text-[#111111]">
+                Конечный месяц
+              </label>
               <input
                 type="month"
                 value={endsAtMonth}
@@ -149,13 +153,15 @@ export function CreateDiscountModal({
           )}
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#111111]">Примечание (опционально)</label>
+            <label className="mb-1 block text-sm font-semibold text-[#111111]">
+              Примечание
+            </label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className={inputClass}
-              placeholder="Например: сезонная акция"
+              placeholder="Например: сезонная скидка"
             />
           </div>
         </div>

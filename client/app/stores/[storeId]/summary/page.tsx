@@ -8,6 +8,8 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
+import { authorizedFetch, ensureAccessToken } from '@/lib/session';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 const getCurrentMonthValue = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
@@ -663,26 +665,21 @@ export default function StoreSummaryPage() {
     return () => observer.disconnect();
   }, [loading, error, data]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Собираем сводку..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
 
   const handleDownloadSummaryPdf = async () => {
     try {
       setDownloadingPdf(true);
-      const token = localStorage.getItem('token');
+      const token = await ensureAccessToken();
       if (!token) {
         window.location.href = '/login';
         return;
       }
 
-      const response = await fetch(
+      const response = await authorizedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/analytics/summary-view/pdf?period=${encodeURIComponent(downloadMonth)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
       );
 
       if (!response.ok) {
@@ -971,7 +968,7 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="margin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Корректировка переносом"
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
@@ -1247,7 +1244,7 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className=",argin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Общий приход"
                   value={formatMoney(data.income.total ?? 0, data.currency)}

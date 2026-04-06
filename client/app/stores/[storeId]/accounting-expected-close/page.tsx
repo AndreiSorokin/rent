@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   getDateKeyInTimeZone,
   getTodayDateKeyInTimeZone,
@@ -188,7 +189,7 @@ export default function AccountingExpectedClosePage() {
     );
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Считаем закрытие дня..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 

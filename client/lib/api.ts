@@ -1,27 +1,33 @@
+import {
+  authorizedFetch,
+  clearStoredAccessToken,
+} from './session';
+
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = localStorage.getItem('token');
   const isFormData =
     typeof FormData !== 'undefined' && options.body instanceof FormData;
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+  const headers = new Headers(options.headers || {});
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const res = await authorizedFetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
     ...options,
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
     if (
       res.status === 401 &&
       path !== '/auth/login' &&
-      path !== '/auth/register'
+      path !== '/auth/register' &&
+      path !== '/auth/refresh'
     ) {
-      localStorage.removeItem('token');
+      clearStoredAccessToken();
       window.location.href = '/login';
       throw new Error('Unauthorized');
     }

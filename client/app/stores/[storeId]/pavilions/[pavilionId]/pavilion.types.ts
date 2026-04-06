@@ -91,6 +91,18 @@ export type Pavilion = {
     advertisingCashbox2Paid?: number;
     createdAt: string;
   }>;
+  monthlyLedgers?: Array<{
+    period: string;
+    expectedRent: number;
+    expectedUtilities: number;
+    expectedAdvertising: number;
+    expectedAdditional: number;
+    expectedTotal: number;
+    actualTotal: number;
+    openingDebt: number;
+    monthDelta: number;
+    closingDebt: number;
+  }>;
   additionalCharges: any[];
   discounts: Discount[];
   contracts?: Array<{

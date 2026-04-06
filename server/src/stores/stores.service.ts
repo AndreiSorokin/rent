@@ -3717,7 +3717,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       const endsAfterMonthStarts =
         discount.endsAt === null || discount.endsAt >= monthStart;
       if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-        return sum + discount.amount * squareMeters;
+        return sum + discount.amount;
       }
       return sum;
     }, 0);

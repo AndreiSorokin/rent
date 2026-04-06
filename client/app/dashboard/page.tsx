@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CreateStoreModal } from './components/CreateStoreModal';
 import { getCurrentUserFromToken } from '@/lib/auth';
 import { Store } from 'lucide-react';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 interface StoreSummary {
   id: number;
@@ -43,7 +44,7 @@ export default function StoresPage() {
     setShowCreateModal(false);
   };
 
-  if (loading) return <div className="p-8 text-center text-lg text-[#111111]">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем кабинет..." />;
   if (error) return <div className="p-8 text-center text-lg text-[#EF4444]">{error}</div>;
 
   return (
@@ -149,4 +150,3 @@ export default function StoresPage() {
     </div>
   );
 }
-

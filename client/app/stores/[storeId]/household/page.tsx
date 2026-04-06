@@ -7,6 +7,7 @@ import { hasPermission } from '@/lib/permissions';
 import { apiFetch } from '@/lib/api';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -246,7 +247,7 @@ export default function StoreHouseholdPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 
@@ -262,7 +263,6 @@ export default function StoreHouseholdPage() {
                   <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">
                     Хозяйственные расходы
                   </h1>
-                  <p className="mt-1 text-sm text-[#6b6b6b]">Показаны расходы текущего месяца</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <input

@@ -14,6 +14,7 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { StoreUsersSection } from '@/app/dashboard/components/StoreUsersSection';
 import { ImportStoreDataModal } from '@/app/dashboard/components/ImportStoreDataModal';
 import { StoreSidebar } from '../components/StoreSidebar';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 export default function StoreSettingsPage() {
   const params = useParams();
@@ -157,7 +158,7 @@ export default function StoreSettingsPage() {
     setSettingsSuccess('');
   }, [settingsSuccess, toast]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Открываем настройки объекта..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
 
@@ -1400,7 +1401,6 @@ export default function StoreSettingsPage() {
     </div>
   );
 }
-
 
 
 

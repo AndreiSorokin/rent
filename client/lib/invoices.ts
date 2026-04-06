@@ -1,5 +1,6 @@
+import { authorizedFetch } from './session';
+
 export async function openStoreInvoiceView(storeId: number) {
-  const token = localStorage.getItem('token');
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
   const toMessage = async (response: Response, fallback: string) => {
@@ -25,11 +26,8 @@ export async function openStoreInvoiceView(storeId: number) {
     // Ignore browsers that disallow changing opener.
   }
 
-  const createResponse = await fetch(`${baseUrl}/stores/${storeId}/invoices`, {
+  const createResponse = await authorizedFetch(`${baseUrl}/stores/${storeId}/invoices`, {
     method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
   });
 
   if (!createResponse.ok) {
@@ -38,13 +36,8 @@ export async function openStoreInvoiceView(storeId: number) {
   }
 
   const createdInvoice = (await createResponse.json()) as { id: number };
-  const viewResponse = await fetch(
+  const viewResponse = await authorizedFetch(
     `${baseUrl}/stores/${storeId}/invoices/${createdInvoice.id}/view`,
-    {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    },
   );
 
   if (!viewResponse.ok) {

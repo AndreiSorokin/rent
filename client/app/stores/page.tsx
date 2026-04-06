@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { Store } from '@/types/store';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 export default function StoresPage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -16,7 +17,7 @@ export default function StoresPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-6 text-center">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем объекты..." />;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/dialog/DialogProvider';
+import { logoutSession } from '@/lib/session';
 
 type LogoutButtonProps = {
   className?: string;
@@ -27,7 +28,7 @@ export function LogoutButton({
       confirmText: 'Выйти',
     });
     if (!confirmed) return;
-    localStorage.removeItem('token');
+    await logoutSession();
     onLoggedOut?.();
     router.replace('/login');
   };

@@ -15,6 +15,7 @@ model User {
   stores          StoreUser[]
   activities      StoreActivity[]
   passwordResetTokens PasswordResetToken[]
+  refreshTokens   RefreshToken[]
   createdAt       DateTime     @default(now())
   sentInvitations Invitation[] @relation("inviter")
 }
@@ -42,6 +43,19 @@ model PasswordResetToken {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt, usedAt])
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, revokedAt])
 }
 
 model StoreUser {

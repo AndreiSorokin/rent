@@ -616,6 +616,7 @@ export class PavilionsService {
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         },
         discounts: { orderBy: { createdAt: 'desc' } },
+        monthlyLedgers: { orderBy: { period: 'desc' } },
         payments: { orderBy: { period: 'asc' } },
         paymentTransactions: { orderBy: { createdAt: 'desc' } },
       },
@@ -1293,7 +1294,7 @@ export class PavilionsService {
       const endsAfterMonthStarts =
         discount.endsAt === null || discount.endsAt >= monthStart;
       if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-        return sum + discount.amount * squareMeters;
+        return sum + discount.amount;
       }
       return sum;
     }, 0);

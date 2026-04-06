@@ -1,22 +1,29 @@
-﻿import {
+import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
-import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from './password-policy';
 import * as nodemailer from 'nodemailer';
 import { createHash, randomBytes } from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
+import { isPasswordStrong, PASSWORD_POLICY_MESSAGE } from './password-policy';
 
 @Injectable()
 export class AuthService {
+  private readonly accessTokenTtl = '15m';
+  private readonly refreshTokenLifetimeMs = 30 * 24 * 60 * 60 * 1000;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  private get prismaAny() {
+    return this.prisma as any;
+  }
 
   private normalizeEmail(email: string) {
     return String(email || '').trim().toLowerCase();
@@ -63,13 +70,93 @@ export class AuthService {
   private async sendVerificationEmail(email: string, code: string) {
     await this.sendEmail(
       email,
-      'РљРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ СЂРµРіРёСЃС‚СЂР°С†РёРё',
-      `Р’Р°С€ РєРѕРґ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ: ${code}. РљРѕРґ РґРµР№СЃС‚РІСѓРµС‚ 15 РјРёРЅСѓС‚.`,
+      'Код подтверждения регистрации',
+      `Ваш код подтверждения: ${code}. Код действует 15 минут.`,
     );
   }
 
   private hashToken(token: string) {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  private buildJwtPayload(user: {
+    id: number;
+    email: string;
+    name?: string | null;
+  }) {
+    return {
+      sub: user.id,
+      email: user.email,
+      name: user.name || null,
+    };
+  }
+
+  private signAccessToken(user: {
+    id: number;
+    email: string;
+    name?: string | null;
+  }) {
+    return this.jwtService.sign(this.buildJwtPayload(user), {
+      expiresIn: this.accessTokenTtl,
+    });
+  }
+
+  private async issueRefreshToken(userId: number) {
+    const rawToken = randomBytes(48).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + this.refreshTokenLifetimeMs);
+
+
+    await this.prismaAny.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return {
+      refreshToken: rawToken,
+      expiresAt,
+    };
+  }
+
+  private async rotateRefreshToken(rawToken: string) {
+    const tokenHash = this.hashToken(rawToken);
+    const storedToken = await this.prismaAny.refreshToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !storedToken ||
+      storedToken.revokedAt ||
+      storedToken.expiresAt <= new Date()
+    ) {
+      throw new UnauthorizedException('Refresh token is invalid or expired');
+    }
+
+    await this.prismaAny.refreshToken.update({
+      where: { id: storedToken.id },
+      data: { revokedAt: new Date() },
+    });
+
+    const nextRefreshToken = await this.issueRefreshToken(storedToken.user.id);
+
+    return {
+      user: storedToken.user,
+      refresh_token: nextRefreshToken.refreshToken,
+      refresh_expires_at: nextRefreshToken.expiresAt,
+      access_token: this.signAccessToken(storedToken.user),
+    };
   }
 
   private getPasswordResetBaseUrl() {
@@ -130,7 +217,9 @@ export class AuthService {
     }
 
     if (!personalDataConsent) {
-      throw new BadRequestException('Consent to personal data processing is required');
+      throw new BadRequestException(
+        'Consent to personal data processing is required',
+      );
     }
 
     if (!isPasswordStrong(password)) {
@@ -199,7 +288,10 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = this.normalizeEmail(email);
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -210,15 +302,39 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = {
-      sub: user.id,
-      email: user.email,
-      name: user.name || null,
-    };
+    const refreshToken = await this.issueRefreshToken(user.id);
 
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.signAccessToken(user),
+      refresh_token: refreshToken.refreshToken,
+      refresh_expires_at: refreshToken.expiresAt,
     };
+  }
+
+  async refreshAccessToken(refreshToken: string) {
+    if (!refreshToken || !refreshToken.trim()) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    return this.rotateRefreshToken(refreshToken.trim());
+  }
+
+  async revokeRefreshToken(refreshToken: string | null | undefined) {
+    const normalized = String(refreshToken ?? '').trim();
+    if (!normalized) return { success: true };
+
+    const tokenHash = this.hashToken(normalized);
+    await this.prismaAny.refreshToken.updateMany({
+      where: {
+        tokenHash,
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    return { success: true };
   }
 
   async requestPasswordReset(email: string) {
@@ -266,8 +382,8 @@ export class AuthService {
     const link = `${this.getPasswordResetBaseUrl()}?token=${rawToken}`;
     await this.sendEmail(
       normalizedEmail,
-      'РЎР±СЂРѕСЃ РїР°СЂРѕР»СЏ',
-      `Р§С‚РѕР±С‹ Р·Р°РґР°С‚СЊ РЅРѕРІС‹Р№ РїР°СЂРѕР»СЊ, РѕС‚РєСЂРѕР№С‚Рµ СЃСЃС‹Р»РєСѓ: ${link}\n\nРЎСЃС‹Р»РєР° РґРµР№СЃС‚РІСѓРµС‚ 30 РјРёРЅСѓС‚.`,
+      'Сброс пароля',
+      `Чтобы задать новый пароль, откройте ссылку: ${link}\n\nСсылка действует 30 минут.`,
     );
 
     return {
@@ -335,5 +451,3 @@ export class AuthService {
     return { success: true };
   }
 }
-
-

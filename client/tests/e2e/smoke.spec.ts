@@ -27,7 +27,7 @@ test('register page is reachable and has required controls', async ({ page }) =>
 
 test('unknown route redirects to dashboard (app not-found behavior)', async ({ page }) => {
   await page.goto('/this-route-does-not-exist');
-  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test('unknown route redirects to dashboard for authorized user', async ({ page }) => {

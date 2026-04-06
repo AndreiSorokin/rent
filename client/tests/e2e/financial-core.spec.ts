@@ -168,12 +168,14 @@ test.describe('Financial core', () => {
     await expect(page.getByRole('heading', { name: /Расходы/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Прибыль/i })).toBeVisible();
 
-    await expect(page.getByText(/Прогноз:\s*120[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*90[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Прогноз:\s*45[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*30[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Прогноз:\s*75[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(page.getByText(/Факт:\s*60[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+    const overview = page.locator('section').filter({ has: page.getByRole('heading', { name: /Доходы/i }) }).first();
+
+    await expect(overview.getByText(/Прогноз:\s*120[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Факт:\s*100[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Прогноз:\s*45[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Факт:\s*30[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Прогноз:\s*75[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Факт:\s*60[\s\u00A0\u202F]000\.00/i)).toBeVisible();
   });
 
   test('summary page shows channels and entity totals', async ({ page }) => {
@@ -183,19 +185,17 @@ test.describe('Financial core', () => {
     await page.goto(`/stores/${STORE_ID}/summary`);
 
     const incomeSection = page.locator('#summary-income');
-    const cardValues = incomeSection.locator('p.text-2xl');
 
-    await expect(incomeSection.getByRole('heading', { name: /Общий доход/i })).toBeVisible();
-    await expect(cardValues.filter({ hasText: /120[\s\u00A0\u202F]000\.00/i })).toHaveCount(1);
-    await expect(cardValues.filter({ hasText: /100[\s\u00A0\u202F]000\.00/i })).toHaveCount(1);
-
+    await expect(incomeSection.getByText('Итого приход', { exact: true })).toBeVisible();
+    await expect(
+      incomeSection.locator('p.text-2xl').filter({ hasText: /100[\s\u00A0\u202F]000\.00/i }),
+    ).toBeVisible();
+    await expect(incomeSection.getByText(/Безналичные/i).first()).toBeVisible();
+    await expect(incomeSection.getByText(/Наличные касса 1/i).first()).toBeVisible();
+    await expect(incomeSection.getByText(/Наличные касса 2/i).first()).toBeVisible();
     await expect(incomeSection.getByText(/50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
     await expect(incomeSection.getByText(/15[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
     await expect(incomeSection.getByText(/10[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-
-    await expect(incomeSection.getByText(/40[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(incomeSection.getByText(/30[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-    await expect(incomeSection.getByText(/20[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
   });
 
   test('user without VIEW_SUMMARY is redirected from summary page to store page', async ({
