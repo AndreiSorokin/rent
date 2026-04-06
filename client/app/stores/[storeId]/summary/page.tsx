@@ -967,7 +967,7 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="margin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Корректировка переносом"
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
@@ -1243,7 +1243,7 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className=",argin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Общий приход"
                   value={formatMoney(data.income.total ?? 0, data.currency)}

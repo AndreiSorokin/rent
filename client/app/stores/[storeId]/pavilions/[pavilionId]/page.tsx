@@ -541,9 +541,7 @@ export default function PavilionPage() {
         : null;
       const startsBeforeMonthEnds = startsAtKey <= targetMonthKey;
       const endsAfterMonthStarts = endsAtKey === null || endsAtKey >= targetMonthKey;
-      return startsBeforeMonthEnds && endsAfterMonthStarts
-        ? sum + discount.amount * pavilion.squareMeters
-        : sum;
+      return startsBeforeMonthEnds && endsAfterMonthStarts ? sum + discount.amount : sum;
     }, 0);
   };
 
@@ -565,6 +563,7 @@ export default function PavilionPage() {
     (a: any, b: any) =>
       new Date(b.period).getTime() - new Date(a.period).getTime(),
   );
+  const allMonthlyLedgers = [...(pavilion.monthlyLedgers || [])];
   const allPaymentTransactions = [...(pavilion.paymentTransactions || [])].sort(
     (a: any, b: any) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -843,6 +842,10 @@ export default function PavilionPage() {
                     {allPayments.map((pay: any) => {
                       const periodKey = getMonthKeyInTimeZone(pay.period, storeTimeZone);
                       const periodDate = new Date(pay.period);
+                      const ledgerForPeriod = allMonthlyLedgers.find(
+                        (ledger: any) =>
+                          getMonthKeyInTimeZone(ledger.period, storeTimeZone) === periodKey,
+                      );
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
                       const periodAdditionalCharges = (pavilion.additionalCharges || []).filter(
@@ -869,17 +872,23 @@ export default function PavilionPage() {
                           ),
                         0,
                       );
-                      const expectedUtilities = pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0);
-                      const expectedAdvertising = pavilion.status === 'PREPAID' ? 0 : (pavilion.advertisingAmount || 0);
+                      const expectedUtilities =
+                        ledgerForPeriod?.expectedUtilities ??
+                        (pavilion.status === 'PREPAID' ? 0 : (pavilion.utilitiesAmount || 0));
+                      const expectedAdvertising =
+                        ledgerForPeriod?.expectedAdvertising ??
+                        (pavilion.status === 'PREPAID' ? 0 : (pavilion.advertisingAmount || 0));
                       const expectedRent =
-                        pavilion.status === 'PREPAID'
+                        ledgerForPeriod?.expectedRent ??
+                        (pavilion.status === 'PREPAID'
                           ? baseRent
-                          : Math.max(baseRent - periodDiscount, 0);
+                          : Math.max(baseRent - periodDiscount, 0));
                       const expected =
-                        expectedRent +
-                        expectedUtilities +
-                        expectedAdvertising +
-                        periodAdditionalExpected;
+                        ledgerForPeriod?.expectedTotal ??
+                        (expectedRent +
+                          expectedUtilities +
+                          expectedAdvertising +
+                          periodAdditionalExpected);
                       const paid =
                         (pay.rentPaid || 0) +
                         (pay.utilitiesPaid || 0) +
@@ -1124,8 +1133,7 @@ export default function PavilionPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-[#f4efeb]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">За м²</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">В месяц</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма скидки</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
@@ -1137,10 +1145,7 @@ export default function PavilionPage() {
                   {pavilion.discounts.map((discount) => (
                     <tr key={discount.id}>
                       <td className="px-6 py-4 text-sm font-medium">
-                        {discount.amount.toFixed(2)} {currencySymbol}/м²
-                      </td>
-                      <td className="px-6 py-4 text-sm font-medium">
-                        {formatMoney(discount.amount * pavilion.squareMeters, currency)}
+                        {formatMoney(discount.amount, currency)}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {formatDateInStoreTimeZone(discount.startsAt, storeTimeZone)}
