@@ -8,6 +8,7 @@ import { hasPermission } from '@/lib/permissions';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { reorderStaff } from '@/lib/staff';
+import { FullScreenLoader } from '@/components/AppLoader';
 import { AddStaffModal, EditStaffSalaryModal } from '../components/StaffModals';
 import { StoreSidebar } from '../components/StoreSidebar';
 import {
@@ -259,7 +260,7 @@ export default function StoreStaffPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем штат..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !canView) return null;
 

@@ -23,6 +23,7 @@ import {
   updateHouseholdExpense,
 } from '@/lib/householdExpenses';
 import { reorderPavilions } from '@/lib/pavilions';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   createPavilionExpense,
   deletePavilionExpense,
@@ -1152,7 +1153,7 @@ export default function StorePage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем объект..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 

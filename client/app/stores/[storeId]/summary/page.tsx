@@ -9,6 +9,7 @@ import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 import { authorizedFetch, ensureAccessToken } from '@/lib/session';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 const getCurrentMonthValue = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
@@ -664,7 +665,7 @@ export default function StoreSummaryPage() {
     return () => observer.disconnect();
   }, [loading, error, data]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Собираем сводку..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
 

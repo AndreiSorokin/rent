@@ -20,6 +20,7 @@ import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { Discount, Pavilion } from './pavilion.types';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   formatDateInputDisplay,
   formatDateKey,
@@ -552,7 +553,7 @@ export default function PavilionPage() {
     return startsAt <= now && (endsAt === null || endsAt >= now);
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем павильон..." />;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
 

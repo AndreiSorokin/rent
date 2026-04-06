@@ -8,6 +8,7 @@ import { hasPermission } from '@/lib/permissions';
 import { useToast } from '@/components/toast/ToastProvider';
 import { reorderPavilions, updatePavilion } from '@/lib/pavilions';
 import { StoreSidebar } from '../components/StoreSidebar';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 type Pavilion = {
   id: number;
@@ -197,7 +198,7 @@ export default function UtilitiesPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем начисления..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 

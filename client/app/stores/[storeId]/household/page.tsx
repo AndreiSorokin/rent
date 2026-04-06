@@ -7,6 +7,7 @@ import { hasPermission } from '@/lib/permissions';
 import { apiFetch } from '@/lib/api';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -246,7 +247,7 @@ export default function StoreHouseholdPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 

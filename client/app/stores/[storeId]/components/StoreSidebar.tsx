@@ -1,6 +1,5 @@
 ﻿'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
 import {
   ArrowLeft,
@@ -20,6 +19,7 @@ import {
 import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
+import Link from 'next/link';
 
 type SidebarSection =
   | 'pavilions'

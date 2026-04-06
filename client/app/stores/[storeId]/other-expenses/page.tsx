@@ -7,6 +7,7 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   createPavilionExpense,
   deletePavilionExpense,
@@ -257,7 +258,7 @@ export default function StoreOtherExpensesPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 
@@ -682,4 +683,3 @@ export default function StoreOtherExpensesPage() {
     </div>
   );
 }
-

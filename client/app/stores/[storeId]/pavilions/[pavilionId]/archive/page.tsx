@@ -17,6 +17,7 @@ import {
 } from '@/lib/payments';
 import { formatMonthLabelFromKey, getMonthKeyInTimeZone } from '@/lib/dateTime';
 import { Pavilion } from '../pavilion.types';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 type ArchiveMonth = {
   key: string;
@@ -376,7 +377,7 @@ export default function PavilionArchivePage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем архив павильона..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;

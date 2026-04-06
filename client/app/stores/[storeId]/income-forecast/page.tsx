@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 type ForecastBreakdownResponse = {
   period: string;
@@ -127,7 +128,7 @@ export default function IncomeForecastBreakdownPage() {
     router.replace(`/stores/${storeId}/income-forecast?period=${encodeURIComponent(value)}`);
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Собираем прогноз..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
@@ -246,5 +247,4 @@ export default function IncomeForecastBreakdownPage() {
     </div>
   );
 }
-
 

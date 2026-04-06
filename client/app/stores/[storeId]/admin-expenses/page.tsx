@@ -20,6 +20,7 @@ import {
   CirclePlus,
 } from 'lucide-react';
 import { getDatePartsInTimeZone, isSameMonthInTimeZone } from '@/lib/dateTime';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 type AdminExpenseType = Exclude<PavilionExpenseType, 'SALARIES' | 'HOUSEHOLD' | 'OTHER'>;
 
@@ -263,7 +264,7 @@ export default function StoreAdminExpensesPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 

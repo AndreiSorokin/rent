@@ -8,6 +8,7 @@ import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useDialog } from '@/components/dialog/DialogProvider';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 type PavilionMediaResponse = {
   id: number;

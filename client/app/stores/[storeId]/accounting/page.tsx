@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { useDialog } from '@/components/dialog/DialogProvider';
+import { FullScreenLoader } from '@/components/AppLoader';
 import { StoreSidebar } from '../components/StoreSidebar';
 import {
   getDateKeyInTimeZone,
@@ -303,7 +304,7 @@ export default function StoreAccountingPage() {
     };
   }, [expectedCloseDetails]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем бухгалтерию..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) {
@@ -812,5 +813,3 @@ export default function StoreAccountingPage() {
     </div>
   );
 }
-
-
