@@ -32,7 +32,14 @@ export async function refreshAccessToken(): Promise<string | null> {
       return null;
     }
 
-    const payload = (await response.json()) as { access_token?: string };
+    let payload: { access_token?: string } = {};
+    if (typeof response.json === 'function') {
+      payload = (await response.json()) as { access_token?: string };
+    } else if (typeof response.text === 'function') {
+      const raw = await response.text();
+      payload = raw ? (JSON.parse(raw) as { access_token?: string }) : {};
+    }
+
     if (!payload.access_token) {
       clearStoredAccessToken();
       return null;
