@@ -21,6 +21,8 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { Discount, Pavilion, PavilionContract, PavilionLease } from './pavilion.types';
 import { FullScreenLoader } from '@/components/AppLoader';
+import { PavilionContractsTable } from './components/PavilionContractsTable';
+import { PavilionContractsHistoryModal } from './components/PavilionContractsHistoryModal';
 import {
   formatDateInputDisplay,
   formatDateKey,
@@ -74,6 +76,7 @@ export default function PavilionPage() {
   const [contractNumberDraft, setContractNumberDraft] = useState('');
   const [contractExpiresOnDraft, setContractExpiresOnDraft] = useState('');
   const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
+  const [showAllContractsHistory, setShowAllContractsHistory] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [descriptionDraft, setDescriptionDraft] = useState('');
   const [descriptionSaving, setDescriptionSaving] = useState(false);
@@ -342,56 +345,6 @@ export default function PavilionPage() {
       });
     }
   };
-
-  const renderContractsTable = (contracts: PavilionContract[]) => (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-[#f4efeb]">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-            <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {contracts.map((contract) => (
-            <tr key={contract.id}>
-              <td className="px-6 py-4 text-sm">
-                <a
-                  href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {contract.fileName}
-                </a>
-              </td>
-              <td className="px-6 py-4 text-sm">{contract.contractNumber || '—'}</td>
-              <td className="px-6 py-4 text-sm">{formatDateKey(contract.expiresOn)}</td>
-              <td className="px-6 py-4 text-sm">{contract.fileType}</td>
-              <td className="px-6 py-4 text-sm">
-                {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
-              </td>
-              <td className="px-6 py-4 text-right text-sm">
-                {hasPermission(permissions, 'DELETE_CONTRACTS') && (
-                  <button
-                    onClick={() => handleDeleteContract(contract.id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Удалить
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
 
   const handleSetPrepayment = async () => {
     if (!pavilion) return;
@@ -1056,11 +1009,27 @@ export default function PavilionPage() {
 
         {hasPermission(permissions, 'VIEW_CONTRACTS') && (
             <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Договоры</h2>
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Договоры</h2>
+                    <p className="mt-1 text-sm text-[#6b6b6b]">
+                      Текущие документы аренды.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllContractsHistory(true)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f8f4ef] sm:w-auto"
+                  >
+                    Все договоры
+                  </button>
+                </div>
+
                 {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div>
+                  <div className="rounded-2xl border border-[#ece5de] bg-[#faf6f1] p-4">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+                    <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
                         Номер договора
                       </label>
@@ -1068,12 +1037,12 @@ export default function PavilionPage() {
                         type="text"
                         value={contractNumberDraft}
                         onChange={(e) => setContractNumberDraft(e.target.value)}
-                        className="min-w-[180px] rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
+                        className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                         placeholder="Например: 12/2026"
                         disabled={uploadingContract}
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
                         Дата окончания
                       </label>
@@ -1092,7 +1061,7 @@ export default function PavilionPage() {
                             setContractExpiresOnDraft(formatDateKey(normalized));
                           }
                         }}
-                        className={`min-w-[180px] rounded-xl border bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:bg-white focus:ring-2 ${
+                        className={`w-full rounded-xl border bg-white px-3 py-2 text-sm text-[#111111] outline-none transition focus:ring-2 ${
                           contractExpiresOnInvalid
                             ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
                             : 'border-[#d8d1cb] focus:border-[#ff6a13] focus:ring-[#ff6a13]/20'
@@ -1107,115 +1076,38 @@ export default function PavilionPage() {
                         </p>
                       )}
                     </div>
-                    <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
-                      {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={handleContractUpload}
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
-                        disabled={uploadingContract}
-                      />
-                    </label>
+                    <div className="flex w-full lg:w-auto">
+                      <label className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 lg:w-auto">
+                        {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={handleContractUpload}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                          disabled={uploadingContract}
+                        />
+                      </label>
+                    </div>
+                    </div>
                   </div>
                 )}
               </div>
 
               {activeLease ? (
                 <div className="space-y-6">
-                  {/* <div className="rounded-2xl border border-[#ece5de] bg-[#faf6f1] p-4">
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                          Текущая аренда
-                        </p>
-                        <h3 className="text-lg font-semibold text-[#111111]">
-                          {activeLease.tenantName || pavilion.tenantName || 'Арендатор не указан'}
-                        </h3>
-                      </div>
-                      <span className="rounded-full border border-[#d8d1cb] bg-white px-3 py-1 text-sm font-medium text-[#111111]">
-                        {leaseStatusLabel[activeLease.status] || activeLease.status}
-                      </span>
-                    </div>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="rounded-xl bg-white px-4 py-3">
-                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Начало аренды</div>
-                        <div className="mt-1 text-sm font-medium text-[#111111]">
-                          {formatDateKey(activeLease.startsOn)}
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-white px-4 py-3">
-                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Окончание аренды</div>
-                        <div className="mt-1 text-sm font-medium text-[#111111]">
-                          {formatDateKey(activeLease.endsOn)}
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-white px-4 py-3">
-                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Фактический выезд</div>
-                        <div className="mt-1 text-sm font-medium text-[#111111]">
-                          {formatDateKey(activeLease.vacatedOn)}
-                        </div>
-                      </div>
-                    </div>
-                  </div> */}
-
                   {currentContracts.length === 0 ? (
                     <p className="text-gray-500">По текущей аренде документы не загружены</p>
                   ) : (
-                    renderContractsTable(currentContracts)
+                    <PavilionContractsTable
+                      contracts={currentContracts}
+                      storeTimeZone={storeTimeZone}
+                      apiUrl={process.env.NEXT_PUBLIC_API_URL}
+                      canDeleteContracts={hasPermission(permissions, 'DELETE_CONTRACTS')}
+                      onDeleteContract={handleDeleteContract}
+                    />
                   )}
 
-                  {archivedLeases.length > 0 && (
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-[#111111]">История аренд</h3>
-                        <p className="mt-1 text-sm text-[#6b6b6b]">
-                          Здесь хранятся прошлые арендаторы и их договоры.
-                        </p>
-                      </div>
-                      {archivedLeases.map((lease: PavilionLease) => (
-                        <div
-                          key={lease.id}
-                          className="rounded-2xl border border-[#e5ddd5] bg-[#fcfaf7] p-4"
-                        >
-                          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <h4 className="text-base font-semibold text-[#111111]">
-                                {lease.tenantName || 'Арендатор не указан'}
-                              </h4>
-                              <p className="mt-1 text-sm text-[#6b6b6b]">
-                                Статус: {leaseStatusLabel[lease.status] || lease.status}
-                              </p>
-                            </div>
-                            <div className="text-sm text-[#6b6b6b]">
-                              {formatDateKey(lease.startsOn)} - {formatDateKey(lease.endsOn)}
-                            </div>
-                          </div>
 
-                          <div className="mb-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-xl bg-white px-4 py-3">
-                              <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Окончание аренды</div>
-                              <div className="mt-1 text-sm font-medium text-[#111111]">
-                                {formatDateKey(lease.endsOn)}
-                              </div>
-                            </div>
-                            <div className="rounded-xl bg-white px-4 py-3">
-                              <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Фактический выезд</div>
-                              <div className="mt-1 text-sm font-medium text-[#111111]">
-                                {formatDateKey(lease.vacatedOn)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {!lease.contracts || lease.contracts.length === 0 ? (
-                            <p className="text-sm text-gray-500">По этой аренде договоры не сохранены</p>
-                          ) : (
-                            renderContractsTable(lease.contracts)
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ) : (
                 <p className="text-gray-500">Документы не загружены</p>
@@ -1638,6 +1530,17 @@ export default function PavilionPage() {
           </button>
         )}
       </div>
+
+      <PavilionContractsHistoryModal
+        open={showAllContractsHistory}
+        onClose={() => setShowAllContractsHistory(false)}
+        leaseHistory={leaseHistory}
+        leaseStatusLabel={leaseStatusLabel}
+        storeTimeZone={storeTimeZone}
+        apiUrl={process.env.NEXT_PUBLIC_API_URL}
+        canDeleteContracts={hasPermission(permissions, 'DELETE_CONTRACTS')}
+        onDeleteContract={handleDeleteContract}
+      />
     </div>
   );
 }
