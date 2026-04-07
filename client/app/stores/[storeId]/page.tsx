@@ -1460,7 +1460,9 @@ export default function StorePage() {
                         const hasCarryAdjustment = Math.abs(carryBalance) > 0.009;
                         const requiresContract =
                           p.status === 'RENTED' || p.status === 'PREPAID';
-                        const hasContract = Array.isArray(p.contracts) && p.contracts.length > 0;
+                        const hasContract =
+                          Array.isArray(p.activeLease?.contracts) &&
+                          p.activeLease.contracts.length > 0;
                         const missingContract = requiresContract && !hasContract;
                         return (
                       <tr

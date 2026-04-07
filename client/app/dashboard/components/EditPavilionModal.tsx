@@ -31,15 +31,18 @@ type PavilionLike = {
     name: string;
     amount: number;
   }>;
-  contracts?: Array<{
+  activeLease?: {
     id: number;
-    fileName: string;
-    filePath: string;
-    fileType: string;
-    contractNumber?: string | null;
-    expiresOn?: string | null;
-    uploadedAt: string;
-  }>;
+    contracts?: Array<{
+      id: number;
+      fileName: string;
+      filePath: string;
+      fileType: string;
+      contractNumber?: string | null;
+      expiresOn?: string | null;
+      uploadedAt: string;
+    }>;
+  } | null;
 };
 
 const STATUS_OPTIONS: Array<{ value: PavilionStatus; label: string }> = [
@@ -383,6 +386,9 @@ export function EditPavilionModal({
     contractExpiresOnTouched &&
     contractExpiresOn.trim().length > 0 &&
     !normalizeDateInputToDateKey(contractExpiresOn);
+  const currentContracts = Array.isArray(pavilion.activeLease?.contracts)
+    ? pavilion.activeLease?.contracts
+    : [];
 
   const handleModalKeyDown = (
     e: React.KeyboardEvent<HTMLDivElement>,
@@ -573,13 +579,13 @@ export function EditPavilionModal({
               <p className="mt-1 text-sm text-amber-700">
                 Для статусов «ЗАНЯТ» и «ПРЕДОПЛАТА» рекомендуется держать загруженный договор.
               </p>
-              {!pavilion.contracts || pavilion.contracts.length === 0 ? (
+              {currentContracts.length === 0 ? (
                 <p className="mt-2 text-xs font-medium text-amber-800">
                   Сейчас договор не загружен.
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-amber-700">
-                  Уже загружено договоров: {pavilion.contracts.length}
+                  Уже загружено договоров: {currentContracts.length}
                 </p>
               )}
               {canUploadContracts ? (

@@ -262,7 +262,7 @@ model Pavilion {
   payments          Payment[]
   paymentTransactions PaymentTransaction[]
   monthlyLedgers    PavilionMonthlyLedger[]
-  contracts         Contract[]
+  leases            PavilionLease[]
   groupMemberships PavilionGroupMembership[]
   activities        StoreActivity[]
   images            PavilionImage[]
@@ -447,18 +447,59 @@ model Payment {
   @@unique([pavilionId, period])
 }
 
+enum PavilionLeaseStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum LeaseContractKind {
+  MAIN
+  ADDENDUM
+  RENEWAL
+  TERMINATION
+  OTHER
+}
+
+model PavilionLease {
+  id Int @id @default(autoincrement())
+
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  tenantName String
+  status PavilionLeaseStatus @default(ACTIVE)
+  startsOn String?
+  endsOn String?
+  vacatedOn String?
+  notes String?
+
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pavilionId, createdAt])
+  @@index([pavilionId, status, createdAt])
+}
+
 model Contract {
   id       Int    @id @default(autoincrement())
   fileName String
   filePath String
   fileType String
+  kind LeaseContractKind @default(MAIN)
   contractNumber String?
   expiresOn      String?
+  signedOn       String?
 
-  pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  pavilionLeaseId Int
+  pavilionLease   PavilionLease @relation(fields: [pavilionLeaseId], references: [id], onDelete: Cascade)
 
   uploadedAt DateTime @default(now())
+
+  @@index([pavilionLeaseId, uploadedAt])
 }
 
 model PaymentTransaction {

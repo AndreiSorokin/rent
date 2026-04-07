@@ -19,7 +19,7 @@ import { deleteContract, uploadContract, validateContractUploadMeta } from '@/li
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { resolveApiMediaUrl } from '@/lib/media';
-import { Discount, Pavilion } from './pavilion.types';
+import { Discount, Pavilion, PavilionContract, PavilionLease } from './pavilion.types';
 import { FullScreenLoader } from '@/components/AppLoader';
 import {
   formatDateInputDisplay,
@@ -84,15 +84,29 @@ export default function PavilionPage() {
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
+  const activeLease = pavilion?.activeLease ?? null;
+  const leaseHistory = Array.isArray(pavilion?.leaseHistory) ? pavilion.leaseHistory : [];
+  const archivedLeases = activeLease
+    ? leaseHistory.filter((lease) => lease.id !== activeLease.id)
+    : leaseHistory;
+  const currentContracts = Array.isArray(activeLease?.contracts)
+    ? activeLease.contracts
+    : [];
   const requiresContract =
     pavilion?.status === 'RENTED' || pavilion?.status === 'PREPAID';
-  const hasContract =
-    Array.isArray(pavilion?.contracts) && pavilion.contracts.length > 0;
+  const hasContract = currentContracts.length > 0;
   const missingContract = requiresContract && !hasContract;
   const contractExpiresOnInvalid =
     contractExpiresOnTouched &&
     contractExpiresOnDraft.trim().length > 0 &&
     !normalizeDateInputToDateKey(contractExpiresOnDraft);
+
+  const leaseStatusLabel: Record<string, string> = {
+    ACTIVE: 'Активна',
+    DRAFT: 'Черновик',
+    ENDED: 'Завершена',
+    CANCELLED: 'Отменена',
+  };
 
   const fetchPavilion = async () => {
     try {
@@ -328,6 +342,55 @@ export default function PavilionPage() {
       });
     }
   };
+
+  const renderContractsTable = (contracts: PavilionContract[]) => (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-[#f4efeb]">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
+            <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {contracts.map((contract) => (
+            <tr key={contract.id}>
+              <td className="px-6 py-4 text-sm">
+                <a
+                  href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {contract.fileName}
+                </a>
+              </td>
+              <td className="px-6 py-4 text-sm">{contract.contractNumber || '—'}</td>
+              <td className="px-6 py-4 text-sm">{formatDateKey(contract.expiresOn)}</td>
+              <td className="px-6 py-4 text-sm">{contract.fileType}</td>
+              <td className="px-6 py-4 text-sm">
+                {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
+              </td>
+              <td className="px-6 py-4 text-right text-sm">
+                {hasPermission(permissions, 'DELETE_CONTRACTS') && (
+                  <button
+                    onClick={() => handleDeleteContract(contract.id)}
+                    className="text-red-600 hover:underline"
+                  >
+                    Удалить
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
 
   const handleSetPrepayment = async () => {
@@ -1058,58 +1121,105 @@ export default function PavilionPage() {
                 )}
               </div>
 
-              {!pavilion.contracts || pavilion.contracts.length === 0 ? (
-                <p className="text-gray-500">Документы не загружены</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-[#f4efeb]">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                      </tr>
-                    </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {pavilion.contracts.map((contract) => (
-                      <tr key={contract.id}>
-                        <td className="px-6 py-4 text-sm">
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline"
-                            >
-                              {contract.fileName}
-                            </a>
-                          </td>
-                          <td className="px-6 py-4 text-sm">{contract.contractNumber || '—'}</td>
-                          <td className="px-6 py-4 text-sm">
-                            {formatDateKey(contract.expiresOn)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">{contract.fileType}</td>
-                          <td className="px-6 py-4 text-sm">
-                            {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
-                          </td>
-                        <td className="px-6 py-4 text-right text-sm">
-                          {hasPermission(permissions, 'DELETE_CONTRACTS') && (
-                            <button
-                              onClick={() => handleDeleteContract(contract.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
+              {activeLease ? (
+                <div className="space-y-6">
+                  {/* <div className="rounded-2xl border border-[#ece5de] bg-[#faf6f1] p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                          Текущая аренда
+                        </p>
+                        <h3 className="text-lg font-semibold text-[#111111]">
+                          {activeLease.tenantName || pavilion.tenantName || 'Арендатор не указан'}
+                        </h3>
+                      </div>
+                      <span className="rounded-full border border-[#d8d1cb] bg-white px-3 py-1 text-sm font-medium text-[#111111]">
+                        {leaseStatusLabel[activeLease.status] || activeLease.status}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-xl bg-white px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Начало аренды</div>
+                        <div className="mt-1 text-sm font-medium text-[#111111]">
+                          {formatDateKey(activeLease.startsOn)}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-white px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Окончание аренды</div>
+                        <div className="mt-1 text-sm font-medium text-[#111111]">
+                          {formatDateKey(activeLease.endsOn)}
+                        </div>
+                      </div>
+                      <div className="rounded-xl bg-white px-4 py-3">
+                        <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Фактический выезд</div>
+                        <div className="mt-1 text-sm font-medium text-[#111111]">
+                          {formatDateKey(activeLease.vacatedOn)}
+                        </div>
+                      </div>
+                    </div>
+                  </div> */}
+
+                  {currentContracts.length === 0 ? (
+                    <p className="text-gray-500">По текущей аренде документы не загружены</p>
+                  ) : (
+                    renderContractsTable(currentContracts)
+                  )}
+
+                  {archivedLeases.length > 0 && (
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-[#111111]">История аренд</h3>
+                        <p className="mt-1 text-sm text-[#6b6b6b]">
+                          Здесь хранятся прошлые арендаторы и их договоры.
+                        </p>
+                      </div>
+                      {archivedLeases.map((lease: PavilionLease) => (
+                        <div
+                          key={lease.id}
+                          className="rounded-2xl border border-[#e5ddd5] bg-[#fcfaf7] p-4"
+                        >
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <h4 className="text-base font-semibold text-[#111111]">
+                                {lease.tenantName || 'Арендатор не указан'}
+                              </h4>
+                              <p className="mt-1 text-sm text-[#6b6b6b]">
+                                Статус: {leaseStatusLabel[lease.status] || lease.status}
+                              </p>
+                            </div>
+                            <div className="text-sm text-[#6b6b6b]">
+                              {formatDateKey(lease.startsOn)} - {formatDateKey(lease.endsOn)}
+                            </div>
+                          </div>
+
+                          <div className="mb-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-xl bg-white px-4 py-3">
+                              <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Окончание аренды</div>
+                              <div className="mt-1 text-sm font-medium text-[#111111]">
+                                {formatDateKey(lease.endsOn)}
+                              </div>
+                            </div>
+                            <div className="rounded-xl bg-white px-4 py-3">
+                              <div className="text-xs uppercase tracking-[0.08em] text-[#6b6b6b]">Фактический выезд</div>
+                              <div className="mt-1 text-sm font-medium text-[#111111]">
+                                {formatDateKey(lease.vacatedOn)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {!lease.contracts || lease.contracts.length === 0 ? (
+                            <p className="text-sm text-gray-500">По этой аренде договоры не сохранены</p>
+                          ) : (
+                            renderContractsTable(lease.contracts)
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-gray-500">Документы не загружены</p>
+              )}
           </div>
         )}
 
