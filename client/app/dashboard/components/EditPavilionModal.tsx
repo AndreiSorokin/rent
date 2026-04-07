@@ -590,7 +590,7 @@ export function EditPavilionModal({
               )}
               {canUploadContracts ? (
                 <div className="mt-3 space-y-3">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-start">
                     <div>
                       <label className={labelClass}>Номер договора</label>
                       <input
@@ -600,6 +600,7 @@ export function EditPavilionModal({
                         className={inputClass}
                         placeholder="Например: 12/2026"
                       />
+                      <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
                     <div>
                       <label className={labelClass}>Дата окончания договора</label>
@@ -624,11 +625,13 @@ export function EditPavilionModal({
                         placeholder="дд.мм.гггг"
                         inputMode="numeric"
                       />
-                      {contractExpiresOnInvalid && (
-                        <p className="mt-1 text-xs text-[#b91c1c]">
-                          Введите дату в формате дд.мм.гггг
-                        </p>
-                      )}
+                      <div className="mt-1 min-h-[20px]">
+                        {contractExpiresOnInvalid && (
+                          <p className="text-xs text-[#b91c1c]">
+                            Введите дату в формате дд.мм.гггг
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <label className={labelClass}>Добавить договор</label>

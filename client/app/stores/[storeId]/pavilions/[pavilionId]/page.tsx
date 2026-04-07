@@ -29,6 +29,7 @@ import {
   formatDateInTimeZone as formatDateInStoreTimeZone,
   formatMonthNumberYearInTimeZone,
   getCurrentMonthKeyInTimeZone,
+  getDaysUntilDateKey,
   getMonthKeyInTimeZone,
   normalizeDateInputToDateKey,
   getTodayDateKeyInTimeZone,
@@ -95,6 +96,27 @@ export default function PavilionPage() {
   const currentContracts = Array.isArray(activeLease?.contracts)
     ? activeLease.contracts
     : [];
+  const expiringContracts = currentContracts
+    .map((contract) => ({
+      contract,
+      daysUntilExpiration: getDaysUntilDateKey(
+        contract.expiresOn,
+        pavilion?.store?.timeZone || 'UTC',
+      ),
+    }))
+    .filter(
+      (
+        item,
+      ): item is {
+        contract: PavilionContract;
+        daysUntilExpiration: number;
+      } =>
+        item.daysUntilExpiration !== null &&
+        item.daysUntilExpiration >= 0 &&
+        item.daysUntilExpiration <= 30,
+    )
+    .sort((a, b) => a.daysUntilExpiration - b.daysUntilExpiration);
+  const nearestExpiringContract = expiringContracts[0] ?? null;
   const requiresContract =
     pavilion?.status === 'RENTED' || pavilion?.status === 'PREPAID';
   const hasContract = currentContracts.length > 0;
@@ -1028,7 +1050,7 @@ export default function PavilionPage() {
 
                 {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
                   <div className="rounded-2xl border border-[#ece5de] bg-[#faf6f1] p-4">
-                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start">
                     <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
                         Номер договора
@@ -1041,6 +1063,7 @@ export default function PavilionPage() {
                         placeholder="Например: 12/2026"
                         disabled={uploadingContract}
                       />
+                      <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
@@ -1070,13 +1093,15 @@ export default function PavilionPage() {
                         inputMode="numeric"
                         disabled={uploadingContract}
                       />
-                      {contractExpiresOnInvalid && (
-                        <p className="mt-1 text-xs text-[#b91c1c]">
-                          Введите дату в формате дд.мм.гггг
-                        </p>
-                      )}
+                      <div className="mt-1 min-h-[20px]">
+                        {contractExpiresOnInvalid && (
+                          <p className="text-xs text-[#b91c1c]">
+                            Введите дату в формате дд.мм.гггг
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex w-full lg:w-auto">
+                    <div className="flex w-full lg:w-auto lg:pt-6">
                       <label className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 lg:w-auto">
                         {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
                         <input
@@ -1095,6 +1120,46 @@ export default function PavilionPage() {
 
               {activeLease ? (
                 <div className="space-y-6">
+                  {nearestExpiringContract && (
+                    <div className="rounded-2xl border border-[#f59e0b]/30 bg-[#fff7e8] p-4 text-[#8a5300]">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            Истекающие договоры
+                          </p>
+                          <p className="mt-1 text-sm">
+                            В ближайшие 30 дней истекают договоры по текущей аренде:
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {expiringContracts.map(({ contract, daysUntilExpiration }) => (
+                          <div
+                            key={contract.id}
+                            className="rounded-xl border border-[#f59e0b]/20 bg-white/70 px-3 py-2"
+                          >
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-sm font-medium text-[#8a5300]">
+                                {contract.contractNumber
+                                  ? `Договор №${contract.contractNumber}`
+                                  : `Договор #${contract.id}`}
+                              </p>
+                              <span className="text-xs font-medium text-[#9a6700]">
+                                {daysUntilExpiration === 0
+                                  ? 'Истекает сегодня'
+                                  : daysUntilExpiration === 1
+                                    ? 'Остался 1 день'
+                                    : `Осталось ${daysUntilExpiration} дн.`}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-[#9a6700]">
+                              Дата окончания: {formatDateKey(contract.expiresOn)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {currentContracts.length === 0 ? (
                     <p className="text-gray-500">По текущей аренде документы не загружены</p>
                   ) : (

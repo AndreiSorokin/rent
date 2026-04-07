@@ -118,14 +118,30 @@ export function normalizeDateInputToDateKey(
 export function formatDateInputDisplay(
   value: string | null | undefined,
 ): string {
-  const digits = String(value ?? '')
-    .replace(/\D/g, '')
-    .slice(0, 8);
+  const raw = String(value ?? '')
+    .replace(/[^\d./-]/g, '')
+    .replace(/[/-]/g, '.')
+    .replace(/\.{2,}/g, '.');
 
-  if (!digits) return '';
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
-  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+  if (!raw) return '';
+
+  const hasTrailingDot = raw.endsWith('.');
+  const parts = raw
+    .split('.')
+    .slice(0, 3)
+    .map((part, index) => {
+      if (index < 2) return part.slice(0, 2);
+      return part.slice(0, 4);
+    });
+
+  const result = parts.join('.');
+  if (!result) return '';
+
+  if (hasTrailingDot && parts.length < 3) {
+    return `${result}.`;
+  }
+
+  return result;
 }
 
 export function formatMonthLabelFromKey(
@@ -153,6 +169,31 @@ export function formatMonthNumberYearInTimeZone(
   const [yearRaw, monthRaw] = monthKey.split('-');
   if (!yearRaw || !monthRaw) return '-';
   return `${monthRaw}.${yearRaw}`;
+}
+
+export function getDaysUntilDateKey(
+  value: string | null | undefined,
+  timeZone: string,
+): number | null {
+  const normalized = normalizeDateInputToDateKey(value);
+  if (!normalized) return null;
+
+  const [yearRaw, monthRaw, dayRaw] = normalized.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!year || !month || !day) return null;
+
+  const targetUtc = Date.UTC(year, month - 1, day);
+  const todayKey = getTodayDateKeyInTimeZone(timeZone);
+  const [todayYearRaw, todayMonthRaw, todayDayRaw] = todayKey.split('-');
+  const todayYear = Number(todayYearRaw);
+  const todayMonth = Number(todayMonthRaw);
+  const todayDay = Number(todayDayRaw);
+  if (!todayYear || !todayMonth || !todayDay) return null;
+
+  const todayUtc = Date.UTC(todayYear, todayMonth - 1, todayDay);
+  return Math.round((targetUtc - todayUtc) / (24 * 60 * 60 * 1000));
 }
 
 export function isSameMonthInTimeZone(
