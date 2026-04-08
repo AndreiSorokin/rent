@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { FormattedDateInput } from '@/components/FormattedDateInput';
 import { useToast } from '@/components/toast/ToastProvider';
 import { apiFetch } from '@/lib/api';
 import {
@@ -8,8 +9,6 @@ import {
   validateContractUploadMeta,
 } from '@/lib/contracts';
 import {
-  formatDateInputDisplay,
-  formatDateKey,
   getCurrentMonthKeyInTimeZone,
   getTodayDateKeyInTimeZone,
   normalizeDateInputToDateKey,
@@ -62,10 +61,26 @@ export function CreatePavilionModal({
   const [contractExpiresOn, setContractExpiresOn] = useState('');
   const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const contractExpiresOnInvalid =
     contractExpiresOnTouched &&
     contractExpiresOn.trim().length > 0 &&
     !normalizeDateInputToDateKey(contractExpiresOn);
+
+  const previewItems = useMemo(
+    () =>
+      photos.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      })),
+    [photos],
+  );
+
+  useEffect(() => {
+    return () => {
+      previewItems.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [previewItems]);
 
   const handleSubmit = async () => {
     const category = newCategory.trim() || selectedCategory.trim();
@@ -119,7 +134,9 @@ export function CreatePavilionModal({
         }
 
         if (Math.abs(prepayChannelsTotal - prepaymentTarget) > 0.01) {
-          toast.error('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+          toast.error(
+            'Сумма по каналам оплаты должна совпадать с суммой предоплаты',
+          );
           setLoading(false);
           return;
         }
@@ -191,22 +208,21 @@ export function CreatePavilionModal({
           e.preventDefault();
           void handleSubmit();
         }}
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
-        <div className="top-0 z-10 -mx-6 -mt-6 mb-6 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
-          <h2 className="text-xl font-extrabold text-[#111111]">Создать новый павильон</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur-sm">
+          <h2 className="text-lg font-extrabold text-[#111111]">Создать новый павильон</h2>
           <button
             type="button"
             onClick={onClose}
-            disabled={loading}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f4efeb] hover:text-[#111111]"
             aria-label="Закрыть"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d8d1cb] bg-white text-xl leading-none text-[#6b6b6b] transition hover:bg-[#f4efeb] hover:text-[#111111] disabled:opacity-50"
           >
-            ×
+            <span aria-hidden>×</span>
           </button>
         </div>
 
-        <div className="space-y-5">
+        <div className="p-6 space-y-5">
           <div>
             <label className={labelClass}>Номер павильона</label>
             <input
@@ -259,16 +275,6 @@ export function CreatePavilionModal({
 
           <div>
             <label className={labelClass}>Описание павильона</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className={inputClass}
-              placeholder="Короткое описание павильона"
-            />
-          </div>
-
-          <div>
             <label className={labelClass}>Площадь (м²)</label>
             <input
               type="number"
@@ -327,9 +333,11 @@ export function CreatePavilionModal({
               </p>
               {canUploadContracts ? (
                 <div className="mt-3 space-y-3">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div>
-                      <label className={labelClass}>Номер договора</label>
+                  <div className="space-y-3">
+                    <div className="flex min-h-[92px] flex-col">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                        Номер договора
+                      </label>
                       <input
                         type="text"
                         value={contractNumber}
@@ -337,35 +345,30 @@ export function CreatePavilionModal({
                         className={inputClass}
                         placeholder="Например: 12/2026"
                       />
+                      <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
-                    <div>
-                      <label className={labelClass}>Дата окончания договора</label>
-                      <input
-                        type="text"
+                    <div className="flex min-h-[92px] flex-col">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                        Дата окончания договора
+                      </label>
+                      <FormattedDateInput
                         value={contractExpiresOn}
-                        onChange={(e) =>
-                          setContractExpiresOn(formatDateInputDisplay(e.target.value))
-                        }
-                        onBlur={() => {
-                          setContractExpiresOnTouched(true);
-                          const normalized = normalizeDateInputToDateKey(contractExpiresOn);
-                          if (normalized) {
-                            setContractExpiresOn(formatDateKey(normalized));
-                          }
-                        }}
+                        onChange={setContractExpiresOn}
+                        onTouched={() => setContractExpiresOnTouched(true)}
                         className={`${inputClass} ${
                           contractExpiresOnInvalid
                             ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
                             : ''
                         }`}
-                        placeholder="дд.мм.гггг"
-                        inputMode="numeric"
+                        disabled={loading}
                       />
-                      {contractExpiresOnInvalid && (
-                        <p className="mt-1 text-xs text-[#b91c1c]">
-                          Введите дату в формате дд.мм.гггг
-                        </p>
-                      )}
+                      <div className="mt-1 min-h-[20px]">
+                        {contractExpiresOnInvalid && (
+                          <p className="text-xs text-[#b91c1c]">
+                            Введите дату в формате дд.мм.гггг
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -468,20 +471,65 @@ export function CreatePavilionModal({
             </>
           )}
 
-          <div>
-            <label className={labelClass}>Фотографии павильона</label>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              multiple
-              onChange={(e) => setPhotos(Array.from(e.target.files || []))}
-              className={inputClass}
-            />
-            <p className="mt-2 text-xs text-[#6b6b6b]">
-              {photos.length > 0
-                ? `Выбрано фотографий: ${photos.length}`
-                : 'Можно добавить одну или несколько фотографий'}
-            </p>
+          <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+            <p className="mb-2 text-sm font-semibold text-[#111111]">Описание и фото павильона</p>
+
+            <div className="mb-3">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                Описание
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className={inputClass}
+                placeholder="Добавьте описание павильона для арендаторов"
+              />
+              <p className="mt-2 text-xs text-[#6b6b6b]">
+                Описание можно оставить пустым и заполнить позже.
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                Фото
+              </label>
+              <div className="mb-3 flex h-32 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
+                Фото появятся после сохранения павильона
+              </div>
+
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={(e) => setPhotos(Array.from(e.target.files || []))}
+                className={inputClass}
+              />
+              {previewItems.length > 0 && (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {previewItems.map((item, index) => (
+                    <div
+                      key={`${item.file.name}-${index}`}
+                      className="overflow-hidden rounded-xl border border-[#d8d1cb] bg-white"
+                    >
+                      <img
+                        src={item.url}
+                        alt={item.file.name}
+                        className="h-16 w-full object-cover"
+                      />
+                      <div className="px-2 py-1.5 text-[10px] text-[#6b6b6b]">
+                        <div className="truncate">{item.file.name}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 text-xs text-[#6b6b6b]">
+                {photos.length > 0
+                  ? `Выбрано файлов: ${photos.length}`
+                  : 'Можно добавить JPG, PNG и WEBP до 10 МБ.'}
+              </div>
+            </div>
           </div>
         </div>
 

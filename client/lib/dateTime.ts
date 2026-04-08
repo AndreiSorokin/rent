@@ -118,30 +118,15 @@ export function normalizeDateInputToDateKey(
 export function formatDateInputDisplay(
   value: string | null | undefined,
 ): string {
-  const raw = String(value ?? '')
-    .replace(/[^\d./-]/g, '')
-    .replace(/[/-]/g, '.')
-    .replace(/\.{2,}/g, '.');
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 8);
 
-  if (!raw) return '';
-
-  const hasTrailingDot = raw.endsWith('.');
-  const parts = raw
-    .split('.')
-    .slice(0, 3)
-    .map((part, index) => {
-      if (index < 2) return part.slice(0, 2);
-      return part.slice(0, 4);
-    });
-
-  const result = parts.join('.');
-  if (!result) return '';
-
-  if (hasTrailingDot && parts.length < 3) {
-    return `${result}.`;
+  if (!digits) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}.${digits.slice(2)}`;
   }
 
-  return result;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 }
 
 export function formatMonthLabelFromKey(
