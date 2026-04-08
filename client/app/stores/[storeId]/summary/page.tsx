@@ -1247,7 +1247,7 @@ export default function StoreSummaryPage() {
               <div className=",argin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Общий приход"
-                  value={formatMoney(data.income.total ?? 0, data.currency)}
+                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
                   tone="success"
                 />
                 <MetricCard
