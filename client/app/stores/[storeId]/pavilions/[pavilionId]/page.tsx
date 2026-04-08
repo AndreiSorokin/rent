@@ -18,15 +18,17 @@ import { formatMoney, getCurrencySymbol } from '@/lib/currency';
 import { deleteContract, uploadContract, validateContractUploadMeta } from '@/lib/contracts';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
-import { resolveApiMediaUrl } from '@/lib/media';
-import { Discount, Pavilion } from './pavilion.types';
+import { Discount, Pavilion, PavilionContract, PavilionLease } from './pavilion.types';
 import { FullScreenLoader } from '@/components/AppLoader';
+import { PavilionContractsTable } from './components/PavilionContractsTable';
+import { PavilionContractsHistoryModal } from './components/PavilionContractsHistoryModal';
 import {
   formatDateInputDisplay,
   formatDateKey,
   formatDateInTimeZone as formatDateInStoreTimeZone,
   formatMonthNumberYearInTimeZone,
   getCurrentMonthKeyInTimeZone,
+  getDaysUntilDateKey,
   getMonthKeyInTimeZone,
   normalizeDateInputToDateKey,
   getTodayDateKeyInTimeZone,
@@ -74,25 +76,58 @@ export default function PavilionPage() {
   const [contractNumberDraft, setContractNumberDraft] = useState('');
   const [contractExpiresOnDraft, setContractExpiresOnDraft] = useState('');
   const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
+  const [showAllContractsHistory, setShowAllContractsHistory] = useState(false);
   const [permissions, setPermissions] = useState<string[]>([]);
-  const [descriptionDraft, setDescriptionDraft] = useState('');
-  const [descriptionSaving, setDescriptionSaving] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
 
   const statusLabel: Record<string, string> = {
     AVAILABLE: 'СВОБОДЕН',
     RENTED: 'ЗАНЯТ',
     PREPAID: 'ПРЕДОПЛАТА',
   };
+  const activeLease = pavilion?.activeLease ?? null;
+  const leaseHistory = Array.isArray(pavilion?.leaseHistory) ? pavilion.leaseHistory : [];
+  const archivedLeases = activeLease
+    ? leaseHistory.filter((lease) => lease.id !== activeLease.id)
+    : leaseHistory;
+  const currentContracts = Array.isArray(activeLease?.contracts)
+    ? activeLease.contracts
+    : [];
+  const expiringContracts = currentContracts
+    .map((contract) => ({
+      contract,
+      daysUntilExpiration: getDaysUntilDateKey(
+        contract.expiresOn,
+        pavilion?.store?.timeZone || 'UTC',
+      ),
+    }))
+    .filter(
+      (
+        item,
+      ): item is {
+        contract: PavilionContract;
+        daysUntilExpiration: number;
+      } =>
+        item.daysUntilExpiration !== null &&
+        item.daysUntilExpiration >= 0 &&
+        item.daysUntilExpiration <= 30,
+    )
+    .sort((a, b) => a.daysUntilExpiration - b.daysUntilExpiration);
+  const nearestExpiringContract = expiringContracts[0] ?? null;
   const requiresContract =
     pavilion?.status === 'RENTED' || pavilion?.status === 'PREPAID';
-  const hasContract =
-    Array.isArray(pavilion?.contracts) && pavilion.contracts.length > 0;
+  const hasContract = currentContracts.length > 0;
   const missingContract = requiresContract && !hasContract;
   const contractExpiresOnInvalid =
     contractExpiresOnTouched &&
     contractExpiresOnDraft.trim().length > 0 &&
     !normalizeDateInputToDateKey(contractExpiresOnDraft);
+
+  const leaseStatusLabel: Record<string, string> = {
+    ACTIVE: 'Активна',
+    DRAFT: 'Черновик',
+    ENDED: 'Завершена',
+    CANCELLED: 'Отменена',
+  };
 
   const fetchPavilion = async () => {
     try {
@@ -107,7 +142,6 @@ export default function PavilionPage() {
         ),
       ]);
       setPavilion(data);
-      setDescriptionDraft(data.description ?? '');
       setPermissions(storeData.permissions || []);
       const categories = Array.from(
         new Set([
@@ -141,10 +175,6 @@ export default function PavilionPage() {
       return prev === next ? prev : next;
     });
   }, [pavilion?.store?.timeZone]);
-
-  useEffect(() => {
-    setDescriptionDraft(pavilion?.description ?? '');
-  }, [pavilion?.description]);
 
   const handleActionSuccess = () => {
     fetchPavilion();
@@ -329,7 +359,6 @@ export default function PavilionPage() {
     }
   };
 
-
   const handleSetPrepayment = async () => {
     if (!pavilion) return;
 
@@ -475,53 +504,6 @@ export default function PavilionPage() {
     }
   };
 
-  const handleUpdateDescription = async () => {
-    try {
-      setDescriptionSaving(true);
-      await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/description`, {
-        method: 'PATCH',
-        body: JSON.stringify({ description: descriptionDraft.trim() || null }),
-      });
-      toast.success(
-        descriptionDraft.trim()
-          ? 'Описание павильона обновлено'
-          : 'Описание павильона удалено',
-      );
-      handleActionSuccess();
-    } catch (err: any) {
-      toast.error(err?.message || 'Не удалось сохранить описание павильона');
-    } finally {
-      setDescriptionSaving(false);
-    }
-  };
-
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || []);
-    if (selectedFiles.length === 0) return;
-
-    const formData = new FormData();
-    selectedFiles.forEach((file) => formData.append('files', file));
-
-    try {
-      setImageUploading(true);
-      await apiFetch(`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/media`, {
-        method: 'POST',
-        body: formData,
-      });
-      toast.success(
-        selectedFiles.length === 1
-          ? 'Фото павильона добавлено'
-          : `Добавлено фотографий: ${selectedFiles.length}`,
-      );
-      handleActionSuccess();
-    } catch (err: any) {
-      toast.error(err?.message || 'Не удалось загрузить фото павильона');
-    } finally {
-      setImageUploading(false);
-      event.target.value = '';
-    }
-  };
-
   const toggleCharge = (chargeId: number) => {
     setExpandedCharges((prev) => {
       const next = new Set(prev);
@@ -577,15 +559,6 @@ export default function PavilionPage() {
   const baseRentAmount = pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
   const discountedRentAmount = Math.max(baseRentAmount - currentMonthDiscount, 0);
   const prepaidAmount = pavilion.prepaymentAmount ?? null;
-  const canManageMedia = hasPermission(permissions, 'MANAGE_MEDIA');
-  const pavilionImages: Array<{ id: number; filePath: string; createdAt: string }> =
-    pavilion.images && pavilion.images.length > 0
-      ? pavilion.images
-      : pavilion.imagePath
-        ? [{ id: -1, filePath: pavilion.imagePath, createdAt: new Date(0).toISOString() }]
-        : [];
-  const showMediaSection =
-    canManageMedia || Boolean(pavilion.description) || pavilionImages.length > 0;
 
   return (
     <div className="min-h-screen bg-[#f6f1eb]">
@@ -723,91 +696,6 @@ export default function PavilionPage() {
             </div>
           )}
         </div>
-
-        {showMediaSection && (
-          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-            <h2 className="mb-4 text-xl font-semibold">Описание и фото павильона</h2>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
-                <h3 className="mb-2 font-medium">Описание павильона</h3>
-                {canManageMedia ? (
-                  <>
-                    <textarea
-                      value={descriptionDraft}
-                      onChange={(e) => setDescriptionDraft(e.target.value)}
-                      rows={6}
-                      className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Добавьте описание павильона для арендаторов"
-                    />
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => void handleUpdateDescription()}
-                        disabled={
-                          descriptionSaving ||
-                          descriptionDraft.trim() === String(pavilion.description ?? '').trim()
-                        }
-                        className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {descriptionSaving ? '...' : 'Сохранить'}
-                      </button>
-                    </div>
-                    <p className="mt-2 text-sm text-[#6b6b6b]">
-                      Оставьте поле пустым, чтобы удалить описание.
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-sm leading-6 text-[#111111]">
-                    {pavilion.description || 'Описание павильона пока не добавлено'}
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
-                <h3 className="mb-3 font-medium">Фото павильона</h3>
-                {pavilionImages[0] ? (
-                  <img
-                    src={resolveApiMediaUrl(pavilionImages[0].filePath) || undefined}
-                    alt={`Фото павильона ${pavilion.number}`}
-                    className="mb-4 h-56 w-full rounded-2xl border border-[#d8d1cb] object-cover"
-                  />
-                ) : (
-                  <div className="mb-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
-                    Фото павильона пока не загружено
-                  </div>
-                )}
-
-                {canManageMedia ? (
-                  <>
-                    <div className="flex flex-wrap gap-2">
-                      <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]">
-                        {imageUploading ? 'Загрузка...' : 'Добавить фото'}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => void handleImageUpload(e)}
-                          disabled={imageUploading}
-                        />
-                      </label>
-                      <Link
-                        href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/media`}
-                        className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
-                      >
-                        Все фото
-                        {pavilionImages.length > 0 ? ` (${pavilionImages.length})` : ''}
-                      </Link>
-                    </div>
-                    <p className="mt-2 text-sm text-[#6b6b6b]">
-                      Поддерживаются JPG, PNG и WEBP до 10 МБ.
-                    </p>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        )}
 
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
@@ -993,11 +881,27 @@ export default function PavilionPage() {
 
         {hasPermission(permissions, 'VIEW_CONTRACTS') && (
             <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Договоры</h2>
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold">Договоры</h2>
+                    <p className="mt-1 text-sm text-[#6b6b6b]">
+                      Текущие документы аренды.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllContractsHistory(true)}
+                    className="w-full rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f8f4ef] sm:w-auto"
+                  >
+                    Все договоры
+                  </button>
+                </div>
+
                 {hasPermission(permissions, 'UPLOAD_CONTRACTS') && (
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div>
+                  <div className="rounded-2xl border border-[#ece5de] bg-[#faf6f1] p-4">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start">
+                    <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
                         Номер договора
                       </label>
@@ -1005,12 +909,13 @@ export default function PavilionPage() {
                         type="text"
                         value={contractNumberDraft}
                         onChange={(e) => setContractNumberDraft(e.target.value)}
-                        className="min-w-[180px] rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
+                        className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
                         placeholder="Например: 12/2026"
                         disabled={uploadingContract}
                       />
+                      <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
                         Дата окончания
                       </label>
@@ -1029,7 +934,7 @@ export default function PavilionPage() {
                             setContractExpiresOnDraft(formatDateKey(normalized));
                           }
                         }}
-                        className={`min-w-[180px] rounded-xl border bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:bg-white focus:ring-2 ${
+                        className={`w-full rounded-xl border bg-white px-3 py-2 text-sm text-[#111111] outline-none transition focus:ring-2 ${
                           contractExpiresOnInvalid
                             ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
                             : 'border-[#d8d1cb] focus:border-[#ff6a13] focus:ring-[#ff6a13]/20'
@@ -1038,78 +943,90 @@ export default function PavilionPage() {
                         inputMode="numeric"
                         disabled={uploadingContract}
                       />
-                      {contractExpiresOnInvalid && (
-                        <p className="mt-1 text-xs text-[#b91c1c]">
-                          Введите дату в формате дд.мм.гггг
-                        </p>
-                      )}
+                      <div className="mt-1 min-h-[20px]">
+                        {contractExpiresOnInvalid && (
+                          <p className="text-xs text-[#b91c1c]">
+                            Введите дату в формате дд.мм.гггг
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <label className="cursor-pointer rounded bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700">
-                      {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={handleContractUpload}
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
-                        disabled={uploadingContract}
-                      />
-                    </label>
+                    <div className="flex w-full lg:w-auto lg:pt-6">
+                      <label className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 lg:w-auto">
+                        {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={handleContractUpload}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
+                          disabled={uploadingContract}
+                        />
+                      </label>
+                    </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              {!pavilion.contracts || pavilion.contracts.length === 0 ? (
+              {activeLease ? (
+                <div className="space-y-6">
+                  {nearestExpiringContract && (
+                    <div className="rounded-2xl border border-[#f59e0b]/30 bg-[#fff7e8] p-4 text-[#8a5300]">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            Истекающие договоры
+                          </p>
+                          <p className="mt-1 text-sm">
+                            В ближайшие 30 дней истекают договоры по текущей аренде:
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-2">
+                        {expiringContracts.map(({ contract, daysUntilExpiration }) => (
+                          <div
+                            key={contract.id}
+                            className="rounded-xl border border-[#f59e0b]/20 bg-white/70 px-3 py-2"
+                          >
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-sm font-medium text-[#8a5300]">
+                                {contract.contractNumber
+                                  ? `Договор №${contract.contractNumber}`
+                                  : `Договор #${contract.id}`}
+                              </p>
+                              <span className="text-xs font-medium text-[#9a6700]">
+                                {daysUntilExpiration === 0
+                                  ? 'Истекает сегодня'
+                                  : daysUntilExpiration === 1
+                                    ? 'Остался 1 день'
+                                    : `Осталось ${daysUntilExpiration} дн.`}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-sm text-[#9a6700]">
+                              Дата окончания: {formatDateKey(contract.expiresOn)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {currentContracts.length === 0 ? (
+                    <p className="text-gray-500">По текущей аренде документы не загружены</p>
+                  ) : (
+                    <PavilionContractsTable
+                      contracts={currentContracts}
+                      storeTimeZone={storeTimeZone}
+                      apiUrl={process.env.NEXT_PUBLIC_API_URL}
+                      canDeleteContracts={hasPermission(permissions, 'DELETE_CONTRACTS')}
+                      onDeleteContract={handleDeleteContract}
+                    />
+                  )}
+
+
+                </div>
+              ) : (
                 <p className="text-gray-500">Документы не загружены</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-[#f4efeb]">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
-                      </tr>
-                    </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {pavilion.contracts.map((contract) => (
-                      <tr key={contract.id}>
-                        <td className="px-6 py-4 text-sm">
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_API_URL}${contract.filePath}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline"
-                            >
-                              {contract.fileName}
-                            </a>
-                          </td>
-                          <td className="px-6 py-4 text-sm">{contract.contractNumber || '—'}</td>
-                          <td className="px-6 py-4 text-sm">
-                            {formatDateKey(contract.expiresOn)}
-                          </td>
-                          <td className="px-6 py-4 text-sm">{contract.fileType}</td>
-                          <td className="px-6 py-4 text-sm">
-                            {formatDateInStoreTimeZone(contract.uploadedAt, storeTimeZone)}
-                          </td>
-                        <td className="px-6 py-4 text-right text-sm">
-                          {hasPermission(permissions, 'DELETE_CONTRACTS') && (
-                            <button
-                              onClick={() => handleDeleteContract(contract.id)}
-                              className="text-red-600 hover:underline"
-                            >
-                              Удалить
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+              )}
           </div>
         )}
 
@@ -1492,7 +1409,7 @@ export default function PavilionPage() {
               hasPermission(permissions, 'CREATE_CHARGES') ||
               hasPermission(permissions, 'DELETE_CHARGES')
             }
-            canUploadContracts={hasPermission(permissions, 'UPLOAD_CONTRACTS')}
+            canManageMedia={hasPermission(permissions, 'MANAGE_MEDIA')}
             timeZone={pavilion.store?.timeZone || 'UTC'}
             onClose={() => setEditingPavilion(null)}
             onSaved={handleActionSuccess}
@@ -1528,6 +1445,18 @@ export default function PavilionPage() {
           </button>
         )}
       </div>
+
+      <PavilionContractsHistoryModal
+        open={showAllContractsHistory}
+        onClose={() => setShowAllContractsHistory(false)}
+        leaseHistory={leaseHistory}
+        leaseStatusLabel={leaseStatusLabel}
+        storeTimeZone={storeTimeZone}
+        apiUrl={process.env.NEXT_PUBLIC_API_URL}
+        canDeleteContracts={hasPermission(permissions, 'DELETE_CONTRACTS')}
+        onDeleteContract={handleDeleteContract}
+      />
     </div>
   );
 }
+

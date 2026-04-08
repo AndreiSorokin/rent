@@ -14,7 +14,6 @@ RUN npm ci
 
 FROM deps AS build
 COPY prisma ./prisma
-COPY scripts ./scripts
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 COPY src ./src
@@ -34,7 +33,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/scripts ./scripts
 COPY package*.json ./
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 

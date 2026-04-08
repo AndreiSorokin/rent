@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -365,6 +365,7 @@ export class PavilionsService {
   async create(storeId: number, dto: CreatePavilionDto, userId?: number) {
     const storeTimeZone = await this.getStoreTimeZone(storeId);
     const currentPeriod = this.getTimeZoneMonthPeriod(storeTimeZone);
+    const todayDateKey = this.getTodayDateKeyInTimeZone(storeTimeZone);
     const calculatedRent = dto.squareMeters * dto.pricePerSqM;
     const isPrepaid = dto.status === PavilionStatus.PREPAID;
     const parsedPrepaidUntil = dto.prepaidUntil
@@ -392,6 +393,16 @@ export class PavilionsService {
         store: { connect: { id: storeId } },
       },
     });
+    if (
+      created.status === PavilionStatus.RENTED ||
+      created.status === PavilionStatus.PREPAID
+    ) {
+      await this.ensureActiveLeaseForPavilion(
+        created.id,
+        created.tenantName,
+        todayDateKey,
+      );
+    }
     await this.refreshMonthlyLedger(created.id, currentPeriod);
     await this.storeActivity.log({
       storeId,
@@ -474,7 +485,14 @@ export class PavilionsService {
       },
       discounts: true,
       payments: true,
-      contracts: true,
+      leases: {
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        include: {
+          contracts: {
+            orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+          },
+        },
+      },
       monthlyLedgers: {
         where: {
           period: {
@@ -507,7 +525,29 @@ export class PavilionsService {
       orderBy: [{ id: 'asc' }],
     });
     let enriched = this.sortPavilionsByStoredOrNaturalOrder(
-      items.map((item) => this.enrichPavilionPaymentStatus(item, storeTimeZone)),
+      items.map((item) => {
+        const leaseHistory = [...(item.leases ?? [])].sort((a, b) => {
+          const statusRank = (status: string) => {
+            if (status === 'ACTIVE') return 0;
+            if (status === 'DRAFT') return 1;
+            if (status === 'ENDED') return 2;
+            return 3;
+          };
+          const statusDiff = statusRank(a.status) - statusRank(b.status);
+          if (statusDiff !== 0) return statusDiff;
+          return b.id - a.id;
+        });
+        const activeLease =
+          leaseHistory.find((lease) => lease.status === 'ACTIVE') ??
+          leaseHistory.find((lease) => lease.status === 'DRAFT') ??
+          null;
+
+        return {
+          ...this.enrichPavilionPaymentStatus(item, storeTimeZone),
+          activeLease,
+          leaseHistory,
+        };
+      }),
     );
     if (paymentStatus) {
       enriched = enriched.filter((item) => item.paymentStatus === paymentStatus);
@@ -605,7 +645,14 @@ export class PavilionsService {
             timeZone: true,
           },
         },
-        contracts: { orderBy: { uploadedAt: 'desc' } },
+        leases: {
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          include: {
+            contracts: {
+              orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+            },
+          },
+        },
         additionalCharges: {
           orderBy: { createdAt: 'asc' },
           include: {
@@ -624,14 +671,28 @@ export class PavilionsService {
 
     if (!pavilion) return null;
 
-    const contracts = await (this.prisma.contract as any).findMany({
-      where: { pavilionId: pavilion.id },
-      orderBy: { uploadedAt: 'desc' },
+    const contracts = await this.listContractsForPavilion(pavilion.id);
+    const leaseHistory = [...(pavilion.leases ?? [])].sort((a, b) => {
+      const statusRank = (status: string) => {
+        if (status === 'ACTIVE') return 0;
+        if (status === 'DRAFT') return 1;
+        if (status === 'ENDED') return 2;
+        return 3;
+      };
+      const statusDiff = statusRank(a.status) - statusRank(b.status);
+      if (statusDiff !== 0) return statusDiff;
+      return b.id - a.id;
     });
+    const activeLease =
+      leaseHistory.find((lease) => lease.status === 'ACTIVE') ??
+      leaseHistory.find((lease) => lease.status === 'DRAFT') ??
+      null;
 
     return {
       ...pavilion,
       contracts,
+      activeLease,
+      leaseHistory,
       prepaymentAmount: this.calculatePrepaymentAmount(
         pavilion.prepaidUntil,
         pavilion.payments.map((payment) => ({
@@ -721,6 +782,7 @@ export class PavilionsService {
       where: { id: pavilionId },
       data,
     });
+    await this.syncLeaseWithPavilionState(storeTimeZone, pavilion, updated);
     await this.refreshMonthlyLedger(updated.id, currentPeriod);
 
     const snapshot = (item: {
@@ -1055,7 +1117,11 @@ export class PavilionsService {
     });
 
     const contracts = await this.prisma.contract.findMany({
-      where: { pavilionId: id },
+      where: {
+        pavilionLease: {
+          pavilionId: id,
+        },
+      },
       select: { filePath: true },
     });
 
@@ -1100,10 +1166,7 @@ export class PavilionsService {
   async listContracts(storeId: number, pavilionId: number) {
     await this.ensureExists(storeId, pavilionId);
 
-    return (this.prisma.contract as any).findMany({
-      where: { pavilionId },
-      orderBy: { uploadedAt: 'desc' },
-    });
+    return this.listContractsForPavilion(pavilionId);
   }
 
   private validateContractMetadata(
@@ -1153,6 +1216,164 @@ export class PavilionsService {
     return `${year}-${month}-${day}`;
   }
 
+  private async ensureActiveLeaseForPavilion(
+    pavilionId: number,
+    tenantName?: string | null,
+    startsOn?: string | null,
+  ) {
+    const prismaAny = this.prisma as any;
+    const normalizedTenantName = String(tenantName ?? '').trim();
+    const normalizedStartsOn = String(startsOn ?? '').trim() || null;
+
+    const activeLease = await prismaAny.pavilionLease.findFirst({
+      where: {
+        pavilionId,
+        status: {
+          in: ['ACTIVE', 'DRAFT'],
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    if (activeLease) {
+      if (
+        (normalizedTenantName && activeLease.tenantName !== normalizedTenantName) ||
+        (normalizedStartsOn && !activeLease.startsOn)
+      ) {
+        return prismaAny.pavilionLease.update({
+          where: { id: activeLease.id },
+          data: {
+            ...(normalizedTenantName ? { tenantName: normalizedTenantName } : {}),
+            ...(normalizedStartsOn && !activeLease.startsOn
+              ? { startsOn: normalizedStartsOn }
+              : {}),
+            status: 'ACTIVE',
+          },
+        });
+      }
+      return activeLease;
+    }
+
+    return prismaAny.pavilionLease.create({
+      data: {
+        pavilionId,
+        tenantName: normalizedTenantName || 'Не указан',
+        status: 'ACTIVE',
+        startsOn: normalizedStartsOn,
+      },
+    });
+  }
+
+  private async syncLeaseWithPavilionState(
+    storeTimeZone: string,
+    before: {
+      id: number;
+      status: PavilionStatus;
+      tenantName: string | null;
+    },
+    after: {
+      id: number;
+      status: PavilionStatus;
+      tenantName: string | null;
+    },
+  ) {
+    const prismaAny = this.prisma as any;
+    const todayDateKey = this.getTodayDateKeyInTimeZone(storeTimeZone);
+    const beforeTenantName = String(before.tenantName ?? '').trim();
+    const afterTenantName = String(after.tenantName ?? '').trim();
+    const beforeOccupied =
+      before.status === PavilionStatus.RENTED ||
+      before.status === PavilionStatus.PREPAID;
+    const afterOccupied =
+      after.status === PavilionStatus.RENTED ||
+      after.status === PavilionStatus.PREPAID;
+
+    const activeLease = await prismaAny.pavilionLease.findFirst({
+      where: {
+        pavilionId: after.id,
+        status: {
+          in: ['ACTIVE', 'DRAFT'],
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    if (!afterOccupied) {
+      if (activeLease) {
+        await prismaAny.pavilionLease.update({
+          where: { id: activeLease.id },
+          data: {
+            status: 'ENDED',
+            endsOn: activeLease.endsOn || todayDateKey,
+            vacatedOn: activeLease.vacatedOn || todayDateKey,
+          },
+        });
+      }
+      return;
+    }
+
+    if (!activeLease) {
+      await this.ensureActiveLeaseForPavilion(after.id, afterTenantName, todayDateKey);
+      return;
+    }
+
+    const tenantChanged =
+      beforeOccupied &&
+      afterOccupied &&
+      beforeTenantName.length > 0 &&
+      afterTenantName.length > 0 &&
+      beforeTenantName !== afterTenantName;
+
+    if (tenantChanged) {
+      await prismaAny.pavilionLease.update({
+        where: { id: activeLease.id },
+        data: {
+          status: 'ENDED',
+          endsOn: activeLease.endsOn || todayDateKey,
+          vacatedOn: activeLease.vacatedOn || todayDateKey,
+        },
+      });
+
+      await this.ensureActiveLeaseForPavilion(after.id, afterTenantName, todayDateKey);
+      return;
+    }
+
+    await this.ensureActiveLeaseForPavilion(
+      after.id,
+      afterTenantName || beforeTenantName,
+      activeLease.startsOn || todayDateKey,
+    );
+  }
+
+  private async listContractsForPavilion(pavilionId: number) {
+    const prismaAny = this.prisma as any;
+    const contracts = await prismaAny.contract.findMany({
+      where: {
+        pavilionLease: { pavilionId },
+      },
+      include: {
+        pavilionLease: {
+          select: {
+            id: true,
+            tenantName: true,
+            status: true,
+            startsOn: true,
+            endsOn: true,
+            vacatedOn: true,
+          },
+        },
+      },
+      orderBy: [{ uploadedAt: 'desc' }, { id: 'desc' }],
+    });
+
+    const seen = new Set<number>();
+    return contracts.filter((contract: { id: number }) => {
+      if (seen.has(contract.id)) return false;
+      seen.add(contract.id);
+      return true;
+    });
+  }
+
   async createContract(
     storeId: number,
     pavilionId: number,
@@ -1167,7 +1388,7 @@ export class PavilionsService {
   ) {
     const pavilion = await this.prisma.pavilion.findFirst({
       where: { id: pavilionId, storeId },
-      select: { id: true, number: true },
+      select: { id: true, number: true, tenantName: true },
     });
     if (!pavilion) {
       throw new NotFoundException('Pavilion not found');
@@ -1180,10 +1401,14 @@ export class PavilionsService {
       data.expiresOn,
       todayDateKey,
     );
+    const lease = await this.ensureActiveLeaseForPavilion(
+      pavilionId,
+      pavilion.tenantName,
+    );
 
     const created = await (this.prisma.contract as any).create({
       data: {
-        pavilionId,
+        pavilionLeaseId: lease.id,
         fileName: data.fileName,
         filePath: data.filePath,
         fileType: data.fileType,
@@ -1226,7 +1451,7 @@ export class PavilionsService {
     const contract = await this.prisma.contract.findFirst({
       where: {
         id: contractId,
-        pavilionId,
+        pavilionLease: { pavilionId },
       },
     });
 
@@ -1418,3 +1643,5 @@ export class PavilionsService {
     });
   }
 }
+
+

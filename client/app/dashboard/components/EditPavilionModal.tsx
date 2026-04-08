@@ -1,18 +1,17 @@
 ﻿'use client';
 
-import { useRef, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { createAdditionalCharge, deleteAdditionalCharge, payAdditionalCharge } from '@/lib/additionalCharges';
-import { uploadContract, validateContractUploadMeta } from '@/lib/contracts';
+import {
+  createAdditionalCharge,
+  deleteAdditionalCharge,
+  payAdditionalCharge,
+} from '@/lib/additionalCharges';
 import { createPavilionPayment } from '@/lib/payments';
 import { updatePavilion } from '@/lib/pavilions';
-import {
-  formatDateInputDisplay,
-  formatDateKey,
-  getCurrentMonthKeyInTimeZone,
-  getTodayDateKeyInTimeZone,
-  normalizeDateInputToDateKey,
-} from '@/lib/dateTime';
+import { resolveApiMediaUrl } from '@/lib/media';
+import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
 type PavilionStatus = 'AVAILABLE' | 'RENTED' | 'PREPAID';
 
@@ -31,14 +30,15 @@ type PavilionLike = {
     name: string;
     amount: number;
   }>;
-  contracts?: Array<{
+  activeLease?: {
     id: number;
-    fileName: string;
+  } | null;
+  description?: string | null;
+  imagePath?: string | null;
+  images?: Array<{
+    id: number;
     filePath: string;
-    fileType: string;
-    contractNumber?: string | null;
-    expiresOn?: string | null;
-    uploadedAt: string;
+    createdAt: string;
   }>;
 };
 
@@ -53,7 +53,7 @@ export function EditPavilionModal({
   pavilion,
   existingCategories,
   canManageAdditionalCharges = false,
-  canUploadContracts = false,
+  canManageMedia = false,
   timeZone = 'UTC',
   onClose,
   onSaved,
@@ -62,7 +62,7 @@ export function EditPavilionModal({
   pavilion: PavilionLike;
   existingCategories?: string[];
   canManageAdditionalCharges?: boolean;
-  canUploadContracts?: boolean;
+  canManageMedia?: boolean;
   timeZone?: string;
   onClose: () => void;
   onSaved: () => void;
@@ -108,10 +108,8 @@ export function EditPavilionModal({
     useState('');
   const [prepaymentCashbox1Paid, setPrepaymentCashbox1Paid] = useState('');
   const [prepaymentCashbox2Paid, setPrepaymentCashbox2Paid] = useState('');
-  const [contractFile, setContractFile] = useState<File | null>(null);
-  const [contractNumber, setContractNumber] = useState('');
-  const [contractExpiresOn, setContractExpiresOn] = useState('');
-  const [contractExpiresOnTouched, setContractExpiresOnTouched] = useState(false);
+  const [description, setDescription] = useState(pavilion.description ?? '');
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [additionalCharges, setAdditionalCharges] = useState<
     Array<{ id: number; name: string; amount: number }>
   >(() => [...(pavilion.additionalCharges || [])]);
@@ -131,6 +129,27 @@ export function EditPavilionModal({
   const squareMeters = Number(form.squareMeters || 0);
   const pricePerSqM = Number(form.pricePerSqM || 0);
   const rentAmount = Math.max(squareMeters, 0) * Math.max(pricePerSqM, 0);
+  const pavilionImages: Array<{ id: number; filePath: string; createdAt: string }> =
+    pavilion.images && pavilion.images.length > 0
+      ? pavilion.images
+      : pavilion.imagePath
+        ? [{ id: -1, filePath: pavilion.imagePath, createdAt: new Date(0).toISOString() }]
+        : [];
+
+  const previewItems = useMemo(
+    () =>
+      mediaFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      })),
+    [mediaFiles],
+  );
+
+  useEffect(() => {
+    return () => {
+      previewItems.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [previewItems]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -180,7 +199,9 @@ export function EditPavilionModal({
       return;
     }
     if (form.status !== 'AVAILABLE' && !form.tenantName.trim()) {
-      setErrorAndScrollTop('Укажите арендатора для занятых/предоплаченных павильонов');
+      setErrorAndScrollTop(
+        'Укажите арендатора для занятых или предоплаченных павильонов',
+      );
       return;
     }
     if (
@@ -191,21 +212,6 @@ export function EditPavilionModal({
     ) {
       setErrorAndScrollTop('Коммунальные и реклама должны быть неотрицательными');
       return;
-    }
-
-    if (contractFile) {
-      const normalizedExpiresOn = normalizeDateInputToDateKey(contractExpiresOn);
-      const validationMessage = validateContractUploadMeta(
-        {
-          contractNumber,
-          expiresOn: normalizedExpiresOn,
-        },
-        getTodayDateKeyInTimeZone(timeZone),
-      );
-      if (validationMessage) {
-        setErrorAndScrollTop(validationMessage);
-        return;
-      }
     }
 
     const periodKey = prepaymentMonth;
@@ -223,7 +229,9 @@ export function EditPavilionModal({
         return;
       }
       if (Math.abs(prepayChannelsTotal - targetPrepayment) > 0.01) {
-        setErrorAndScrollTop('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+        setErrorAndScrollTop(
+          'Сумма по каналам оплаты должна совпадать с суммой предоплаты',
+        );
         return;
       }
     }
@@ -234,7 +242,8 @@ export function EditPavilionModal({
       squareMeters: parsedSquareMeters,
       pricePerSqM: parsedPricePerSqM,
       status: form.status,
-      prepaidUntil: form.status === 'PREPAID' ? `${periodKey}-01T00:00:00.000Z` : null,
+      prepaidUntil:
+        form.status === 'PREPAID' ? `${periodKey}-01T00:00:00.000Z` : null,
       tenantName: form.status === 'AVAILABLE' ? null : form.tenantName.trim(),
       utilitiesAmount:
         form.status === 'RENTED'
@@ -254,13 +263,27 @@ export function EditPavilionModal({
       setSaving(true);
       setError(null);
       await updatePavilion(storeId, pavilion.id, payload);
-      if (contractFile && form.status !== 'AVAILABLE') {
-        await uploadContract(storeId, pavilion.id, contractFile, {
-          contractNumber,
-          expiresOn: normalizeDateInputToDateKey(contractExpiresOn),
-        });
-        setContractExpiresOnTouched(false);
+
+      if (canManageMedia) {
+        const normalizedDescription = description.trim() || null;
+        const currentDescription = (pavilion.description ?? '').trim() || null;
+        if (normalizedDescription !== currentDescription) {
+          await apiFetch(`/stores/${storeId}/pavilions/${pavilion.id}/description`, {
+            method: 'PATCH',
+            body: JSON.stringify({ description: normalizedDescription }),
+          });
+        }
+
+        if (mediaFiles.length > 0) {
+          const formData = new FormData();
+          mediaFiles.forEach((file) => formData.append('files', file));
+          await apiFetch(`/stores/${storeId}/pavilions/${pavilion.id}/media`, {
+            method: 'POST',
+            body: formData,
+          });
+        }
       }
+
       if (form.status === 'PREPAID') {
         const payments = await apiFetch<any[]>(
           `/stores/${storeId}/pavilions/${pavilion.id}/payments?period=${encodeURIComponent(
@@ -272,7 +295,7 @@ export function EditPavilionModal({
         const currentRentBank = Number(existingForPeriod?.rentBankTransferPaid ?? 0);
         const currentRentCash1 = Number(existingForPeriod?.rentCashbox1Paid ?? 0);
         const currentRentCash2 = Number(existingForPeriod?.rentCashbox2Paid ?? 0);
-                let rentDelta = targetPrepayment - currentRentPaid;
+        let rentDelta = targetPrepayment - currentRentPaid;
         let rentBankDelta = prepayBank - currentRentBank;
         let rentCash1Delta = prepayCash1 - currentRentCash1;
         let rentCash2Delta = prepayCash2 - currentRentCash2;
@@ -307,6 +330,7 @@ export function EditPavilionModal({
           });
         }
       }
+
       onSaved();
       onClose();
     } catch (err: unknown) {
@@ -323,11 +347,15 @@ export function EditPavilionModal({
     const amount = Number(newChargeAmount);
 
     if (!name || !newChargeAmount) {
-      setErrorAndScrollTop('Введите название и сумму дополнительного начисления');
+      setErrorAndScrollTop(
+        'Введите название и сумму дополнительного начисления',
+      );
       return;
     }
     if (!Number.isFinite(amount) || amount < 0) {
-      setErrorAndScrollTop('Сумма дополнительного начисления должна быть неотрицательной');
+      setErrorAndScrollTop(
+        'Сумма дополнительного начисления должна быть неотрицательной',
+      );
       return;
     }
 
@@ -379,10 +407,6 @@ export function EditPavilionModal({
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
   const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
-  const contractExpiresOnInvalid =
-    contractExpiresOnTouched &&
-    contractExpiresOn.trim().length > 0 &&
-    !normalizeDateInputToDateKey(contractExpiresOn);
 
   const handleModalKeyDown = (
     e: React.KeyboardEvent<HTMLDivElement>,
@@ -423,417 +447,390 @@ export function EditPavilionModal({
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f4efeb] hover:text-[#111111]"
             aria-label="Закрыть"
           >
-            <span aria-hidden>✕</span>
+            <span aria-hidden>×</span>
           </button>
         </div>
         <div className="p-6">
+          {error && (
+            <div className="mb-3 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
+              {error}
+            </div>
+          )}
 
-        {error && (
-          <div className="mb-3 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
-            {error}
-          </div>
-        )}
-
-        <div className="mb-3">
-          <label className={labelClass}>
-            Номер павильона
-          </label>
-          <input
-            name="number"
-            value={form.number}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className={labelClass}>
-            Категория
-          </label>
-          <input value={resolvedCategory} readOnly className={`${inputClass} bg-[#ece4dd]`} />
-        </div>
-
-        {!newCategory.trim() ? (
           <div className="mb-3">
-            <label className={labelClass}>
-              Выбор из существующих категорий
-            </label>
+            <label className={labelClass}>Номер павильона</label>
+            <input
+              name="number"
+              value={form.number}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Категория</label>
+            <input value={resolvedCategory} readOnly className={`${inputClass} bg-[#ece4dd]`} />
+          </div>
+
+          {!newCategory.trim() ? (
+            <div className="mb-3">
+              <label className={labelClass}>Выбор из существующих категорий</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Выберите категорию</option>
+                {(existingCategories || []).map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p className="mb-3 text-xs text-gray-500">
+              Введите новую категорию: выбор из существующих скрыт.
+            </p>
+          )}
+
+          {!selectedCategory ? (
+            <div className="mb-3">
+              <label className={labelClass}>Новая категория</label>
+              <input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          ) : (
+            <p className="mb-3 text-xs text-gray-500">
+              Выбрана существующая категория: поле новой категории скрыто.
+            </p>
+          )}
+
+          <div className="mb-3">
+            <label className={labelClass}>Площадь (м²)</label>
+            <input
+              name="squareMeters"
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.squareMeters}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Цена за м²</label>
+            <input
+              name="pricePerSqM"
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.pricePerSqM}
+              onChange={handleChange}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Аренда (авторасчет)</label>
+            <input
+              type="number"
+              value={Number.isFinite(rentAmount) ? rentAmount : 0}
+              readOnly
+              className={`${inputClass} bg-[#ece4dd]`}
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Статус</label>
             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              name="status"
+              value={form.status}
+              onChange={handleChange}
               className={inputClass}
             >
-              <option value="">Выберите категорию</option>
-              {(existingCategories || []).map((category) => (
-                <option key={category} value={category}>
-                  {category}
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
           </div>
-        ) : (
-          <p className="mb-3 text-xs text-gray-500">
-            Введите новую категорию: выбор из существующих скрыт.
-          </p>
-        )}
 
-        {!selectedCategory ? (
-          <div className="mb-3">
-            <label className={labelClass}>
-              Новая категория
-            </label>
-            <input
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        ) : (
-          <p className="mb-3 text-xs text-gray-500">
-            Выбрана существующая категория: поле новой категории скрыто.
-          </p>
-        )}
+          {canManageMedia && (
+            <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+              <p className="mb-2 text-sm font-semibold text-[#111111]">Описание и фото павильона</p>
 
-        <div className="mb-3">
-          <label className={labelClass}>
-            Площадь (м²)
-          </label>
-          <input
-            name="squareMeters"
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.squareMeters}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className={labelClass}>
-            Цена за м²
-          </label>
-          <input
-            name="pricePerSqM"
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.pricePerSqM}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className={labelClass}>
-            Аренда (авторасчет)
-          </label>
-          <input
-            type="number"
-            value={Number.isFinite(rentAmount) ? rentAmount : 0}
-            readOnly
-            className={`${inputClass} bg-[#ece4dd]`}
-          />
-        </div>
-
-        <div className="mb-3">
-          <label className={labelClass}>
-            Статус
-          </label>
-          <select
-            name="status"
-            value={form.status}
-            onChange={handleChange}
-            className={inputClass}
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {form.status !== 'AVAILABLE' && (
-          <>
-            <div className="mb-3">
-              <label className={labelClass}>
-                Наименование организации
-              </label>
-              <input
-                name="tenantName"
-                value={form.tenantName}
-                onChange={handleChange}
-                className={inputClass}
-              />
-            </div>
-
-            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-800">Договор для этого статуса</p>
-              <p className="mt-1 text-sm text-amber-700">
-                Для статусов «ЗАНЯТ» и «ПРЕДОПЛАТА» рекомендуется держать загруженный договор.
-              </p>
-              {!pavilion.contracts || pavilion.contracts.length === 0 ? (
-                <p className="mt-2 text-xs font-medium text-amber-800">
-                  Сейчас договор не загружен.
+              <div className="mb-3">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                  Описание
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className={inputClass}
+                  placeholder="Добавьте описание павильона для арендаторов"
+                />
+                <p className="mt-2 text-xs text-[#6b6b6b]">
+                  Оставьте поле пустым, чтобы удалить описание при сохранении.
                 </p>
-              ) : (
-                <p className="mt-2 text-xs text-amber-700">
-                  Уже загружено договоров: {pavilion.contracts.length}
-                </p>
-              )}
-              {canUploadContracts ? (
-                <div className="mt-3 space-y-3">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div>
-                      <label className={labelClass}>Номер договора</label>
-                      <input
-                        type="text"
-                        value={contractNumber}
-                        onChange={(e) => setContractNumber(e.target.value)}
-                        className={inputClass}
-                        placeholder="Например: 12/2026"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass}>Дата окончания договора</label>
-                      <input
-                        type="text"
-                        value={contractExpiresOn}
-                        onChange={(e) =>
-                          setContractExpiresOn(formatDateInputDisplay(e.target.value))
-                        }
-                        onBlur={() => {
-                          setContractExpiresOnTouched(true);
-                          const normalized = normalizeDateInputToDateKey(contractExpiresOn);
-                          if (normalized) {
-                            setContractExpiresOn(formatDateKey(normalized));
-                          }
-                        }}
-                        className={`${inputClass} ${
-                          contractExpiresOnInvalid
-                            ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
-                            : ''
-                        }`}
-                        placeholder="дд.мм.гггг"
-                        inputMode="numeric"
-                      />
-                      {contractExpiresOnInvalid && (
-                        <p className="mt-1 text-xs text-[#b91c1c]">
-                          Введите дату в формате дд.мм.гггг
-                        </p>
-                      )}
-                    </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
+                  Фото
+                </label>
+                {pavilionImages[0] ? (
+                  <img
+                    src={resolveApiMediaUrl(pavilionImages[0].filePath) || undefined}
+                    alt={`Фото павильона ${pavilion.number ?? pavilion.id}`}
+                    className="mb-3 h-32 w-full rounded-2xl border border-[#d8d1cb] object-cover"
+                  />
+                ) : (
+                  <div className="mb-3 flex h-32 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
+                    Фото павильона пока не загружено
                   </div>
-                  <label className={labelClass}>Добавить договор</label>
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
-                    onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
-                    className={inputClass}
-                  />
-                  <p className="mt-2 text-xs text-[#6b6b6b]">
-                    {contractFile
-                      ? `Выбран файл: ${contractFile.name}`
-                      : 'Можно добавить новый договор сейчас или позже на странице павильона'}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-amber-700">
-                  У вас нет права на загрузку договоров. При необходимости договор можно добавить позже пользователем с нужным доступом.
-                </p>
-              )}
-            </div>
+                )}
 
-            {form.status === 'RENTED' && (
-              <>
-                <div className="mb-3">
-                  <label className={labelClass}>
-                    Коммунальные
-                  </label>
-                  <input
-                    name="utilitiesAmount"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.utilitiesAmount}
-                    onChange={handleChange}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className={labelClass}>
-                    Реклама
-                  </label>
-                  <input
-                    name="advertisingAmount"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={form.advertisingAmount}
-                    onChange={handleChange}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
-                  <p className="mb-2 text-sm font-semibold text-[#111111]">
-                    Дополнительные начисления
-                  </p>
-                  {additionalCharges.length === 0 ? (
-                    <p className="mb-2 text-xs text-gray-500">Начислений пока нет</p>
-                  ) : (
-                    <div className="mb-3 space-y-2">
-                      {additionalCharges.map((charge) => (
-                        <div
-                          key={charge.id}
-                          className="flex flex-col gap-2 rounded-lg border border-[#e8e1da] bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="min-w-0">
-                            <span className="font-medium">{charge.name}: </span>
-                            <span className="ml-2 text-gray-600">{charge.amount.toFixed(2)}</span>
-                          </div>
-                          {canManageAdditionalCharges && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteAdditionalCharge(charge.id)}
-                              disabled={chargeSaving}
-                              className="self-start rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20 disabled:opacity-60 sm:self-auto"
-                            >
-                              Удалить
-                            </button>
-                          )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  onChange={(e) => setMediaFiles(Array.from(e.target.files || []))}
+                  className={inputClass}
+                />
+                {previewItems.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {previewItems.map((item, index) => (
+                      <div
+                        key={`${item.file.name}-${index}`}
+                        className="overflow-hidden rounded-xl border border-[#d8d1cb] bg-white"
+                      >
+                        <img
+                          src={item.url}
+                          alt={item.file.name}
+                          className="h-16 w-full object-cover"
+                        />
+                        <div className="px-2 py-1.5 text-[10px] text-[#6b6b6b]">
+                          <p className="truncate font-medium text-[#111111]">{item.file.name}</p>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[#6b6b6b]">
+                  <span>
+                    {mediaFiles.length > 0
+                      ? `Выбрано файлов: ${mediaFiles.length}`
+                      : 'Можно добавить JPG, PNG и WEBP до 10 МБ.'}
+                  </span>
+                  <Link
+                    href={`/stores/${storeId}/pavilions/${pavilion.id}/media`}
+                    className="font-semibold text-[#111111] underline decoration-[#d8d1cb] underline-offset-4 transition hover:text-[#ff6a13]"
+                  >
+                    Все фото
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
 
-                  {canManageAdditionalCharges && (
-                    <div>
-                      <div className="mb-1 text-sm font-semibold text-[#111111]">Новое начисление</div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
+          {form.status !== 'AVAILABLE' && (
+            <>
+              <div className="mb-3">
+                <label className={labelClass}>Наименование организации</label>
+                <input
+                  name="tenantName"
+                  value={form.tenantName}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
+              </div>
+
+              {form.status === 'RENTED' && (
+                <>
+                  <div className="mb-3">
+                    <label className={labelClass}>Коммунальные</label>
+                    <input
+                      name="utilitiesAmount"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.utilitiesAmount}
+                      onChange={handleChange}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className={labelClass}>Реклама</label>
+                    <input
+                      name="advertisingAmount"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.advertisingAmount}
+                      onChange={handleChange}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
+                    <p className="mb-2 text-sm font-semibold text-[#111111]">
+                      Дополнительные начисления
+                    </p>
+                    {additionalCharges.length === 0 ? (
+                      <p className="mb-2 text-xs text-gray-500">Начислений пока нет</p>
+                    ) : (
+                      <div className="mb-3 space-y-2">
+                        {additionalCharges.map((charge) => (
+                          <div
+                            key={charge.id}
+                            className="flex flex-col gap-2 rounded-lg border border-[#e8e1da] bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="min-w-0">
+                              <span className="font-medium">{charge.name}: </span>
+                              <span className="ml-2 text-gray-600">{charge.amount.toFixed(2)}</span>
+                            </div>
+                            {canManageAdditionalCharges && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAdditionalCharge(charge.id)}
+                                disabled={chargeSaving}
+                                className="self-start rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20 disabled:opacity-60 sm:self-auto"
+                              >
+                                Удалить
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {canManageAdditionalCharges && (
+                      <div>
+                        <div className="mb-1 text-sm font-semibold text-[#111111]">Новое начисление</div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
+                          <input
+                            value={newChargeName}
+                            onChange={(e) => setNewChargeName(e.target.value)}
+                            data-enter-action="add-charge"
+                            className={inputClass}
+                            placeholder="Название начисления"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={newChargeAmount}
+                            onChange={(e) => setNewChargeAmount(e.target.value)}
+                            data-enter-action="add-charge"
+                            className={inputClass}
+                            placeholder="Сумма"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddAdditionalCharge}
+                            disabled={chargeSaving}
+                            className="w-full rounded-xl bg-[#ff6a13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60 sm:w-auto"
+                          >
+                            Добавить
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {form.status === 'PREPAID' && (
+                <>
+                  <div className="mb-3 rounded-xl border border-[#ff6a13]/30 bg-[#ff6a13]/10 px-3 py-2 text-xs font-medium text-[#c2410c]">
+                    Для статуса ПРЕДОПЛАТА коммунальные и реклама автоматически равны 0.
+                  </div>
+                  <div className="mb-3">
+                    <label className={labelClass}>Месяц предоплаты</label>
+                    <input
+                      type="month"
+                      value={prepaymentMonth}
+                      onChange={(e) => setPrepaymentMonth(e.target.value)}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className={labelClass}>
+                      Сумма предоплаты (если пусто - полная аренда)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={prepaymentAmount}
+                      onChange={(e) => setPrepaymentAmount(e.target.value)}
+                      className={inputClass}
+                      placeholder={rentAmount.toFixed(2)}
+                    />
+                  </div>
+                  <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
+                    <p className="mb-2 text-sm font-semibold text-[#111111]">
+                      Каналы оплаты предоплаты
+                    </p>
+                    <div className="space-y-2">
                       <input
-                        value={newChargeName}
-                        onChange={(e) => setNewChargeName(e.target.value)}
-                        data-enter-action="add-charge"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={prepaymentBankTransferPaid}
+                        onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
                         className={inputClass}
-                        placeholder="Название начисления"
+                        placeholder="Безналичные"
                       />
                       <input
                         type="number"
                         min={0}
                         step="0.01"
-                        value={newChargeAmount}
-                        onChange={(e) => setNewChargeAmount(e.target.value)}
-                        data-enter-action="add-charge"
+                        value={prepaymentCashbox1Paid}
+                        onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
                         className={inputClass}
-                        placeholder="Сумма"
+                        placeholder="Наличные - касса 1"
                       />
-                      <button
-                        type="button"
-                        onClick={handleAddAdditionalCharge}
-                        disabled={chargeSaving}
-                        className="w-full rounded-xl bg-[#ff6a13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60 sm:w-auto"
-                      >
-                        Добавить
-                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={prepaymentCashbox2Paid}
+                        onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
+                        className={inputClass}
+                        placeholder="Наличные - касса 2"
+                      />
                     </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {form.status === 'PREPAID' && (
-              <>
-                <div className="mb-3 rounded-xl border border-[#ff6a13]/30 bg-[#ff6a13]/10 px-3 py-2 text-xs font-medium text-[#c2410c]">
-                  Для статуса ПРЕДОПЛАТА коммунальные и реклама автоматически равны 0.
-                </div>
-                <div className="mb-3">
-                  <label className={labelClass}>
-                    Месяц предоплаты
-                  </label>
-                  <input
-                    type="month"
-                    value={prepaymentMonth}
-                    onChange={(e) => setPrepaymentMonth(e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className={labelClass}>
-                    Сумма предоплаты (если пусто - полная аренда)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={prepaymentAmount}
-                    onChange={(e) => setPrepaymentAmount(e.target.value)}
-                    className={inputClass}
-                    placeholder={rentAmount.toFixed(2)}
-                  />
-                </div>
-                <div className="mb-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#111111]">
-                    Каналы оплаты предоплаты
-                  </p>
-                  <div className="space-y-2">
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={prepaymentBankTransferPaid}
-                      onChange={(e) =>
-                        setPrepaymentBankTransferPaid(e.target.value)
-                      }
-                      className={inputClass}
-                      placeholder="Безналичные"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={prepaymentCashbox1Paid}
-                      onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
-                      className={inputClass}
-                      placeholder="Наличные - касса 1"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={prepaymentCashbox2Paid}
-                      onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
-                      className={inputClass}
-                      placeholder="Наличные - касса 2"
-                    />
                   </div>
-                </div>
-              </>
-            )}
-          </>
-        )}
+                </>
+              )}
+            </>
+          )}
 
-        <div className="mt-4 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
-          <button
-            onClick={onClose}
-            className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={saving}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={handleSave}
-            className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={saving}
-          >
-            {saving ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
+          <div className="mt-4 flex justify-end gap-3 border-t border-[#e8e1da] pt-4">
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={saving}
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleSave}
+              className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={saving}
+            >
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
-
