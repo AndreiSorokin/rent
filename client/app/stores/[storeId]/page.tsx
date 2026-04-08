@@ -1320,7 +1320,8 @@ export default function StorePage() {
           onOpenExtraIncome={() => setShowExtraIncomeModal(true)}
         />
 
-        <main className="min-w-0 flex-1 space-y-3 pt-16 md:space-y-6 md:pt-0">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
+          <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <section
             id="pavilions"
@@ -2114,6 +2115,7 @@ export default function StorePage() {
           </section>
         )}
 
+          </div>
         </main>
       </div>
 
