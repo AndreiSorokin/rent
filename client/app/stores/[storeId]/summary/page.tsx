@@ -584,8 +584,6 @@ export default function StoreSummaryPage() {
         })();
 
     const previousMonthBalance = Number(income.previousMonthBalance ?? 0);
-    const previousIncomeTotal = Number(income.previousTotal ?? 0);
-    const previousExpenseTotal = Number(expenses.previousTotal ?? 0);
     const carryAdjustment = Number(income.carryAdjustment ?? 0);
     const previousMonthChannels = {
       bankTransfer: Number(income.previousMonthChannels?.bankTransfer ?? 0),
@@ -596,27 +594,14 @@ export default function StoreSummaryPage() {
     const incomeTotalRaw = Number(income.total ?? 0);
     const incomeForecastRaw = Number(income.forecast?.total ?? 0);
     const expenseActualRaw = Number(expenses.totals?.actual ?? 0);
-    const expenseForecastRaw = Number(expenses.totals?.forecast ?? 0);
-    const incomeTotalWithPrevious = previousIncomeTotal + incomeTotalRaw;
-    const incomeForecastWithPrevious = previousIncomeTotal + incomeForecastRaw;
-    const expenseActualWithPrevious = previousExpenseTotal + expenseActualRaw;
-    const expenseForecastWithPrevious = previousExpenseTotal + expenseForecastRaw;
+    const incomeTotalWithPrevious = previousMonthBalance + incomeTotalRaw;
+    const incomeForecastWithPrevious = previousMonthBalance + incomeForecastRaw;
     const incomeWithAdjustedTotal = {
       ...income,
       previousMonthBalance,
-      previousTotal: previousIncomeTotal,
       carryAdjustment,
       forecastWithPrevious: incomeForecastWithPrevious,
       totalWithPrevious: incomeTotalWithPrevious,
-    };
-    const expensesWithAdjustedTotal = {
-      ...expenses,
-      previousTotal: previousExpenseTotal,
-      totals: {
-        ...(expenses.totals || {}),
-        actualWithPrevious: expenseActualWithPrevious,
-        forecastWithPrevious: expenseForecastWithPrevious,
-      },
     };
 
     const storeLevelTotals = calcStoreLevelExpensesTotals(storeLevelExpenses);
@@ -624,7 +609,7 @@ export default function StoreSummaryPage() {
       incomeTotalRaw,
       expenses.totals?.actual,
     );
-    const saldo = calcProfit(incomeTotalWithPrevious, expenseActualWithPrevious);
+    const saldo = calcProfit(incomeTotalWithPrevious, expenseActualRaw);
     const currentSaldoChannels = summary.saldoChannels || {
       bankTransfer: Number(income.channels?.bankTransfer ?? 0) - Number(expenseChannels.bankTransfer ?? 0),
       cashbox1: Number(income.channels?.cashbox1 ?? 0) - Number(expenseChannels.cashbox1 ?? 0),
@@ -644,7 +629,7 @@ export default function StoreSummaryPage() {
       currency,
       income: incomeWithAdjustedTotal,
       channelsByEntity,
-      expenses: expensesWithAdjustedTotal,
+      expenses,
       expenseChannels,
       expenseChannelsByType,
       saldoChannels,
@@ -1119,7 +1104,7 @@ export default function StoreSummaryPage() {
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Итого расход (прогноз)"
-                  value={formatMoney(data.expenses.totals?.forecastWithPrevious ?? 0, data.currency)}
+                  value={formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}
                   tone="danger"
                 />
               </div>
@@ -1129,7 +1114,7 @@ export default function StoreSummaryPage() {
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Итого расход (факт)"
-                  value={formatMoney(data.expenses.totals?.actualWithPrevious ?? 0, data.currency)}
+                  value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
                   tone="danger"
                 />
               </div>
@@ -1261,7 +1246,7 @@ export default function StoreSummaryPage() {
                   value={formatMoney(
                     calcProfit(
                       data.income.forecastWithPrevious ?? 0,
-                      data.expenses.totals?.forecastWithPrevious ?? 0,
+                      data.expenses.totals?.forecast ?? 0,
                     ),
                     data.currency,
                   )}
@@ -1279,7 +1264,7 @@ export default function StoreSummaryPage() {
                 />
                 <MetricCard
                   title="Общий расход"
-                  value={formatMoney(data.expenses.totals?.actualWithPrevious ?? 0, data.currency)}
+                  value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
                   tone="danger"
                 />
                 <MetricCard
