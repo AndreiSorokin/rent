@@ -77,6 +77,7 @@ model StoreUser {
 model Store {
   id          Int          @id @default(autoincrement())
   name        String
+  createdAt   DateTime     @default(now())
   address     String?
   billingCompanyName String?
   billingLegalAddress String?
@@ -536,6 +537,9 @@ model StoreInvoice {
   store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   rentedPavilionsCount Int
   amountRub          Int
+  periodStart        DateTime
+  status             StoreInvoiceStatus @default(PENDING)
+  paidAt             DateTime?
   issuedAt           DateTime @default(now())
   offerUrl           String
 
@@ -544,6 +548,13 @@ model StoreInvoice {
   customerInn          String
 
   @@index([storeId, issuedAt])
+  @@index([storeId, periodStart, issuedAt])
+}
+
+enum StoreInvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 model Invitation {

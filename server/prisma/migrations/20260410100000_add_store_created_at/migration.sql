@@ -1,0 +1,10 @@
+ALTER TABLE "Store"
+ADD COLUMN "createdAt" TIMESTAMP(3);
+
+UPDATE "Store"
+SET "createdAt" = NOW()
+WHERE "createdAt" IS NULL;
+
+ALTER TABLE "Store"
+ALTER COLUMN "createdAt" SET NOT NULL,
+ALTER COLUMN "createdAt" SET DEFAULT NOW();

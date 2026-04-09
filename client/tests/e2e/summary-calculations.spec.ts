@@ -58,7 +58,6 @@ async function mockSummaryApi(page: Page) {
             income: {
               forecast: { total: 210000 },
               total: 200000,
-              previousTotal: 10000,
               previousMonthBalance: 10000,
               previousMonthChannels: {
                 bankTransfer: 3000,
@@ -75,7 +74,6 @@ async function mockSummaryApi(page: Page) {
               },
             },
             expenses: {
-              previousTotal: 0,
               totals: { forecast: 70000, actual: 50000 },
               byType: {},
               channels: {

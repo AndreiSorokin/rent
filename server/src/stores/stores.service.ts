@@ -88,7 +88,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
    */
 
   async findUserStores(userId: number) {
-    return this.prisma.store.findMany({
+    const stores = await this.prisma.store.findMany({
       where: {
         storeUsers: {
           some: {
@@ -108,6 +108,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
       },
     });
+
+    return Promise.all(
+      stores.map(async (store) => ({
+        ...store,
+        subscriptionBilling: await this.getSubscriptionBillingSummary(store.id),
+      })),
+    );
   }
 
   /**
@@ -319,6 +326,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       ...store,
       ...(sortedPavilions ? { pavilions: sortedPavilions } : {}),
       ...(sortedStaff ? { staff: sortedStaff } : {}),
+      subscriptionBilling: await this.getSubscriptionBillingSummary(storeId),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       permissions: store.storeUsers[0].permissions,
     };
@@ -457,7 +465,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Cascade-like delete flow for store-owned data
-    // Transaction: delete StoreUsers → delete Store
+    // Transaction: delete StoreUsers в†’ delete Store
     await this.prisma.$transaction(async (tx) => {
       await tx.invitation.deleteMany({
         where: { storeId },
@@ -824,6 +832,85 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
+  private async getSubscriptionBillingSummary(storeId: number) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: {
+        id: true,
+        createdAt: true,
+        timeZone: true,
+        billingCompanyName: true,
+        billingLegalAddress: true,
+        billingInn: true,
+      } as any,
+    });
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    const timeZone = this.normalizeStoreTimeZone((store as any).timeZone);
+    const currentPeriod = this.getMonthPeriodInTimeZone(timeZone);
+
+    const [rentedPavilionsCount, currentInvoice] = await this.prisma.$transaction([
+      this.prisma.pavilion.count({
+        where: { storeId, status: PavilionStatus.RENTED },
+      }),
+      (this.prisma as any).storeInvoice.findFirst({
+        where: { storeId, periodStart: currentPeriod },
+        orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
+      }),
+    ]);
+
+    const billingStartedAt = (store as any).createdAt ?? new Date();
+    const billingStartPeriod = this.getMonthPeriodInTimeZone(timeZone, billingStartedAt);
+    const isFirstMonthFree = billingStartPeriod.getTime() === currentPeriod.getTime();
+    const baseAmountRub = Number(rentedPavilionsCount ?? 0) * 2000;
+    const amountRub = isFirstMonthFree ? 0 : baseAmountRub;
+    const hasChargeForCurrentMonth = amountRub > 0;
+    const hasBillingDetails = Boolean(
+      String((store as any).billingCompanyName ?? '').trim() &&
+        String((store as any).billingLegalAddress ?? '').trim() &&
+        String((store as any).billingInn ?? '').trim(),
+    );
+
+    let status: 'PAID' | 'UNPAID' = 'UNPAID';
+    let statusReason: 'FREE_MONTH' | 'NO_CHARGE' | 'PAID_INVOICE' | 'PENDING_PAYMENT' =
+      'PENDING_PAYMENT';
+
+    if (isFirstMonthFree) {
+      status = 'PAID';
+      statusReason = 'FREE_MONTH';
+    } else if (!hasChargeForCurrentMonth) {
+      status = 'PAID';
+      statusReason = 'NO_CHARGE';
+    } else if (currentInvoice?.status === 'PAID') {
+      status = 'PAID';
+      statusReason = 'PAID_INVOICE';
+    }
+
+    return {
+      currentPeriod: currentPeriod.toISOString(),
+      amountRub,
+      baseAmountRub,
+      rentedPavilionsCount,
+      isFirstMonthFree,
+      hasChargeForCurrentMonth,
+      hasBillingDetails,
+      status,
+      statusReason,
+      currentInvoice: currentInvoice
+        ? {
+            id: Number(currentInvoice.id),
+            status: String(currentInvoice.status ?? 'PENDING'),
+            amountRub: Number(currentInvoice.amountRub ?? 0),
+            issuedAt: currentInvoice.issuedAt,
+            paidAt: currentInvoice.paidAt ?? null,
+          }
+        : null,
+    };
+  }
+
   async createSubscriptionInvoice(storeId: number, userId: number) {
     await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
 
@@ -831,19 +918,29 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       where: { id: storeId },
       select: {
         id: true,
-        name: true,
         billingCompanyName: true,
         billingLegalAddress: true,
         billingInn: true,
-        pavilions: {
-          where: { status: PavilionStatus.RENTED },
-          select: { id: true },
-        },
       } as any,
     });
 
     if (!store) {
       throw new NotFoundException('Store not found');
+    }
+
+    const subscriptionBilling = await this.getSubscriptionBillingSummary(storeId);
+    if (subscriptionBilling.isFirstMonthFree) {
+      throw new BadRequestException('Первый календарный месяц бесплатный, счет не требуется');
+    }
+    if (!subscriptionBilling.hasChargeForCurrentMonth) {
+      throw new BadRequestException('Нет занятых павильонов, счет за текущий месяц не требуется');
+    }
+
+    const existingInvoice = subscriptionBilling.currentInvoice;
+    if (existingInvoice) {
+      return (this.prisma as any).storeInvoice.findFirst({
+        where: { id: existingInvoice.id, storeId },
+      });
     }
 
     const companyName = String((store as any).billingCompanyName ?? '').trim();
@@ -856,15 +953,15 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const rentedPavilionsCount = Array.isArray(store.pavilions) ? store.pavilions.length : 0;
-    const amountRub = rentedPavilionsCount * 2000;
     const offerUrl = process.env.PUBLIC_OFFER_URL?.trim() || 'https://palaci.ru/offer';
 
     const invoice = await (this.prisma as any).storeInvoice.create({
       data: {
         storeId,
-        rentedPavilionsCount,
-        amountRub,
+        periodStart: new Date(subscriptionBilling.currentPeriod),
+        status: 'PENDING',
+        rentedPavilionsCount: subscriptionBilling.rentedPavilionsCount,
+        amountRub: subscriptionBilling.amountRub,
         offerUrl,
         customerCompanyName: companyName,
         customerLegalAddress: legalAddress,
@@ -880,12 +977,86 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       entityId: invoice.id,
       details: {
         invoiceId: invoice.id,
-        rentedPavilionsCount,
-        amountRub,
+        periodStart: subscriptionBilling.currentPeriod,
+        rentedPavilionsCount: subscriptionBilling.rentedPavilionsCount,
+        amountRub: subscriptionBilling.amountRub,
       },
     });
 
     return invoice;
+  }
+
+  async prepareSubscriptionCheckout(storeId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const subscriptionBilling = await this.getSubscriptionBillingSummary(storeId);
+    if (subscriptionBilling.isFirstMonthFree) {
+      return {
+        mode: 'FREE_MONTH',
+        message: 'Первый календарный месяц бесплатный, оплата пока не требуется',
+        subscriptionBilling,
+      };
+    }
+
+    if (!subscriptionBilling.hasChargeForCurrentMonth) {
+      return {
+        mode: 'NO_CHARGE',
+        message: 'Нет занятых павильонов, оплата за текущий месяц не требуется',
+        subscriptionBilling,
+      };
+    }
+
+    const invoice = await this.createSubscriptionInvoice(storeId, userId);
+    const tBankConfigured = Boolean(
+      process.env.TBANK_TERMINAL_KEY?.trim() && process.env.TBANK_SECRET_KEY?.trim(),
+    );
+
+    return {
+      mode: tBankConfigured ? 'T_BANK_PENDING_SETUP' : 'T_BANK_NOT_CONFIGURED',
+      message: tBankConfigured
+        ? 'Основа под оплату через Т-Банк готова, следующий шаг — подключить сам checkout'
+        : 'Онлайн-оплата через Т-Банк пока не настроена, пока можно оплатить по счету',
+      invoiceId: Number(invoice.id),
+      subscriptionBilling: await this.getSubscriptionBillingSummary(storeId),
+    };
+  }
+
+  async markSubscriptionInvoicePaid(storeId: number, invoiceId: number, userId: number) {
+    await this.assertStorePermission(storeId, userId, [Permission.ASSIGN_PERMISSIONS]);
+
+    const invoice = await (this.prisma as any).storeInvoice.findFirst({
+      where: { id: invoiceId, storeId },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException('Invoice not found');
+    }
+
+    if (invoice.status === 'PAID') {
+      return invoice;
+    }
+
+    const updated = await (this.prisma as any).storeInvoice.update({
+      where: { id: invoiceId },
+      data: {
+        status: 'PAID',
+        paidAt: new Date(),
+      },
+    });
+
+    await this.storeActivity.log({
+      storeId,
+      userId,
+      action: 'UPDATE',
+      entityType: 'STORE_INVOICE',
+      entityId: invoiceId,
+      details: {
+        invoiceId,
+        status: 'PAID',
+      },
+    });
+
+    return updated;
   }
 
   async getSubscriptionInvoice(storeId: number, invoiceId: number, userId: number) {
@@ -909,7 +1080,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
     return invoice;
   }
-
   async addPavilionCategory(storeId: number, userId: number, name: string) {
     await this.assertStorePermission(storeId, userId, [
       Permission.EDIT_PAVILIONS,
@@ -3079,7 +3249,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (openRecord) {
-      throw new BadRequestException('День уже открыт');
+      throw new BadRequestException('Р”РµРЅСЊ СѓР¶Рµ РѕС‚РєСЂС‹С‚');
     }
 
     const openingRecord = await this.prisma.storeAccountingRecord.create({
@@ -3131,10 +3301,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (!openRecord) {
-      throw new BadRequestException('Сначала откройте день');
+      throw new BadRequestException('РЎРЅР°С‡Р°Р»Р° РѕС‚РєСЂРѕР№С‚Рµ РґРµРЅСЊ');
     }
     if (closeRecord) {
-      throw new BadRequestException('День уже закрыт');
+      throw new BadRequestException('Р”РµРЅСЊ СѓР¶Рµ Р·Р°РєСЂС‹С‚');
     }
 
     const actual = await this.getActualAccountingByDay(storeId, dayStart, timeZone);
@@ -3458,7 +3628,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             ? 'Свободен'
             : normalizedStatus === PavilionStatus.RENTED
               ? 'Занят'
-              : 'Предоплата';
+              : 'Предоплачен';
         importedPavilionList.push(`${number} (${statusLabel})`);
       }
 
@@ -4024,3 +4194,4 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
+

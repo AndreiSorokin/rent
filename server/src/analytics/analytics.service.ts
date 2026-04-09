@@ -1386,7 +1386,6 @@ export class AnalyticsService {
           additional: actualAdditional,
           storeExtra: incomeActualStoreExtra,
           total: overallIncomeTotal,
-          previousTotal: previousIncomeTotal,
           previousMonthBalance,
           previousMonthChannels,
           carryAdjustment,
@@ -1443,7 +1442,6 @@ export class AnalyticsService {
           },
         },
         expenses: {
-          previousTotal: previousExpenseTotal,
           byType: {
             salaries: expenseByTypeActual.SALARIES ?? 0,
             payrollTax: expenseByTypeActual.PAYROLL_TAX ?? 0,

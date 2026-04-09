@@ -62,7 +62,6 @@ async function mockStoreWithFinancials(page: Page) {
             income: {
               forecast: { total: 120000 },
               total: 90000,
-              previousTotal: 10000,
               previousMonthBalance: 10000,
               previousMonthChannels: {
                 bankTransfer: 4000,
@@ -111,7 +110,6 @@ async function mockStoreWithFinancials(page: Page) {
               },
             },
             expenses: {
-              previousTotal: 0,
               totals: { forecast: 45000, actual: 30000 },
               byType: {},
               channels: {
