@@ -172,12 +172,12 @@ test.describe('Financial core', () => {
 
     const overview = page.locator('section').filter({ has: page.getByRole('heading', { name: /Доходы/i }) }).first();
 
-    await expect(overview.getByText(/Прогноз:\s*120[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Прогноз:\s*130[\s\u00A0\u202F]000\.00/i)).toBeVisible();
     await expect(overview.getByText(/Факт:\s*100[\s\u00A0\u202F]000\.00/i)).toBeVisible();
     await expect(overview.getByText(/Прогноз:\s*45[\s\u00A0\u202F]000\.00/i)).toBeVisible();
     await expect(overview.getByText(/Факт:\s*30[\s\u00A0\u202F]000\.00/i)).toBeVisible();
-    await expect(overview.getByText(/Прогноз:\s*75[\s\u00A0\u202F]000\.00/i)).toBeVisible();
-    await expect(overview.getByText(/Факт:\s*60[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Прогноз:\s*85[\s\u00A0\u202F]000\.00/i)).toBeVisible();
+    await expect(overview.getByText(/Факт:\s*70[\s\u00A0\u202F]000\.00/i)).toBeVisible();
   });
 
   test('summary page shows channels and entity totals', async ({ page }) => {

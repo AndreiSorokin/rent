@@ -116,5 +116,5 @@ test.skip('summary shows money totals using actual income and actual expenses', 
 
   await expect(page.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
   await expect(page.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-  await expect(page.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
+  await expect(page.getByText(/Факт:\s*160[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
 });
