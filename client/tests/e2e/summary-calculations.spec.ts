@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+﻿import { expect, test, type Page } from '@playwright/test';
 
 const STORE_ID = 2;
 
@@ -58,6 +58,7 @@ async function mockSummaryApi(page: Page) {
             income: {
               forecast: { total: 210000 },
               total: 200000,
+              previousTotal: 10000,
               previousMonthBalance: 10000,
               previousMonthChannels: {
                 bankTransfer: 3000,
@@ -74,6 +75,7 @@ async function mockSummaryApi(page: Page) {
               },
             },
             expenses: {
+              previousTotal: 0,
               totals: { forecast: 70000, actual: 50000 },
               byType: {},
               channels: {
@@ -86,12 +88,12 @@ async function mockSummaryApi(page: Page) {
             },
             tradeArea: {},
             groupedByPavilionGroups: [],
-            saldo: 150000,
+            saldo: 160000,
             saldoChannels: {
-              bankTransfer: 55000,
-              cashbox1: 55000,
-              cashbox2: 40000,
-              total: 150000,
+              bankTransfer: 58000,
+              cashbox1: 59000,
+              cashbox2: 43000,
+              total: 160000,
             },
             financeTrend: [],
           },

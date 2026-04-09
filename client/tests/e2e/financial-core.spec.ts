@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+﻿import { expect, test, type Page } from '@playwright/test';
 
 const STORE_ID = 2;
 
@@ -62,6 +62,7 @@ async function mockStoreWithFinancials(page: Page) {
             income: {
               forecast: { total: 120000 },
               total: 90000,
+              previousTotal: 10000,
               previousMonthBalance: 10000,
               previousMonthChannels: {
                 bankTransfer: 4000,
@@ -110,6 +111,7 @@ async function mockStoreWithFinancials(page: Page) {
               },
             },
             expenses: {
+              previousTotal: 0,
               totals: { forecast: 45000, actual: 30000 },
               byType: {},
               channels: {
@@ -127,12 +129,12 @@ async function mockStoreWithFinancials(page: Page) {
             },
             tradeArea: {},
             groupedByPavilionGroups: [],
-            saldo: 60000,
+            saldo: 70000,
             saldoChannels: {
-              bankTransfer: 25000,
-              cashbox1: 20000,
-              cashbox2: 15000,
-              total: 60000,
+              bankTransfer: 29000,
+              cashbox1: 23000,
+              cashbox2: 18000,
+              total: 70000,
             },
             financeTrend: [],
           },
