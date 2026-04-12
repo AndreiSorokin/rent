@@ -7,7 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
-import { openStoreInvoiceView } from '@/lib/invoices';
+import { openStoreInvoiceView, startStoreSubscriptionCheckout } from '@/lib/invoices';
 import { TimeZoneAutocomplete } from '@/components/TimeZoneAutocomplete';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
@@ -35,6 +35,9 @@ export default function StoreSettingsPage() {
   const [billingLegalAddressDraft, setBillingLegalAddressDraft] = useState('');
   const [billingInnDraft, setBillingInnDraft] = useState('');
   const [billingSaving, setBillingSaving] = useState(false);
+  const [subscriptionActionLoading, setSubscriptionActionLoading] = useState<
+    'view' | 'pay' | null
+  >(null);
   const [contactPhoneDraft, setContactPhoneDraft] = useState('');
   const [contactEmailDraft, setContactEmailDraft] = useState('');
   const [contactSaving, setContactSaving] = useState(false);
@@ -179,6 +182,66 @@ export default function StoreSettingsPage() {
       : store.imagePath
         ? [{ id: -1, filePath: store.imagePath, createdAt: new Date(0).toISOString() }]
         : [];
+  const subscriptionBilling = store.subscriptionBilling ?? null;
+  const subscriptionPeriodLabel = subscriptionBilling?.currentPeriod
+    ? new Date(subscriptionBilling.currentPeriod).toLocaleDateString('ru-RU', {
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
+  const subscriptionStatusLabel =
+    subscriptionBilling?.status === 'PAID' ? 'Оплачено' : 'Не оплачено';
+  const subscriptionStatusClasses =
+    subscriptionBilling?.status === 'PAID'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+      : 'border-[#f3c6a8] bg-[#fff1e8] text-[#c2410c]';
+  const subscriptionAmountLabel = `${Number(
+    subscriptionBilling?.amountRub ?? 0,
+  ).toLocaleString('ru-RU')} ₽`;
+  const canViewSubscriptionInvoice =
+    canManageStore &&
+    Boolean(subscriptionBilling?.hasChargeForCurrentMonth) &&
+    !Boolean(subscriptionBilling?.isFirstMonthFree) &&
+    Boolean(subscriptionBilling?.hasBillingDetails);
+  const canStartSubscriptionPayment =
+    canManageStore &&
+    Boolean(subscriptionBilling?.hasChargeForCurrentMonth) &&
+    !Boolean(subscriptionBilling?.isFirstMonthFree) &&
+    Boolean(subscriptionBilling?.hasBillingDetails) &&
+    subscriptionBilling?.status !== 'PAID';
+
+  const handleOpenSubscriptionInvoice = async () => {
+    try {
+      setSubscriptionActionLoading('view');
+      await openStoreInvoiceView(storeId);
+      await fetchStore(false);
+      toast.success('Счет открыт в новой вкладке');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Не удалось открыть счет');
+    } finally {
+      setSubscriptionActionLoading(null);
+    }
+  };
+
+  const handleStartSubscriptionPayment = async () => {
+    try {
+      setSubscriptionActionLoading('pay');
+      const result = await startStoreSubscriptionCheckout(storeId);
+      if (result.mode === 'REDIRECT' && result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
+      await fetchStore(false);
+      toast.success(result.message);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || 'Не удалось подготовить оплату');
+    } finally {
+      setSubscriptionActionLoading(null);
+    }
+  };
 
   const handleUpdateStoreName = async () => {
     const name = nameDraft.trim();
@@ -813,23 +876,6 @@ export default function StoreSettingsPage() {
                 Журнал действий
               </Link>
             )}
-            {canManageStore && (
-              <button
-                type="button"
-                onClick={() => {
-                  void openStoreInvoiceView(storeId)
-                    .then(() => {
-                      toast.success('Счет открыт в новой вкладке');
-                    })
-                    .catch((err: any) => {
-                      toast.error(err?.message || 'Не удалось открыть счет');
-                    });
-                }}
-                className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
-              >
-                Оплатить
-              </button>
-            )}
             {(createPavilions || canExportData) && (
               <div className="inline-flex items-center gap-2">
                 {createPavilions && (
@@ -853,6 +899,72 @@ export default function StoreSettingsPage() {
             )}
           </div>
         </div>
+
+        {canManageStore && subscriptionBilling && (
+          <div className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-lg font-semibold text-[#111111] md:text-xl">
+                    Подписка на Palaci
+                  </h2>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${subscriptionStatusClasses}`}
+                  >
+                    {subscriptionStatusLabel}
+                  </span>
+                </div>
+                <p className="text-sm text-[#6b6b6b]">
+                  {subscriptionPeriodLabel
+                    ? `Статус за ${subscriptionPeriodLabel}`
+                    : 'Статус текущего календарного месяца'}
+                </p>
+                <p className="text-sm text-[#111111]">
+                  Стоимость за месяц: <span className="font-semibold">{subscriptionAmountLabel}</span>
+                </p>
+                {subscriptionBilling.isFirstMonthFree ? (
+                  <p className="text-sm text-emerald-700">
+                    Первый месяц бесплатный.
+                  </p>
+                ) : !subscriptionBilling.hasChargeForCurrentMonth ? (
+                  <p className="text-sm text-[#6b6b6b]">
+                    В этом месяце нет занятых павильонов, поэтому счет не требуется.
+                  </p>
+                ) : !subscriptionBilling.hasBillingDetails ? (
+                  <p className="text-sm text-[#c2410c]">
+                    Чтобы открыть счет и перейти к оплате, заполните реквизиты организации ниже.
+                  </p>
+                ) : subscriptionBilling.status === 'PAID' ? (
+                  <p className="text-sm text-emerald-700">
+                    Оплата за текущий календарный месяц подтверждена.
+                  </p>
+                ) : (
+                  <p className="text-sm text-[#c2410c]">
+                    Оплата отправлена, ожидается подтверждение.
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2 sm:min-w-[250px]">
+                <button
+                  type="button"
+                  onClick={() => void handleOpenSubscriptionInvoice()}
+                  disabled={!canViewSubscriptionInvoice || subscriptionActionLoading !== null}
+                  className="inline-flex items-center justify-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {subscriptionActionLoading === 'view' ? 'Открываем...' : 'Посмотреть счет'}
+                </button>
+                {/* <button
+                  type="button"
+                  onClick={() => void handleStartSubscriptionPayment()}
+                  disabled={!canStartSubscriptionPayment || subscriptionActionLoading !== null}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {subscriptionActionLoading === 'pay' ? 'Подготавливаем...' : 'Оплатить'}
+                </button> */}
+              </div>
+            </div>
+          </div>
+        )}
 
         {canManageStore && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
@@ -1401,6 +1513,3 @@ export default function StoreSettingsPage() {
     </div>
   );
 }
-
-
-

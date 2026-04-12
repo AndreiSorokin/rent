@@ -199,6 +199,15 @@ export class StoresController {
     return this.service.createSubscriptionInvoice(storeId, req.user.id);
   }
 
+  @Post(':storeId/subscription/checkout')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  prepareSubscriptionCheckout(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Req() req: any,
+  ) {
+    return this.service.prepareSubscriptionCheckout(storeId, req.user.id);
+  }
+
   @Get(':storeId/invoices/:invoiceId/view')
   @Permissions(Permission.ASSIGN_PERMISSIONS)
   async viewInvoice(
@@ -227,6 +236,16 @@ export class StoresController {
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
+  }
+
+  @Post(':storeId/invoices/:invoiceId/mark-paid')
+  @Permissions(Permission.ASSIGN_PERMISSIONS)
+  markInvoicePaid(
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Param('invoiceId', ParseIntPipe) invoiceId: number,
+    @Req() req: any,
+  ) {
+    return this.service.markSubscriptionInvoicePaid(storeId, invoiceId, req.user.id);
   }
 
   @Patch(':storeId/description')
