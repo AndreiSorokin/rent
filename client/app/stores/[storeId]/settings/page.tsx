@@ -207,7 +207,8 @@ export default function StoreSettingsPage() {
     canManageStore &&
     Boolean(subscriptionBilling?.hasChargeForCurrentMonth) &&
     !Boolean(subscriptionBilling?.isFirstMonthFree) &&
-    Boolean(subscriptionBilling?.hasBillingDetails);
+    Boolean(subscriptionBilling?.hasBillingDetails) &&
+    subscriptionBilling?.status !== 'PAID';
 
   const handleOpenSubscriptionInvoice = async () => {
     try {
@@ -227,6 +228,11 @@ export default function StoreSettingsPage() {
     try {
       setSubscriptionActionLoading('pay');
       const result = await startStoreSubscriptionCheckout(storeId);
+      if (result.mode === 'REDIRECT' && result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+        return;
+      }
+
       await fetchStore(false);
       toast.success(result.message);
     } catch (err: any) {
@@ -934,7 +940,7 @@ export default function StoreSettingsPage() {
                   </p>
                 ) : (
                   <p className="text-sm text-[#c2410c]">
-                    За текущий календарный месяц оплата еще не подтверждена.
+                    Оплата отправлена, ожидается подтверждение.
                   </p>
                 )}
               </div>

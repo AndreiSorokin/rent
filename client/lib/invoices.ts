@@ -62,9 +62,10 @@ export async function startStoreSubscriptionCheckout(storeId: number) {
   }
 
   return (await response.json()) as {
-    mode: 'FREE_MONTH' | 'NO_CHARGE' | 'T_BANK_NOT_CONFIGURED' | 'T_BANK_PENDING_SETUP';
+    mode: 'FREE_MONTH' | 'NO_CHARGE' | 'T_BANK_NOT_CONFIGURED' | 'REDIRECT';
     message: string;
     invoiceId?: number;
+    paymentUrl?: string | null;
     subscriptionBilling?: {
       status?: 'PAID' | 'UNPAID';
       amountRub?: number;

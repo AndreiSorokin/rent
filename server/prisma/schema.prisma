@@ -540,6 +540,11 @@ model StoreInvoice {
   periodStart        DateTime
   status             StoreInvoiceStatus @default(PENDING)
   paidAt             DateTime?
+  externalOrderId    String?  @unique
+  tbankPaymentId     String?
+  paymentUrl         String?
+  paymentStatus      String?
+  lastWebhookPayload Json?
   issuedAt           DateTime @default(now())
   offerUrl           String
 
