@@ -57,9 +57,14 @@ export async function startStoreSubscriptionCheckout(storeId: number) {
     method: 'POST',
   });
 
+
   if (!response.ok) {
     throw new Error(await toMessage(response, 'Не удалось подготовить оплату'));
   }
+  console.log('Checkout response:', response);
+
+  console.log('Checkout response text:', await response.text());
+
 
   return (await response.json()) as {
     mode: 'FREE_MONTH' | 'NO_CHARGE' | 'T_BANK_NOT_CONFIGURED' | 'REDIRECT';
