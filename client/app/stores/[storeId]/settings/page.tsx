@@ -225,17 +225,31 @@ export default function StoreSettingsPage() {
   };
 
   const handleStartSubscriptionPayment = async () => {
+    const paymentWindow = window.open('about:blank', '_blank');
+    if (!paymentWindow) {
+      toast.error('Браузер заблокировал новую вкладку для оплаты');
+      return;
+    }
+
+    try {
+      paymentWindow.opener = null;
+    } catch {
+      
+    }
+
     try {
       setSubscriptionActionLoading('pay');
       const result = await startStoreSubscriptionCheckout(storeId);
       if (result.mode === 'REDIRECT' && result.paymentUrl) {
-        window.location.href = result.paymentUrl;
+        paymentWindow.location.href = result.paymentUrl;
         return;
       }
 
+      paymentWindow.close();
       await fetchStore(false);
       toast.success(result.message);
     } catch (err: any) {
+      paymentWindow.close();
       console.error(err);
       toast.error(err?.message || 'Не удалось подготовить оплату');
     } finally {
@@ -953,14 +967,14 @@ export default function StoreSettingsPage() {
                 >
                   {subscriptionActionLoading === 'view' ? 'Открываем...' : 'Посмотреть счет'}
                 </button>
-                {/* <button
+                <button
                   type="button"
                   onClick={() => void handleStartSubscriptionPayment()}
                   disabled={!canStartSubscriptionPayment || subscriptionActionLoading !== null}
                   className="inline-flex items-center justify-center rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {subscriptionActionLoading === 'pay' ? 'Подготавливаем...' : 'Оплатить'}
-                </button> */}
+                </button>
               </div>
             </div>
           </div>
