@@ -1023,6 +1023,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     };
 
     if (!response.ok || !result?.Success || !result?.PaymentURL) {
+
       throw new BadRequestException(
         result?.Message || result?.Details || 'Не удалось инициализировать оплату в Т-Банке',
       );
