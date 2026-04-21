@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 const examples = [
-  { occupied: 1, amount: '2 000 ₽' },
-  { occupied: 5, amount: '10 000 ₽' },
-  { occupied: 12, amount: '24 000 ₽' },
+  { occupied: 10, amount: '200 ₽' },
+  { occupied: 50, amount: '1000 ₽' },
+  { occupied: 12, amount: '2400 ₽' },
 ];
 
 export default function TariffsPage() {
@@ -39,8 +39,8 @@ export default function TariffsPage() {
               </h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-[#4B5563]">
                 Стоимость доступа к платформе рассчитывается просто:
-                мы берем количество павильонов со статусом <span className="font-semibold text-[#111111]">«ЗАНЯТ»</span> и
-                умножаем его на <span className="font-semibold text-[#111111]">2 000 рублей</span>.
+                мы берем количество <span className="font-semibold text-[#111111]">занятой площади</span> и
+                умножаем её на <span className="font-semibold text-[#111111]">ставку за м²</span>.
               </p>
             </div>
 
@@ -57,11 +57,11 @@ export default function TariffsPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Модель</p>
-              <p className="mt-2 text-sm font-semibold text-[#111111]">За занятый павильон</p>
+              <p className="mt-2 text-sm font-semibold text-[#111111]">За занятую площадь</p>
             </div>
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Ставка</p>
-              <p className="mt-2 text-sm font-semibold text-[#111111]">2 000 ₽ за павильон</p>
+              <p className="mt-2 text-sm font-semibold text-[#111111]">20 ₽ за м²</p>
             </div>
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Статус</p>
@@ -75,10 +75,10 @@ export default function TariffsPage() {
             </p>
             <div className="mt-4 space-y-4">
               <div className="rounded-2xl border border-[#F1D7C3] bg-white px-5 py-4 text-lg font-extrabold text-[#111111] md:text-2xl">
-                Стоимость = количество павильонов со статусом «ЗАНЯТ» × 2 000 ₽
+                Стоимость = количество занятых м² × 20 ₽
               </div>
               <p className="text-sm leading-7 text-[#4B5563]">
-                В расчет берутся только павильоны, у которых установлен статус{' '}
+                В расчет берутся только торговая площадь, у которой установлен статус{' '}
                 <span className="font-semibold text-[#111111]">«ЗАНЯТ»</span>. Свободные
                 павильоны, павильоны с предоплатой и другие статусы в текущем тарифе не
                 учитываются.
@@ -98,9 +98,9 @@ export default function TariffsPage() {
                   key={example.occupied}
                   className="rounded-2xl border border-[#EAE1D9] bg-[#F9F5F0] p-5"
                 >
-                  <p className="text-sm text-[#6B6B6B]">Занятых павильонов</p>
+                  <p className="text-sm text-[#6B6B6B]">Занятая площадь</p>
                   <p className="mt-2 text-3xl font-extrabold text-[#111111]">
-                    {example.occupied}
+                    {example.occupied} м²
                   </p>
                   <p className="mt-4 text-sm text-[#6B6B6B]">Ежемесячная стоимость</p>
                   <p className="mt-2 text-xl font-bold text-[#FF6A13]">{example.amount}</p>

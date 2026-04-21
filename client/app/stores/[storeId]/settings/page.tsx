@@ -197,7 +197,7 @@ export default function StoreSettingsPage() {
       : 'border-[#f3c6a8] bg-[#fff1e8] text-[#c2410c]';
   const subscriptionAmountLabel = `${Number(
     subscriptionBilling?.amountRub ?? 0,
-  ).toLocaleString('ru-RU')} ₽`;
+  ).toLocaleString('ru-RU')} ${getCurrencySymbol(store.currency ?? 'RUB')}`;
   const canViewSubscriptionInvoice =
     canManageStore &&
     Boolean(subscriptionBilling?.hasChargeForCurrentMonth) &&

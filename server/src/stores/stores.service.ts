@@ -840,6 +840,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         id: true,
         createdAt: true,
         timeZone: true,
+        currency: true,
         billingCompanyName: true,
         billingLegalAddress: true,
         billingInn: true,
@@ -853,9 +854,13 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const timeZone = this.normalizeStoreTimeZone((store as any).timeZone);
     const currentPeriod = this.getMonthPeriodInTimeZone(timeZone);
 
-    const [rentedPavilionsCount, currentInvoice] = await this.prisma.$transaction([
+    const [rentedPavilionsCount, rentedPavilionsArea, currentInvoice] = await this.prisma.$transaction([
       this.prisma.pavilion.count({
         where: { storeId, status: PavilionStatus.RENTED },
+      }),
+      this.prisma.pavilion.aggregate({
+        where: { storeId, status: PavilionStatus.RENTED },
+        _sum: { squareMeters: true },
       }),
       (this.prisma as any).storeInvoice.findFirst({
         where: { storeId, periodStart: currentPeriod },
@@ -866,7 +871,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const billingStartedAt = (store as any).createdAt ?? new Date();
     const billingStartPeriod = this.getMonthPeriodInTimeZone(timeZone, billingStartedAt);
     const isFirstMonthFree = billingStartPeriod.getTime() === currentPeriod.getTime();
-    const baseAmountRub = Number(rentedPavilionsCount ?? 0) * 2000;
+    const currency = (store as any).currency === 'KZT' ? 'KZT' : 'RUB';
+    const occupiedSquareMeters = Number(rentedPavilionsArea._sum.squareMeters ?? 0);
+    const ratePerSquareMeter = currency === 'KZT' ? 60 : 20;
+    //TODO: Delete *2
+    const baseAmountRub = Math.round(occupiedSquareMeters * ratePerSquareMeter * 2);
     const amountRub = isFirstMonthFree ? 0 : baseAmountRub;
     const hasChargeForCurrentMonth = amountRub > 0;
     const hasBillingDetails = Boolean(
@@ -894,6 +903,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       currentPeriod: currentPeriod.toISOString(),
       amountRub,
       baseAmountRub,
+      currency,
+      occupiedSquareMeters,
+      ratePerSquareMeter,
       rentedPavilionsCount,
       isFirstMonthFree,
       hasChargeForCurrentMonth,
@@ -1069,11 +1081,44 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
+    const externalOrderId = this.buildStoreInvoiceExternalOrderId(
+      storeId,
+      new Date(subscriptionBilling.currentPeriod),
+    );
     const existingInvoice = subscriptionBilling.currentInvoice;
     if (existingInvoice) {
-      return (this.prisma as any).storeInvoice.findFirst({
+      const invoice = await (this.prisma as any).storeInvoice.findFirst({
         where: { id: existingInvoice.id, storeId },
       });
+      if (!invoice) {
+        return invoice;
+      }
+
+      const invoiceAmountChanged =
+        Number(invoice.amountRub ?? 0) !== Number(subscriptionBilling.amountRub ?? 0) ||
+        Number(invoice.rentedPavilionsCount ?? 0) !==
+          Number(subscriptionBilling.rentedPavilionsCount ?? 0);
+
+      if (invoice.status !== 'PAID' && invoiceAmountChanged) {
+        const hadPaymentSession = Boolean(
+          invoice.paymentUrl || invoice.tbankPaymentId || invoice.paymentStatus,
+        );
+        return (this.prisma as any).storeInvoice.update({
+          where: { id: invoice.id },
+          data: {
+            amountRub: subscriptionBilling.amountRub,
+            rentedPavilionsCount: subscriptionBilling.rentedPavilionsCount,
+            paymentUrl: null,
+            tbankPaymentId: null,
+            paymentStatus: null,
+            externalOrderId: hadPaymentSession
+              ? `${externalOrderId}-${Date.now()}`
+              : invoice.externalOrderId || externalOrderId,
+          },
+        });
+      }
+
+      return invoice;
     }
 
     const companyName = String((store as any).billingCompanyName ?? '').trim();
@@ -1087,10 +1132,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     }
 
     const offerUrl = process.env.PUBLIC_OFFER_URL?.trim() || 'https://palaci.ru/offer';
-    const externalOrderId = this.buildStoreInvoiceExternalOrderId(
-      storeId,
-      new Date(subscriptionBilling.currentPeriod),
-    );
 
     const invoice = await (this.prisma as any).storeInvoice.create({
       data: {
@@ -1317,6 +1358,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
           select: {
             id: true,
             name: true,
+            currency: true,
           },
         },
       },
