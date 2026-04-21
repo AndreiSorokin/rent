@@ -229,6 +229,7 @@ export class StoresController {
       invoiceDate,
       amountRub: Number(invoice.amountRub ?? 0),
       rentedPavilionsCount: Number(invoice.rentedPavilionsCount ?? 0),
+      currency: String(invoice.store?.currency ?? 'RUB'),
       customerCompanyName: String(invoice.customerCompanyName ?? ''),
       customerLegalAddress: String(invoice.customerLegalAddress ?? ''),
       customerInn: String(invoice.customerInn ?? ''),
