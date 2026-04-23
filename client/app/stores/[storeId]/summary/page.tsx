@@ -8,6 +8,8 @@ import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { calcProfit, calcStoreLevelExpensesTotals, calcSummaryTotalMoney } from '@/lib/finance';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
+import { authorizedFetch, ensureAccessToken } from '@/lib/session';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 const getCurrentMonthValue = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
@@ -583,12 +585,22 @@ export default function StoreSummaryPage() {
 
     const previousMonthBalance = Number(income.previousMonthBalance ?? 0);
     const carryAdjustment = Number(income.carryAdjustment ?? 0);
+    const previousMonthChannels = {
+      bankTransfer: Number(income.previousMonthChannels?.bankTransfer ?? 0),
+      cashbox1: Number(income.previousMonthChannels?.cashbox1 ?? 0),
+      cashbox2: Number(income.previousMonthChannels?.cashbox2 ?? 0),
+      total: Number(income.previousMonthChannels?.total ?? 0),
+    };
     const incomeTotalRaw = Number(income.total ?? 0);
-    const incomeTotalWithPrevious = incomeTotalRaw + previousMonthBalance;
+    const incomeForecastRaw = Number(income.forecast?.total ?? 0);
+    const expenseActualRaw = Number(expenses.totals?.actual ?? 0);
+    const incomeTotalWithPrevious = previousMonthBalance + incomeTotalRaw;
+    const incomeForecastWithPrevious = previousMonthBalance + incomeForecastRaw;
     const incomeWithAdjustedTotal = {
       ...income,
       previousMonthBalance,
       carryAdjustment,
+      forecastWithPrevious: incomeForecastWithPrevious,
       totalWithPrevious: incomeTotalWithPrevious,
     };
 
@@ -597,14 +609,20 @@ export default function StoreSummaryPage() {
       incomeTotalRaw,
       expenses.totals?.actual,
     );
-    const saldo = calcProfit(incomeTotalRaw, expenses.totals?.actual);
-    const saldoChannels = summary.saldoChannels || {
+    const saldo = calcProfit(incomeTotalWithPrevious, expenseActualRaw);
+    const currentSaldoChannels = summary.saldoChannels || {
       bankTransfer: Number(income.channels?.bankTransfer ?? 0) - Number(expenseChannels.bankTransfer ?? 0),
       cashbox1: Number(income.channels?.cashbox1 ?? 0) - Number(expenseChannels.cashbox1 ?? 0),
       cashbox2: Number(income.channels?.cashbox2 ?? 0) - Number(expenseChannels.cashbox2 ?? 0),
       total:
         Number(income.channels?.total ?? 0) -
         Number(expenseChannels.total ?? 0),
+    };
+    const saldoChannels = {
+      bankTransfer: currentSaldoChannels.bankTransfer + previousMonthChannels.bankTransfer,
+      cashbox1: currentSaldoChannels.cashbox1 + previousMonthChannels.cashbox1,
+      cashbox2: currentSaldoChannels.cashbox2 + previousMonthChannels.cashbox2,
+      total: currentSaldoChannels.total + previousMonthChannels.total,
     };
 
     return {
@@ -663,26 +681,21 @@ export default function StoreSummaryPage() {
     return () => observer.disconnect();
   }, [loading, error, data]);
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Собираем сводку..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
 
   const handleDownloadSummaryPdf = async () => {
     try {
       setDownloadingPdf(true);
-      const token = localStorage.getItem('token');
+      const token = await ensureAccessToken();
       if (!token) {
         window.location.href = '/login';
         return;
       }
 
-      const response = await fetch(
+      const response = await authorizedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/stores/${storeId}/analytics/summary-view/pdf?period=${encodeURIComponent(downloadMonth)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
       );
 
       if (!response.ok) {
@@ -959,19 +972,15 @@ export default function StoreSummaryPage() {
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Итого приход (прогноз)"
-                  value={formatMoney(
-                    Number(data.income.forecast?.total ?? 0) +
-                      Number(data.income.carryAdjustment ?? 0),
-                    data.currency,
-                  )}
-                  subtitle="С учетом переноса"
+                  value={formatMoney(data.income.forecastWithPrevious ?? 0, data.currency)}
+                  subtitle="С учетом остатка прошлого месяца"
                   tone="primary"
                 />
               </div>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="margin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Корректировка переносом"
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
@@ -1236,7 +1245,7 @@ export default function StoreSummaryPage() {
                   title="Остаток (прогноз)"
                   value={formatMoney(
                     calcProfit(
-                      data.income.forecast?.total ?? 0,
+                      data.income.forecastWithPrevious ?? 0,
                       data.expenses.totals?.forecast ?? 0,
                     ),
                     data.currency,
@@ -1247,10 +1256,10 @@ export default function StoreSummaryPage() {
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className=",argin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
                   title="Общий приход"
-                  value={formatMoney(data.income.total ?? 0, data.currency)}
+                  value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
                   tone="success"
                 />
                 <MetricCard

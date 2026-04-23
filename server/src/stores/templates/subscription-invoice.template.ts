@@ -3,6 +3,7 @@ type InvoiceTemplateData = {
   invoiceDate: string;
   amountRub: number;
   rentedPavilionsCount: number;
+  currency?: 'RUB' | 'KZT' | string | null;
   customerCompanyName: string;
   customerLegalAddress: string;
   customerInn: string;
@@ -31,6 +32,7 @@ export function renderSubscriptionInvoiceTemplate(data: InvoiceTemplateData) {
   const customerLegalAddress = escapeHtml(data.customerLegalAddress);
   const customerInn = escapeHtml(data.customerInn);
   const amountRub = formatMoney(data.amountRub);
+  const currencyLabel = data.currency === 'KZT' ? 'тг.' : 'руб.';
   const rentedPavilionsCount = String(Number(data.rentedPavilionsCount ?? 0));
 
   return `<!DOCTYPE html>
@@ -377,7 +379,7 @@ export function renderSubscriptionInvoiceTemplate(data: InvoiceTemplateData) {
 
     <div class="summary">
       <div class="summary-row">
-        <div class="summary-left">Всего наименований на сумму ${amountRub} руб.</div>
+        <div class="summary-left">Всего наименований на сумму ${amountRub} ${currencyLabel}</div>
         <div class="summary-right">
           <span>Итого к оплате:</span>
           <span>${amountRub}</span>

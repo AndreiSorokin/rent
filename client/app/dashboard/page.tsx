@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CreateStoreModal } from './components/CreateStoreModal';
 import { getCurrentUserFromToken } from '@/lib/auth';
 import { Store } from 'lucide-react';
+import { FullScreenLoader } from '@/components/AppLoader';
 
 interface StoreSummary {
   id: number;
@@ -17,6 +18,9 @@ interface StoreSummary {
   billingInn?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
+  subscriptionBilling?: {
+    status?: 'PAID' | 'UNPAID';
+  } | null;
 }
 
 export default function StoresPage() {
@@ -43,7 +47,7 @@ export default function StoresPage() {
     setShowCreateModal(false);
   };
 
-  if (loading) return <div className="p-8 text-center text-lg text-[#111111]">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем кабинет..." />;
   if (error) return <div className="p-8 text-center text-lg text-[#EF4444]">{error}</div>;
 
   return (
@@ -109,6 +113,14 @@ export default function StoresPage() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {stores.map((store, index) => (
+              (() => {
+                const isPaid = store.subscriptionBilling?.status === 'PAID';
+                const badgeClass = isPaid
+                  ? 'bg-[#dcfce7] text-[#15803d]'
+                  : 'bg-[#fff1e8] text-[#c2410c]';
+                const badgeLabel = isPaid ? 'Оплачен' : 'Не оплачен';
+
+                return (
               <Link
                 key={store.id}
                 href={`/stores/${store.id}`}
@@ -126,8 +138,10 @@ export default function StoresPage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#ECE6E0] pt-4">
-                    <span className="rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-bold uppercase tracking-wide text-[#15803d]">
-                      Активен
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${badgeClass}`}
+                    >
+                      {badgeLabel}
                     </span>
                     <span className="text-sm font-bold text-[#111111] transition group-hover:text-[#FF6A13]">
                       Управление →
@@ -135,6 +149,8 @@ export default function StoresPage() {
                   </div>
                 </div>
               </Link>
+                );
+              })()
             ))}
           </div>
         )}
@@ -149,4 +165,3 @@ export default function StoresPage() {
     </div>
   );
 }
-

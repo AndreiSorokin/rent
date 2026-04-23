@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogoutButton } from '@/components/LogoutButton';
+import { clearStoredAccessToken, ensureAccessToken } from '@/lib/session';
 
 const ANON_ONLY_PATHS = new Set(['/login', '/register']);
 
@@ -26,16 +27,6 @@ function isAnonOnlyPath(pathname: string | null) {
   return ANON_ONLY_PATHS.has(pathname);
 }
 
-function isTokenExpired(token: string) {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number };
-    if (!payload.exp) return false;
-    return payload.exp * 1000 <= Date.now();
-  } catch {
-    return true;
-  }
-}
-
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -44,19 +35,31 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const isStorePage = Boolean(pathname && /^\/stores\/\d+(?:\/.*)?$/.test(pathname));
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    let isCancelled = false;
 
-    if (!token || isTokenExpired(token)) {
-      localStorage.removeItem('token');
-      if (!isPublic) {
-        router.replace('/login');
+    const syncAuth = async () => {
+      const token = await ensureAccessToken();
+
+      if (isCancelled) return;
+
+      if (!token) {
+        clearStoredAccessToken();
+        if (!isPublic) {
+          router.replace('/login');
+        }
+        return;
       }
-      return;
-    }
 
-    if (isAnonOnly) {
-      router.replace('/dashboard');
-    }
+      if (isAnonOnly) {
+        router.replace('/dashboard');
+      }
+    };
+
+    void syncAuth();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [pathname, router, isAnonOnly, isPublic]);
 
   return (

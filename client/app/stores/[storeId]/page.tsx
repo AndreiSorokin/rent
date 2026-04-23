@@ -23,6 +23,7 @@ import {
   updateHouseholdExpense,
 } from '@/lib/householdExpenses';
 import { reorderPavilions } from '@/lib/pavilions';
+import { FullScreenLoader } from '@/components/AppLoader';
 import {
   createPavilionExpense,
   deletePavilionExpense,
@@ -1152,7 +1153,7 @@ export default function StorePage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Загрузка...</div>;
+  if (loading) return <FullScreenLoader label="Загружаем объект..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
 
@@ -1319,7 +1320,8 @@ export default function StorePage() {
           onOpenExtraIncome={() => setShowExtraIncomeModal(true)}
         />
 
-        <main className="min-w-0 flex-1 space-y-3 pt-16 md:space-y-6 md:pt-0">
+        <main className="min-w-0 flex-1 pt-12 md:pt-0">
+          <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
         {hasPermission(permissions, 'VIEW_PAVILIONS') && (
           <section
             id="pavilions"
@@ -1459,7 +1461,9 @@ export default function StorePage() {
                         const hasCarryAdjustment = Math.abs(carryBalance) > 0.009;
                         const requiresContract =
                           p.status === 'RENTED' || p.status === 'PREPAID';
-                        const hasContract = Array.isArray(p.contracts) && p.contracts.length > 0;
+                        const hasContract =
+                          Array.isArray(p.activeLease?.contracts) &&
+                          p.activeLease.contracts.length > 0;
                         const missingContract = requiresContract && !hasContract;
                         return (
                       <tr
@@ -2111,6 +2115,7 @@ export default function StorePage() {
           </section>
         )}
 
+          </div>
         </main>
       </div>
 

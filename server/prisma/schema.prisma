@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
 
 model User {
@@ -16,6 +16,7 @@ model User {
   stores          StoreUser[]
   activities      StoreActivity[]
   passwordResetTokens PasswordResetToken[]
+  refreshTokens   RefreshToken[]
   createdAt       DateTime     @default(now())
   sentInvitations Invitation[] @relation("inviter")
 }
@@ -45,6 +46,19 @@ model PasswordResetToken {
   @@index([userId, expiresAt, usedAt])
 }
 
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, revokedAt])
+}
+
 model StoreUser {
   id Int @id @default(autoincrement())
 
@@ -64,6 +78,7 @@ model StoreUser {
 model Store {
   id          Int          @id @default(autoincrement())
   name        String
+  createdAt   DateTime     @default(now())
   address     String?
   billingCompanyName String?
   billingLegalAddress String?
@@ -250,7 +265,7 @@ model Pavilion {
   payments          Payment[]
   paymentTransactions PaymentTransaction[]
   monthlyLedgers    PavilionMonthlyLedger[]
-  contracts         Contract[]
+  leases            PavilionLease[]
   groupMemberships PavilionGroupMembership[]
   activities        StoreActivity[]
   images            PavilionImage[]
@@ -525,18 +540,59 @@ model Payment {
   @@unique([pavilionId, period])
 }
 
+enum PavilionLeaseStatus {
+  DRAFT
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum LeaseContractKind {
+  MAIN
+  ADDENDUM
+  RENEWAL
+  TERMINATION
+  OTHER
+}
+
+model PavilionLease {
+  id Int @id @default(autoincrement())
+
+  pavilionId Int
+  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+
+  tenantName String
+  status PavilionLeaseStatus @default(ACTIVE)
+  startsOn String?
+  endsOn String?
+  vacatedOn String?
+  notes String?
+
+  contracts Contract[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pavilionId, createdAt])
+  @@index([pavilionId, status, createdAt])
+}
+
 model Contract {
   id       Int    @id @default(autoincrement())
   fileName String
   filePath String
   fileType String
+  kind LeaseContractKind @default(MAIN)
   contractNumber String?
   expiresOn      String?
+  signedOn       String?
 
-  pavilionId Int
-  pavilion   Pavilion @relation(fields: [pavilionId], references: [id], onDelete: Cascade)
+  pavilionLeaseId Int
+  pavilionLease   PavilionLease @relation(fields: [pavilionLeaseId], references: [id], onDelete: Cascade)
 
   uploadedAt DateTime @default(now())
+
+  @@index([pavilionLeaseId, uploadedAt])
 }
 
 model PaymentTransaction {
@@ -573,6 +629,14 @@ model StoreInvoice {
   store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   rentedPavilionsCount Int
   amountRub          Int
+  periodStart        DateTime
+  status             StoreInvoiceStatus @default(PENDING)
+  paidAt             DateTime?
+  externalOrderId    String?  @unique
+  tbankPaymentId     String?
+  paymentUrl         String?
+  paymentStatus      String?
+  lastWebhookPayload Json?
   issuedAt           DateTime @default(now())
   offerUrl           String
 
@@ -581,6 +645,13 @@ model StoreInvoice {
   customerInn          String
 
   @@index([storeId, issuedAt])
+  @@index([storeId, periodStart, issuedAt])
+}
+
+enum StoreInvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 model Invitation {

@@ -197,7 +197,7 @@ export class PaymentsService {
         discount.endsAt === null || discount.endsAt >= monthStart;
 
       if (startsBeforeMonthEnds && endsAfterMonthStarts) {
-        return sum + discount.amount * squareMeters;
+        return sum + discount.amount;
       }
 
       return sum;

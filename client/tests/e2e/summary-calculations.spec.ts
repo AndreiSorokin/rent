@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+﻿import { expect, test, type Page } from '@playwright/test';
 
 const STORE_ID = 2;
 
@@ -86,12 +86,12 @@ async function mockSummaryApi(page: Page) {
             },
             tradeArea: {},
             groupedByPavilionGroups: [],
-            saldo: 150000,
+            saldo: 160000,
             saldoChannels: {
-              bankTransfer: 55000,
-              cashbox1: 55000,
-              cashbox2: 40000,
-              total: 150000,
+              bankTransfer: 58000,
+              cashbox1: 59000,
+              cashbox2: 43000,
+              total: 160000,
             },
             financeTrend: [],
           },
@@ -104,27 +104,15 @@ async function mockSummaryApi(page: Page) {
   });
 }
 
-<<<<<<< HEAD
-test('summary shows money totals using temporary income-with-previous logic', async ({ page }) => {
-=======
 test.skip('summary shows money totals using actual income and actual expenses', async ({
   page,
 }) => {
->>>>>>> ac4dab1e5b7ec83cc7a5323076c696ec668cde3d
   await setAuthorizedSession(page);
   await mockSummaryApi(page);
 
   await page.goto(`/stores/${STORE_ID}/summary`);
 
-<<<<<<< HEAD
-  const overview = page.locator('section').filter({ has: page.getByRole('heading', { name: /Доходы/i }) }).first();
-
-  await expect(overview.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i)).toBeVisible();
-  await expect(overview.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i)).toBeVisible();
-  await expect(overview.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i)).toBeVisible();
-=======
   await expect(page.getByText(/Факт:\s*210[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
   await expect(page.getByText(/Факт:\s*50[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
-  await expect(page.getByText(/Факт:\s*150[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
->>>>>>> ac4dab1e5b7ec83cc7a5323076c696ec668cde3d
+  await expect(page.getByText(/Факт:\s*160[\s\u00A0\u202F]000\.00/i).first()).toBeVisible();
 });

@@ -7,6 +7,7 @@ import { AuthField } from '@/components/auth/AuthField';
 import { AuthMessage } from '@/components/auth/AuthMessage';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { apiFetch } from '@/lib/api';
+import { setStoredAccessToken } from '@/lib/session';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function LoginPage() {
         method: 'POST',
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      localStorage.setItem('token', res.access_token);
+      setStoredAccessToken(res.access_token);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login failed:', err);

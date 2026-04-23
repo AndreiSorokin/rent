@@ -6,6 +6,41 @@ export type Discount = {
   note?: string | null;
 };
 
+export type LeaseStatus = 'DRAFT' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
+
+export type PavilionContract = {
+  id: number;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  contractNumber?: string | null;
+  expiresOn?: string | null;
+  signedOn?: string | null;
+  kind?: 'MAIN' | 'ADDENDUM' | 'RENEWAL' | 'TERMINATION' | 'OTHER';
+  uploadedAt: string;
+  pavilionLease?: {
+    id: number;
+    tenantName: string;
+    status: LeaseStatus;
+    startsOn?: string | null;
+    endsOn?: string | null;
+    vacatedOn?: string | null;
+  } | null;
+};
+
+export type PavilionLease = {
+  id: number;
+  tenantName: string;
+  status: LeaseStatus;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  vacatedOn?: string | null;
+  notes?: string | null;
+  contracts?: PavilionContract[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PavilionExpenseType =
   | 'SALARIES'
   | 'PAYROLL_TAX'
@@ -91,17 +126,23 @@ export type Pavilion = {
     advertisingCashbox2Paid?: number;
     createdAt: string;
   }>;
+  monthlyLedgers?: Array<{
+    period: string;
+    expectedRent: number;
+    expectedUtilities: number;
+    expectedAdvertising: number;
+    expectedAdditional: number;
+    expectedTotal: number;
+    actualTotal: number;
+    openingDebt: number;
+    monthDelta: number;
+    closingDebt: number;
+  }>;
   additionalCharges: any[];
   discounts: Discount[];
-  contracts?: Array<{
-    id: number;
-    fileName: string;
-    filePath: string;
-    fileType: string;
-    contractNumber?: string | null;
-    expiresOn?: string | null;
-    uploadedAt: string;
-  }>;
+  contracts?: PavilionContract[];
+  activeLease?: PavilionLease | null;
+  leaseHistory?: PavilionLease[];
   householdExpenses?: Array<{
     id: number;
     name: string;

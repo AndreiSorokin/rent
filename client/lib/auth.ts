@@ -1,3 +1,5 @@
+import { getStoredAccessToken } from './session';
+
 function decodeJwtPayload(token: string) {
   const payloadPart = token.split('.')[1];
   if (!payloadPart) {
@@ -18,7 +20,7 @@ function decodeJwtPayload(token: string) {
 }
 
 export function getCurrentUserFromToken() {
-  const token = localStorage.getItem('token');
+  const token = getStoredAccessToken();
   if (!token) return null;
 
   try {
