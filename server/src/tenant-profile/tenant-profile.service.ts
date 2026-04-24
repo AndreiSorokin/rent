@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  PavilionLeaseStatus,
   TenantLeaseStatus,
   TenantOrganizationType,
   TenantProfileType,
@@ -57,7 +58,7 @@ export class TenantProfileService {
     if (value === TenantOrganizationType.IE || value === TenantOrganizationType.LLC) {
       return value;
     }
-    throw new BadRequestException('Допустимые типы организации: IE или LLC');
+    throw new BadRequestException('Допустимые типы организации: ИП или ООО');
   }
 
   private mapOrganization(organization: any) {
@@ -207,14 +208,28 @@ export class TenantProfileService {
                     timeZone: true,
                   },
                 },
-                contracts: {
-                  orderBy: { uploadedAt: 'desc' },
+                leases: {
+                  where: {
+                    status: PavilionLeaseStatus.ACTIVE,
+                  },
+                  orderBy: { createdAt: 'desc' },
                   select: {
                     id: true,
-                    fileName: true,
-                    contractNumber: true,
-                    expiresOn: true,
-                    uploadedAt: true,
+                    tenantName: true,
+                    status: true,
+                    startsOn: true,
+                    endsOn: true,
+                    vacatedOn: true,
+                    contracts: {
+                      orderBy: { uploadedAt: 'desc' },
+                      select: {
+                        id: true,
+                        fileName: true,
+                        contractNumber: true,
+                        expiresOn: true,
+                        uploadedAt: true,
+                      },
+                    },
                   },
                 },
               },
@@ -341,13 +356,31 @@ export class TenantProfileService {
       organizations: profile.organizations.map((organization: any) =>
         this.mapOrganization(organization),
       ),
-      pavilions: profile.pavilionLeases.map((lease: any) => ({
-        leaseId: lease.id,
-        status: lease.status,
-        startedAt: lease.startedAt,
-        endedAt: lease.endedAt,
-        pavilion: lease.pavilion,
-      })),
+      pavilions: profile.pavilionLeases.map((lease: any) => {
+        const activePavilionLease = lease.pavilion?.leases?.[0] ?? null;
+
+        return {
+          leaseId: lease.id,
+          status: lease.status,
+          startedAt: lease.startedAt,
+          endedAt: lease.endedAt,
+          pavilion: {
+            ...lease.pavilion,
+            leases: undefined,
+            activeLease: activePavilionLease
+              ? {
+                  id: activePavilionLease.id,
+                  tenantName: activePavilionLease.tenantName,
+                  status: activePavilionLease.status,
+                  startsOn: activePavilionLease.startsOn,
+                  endsOn: activePavilionLease.endsOn,
+                  vacatedOn: activePavilionLease.vacatedOn,
+                }
+              : null,
+            contracts: activePavilionLease?.contracts ?? [],
+          },
+        };
+      }),
       applicationHistory: profile.applications.map((application: any) => ({
         id: application.id,
         status: application.status,
