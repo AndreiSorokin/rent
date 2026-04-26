@@ -1,10 +1,10 @@
 export default function Head() {
   return (
     <>
-      <title>Вход в Palaci</title>
+      <title>Вход в Rendlify</title>
       <meta
         name="description"
-        content="Войдите в Palaci для управления объектами, павильонами, начислениями и финансовой сводкой."
+        content="Войдите в Rendlify для управления объектами, павильонами, начислениями и финансовой сводкой."
       />
     </>
   );

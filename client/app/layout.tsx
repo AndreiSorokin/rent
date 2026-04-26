@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://palaci.ru'),
-  title: "Palaci",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://rendlify.com'),
+  title: "Rendlify",
   description: "Store and pavilion management",
   verification: {
     yandex: 'b21ff933b81d7751',

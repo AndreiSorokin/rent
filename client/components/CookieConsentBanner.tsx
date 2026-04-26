@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'palaci-cookie-consent-v1';
+const STORAGE_KEY = 'rendlify-cookie-consent-v1';
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
@@ -30,7 +30,7 @@ export function CookieConsentBanner() {
             <p className="text-sm font-semibold text-[#111111]">Файлы cookie</p>
             <p className="mt-1 text-sm leading-6 text-[#4B5563]">
               Мы используем cookie для корректной работы сайта и улучшения пользовательского
-              опыта. Продолжая пользоваться Palaci, вы можете согласиться на использование
+              опыта. Продолжая пользоваться Rendlify, вы можете согласиться на использование
               cookie или оставить только необходимые.
             </p>
             <div className="mt-2 flex flex-wrap gap-3 text-sm text-[#6B6B6B]">

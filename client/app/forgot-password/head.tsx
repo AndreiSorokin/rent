@@ -1,10 +1,10 @@
 export default function Head() {
   return (
     <>
-      <title>Восстановление пароля - Palaci</title>
+      <title>Восстановление пароля - Rendlify</title>
       <meta
         name="description"
-        content="Запросите ссылку для восстановления доступа к аккаунту Palaci."
+        content="Запросите ссылку для восстановления доступа к аккаунту Rendlify."
       />
     </>
   );

@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Информация об операторе | Palaci',
+  title: 'Информация об операторе | Rendlify',
   description:
-    'Полная информация об операторе сервиса Palaci: реквизиты, адрес и контактные данные.',
+    'Полная информация об операторе сервиса Rendlify: реквизиты, адрес и контактные данные.',
 };
 
 export default function OperatorPage() {
@@ -12,18 +12,18 @@ export default function OperatorPage() {
     <main className="min-h-screen bg-[#f9f5f0] px-6 py-12 text-[#111111] md:px-10">
       <div className="mx-auto max-w-4xl rounded-[2rem] border border-[#d8d1cb] bg-white p-8 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.25)]">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#6B6B6B]">
-          Palaci
+          Rendlify
         </p>
         <h1 className="mt-3 text-3xl font-extrabold md:text-4xl">
           Полная информация об операторе сервиса
         </h1>
         <p className="mt-4 text-base leading-7 text-[#4B5563]">
-          Ниже размещены идентификационные и контактные данные оператора сервиса Palaci.
+          Ниже размещены идентификационные и контактные данные оператора сервиса Rendlify.
         </p>
 
         <div className="mt-8 rounded-2xl border border-[#e8e1da] bg-[#f8f4ef] p-6">
           <div className="space-y-3 text-base leading-7 text-[#111111]">
-            <p className="font-semibold">Оператор сервиса Palaci</p>
+            <p className="font-semibold">Оператор сервиса Rendlify</p>
             <p>Индивидуальный предприниматель Федоров Владимир Сергеевич</p>
             <p>ОГРНИП: 326774600201511</p>
             <p>ИНН: 366112533269</p>

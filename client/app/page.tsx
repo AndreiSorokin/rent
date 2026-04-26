@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Palaci - управление объектами и павильонами',
+  title: 'Rendlify - управление объектами и павильонами',
   description:
-    'Palaci помогает управлять павильонами, начислениями, кассами и отчетностью по торговым объектам в одном интерфейсе.',
+    'Rendlify помогает управлять павильонами, начислениями, кассами и отчетностью по торговым объектам в одном интерфейсе.',
 };
 
 const features = [
@@ -59,8 +59,8 @@ const advantages = [
 
 const faqItems = [
   {
-    q: 'Для каких объектов подходит Palaci?',
-    a: 'Palaci подходит для торговых центров, рынков, галерей и других объектов, где нужно вести учет павильонов, начислений и платежей.',
+    q: 'Для каких объектов подходит Rendlify?',
+    a: 'Rendlify подходит для торговых центров, рынков, галерей и других объектов, где нужно вести учет павильонов, начислений и платежей.',
   },
   {
     q: 'Можно ли разделять оплату по нескольким кассам?',
@@ -76,7 +76,7 @@ const faqItems = [
   },
   {
     q: 'Нужна ли отдельная бухгалтерская таблица?',
-    a: 'Нет. В Palaci есть сводка, операции по смене и кассовая сверка, которые закрывают основные задачи учета.',
+    a: 'Нет. В Rendlify есть сводка, операции по смене и кассовая сверка, которые закрывают основные задачи учета.',
   },
 ];
 
@@ -105,7 +105,7 @@ export default function HomePage() {
         <header className="mb-14 flex flex-col gap-5 md:mb-20 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="mb-2 text-lg font-semibold uppercase tracking-[0.2em] text-[#6B6B6B]">
-              Palaci
+              Rendlify
             </p>
             <h1 className="max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
               Управление торговыми объектами без хаоса в таблицах
@@ -169,7 +169,7 @@ export default function HomePage() {
         </section>
 
         <section className="mt-12 rounded-[1.75rem] border border-[#D8D1CB] bg-white p-7 shadow-[0_6px_24px_rgba(0,0,0,0.04)]">
-          <h2 className="text-2xl font-extrabold md:text-3xl">Преимущества Palaci</h2>
+          <h2 className="text-2xl font-extrabold md:text-3xl">Преимущества Rendlify</h2>
           <p className="mt-2 max-w-3xl text-sm text-[#4B5563] md:text-base">
             Система создана для практической работы: меньше ручных операций, больше
             контроля и прозрачности в ежедневном учете.

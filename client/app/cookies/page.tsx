@@ -3,16 +3,16 @@ import Link from 'next/link';
 import { ArrowLeft, Cookie, ShieldCheck } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Файлы cookie | Palaci',
+  title: 'Файлы cookie | Rendlify',
   description:
-    'Информация о том, как сервис Palaci использует файлы cookie и похожие технологии.',
+    'Информация о том, как сервис Rendlify использует файлы cookie и похожие технологии.',
 };
 
 const sections = [
   {
     title: '1. Общие положения',
     paragraphs: [
-      '1.1. Настоящая Политика использования файлов cookie описывает, какие файлы cookie и аналогичные технологии использует сайт https://palaci.ru/ и программная платформа «Palaci», а также цели и порядок их применения.',
+      '1.1. Настоящая Политика использования файлов cookie описывает, какие файлы cookie и аналогичные технологии использует сайт https://rendlify.ru/ и программная платформа «Rendlify», а также цели и порядок их применения.',
       '1.2. Политика является частью Политики обработки персональных данных и Пользовательского соглашения Сайта. Используя Сайт, вы соглашаетесь с условиями настоящей Политики.',
     ],
   },
@@ -95,7 +95,7 @@ const sections = [
     title: '9. Изменение Политики',
     paragraphs: [
       '9.1. Оператор вправе в любое время вносить изменения в настоящую Политику.',
-      '9.2. Актуальная версия Политики всегда доступна на странице https://palaci.ru/cookies.',
+      '9.2. Актуальная версия Политики всегда доступна на странице https://rendlify.com/cookies.',
       '9.3. Если изменения носят существенный характер, Оператор может дополнительно уведомить пользователей через баннер на Сайте или иным доступным способом.',
     ],
   },
@@ -136,7 +136,7 @@ export default function CookiesPage() {
                 Политика использования файлов cookie
               </h1>
               <p className="mt-4 max-w-2xl text-base text-[#4B5563]">
-                Здесь размещена информация о том, какие cookie использует Palaci,
+                Здесь размещена информация о том, какие cookie использует Rendlify,
                 для чего они нужны и как пользователь может управлять своим согласием.
               </p>
             </div>
@@ -154,7 +154,7 @@ export default function CookiesPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Сайт</p>
-              <p className="mt-2 text-sm font-semibold text-[#111111]">https://palaci.ru/</p>
+              <p className="mt-2 text-sm font-semibold text-[#111111]">https://rendlify.com/</p>
             </div>
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Дата вступления в силу</p>

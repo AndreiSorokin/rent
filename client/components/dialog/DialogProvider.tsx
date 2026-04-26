@@ -124,7 +124,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
       ? 'bg-[#ef4444] hover:bg-[#dc2626]'
       : 'bg-[#ff6a13] hover:bg-[#e85a0c]';
   const badgeText =
-    tone === 'danger' ? 'Важно' : tone === 'warning' ? 'Подтверждение' : 'Palaci';
+    tone === 'danger' ? 'Важно' : tone === 'warning' ? 'Подтверждение' : 'Rendlify';
 
   return (
     <DialogContext.Provider value={value}>

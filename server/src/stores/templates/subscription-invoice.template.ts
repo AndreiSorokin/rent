@@ -366,7 +366,7 @@ export function renderSubscriptionInvoiceTemplate(data: InvoiceTemplateData) {
         <tr>
           <td class="col-num">1</td>
           <td class="col-name">
-            Оплата по счету №${invoiceNumber} от ${invoiceDate} за доступ к сервису Palaci
+            Оплата по счету №${invoiceNumber} от ${invoiceDate} за доступ к сервису Rendlify
           </td>
           <td class="col-qty">1</td>
           <td class="col-unit">мес</td>
@@ -400,7 +400,7 @@ export function renderSubscriptionInvoiceTemplate(data: InvoiceTemplateData) {
       </div>
     </div>
     <section class="footnote">
-      Оплачивая настоящий счет, вы присоединяетесь к Оферте на оказание услуг сервиса Palaci, размещенной по адресу:
+      Оплачивая настоящий счет, вы присоединяетесь к Оферте на оказание услуг сервиса Rendlify, размещенной по адресу:
       <a href="${offerUrl}" target="_blank" rel="noreferrer">${offerUrl}</a>
     </section>
   </div>
