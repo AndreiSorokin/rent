@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { ArrowLeft, Calculator, Receipt } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Тарифы | Palaci',
+  title: 'Тарифы | Rendlify',
   description:
-    'Тарифы сервиса Palaci. Актуальная стоимость рассчитывается по количеству занятых павильонов объекта.',
+    'Тарифы сервиса Rendlify. Актуальная стоимость рассчитывается по количеству занятых павильонов объекта.',
 };
 
 const examples = [
@@ -35,7 +35,7 @@ export default function TariffsPage() {
                 Тарифы
               </p>
               <h1 className="text-3xl font-extrabold leading-tight md:text-5xl">
-                Текущий тариф Palaci
+                Текущий тариф Rendlify
               </h1>
               <p className="mt-4 max-w-3xl text-base leading-7 text-[#4B5563]">
                 Стоимость доступа к платформе рассчитывается просто:

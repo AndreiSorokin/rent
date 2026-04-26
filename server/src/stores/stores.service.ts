@@ -964,7 +964,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   private buildStoreInvoiceExternalOrderId(storeId: number, periodStart: Date) {
     const year = periodStart.getUTCFullYear();
     const month = String(periodStart.getUTCMonth() + 1).padStart(2, '0');
-    return `palaci-store-${storeId}-${year}${month}`;
+    return `rendlify-store-${storeId}-${year}${month}`;
   }
 
   private async createTBankPaymentForInvoice(
@@ -1004,7 +1004,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       TerminalKey: config.terminalKey,
       Amount: amountKopecks,
       OrderId: externalOrderId,
-      Description: `Подписка Palaci за ${monthLabel} для объекта ${storeName}`,
+      Description: `Подписка Rendlify за ${monthLabel} для объекта ${storeName}`,
       NotificationURL: `${config.publicApiUrl}/stores/billing/tbank/webhook`,
       SuccessURL: `${config.publicAppUrl}/stores/${invoice.storeId}/settings?payment=success`,
       FailURL: `${config.publicAppUrl}/stores/${invoice.storeId}/settings?payment=fail`,
@@ -1131,7 +1131,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    const offerUrl = process.env.PUBLIC_OFFER_URL?.trim() || 'https://palaci.ru/offer';
+    const offerUrl = process.env.PUBLIC_OFFER_URL?.trim() || 'https://rendlify.com/offer';
 
     const invoice = await (this.prisma as any).storeInvoice.create({
       data: {

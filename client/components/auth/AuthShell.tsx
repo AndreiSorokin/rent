@@ -26,7 +26,7 @@ export function AuthShell({
           <section className="hidden bg-[#f4efeb] p-10 lg:block">
             <div className="flex h-full flex-col justify-between">
               <div>
-                <p className="text-sm font-semibold tracking-[0.2em] text-[#6b6b6b]">Palaci</p>
+                <p className="text-sm font-semibold tracking-[0.2em] text-[#6b6b6b]">Rendlify</p>
                 <h1 className="mt-6 text-4xl font-extrabold leading-tight text-[#111111]">{sideTitle}</h1>
                 <p className="mt-4 max-w-sm text-sm leading-6 text-[#6b6b6b]">{sideDescription}</p>
               </div>

@@ -920,7 +920,7 @@ export default function StoreSettingsPage() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-lg font-semibold text-[#111111] md:text-xl">
-                    Подписка на Palaci
+                    Подписка на Rendlify
                   </h2>
                   <span
                     className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${subscriptionStatusClasses}`}

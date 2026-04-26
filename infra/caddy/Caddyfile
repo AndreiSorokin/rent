@@ -1,15 +1,22 @@
 {
-        email {$LETSENCRYPT_EMAIL}
+    email {$LETSENCRYPT_EMAIL}
 }
 
-{$APP_DOMAIN} {
-        encode zstd gzip
+rendlify.com, www.rendlify.com {
+    @www host www.rendlify.com
+    redir @www https://rendlify.com{uri} permanent
 
-        handle_path /api/* {
-                reverse_proxy server:3000
-        }
+    encode zstd gzip
 
-        handle {
-                reverse_proxy client:3001
-        }
+    handle_path /api/* {
+        reverse_proxy server:3000
+    }
+
+    handle {
+        reverse_proxy client:3001
+    }
+}
+
+rendlify.com, www.rendlify.com {
+    redir https://rendlify.com{uri} permanent
 }
