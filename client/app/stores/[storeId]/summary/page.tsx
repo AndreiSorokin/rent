@@ -596,10 +596,19 @@ export default function StoreSummaryPage() {
     const expenseActualRaw = Number(expenses.totals?.actual ?? 0);
     const incomeTotalWithPrevious = previousMonthBalance + incomeTotalRaw;
     const incomeForecastWithPrevious = previousMonthBalance + incomeForecastRaw;
+    const incomeChannelsWithPrevious = {
+      bankTransfer:
+        Number(income.channels?.bankTransfer ?? 0) + previousMonthChannels.bankTransfer,
+      cashbox1: Number(income.channels?.cashbox1 ?? 0) + previousMonthChannels.cashbox1,
+      cashbox2: Number(income.channels?.cashbox2 ?? 0) + previousMonthChannels.cashbox2,
+      total: Number(income.channels?.total ?? 0) + previousMonthChannels.total,
+    };
     const incomeWithAdjustedTotal = {
       ...income,
       previousMonthBalance,
       carryAdjustment,
+      currentMonthChannels: income.channels,
+      channels: incomeChannelsWithPrevious,
       forecastWithPrevious: incomeForecastWithPrevious,
       totalWithPrevious: incomeTotalWithPrevious,
     };
@@ -882,7 +891,7 @@ export default function StoreSummaryPage() {
                   href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(selectedMonth)}`}
                   className="text-[#ff6a13] hover:underline"
                 >
-                  Прогноз: {formatMoney(data.income.forecast?.total ?? 0, data.currency)}
+                  Прогноз: {formatMoney(data.income.forecastWithPrevious ?? 0, data.currency)}
                 </Link>
               </div>
               {/* <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div> */}
@@ -907,7 +916,7 @@ export default function StoreSummaryPage() {
                 Прогноз:{' '}
                 {formatMoney(
                   calcProfit(
-                    Number(data.income.forecast?.total ?? 0),
+                    Number(data.income.forecastWithPrevious ?? 0),
                     Number(data.expenses.totals?.forecast ?? 0),
                   ),
                   data.currency,
@@ -917,7 +926,7 @@ export default function StoreSummaryPage() {
                 Факт:{' '}
                 {formatMoney(
                   calcProfit(
-                    Number(data.income.total ?? 0),
+                    Number(data.income.totalWithPrevious ?? 0),
                     Number(data.expenses.totals?.actual ?? 0),
                   ),
                   data.currency,
