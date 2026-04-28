@@ -189,6 +189,16 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         } as any,
       });
 
+      await tx.user.updateMany({
+        where: {
+          id: userId,
+          billingStartedAt: null,
+        } as any,
+        data: {
+          billingStartedAt: store.createdAt,
+        } as any,
+      });
+
       await tx.storeUser.create({
         data: {
           userId,
@@ -838,12 +848,24 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       where: { id: storeId },
       select: {
         id: true,
-        createdAt: true,
         timeZone: true,
         currency: true,
         billingCompanyName: true,
         billingLegalAddress: true,
         billingInn: true,
+        storeUsers: {
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          take: 1,
+          select: {
+            createdAt: true,
+            user: {
+              select: {
+                createdAt: true,
+                billingStartedAt: true,
+              } as any,
+            },
+          },
+        },
       } as any,
     });
 
@@ -868,7 +890,14 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       }),
     ]);
 
-    const billingStartedAt = (store as any).createdAt ?? new Date();
+    const primaryStoreUser = Array.isArray((store as any).storeUsers)
+      ? (store as any).storeUsers[0]
+      : null;
+    const billingStartedAt =
+      primaryStoreUser?.user?.billingStartedAt ??
+      primaryStoreUser?.user?.createdAt ??
+      primaryStoreUser?.createdAt ??
+      new Date();
     const billingStartPeriod = this.getMonthPeriodInTimeZone(timeZone, billingStartedAt);
     const isFirstMonthFree = billingStartPeriod.getTime() === currentPeriod.getTime();
     const currency = (store as any).currency === 'KZT' ? 'KZT' : 'RUB';
