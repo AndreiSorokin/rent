@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const examples = [
   { occupied: 10, amount: '200 ₽' },
   { occupied: 50, amount: '1000 ₽' },
-  { occupied: 12, amount: '2400 ₽' },
+  { occupied: 120, amount: '2400 ₽' },
 ];
 
 export default function TariffsPage() {
