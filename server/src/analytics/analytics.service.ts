@@ -101,6 +101,153 @@ export class AnalyticsService {
     };
   }
 
+  private async getClosingBalanceSnapshot(storeId: number, period: Date, timeZone: string) {
+    const { monthEnd } = this.getTimeZoneMonthRange(period, timeZone);
+    const paymentRepo = (this.prisma as any).payment;
+    const additionalChargePaymentRepo = (this.prisma as any).additionalChargePayment;
+    const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
+
+    const [payments, additionalChargePayments, storeExtraIncome, paidExpenses] = await Promise.all([
+      paymentRepo?.findMany
+        ? paymentRepo.findMany({
+            where: {
+              pavilion: { storeId },
+              period: { lte: period },
+            },
+          })
+        : Promise.resolve([]),
+      additionalChargePaymentRepo?.findMany
+        ? additionalChargePaymentRepo.findMany({
+            where: {
+              paidAt: { lte: monthEnd },
+              additionalCharge: {
+                pavilion: { storeId },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      storeExtraIncomeRepo?.findMany
+        ? storeExtraIncomeRepo.findMany({
+            where: {
+              storeId,
+              period: { lte: period },
+            },
+          })
+        : Promise.resolve([]),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          createdAt: { lte: monthEnd },
+          status: 'PAID',
+          OR: [{ storeId }, { pavilion: { storeId } }],
+        },
+      }),
+    ]);
+
+    let incomeTotal = 0;
+    let incomeBankTransfer = 0;
+    let incomeCashbox1 = 0;
+    let incomeCashbox2 = 0;
+
+    for (const pay of payments as any[]) {
+      const rentPaid = Number(pay.rentPaid ?? 0);
+      const utilitiesPaid = Number(pay.utilitiesPaid ?? 0);
+      const advertisingPaid = Number(pay.advertisingPaid ?? 0);
+      incomeTotal += rentPaid + utilitiesPaid + advertisingPaid;
+
+      const rentBank = Number(pay.rentBankTransferPaid ?? 0);
+      const rentCash1 = Number(pay.rentCashbox1Paid ?? 0);
+      const rentCash2 = Number(pay.rentCashbox2Paid ?? 0);
+      const utilBank = Number(pay.utilitiesBankTransferPaid ?? 0);
+      const utilCash1 = Number(pay.utilitiesCashbox1Paid ?? 0);
+      const utilCash2 = Number(pay.utilitiesCashbox2Paid ?? 0);
+      const advBank = Number(pay.advertisingBankTransferPaid ?? 0);
+      const advCash1 = Number(pay.advertisingCashbox1Paid ?? 0);
+      const advCash2 = Number(pay.advertisingCashbox2Paid ?? 0);
+
+      const entityChannelsTotal =
+        rentBank +
+        rentCash1 +
+        rentCash2 +
+        utilBank +
+        utilCash1 +
+        utilCash2 +
+        advBank +
+        advCash1 +
+        advCash2;
+
+      if (entityChannelsTotal > 0) {
+        incomeBankTransfer += rentBank + utilBank + advBank;
+        incomeCashbox1 += rentCash1 + utilCash1 + advCash1;
+        incomeCashbox2 += rentCash2 + utilCash2 + advCash2;
+      } else {
+        incomeBankTransfer += Number(pay.bankTransferPaid ?? 0);
+        incomeCashbox1 += Number(pay.cashbox1Paid ?? 0);
+        incomeCashbox2 += Number(pay.cashbox2Paid ?? 0);
+      }
+    }
+
+    for (const payment of additionalChargePayments as any[]) {
+      incomeTotal += Number(payment.amountPaid ?? 0);
+      incomeBankTransfer += Number(payment.bankTransferPaid ?? 0);
+      incomeCashbox1 += Number(payment.cashbox1Paid ?? 0);
+      incomeCashbox2 += Number(payment.cashbox2Paid ?? 0);
+    }
+
+    for (const item of storeExtraIncome as any[]) {
+      const amount = Number(item.amount ?? 0);
+      incomeTotal += amount;
+      const bank = Number(item.bankTransferPaid ?? 0);
+      const cash1 = Number(item.cashbox1Paid ?? 0);
+      const cash2 = Number(item.cashbox2Paid ?? 0);
+      if (bank + cash1 + cash2 > 0) {
+        incomeBankTransfer += bank;
+        incomeCashbox1 += cash1;
+        incomeCashbox2 += cash2;
+      } else {
+        incomeBankTransfer += amount;
+      }
+    }
+
+    let expenseTotal = 0;
+    let expenseBankTransfer = 0;
+    let expenseCashbox1 = 0;
+    let expenseCashbox2 = 0;
+
+    for (const expense of paidExpenses as any[]) {
+      const amount = Number(expense.amount ?? 0);
+      expenseTotal += amount;
+
+      const bank = Number(expense.bankTransferPaid ?? 0);
+      const cash1 = Number(expense.cashbox1Paid ?? 0);
+      const cash2 = Number(expense.cashbox2Paid ?? 0);
+      if (bank + cash1 + cash2 > 0) {
+        expenseBankTransfer += bank;
+        expenseCashbox1 += cash1;
+        expenseCashbox2 += cash2;
+      } else if (String(expense.paymentMethod) === 'CASHBOX1') {
+        expenseCashbox1 += amount;
+      } else if (String(expense.paymentMethod) === 'CASHBOX2') {
+        expenseCashbox2 += amount;
+      } else {
+        expenseBankTransfer += amount;
+      }
+    }
+
+    return {
+      balance: incomeTotal - expenseTotal,
+      channels: {
+        bankTransfer: incomeBankTransfer - expenseBankTransfer,
+        cashbox1: incomeCashbox1 - expenseCashbox1,
+        cashbox2: incomeCashbox2 - expenseCashbox2,
+        total:
+          incomeBankTransfer +
+          incomeCashbox1 +
+          incomeCashbox2 -
+          (expenseBankTransfer + expenseCashbox1 + expenseCashbox2),
+      },
+    };
+  }
+
   async getStoreName(storeId: number) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
@@ -1004,7 +1151,12 @@ export class AnalyticsService {
       previousHouseholdActual +
       previousUtilitiesActualByStatus;
 
-    const previousMonthBalance = previousIncomeTotal - previousExpenseTotal;
+    const previousClosingSnapshot = await this.getClosingBalanceSnapshot(
+      storeId,
+      prevPeriod,
+      storeTimeZone,
+    );
+    const previousMonthBalance = previousClosingSnapshot.balance;
     const carryAggregate = await this.prisma.pavilionMonthlyLedger.aggregate({
       where: {
         period: prevPeriod,
@@ -1150,19 +1302,7 @@ export class AnalyticsService {
           | null,
       );
     }
-    const previousMonthChannels = {
-      bankTransfer:
-        previousIncomeChannelsBankTransfer - previousExpenseChannelsBankTransfer,
-      cashbox1: previousIncomeChannelsCashbox1 - previousExpenseChannelsCashbox1,
-      cashbox2: previousIncomeChannelsCashbox2 - previousExpenseChannelsCashbox2,
-      total:
-        previousIncomeChannelsBankTransfer +
-        previousIncomeChannelsCashbox1 +
-        previousIncomeChannelsCashbox2 -
-        (previousExpenseChannelsBankTransfer +
-          previousExpenseChannelsCashbox1 +
-          previousExpenseChannelsCashbox2),
-    };
+    const previousMonthChannels = previousClosingSnapshot.channels;
     const months: Date[] = [];
     for (let i = 5; i >= 0; i -= 1) {
       months.push(startOfMonth(subMonths(period, i)));

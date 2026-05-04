@@ -695,7 +695,6 @@ export class StoresController {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
-      forceClose?: boolean;
     },
     @Req() req: any,
   ) {

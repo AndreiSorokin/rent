@@ -1,4 +1,5 @@
 import { StoresService } from './stores.service';
+import { BadRequestException } from '@nestjs/common';
 import { startOfMonth } from 'date-fns';
 
 describe('StoresService monthly rollover', () => {
@@ -467,5 +468,34 @@ describe('StoresService accounting day resolution', () => {
       cashbox1Paid: 1000,
       total: 1000,
     });
+  });
+
+  it('forbids closing accounting day when actual closing does not match expected close', async () => {
+    prisma.storeAccountingRecord.create = jest.fn();
+    prisma.storeActivity.create = jest.fn();
+    jest.spyOn(service as any, 'getStoreTimeZone').mockResolvedValue('UTC');
+    jest.spyOn(service as any, 'resolveAccountingDayOpenCloseRecords').mockResolvedValue({
+      openRecord: {
+        bankTransferPaid: 100,
+        cashbox1Paid: 50,
+        cashbox2Paid: 0,
+      },
+      closeRecord: null,
+    });
+    jest.spyOn(service as any, 'getActualAccountingByDay').mockResolvedValue({
+      bankTransferPaid: 20,
+      cashbox1Paid: 10,
+      cashbox2Paid: 0,
+      total: 30,
+    });
+
+    await expect(
+      service.closeAccountingDay(1, 5, {
+        date: '2026-03-13',
+        bankTransferPaid: 121,
+        cashbox1Paid: 60,
+        cashbox2Paid: 0,
+      }),
+    ).rejects.toThrow(new BadRequestException('Нельзя закрыть день с несхождением'));
   });
 });
