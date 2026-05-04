@@ -192,7 +192,7 @@ export function CreatePavilionModal({
         setContractExpiresOnTouched(false);
       }
 
-      toast.success('Павильон успешно создан');
+      toast.success('Объект аренды успешно создан');
       onSaved();
     } catch (err: any) {
       toast.error(err.message || 'Ошибка создания павильона');

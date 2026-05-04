@@ -29,7 +29,6 @@ export default function StoreAccountingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [store, setStore] = useState<any>(null);
-  const [analytics, setAnalytics] = useState<any>(null);
   const [accountingRows, setAccountingRows] = useState<any[]>([]);
   const [accountingDate, setAccountingDate] = useState('');
   const [dayReconciliation, setDayReconciliation] = useState<any>(null);
@@ -43,7 +42,6 @@ export default function StoreAccountingPage() {
   const [dayActionSaving, setDayActionSaving] = useState(false);
   const [didInitDateFromStoreTz, setDidInitDateFromStoreTz] = useState(false);
   const storeTimeZone = store?.timeZone || 'UTC';
-  const getAnalyticsPeriod = (dateKey: string) => (dateKey || '').slice(0, 7);
 
   const fetchData = async (withLoader = true) => {
     if (!storeId) return;
@@ -57,13 +55,8 @@ export default function StoreAccountingPage() {
       }
       const resolvedAccountingDate =
         accountingDate || getTodayDateKeyInTimeZone(storeData?.timeZone || 'UTC');
-      const analyticsPeriod = getAnalyticsPeriod(resolvedAccountingDate);
 
-
-      const [analyticsData, accountingData, reconciliationData, expectedCloseData] = await Promise.all([
-        apiFetch<any>(
-          `/stores/${storeId}/analytics?period=${encodeURIComponent(analyticsPeriod)}`,
-        ),
+      const [accountingData, reconciliationData, expectedCloseData] = await Promise.all([
         apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
         apiFetch<any>(
           `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(resolvedAccountingDate)}`,
@@ -74,7 +67,6 @@ export default function StoreAccountingPage() {
       ]);
       setStore(storeData);
       setAccountingDate((prev) => prev || resolvedAccountingDate);
-      setAnalytics(analyticsData);
       setAccountingRows(accountingData || []);
       setDayReconciliation(reconciliationData);
       setExpectedCloseDetails(expectedCloseData);
@@ -95,11 +87,7 @@ export default function StoreAccountingPage() {
   useEffect(() => {
     if (!storeId || !store) return;
     if (!hasPermission(store.permissions || [], 'VIEW_PAYMENTS')) return;
-    const analyticsPeriod = getAnalyticsPeriod(accountingDate);
     void Promise.all([
-      apiFetch<any>(
-        `/stores/${storeId}/analytics?period=${encodeURIComponent(analyticsPeriod)}`,
-      ),
       apiFetch<any>(
         `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
       ),
@@ -107,8 +95,7 @@ export default function StoreAccountingPage() {
         `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(accountingDate)}`,
       ),
       ])
-      .then(([analyticsData, reconciliation, expectedCloseData]) => {
-        setAnalytics(analyticsData);
+      .then(([reconciliation, expectedCloseData]) => {
         setDayReconciliation(reconciliation);
         setExpectedCloseDetails(expectedCloseData);
       })
@@ -120,6 +107,14 @@ export default function StoreAccountingPage() {
     setAccountingDate(getTodayDateKeyInTimeZone(store.timeZone));
     setDidInitDateFromStoreTz(true);
   }, [store?.timeZone, didInitDateFromStoreTz]);
+
+  useEffect(() => {
+    if (!dayReconciliation || dayReconciliation.isOpened) return;
+    const objectState = dayReconciliation.objectState;
+    setDayOpenBank(String(Number(objectState?.bankTransferPaid ?? 0)));
+    setDayOpenCash1(String(Number(objectState?.cashbox1Paid ?? 0)));
+    setDayOpenCash2(String(Number(objectState?.cashbox2Paid ?? 0)));
+  }, [dayReconciliation]);
 
   const handleDeleteAccountingRecord = async (recordId: number) => {
     const confirmed = await dialog.confirm({
@@ -150,6 +145,24 @@ export default function StoreAccountingPage() {
     const cash2 = dayOpenCash2 ? Number(dayOpenCash2) : 0;
     if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
       await dialog.alert('Введите корректные суммы');
+      return;
+    }
+
+    const objectState = dayReconciliation?.objectState;
+    const expectedBank = Number(objectState?.bankTransferPaid ?? 0);
+    const expectedCash1 = Number(objectState?.cashbox1Paid ?? 0);
+    const expectedCash2 = Number(objectState?.cashbox2Paid ?? 0);
+    const isMismatch =
+      Math.abs(bank - expectedBank) > 0.01 ||
+      Math.abs(cash1 - expectedCash1) > 0.01 ||
+      Math.abs(cash2 - expectedCash2) > 0.01;
+
+    if (isMismatch) {
+      await dialog.alert({
+        title: 'Нельзя открыть день с несхождением',
+        message: 'Сумма по каналам должна совпадать с состоянием объекта.',
+        tone: 'warning',
+      });
       return;
     }
 
@@ -576,7 +589,7 @@ export default function StoreAccountingPage() {
         </div> */}
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="mt-1 text-2xl font-bold text-[#111111] md:text-3xl">Открытие/закрытие дня</h1>
+          <h1 className="mt-1 text-2xl font-bold text-[#111111] md:text-3xl">Открытие/закрытие смены</h1>
           <Link
             href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
             className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
@@ -585,15 +598,32 @@ export default function StoreAccountingPage() {
           </Link>
         </div>
 
-        {analytics && (
+        {dayReconciliation?.objectState && (
           <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm text-[#111111]">
-            Остаток с предыдущего месяца:{' '}
+            Состояние объекта:{' '}
             <span className="font-semibold">
               {formatMoney(
-                analytics?.summaryPage?.income?.previousMonthBalance ?? 0,
+                dayReconciliation.objectState.total ?? 0,
                 store.currency,
               )}
             </span>
+            <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-[#6b6b6b] md:grid-cols-3">
+              <div>
+                Безналичные:{' '}
+                {formatMoney(
+                  dayReconciliation.objectState.bankTransferPaid ?? 0,
+                  store.currency,
+                )}
+              </div>
+              <div>
+                Касса 1:{' '}
+                {formatMoney(dayReconciliation.objectState.cashbox1Paid ?? 0, store.currency)}
+              </div>
+              <div>
+                Касса 2:{' '}
+                {formatMoney(dayReconciliation.objectState.cashbox2Paid ?? 0, store.currency)}
+              </div>
+            </div>
           </div>
         )}
 
@@ -643,6 +673,9 @@ export default function StoreAccountingPage() {
               {!dayReconciliation.isOpened && (
                 <div className="rounded-xl border border-[#e5ded8] bg-white p-3">
                   <p className="mb-2 text-sm font-semibold text-[#111111]">Открыть день</p>
+                  <p className="mb-3 text-xs text-[#6b6b6b]">
+                    Сумма по каналам должна совпадать с состоянием объекта.
+                  </p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
                       type="number"

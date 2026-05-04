@@ -2881,14 +2881,135 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   private async getActualAccountingByDay(storeId: number, dayStart: Date, timeZone: string) {
     const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
+    return this.getActualAccountingByRange(storeId, dayStart, dayEnd);
+  }
+
+  private async getExpenseTotalsByRange(storeId: number, rangeStart: Date, rangeEnd: Date) {
+    const cutoverDayStart = await this.getLedgerCutoverDayStart(storeId);
+    const useLegacy = cutoverDayStart ? rangeStart < cutoverDayStart : true;
+
+    if (useLegacy) {
+      const legacyExpenses = await this.prisma.pavilionExpense.findMany({
+        where: {
+          status: 'PAID' as any,
+          createdAt: {
+            gte: rangeStart,
+            lte: rangeEnd,
+          },
+          OR: [{ storeId }, { pavilion: { storeId } }],
+        },
+        select: {
+          amount: true,
+          paymentMethod: true,
+          bankTransferPaid: true,
+          cashbox1Paid: true,
+          cashbox2Paid: true,
+        },
+      });
+      return this.sumExpenseChannels(legacyExpenses as any[]);
+    }
+
+    const ledgerItems = await (this.prisma as any).storeExpenseLedger.findMany({
+      where: {
+        storeId,
+        occurredAt: {
+          gte: rangeStart,
+          lte: rangeEnd,
+        },
+      },
+      select: {
+        id: true,
+        sourceType: true,
+        sourceId: true,
+        bankTransferPaid: true,
+        cashbox1Paid: true,
+        cashbox2Paid: true,
+      },
+    });
+
+    if (ledgerItems.length === 0) {
+      const legacyExpenses = await this.prisma.pavilionExpense.findMany({
+        where: {
+          status: 'PAID' as any,
+          createdAt: {
+            gte: rangeStart,
+            lte: rangeEnd,
+          },
+          OR: [{ storeId }, { pavilion: { storeId } }],
+        },
+        select: {
+          amount: true,
+          paymentMethod: true,
+          bankTransferPaid: true,
+          cashbox1Paid: true,
+          cashbox2Paid: true,
+        },
+      });
+      return this.sumExpenseChannels(legacyExpenses as any[]);
+    }
+
+    const groupedItems = new Map<
+      string,
+      {
+        bankTransferPaid: number;
+        cashbox1Paid: number;
+        cashbox2Paid: number;
+      }
+    >();
+
+    for (const expense of ledgerItems as any[]) {
+      const key =
+        expense.sourceType && expense.sourceId != null
+          ? `${String(expense.sourceType)}:${String(expense.sourceId)}`
+          : `LEDGER:${String(expense.id)}`;
+      const current = groupedItems.get(key) ?? {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+      };
+      current.bankTransferPaid += Number(expense.bankTransferPaid ?? 0);
+      current.cashbox1Paid += Number(expense.cashbox1Paid ?? 0);
+      current.cashbox2Paid += Number(expense.cashbox2Paid ?? 0);
+      groupedItems.set(key, current);
+    }
+
+    const totals = Array.from(groupedItems.values()).reduce(
+      (acc, expense) => {
+        const signedTotal =
+          Number(expense.bankTransferPaid ?? 0) +
+          Number(expense.cashbox1Paid ?? 0) +
+          Number(expense.cashbox2Paid ?? 0);
+
+        if (signedTotal > 0.009) {
+          acc.bankTransferPaid += Number(expense.bankTransferPaid ?? 0);
+          acc.cashbox1Paid += Number(expense.cashbox1Paid ?? 0);
+          acc.cashbox2Paid += Number(expense.cashbox2Paid ?? 0);
+        }
+
+        return acc;
+      },
+      {
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+      },
+    );
+
+    return {
+      ...totals,
+      total: totals.bankTransferPaid + totals.cashbox1Paid + totals.cashbox2Paid,
+    };
+  }
+
+  private async getActualAccountingByRange(storeId: number, rangeStart: Date, rangeEnd: Date) {
     const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
-    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, expenseSnapshot] = await Promise.all([
+    const [pavilionPayments, additionalChargePayments, storeExtraIncomePayments, expenseTotals] = await Promise.all([
       this.prisma.paymentTransaction.aggregate({
         where: {
           pavilion: { storeId },
           createdAt: {
-            gte: dayStart,
-            lte: dayEnd,
+            gte: rangeStart,
+            lte: rangeEnd,
           },
         },
         _sum: {
@@ -2905,8 +3026,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             },
           },
           paidAt: {
-            gte: dayStart,
-            lte: dayEnd,
+            gte: rangeStart,
+            lte: rangeEnd,
           },
         },
         _sum: {
@@ -2920,8 +3041,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             where: {
               storeId,
               paidAt: {
-                gte: dayStart,
-                lte: dayEnd,
+                gte: rangeStart,
+                lte: rangeEnd,
               },
             },
             _sum: {
@@ -2937,10 +3058,8 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
               cashbox2Paid: 0,
             },
           }),
-      this.getExpenseSnapshotForDay(storeId, dayStart, dayEnd),
+      this.getExpenseTotalsByRange(storeId, rangeStart, rangeEnd),
     ]);
-
-    const expenseTotals = expenseSnapshot.totals;
 
     const bankTransferPaid =
       (pavilionPayments._sum.bankTransferPaid ?? 0) +
@@ -2963,6 +3082,174 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       cashbox1Paid,
       cashbox2Paid,
       total: bankTransferPaid + cashbox1Paid + cashbox2Paid,
+    };
+  }
+
+  private async getClosingBalanceSnapshot(storeId: number, period: Date, timeZone: string) {
+    const { monthEnd } = this.getTimeZoneMonthRange(period, timeZone);
+    const paymentRepo = (this.prisma as any).payment;
+    const additionalChargePaymentRepo = (this.prisma as any).additionalChargePayment;
+    const storeExtraIncomeRepo = (this.prisma as any).storeExtraIncome;
+
+    const [payments, additionalChargePayments, storeExtraIncome, paidExpenses] = await Promise.all([
+      paymentRepo?.findMany
+        ? paymentRepo.findMany({
+            where: {
+              pavilion: { storeId },
+              period: { lte: period },
+            },
+          })
+        : Promise.resolve([]),
+      additionalChargePaymentRepo?.findMany
+        ? additionalChargePaymentRepo.findMany({
+            where: {
+              paidAt: { lte: monthEnd },
+              additionalCharge: {
+                pavilion: { storeId },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      storeExtraIncomeRepo?.findMany
+        ? storeExtraIncomeRepo.findMany({
+            where: {
+              storeId,
+              period: { lte: period },
+            },
+          })
+        : Promise.resolve([]),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          createdAt: { lte: monthEnd },
+          status: 'PAID',
+          OR: [{ storeId }, { pavilion: { storeId } }],
+        },
+      }),
+    ]);
+
+    let incomeBankTransfer = 0;
+    let incomeCashbox1 = 0;
+    let incomeCashbox2 = 0;
+
+    for (const pay of payments as any[]) {
+      const rentBank = Number(pay.rentBankTransferPaid ?? 0);
+      const rentCash1 = Number(pay.rentCashbox1Paid ?? 0);
+      const rentCash2 = Number(pay.rentCashbox2Paid ?? 0);
+      const utilBank = Number(pay.utilitiesBankTransferPaid ?? 0);
+      const utilCash1 = Number(pay.utilitiesCashbox1Paid ?? 0);
+      const utilCash2 = Number(pay.utilitiesCashbox2Paid ?? 0);
+      const advBank = Number(pay.advertisingBankTransferPaid ?? 0);
+      const advCash1 = Number(pay.advertisingCashbox1Paid ?? 0);
+      const advCash2 = Number(pay.advertisingCashbox2Paid ?? 0);
+
+      const entityChannelsTotal =
+        rentBank +
+        rentCash1 +
+        rentCash2 +
+        utilBank +
+        utilCash1 +
+        utilCash2 +
+        advBank +
+        advCash1 +
+        advCash2;
+
+      if (entityChannelsTotal > 0) {
+        incomeBankTransfer += rentBank + utilBank + advBank;
+        incomeCashbox1 += rentCash1 + utilCash1 + advCash1;
+        incomeCashbox2 += rentCash2 + utilCash2 + advCash2;
+      } else {
+        incomeBankTransfer += Number(pay.bankTransferPaid ?? 0);
+        incomeCashbox1 += Number(pay.cashbox1Paid ?? 0);
+        incomeCashbox2 += Number(pay.cashbox2Paid ?? 0);
+      }
+    }
+
+    for (const payment of additionalChargePayments as any[]) {
+      incomeBankTransfer += Number(payment.bankTransferPaid ?? 0);
+      incomeCashbox1 += Number(payment.cashbox1Paid ?? 0);
+      incomeCashbox2 += Number(payment.cashbox2Paid ?? 0);
+    }
+
+    for (const item of storeExtraIncome as any[]) {
+      const amount = Number(item.amount ?? 0);
+      const bank = Number(item.bankTransferPaid ?? 0);
+      const cash1 = Number(item.cashbox1Paid ?? 0);
+      const cash2 = Number(item.cashbox2Paid ?? 0);
+      if (bank + cash1 + cash2 > 0) {
+        incomeBankTransfer += bank;
+        incomeCashbox1 += cash1;
+        incomeCashbox2 += cash2;
+      } else {
+        incomeBankTransfer += amount;
+      }
+    }
+
+    let expenseBankTransfer = 0;
+    let expenseCashbox1 = 0;
+    let expenseCashbox2 = 0;
+
+    for (const expense of paidExpenses as any[]) {
+      const bank = Number(expense.bankTransferPaid ?? 0);
+      const cash1 = Number(expense.cashbox1Paid ?? 0);
+      const cash2 = Number(expense.cashbox2Paid ?? 0);
+      if (bank + cash1 + cash2 > 0) {
+        expenseBankTransfer += bank;
+        expenseCashbox1 += cash1;
+        expenseCashbox2 += cash2;
+      } else {
+        const amount = Number(expense.amount ?? 0);
+        expenseBankTransfer += amount;
+      }
+    }
+
+    const channels = {
+      bankTransferPaid: incomeBankTransfer - expenseBankTransfer,
+      cashbox1Paid: incomeCashbox1 - expenseCashbox1,
+      cashbox2Paid: incomeCashbox2 - expenseCashbox2,
+    };
+
+    return {
+      ...channels,
+      total: channels.bankTransferPaid + channels.cashbox1Paid + channels.cashbox2Paid,
+    };
+  }
+
+  private async getAccountingObjectState(storeId: number, dayStart: Date, timeZone: string) {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const parts = formatter.formatToParts(dayStart);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    const currentPeriod = startOfMonth(
+      new Date(Number(map.get('year')), Number(map.get('month')) - 1, 1),
+    );
+    const previousPeriod = startOfMonth(subMonths(currentPeriod, 1));
+    const { monthStart } = this.getTimeZoneMonthRange(currentPeriod, timeZone);
+    const previousClosing = await this.getClosingBalanceSnapshot(
+      storeId,
+      previousPeriod,
+      timeZone,
+    );
+
+    if (dayStart.getTime() <= monthStart.getTime()) {
+      return previousClosing;
+    }
+
+    const intramonthActual = await this.getActualAccountingByRange(
+      storeId,
+      monthStart,
+      new Date(dayStart.getTime() - 1),
+    );
+
+    return {
+      bankTransferPaid:
+        previousClosing.bankTransferPaid + intramonthActual.bankTransferPaid,
+      cashbox1Paid: previousClosing.cashbox1Paid + intramonthActual.cashbox1Paid,
+      cashbox2Paid: previousClosing.cashbox2Paid + intramonthActual.cashbox2Paid,
+      total: previousClosing.total + intramonthActual.total,
     };
   }
 
@@ -3246,12 +3533,11 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const dayStart = this.parseAccountingDay(date, timeZone);
     const { dayEnd } = this.getTimeZoneDayRange(dayStart, timeZone);
 
-    const { openRecord, closeRecord } = await this.resolveAccountingDayOpenCloseRecords(
-      storeId,
-      dayStart,
-      dayEnd,
-    );
-    const actual = await this.getActualAccountingByDay(storeId, dayStart, timeZone);
+    const [{ openRecord, closeRecord }, actual, objectState] = await Promise.all([
+      this.resolveAccountingDayOpenCloseRecords(storeId, dayStart, dayEnd),
+      this.getActualAccountingByDay(storeId, dayStart, timeZone),
+      this.getAccountingObjectState(storeId, dayStart, timeZone),
+    ]);
 
     const opening = openRecord
       ? {
@@ -3301,6 +3587,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       date: dayStart,
       isOpened: Boolean(openRecord),
       isClosed: Boolean(closeRecord),
+      objectState,
       opening,
       actual,
       expectedClose,
@@ -3569,9 +3856,23 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       dayStart,
       dayEnd,
     );
+    const objectState = await this.getAccountingObjectState(storeId, dayStart, timeZone);
 
     if (openRecord) {
-      throw new BadRequestException('День уже открыт');}
+      throw new BadRequestException('???? ??? ??????');
+    }
+
+    const diffBank = amounts.bankTransferPaid - objectState.bankTransferPaid;
+    const diffCash1 = amounts.cashbox1Paid - objectState.cashbox1Paid;
+    const diffCash2 = amounts.cashbox2Paid - objectState.cashbox2Paid;
+    const hasMismatch =
+      Math.abs(diffBank) > 0.01 ||
+      Math.abs(diffCash1) > 0.01 ||
+      Math.abs(diffCash2) > 0.01;
+
+    if (hasMismatch) {
+      throw new BadRequestException('?????? ??????? ???? ? ????????????');
+    }
 
     const openingRecord = await this.prisma.storeAccountingRecord.create({
       data: {
@@ -3621,14 +3922,14 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (!openRecord) {
-      throw new BadRequestException('День не открыт');}
+      throw new BadRequestException('???? ?? ??????');
+    }
     if (closeRecord) {
-      throw new BadRequestException('День уже закрыт');
+      throw new BadRequestException('???? ??? ??????');
     }
 
     const actual = await this.getActualAccountingByDay(storeId, dayStart, timeZone);
-    const expectedCloseBank =
-      openRecord.bankTransferPaid + actual.bankTransferPaid;
+    const expectedCloseBank = openRecord.bankTransferPaid + actual.bankTransferPaid;
     const expectedCloseCash1 = openRecord.cashbox1Paid + actual.cashbox1Paid;
     const expectedCloseCash2 = openRecord.cashbox2Paid + actual.cashbox2Paid;
     const diffBank = amounts.bankTransferPaid - expectedCloseBank;
@@ -3640,9 +3941,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       Math.abs(diffCash2) > 0.01;
 
     if (hasMismatch) {
-      throw new BadRequestException(
-        'Нельзя закрыть день с несхождением',
-      );
+      throw new BadRequestException('?????? ??????? ???? ? ????????????');
     }
 
     const closingRecord = await this.prisma.storeAccountingRecord.create({

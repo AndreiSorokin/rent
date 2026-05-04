@@ -1329,7 +1329,7 @@ export default function StorePage() {
             className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl bor">Павильоны</h2>
+              <h2 className="text-xl font-semibold md:text-2xl bor">Объекты аренды</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {canCreatePavilion && (
                   <button
@@ -1430,7 +1430,7 @@ export default function StorePage() {
                         Перенос
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Павильон
+                        Объекты аренды
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
                         м²

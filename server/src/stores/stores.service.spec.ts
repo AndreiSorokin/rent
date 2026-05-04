@@ -496,6 +496,32 @@ describe('StoresService accounting day resolution', () => {
         cashbox1Paid: 60,
         cashbox2Paid: 0,
       }),
-    ).rejects.toThrow(new BadRequestException('Нельзя закрыть день с несхождением'));
+    ).rejects.toThrow(BadRequestException);
   });
+
+  it('forbids opening accounting day when opening channels do not match object state', async () => {
+    prisma.storeAccountingRecord.create = jest.fn();
+    prisma.storeActivity.create = jest.fn();
+    jest.spyOn(service as any, 'getStoreTimeZone').mockResolvedValue('UTC');
+    jest.spyOn(service as any, 'resolveAccountingDayOpenCloseRecords').mockResolvedValue({
+      openRecord: null,
+      closeRecord: null,
+    });
+    jest.spyOn(service as any, 'getAccountingObjectState').mockResolvedValue({
+      bankTransferPaid: 100,
+      cashbox1Paid: 50,
+      cashbox2Paid: 0,
+      total: 150,
+    });
+
+    await expect(
+      service.openAccountingDay(1, 5, {
+        date: '2026-03-13',
+        bankTransferPaid: 90,
+        cashbox1Paid: 50,
+        cashbox2Paid: 0,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
 });

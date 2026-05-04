@@ -379,7 +379,7 @@ export default function PavilionArchivePage() {
 
   if (loading) return <FullScreenLoader label="Загружаем архив павильона..." />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600"> не найден</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
   return (

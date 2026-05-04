@@ -36,7 +36,7 @@ const PERMISSION_SECTIONS: Array<{
   items: Permission[];
 }> = [
   {
-    title: 'Павильоны и объект',
+    title: 'Объекты аренды',
     items: [
       'VIEW_PAVILIONS',
       'CREATE_PAVILIONS',

@@ -747,7 +747,7 @@ export default function StoreSettingsPage() {
       const wb = XLSX.utils.book_new();
 
       const SHEETS = {
-        pavilions: 'Павильоны',
+        pavilions: 'Объекты аренды',
         householdExpenses: 'ХозяйственныеРасходы',
         otherExpenses: 'ПрочиеРасходы',
         adminExpenses: 'АдминистративныеРасходы',
@@ -1397,11 +1397,11 @@ export default function StoreSettingsPage() {
                               }))
                             }
                             className="mb-3 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
-                            placeholder="Поиск павильона по номеру"
+                            placeholder="Поиск объекта аренды по номеру"
                           />
                           <div className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-2">
                             {filteredPavilions.length === 0 ? (
-                              <p className="text-xs text-[#6b6b6b]">Павильоны не найдены</p>
+                              <p className="text-xs text-[#6b6b6b]">Объекты аренды не найдены</p>
                             ) : (
                               filteredPavilions.map((p: any) => (
                                 <label

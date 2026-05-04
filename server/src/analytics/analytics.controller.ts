@@ -124,9 +124,9 @@ export class AnalyticsController {
 
     doc.font('MainBold').fontSize(14).text('4. Торговая площадь');
     doc.moveDown(0.4);
-    line('Павильонов всего', Number(tradeArea?.pavilionsTotal ?? 0));
-    line('Павильонов занято', Number(tradeArea?.pavilionsRented ?? 0));
-    line('Павильонов свободно', Number(tradeArea?.pavilionsAvailable ?? 0));
+    line('Объектов аренды всего', Number(tradeArea?.pavilionsTotal ?? 0));
+    line('Объектов аренды занято', Number(tradeArea?.pavilionsRented ?? 0));
+    line('Объектов аренды свободно', Number(tradeArea?.pavilionsAvailable ?? 0));
     line('Площадь всего', Number(tradeArea?.squareTotal ?? 0));
     line('Площадь в аренде', Number(tradeArea?.squareRented ?? 0));
     line('Свободная площадь', Number(tradeArea?.squareAvailable ?? 0));
