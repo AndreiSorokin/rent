@@ -3607,7 +3607,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       bankTransferPaid?: number;
       cashbox1Paid?: number;
       cashbox2Paid?: number;
-      forceClose?: boolean;
     },
   ) {
     const timeZone = await this.getStoreTimeZone(storeId);
@@ -3640,9 +3639,9 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
       Math.abs(diffCash1) > 0.01 ||
       Math.abs(diffCash2) > 0.01;
 
-    if (hasMismatch && !data.forceClose) {
+    if (hasMismatch) {
       throw new BadRequestException(
-        'Обнаружено расхождение между ожидаемыми и фактическими суммами. Проверьте данные или используйте принудительное закрытие дня',
+        'Нельзя закрыть день с несхождением',
       );
     }
 

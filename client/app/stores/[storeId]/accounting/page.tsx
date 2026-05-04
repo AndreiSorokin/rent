@@ -43,6 +43,7 @@ export default function StoreAccountingPage() {
   const [dayActionSaving, setDayActionSaving] = useState(false);
   const [didInitDateFromStoreTz, setDidInitDateFromStoreTz] = useState(false);
   const storeTimeZone = store?.timeZone || 'UTC';
+  const getAnalyticsPeriod = (dateKey: string) => (dateKey || '').slice(0, 7);
 
   const fetchData = async (withLoader = true) => {
     if (!storeId) return;
@@ -56,10 +57,13 @@ export default function StoreAccountingPage() {
       }
       const resolvedAccountingDate =
         accountingDate || getTodayDateKeyInTimeZone(storeData?.timeZone || 'UTC');
+      const analyticsPeriod = getAnalyticsPeriod(resolvedAccountingDate);
 
 
       const [analyticsData, accountingData, reconciliationData, expectedCloseData] = await Promise.all([
-        apiFetch<any>(`/stores/${storeId}/analytics`),
+        apiFetch<any>(
+          `/stores/${storeId}/analytics?period=${encodeURIComponent(analyticsPeriod)}`,
+        ),
         apiFetch<any[]>(`/stores/${storeId}/accounting-table`),
         apiFetch<any>(
           `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(resolvedAccountingDate)}`,
@@ -91,15 +95,20 @@ export default function StoreAccountingPage() {
   useEffect(() => {
     if (!storeId || !store) return;
     if (!hasPermission(store.permissions || [], 'VIEW_PAYMENTS')) return;
+    const analyticsPeriod = getAnalyticsPeriod(accountingDate);
     void Promise.all([
+      apiFetch<any>(
+        `/stores/${storeId}/analytics?period=${encodeURIComponent(analyticsPeriod)}`,
+      ),
       apiFetch<any>(
         `/stores/${storeId}/accounting-reconciliation?date=${encodeURIComponent(accountingDate)}`,
       ),
       apiFetch<any>(
         `/stores/${storeId}/accounting-reconciliation/expected-close-details?date=${encodeURIComponent(accountingDate)}`,
       ),
-    ])
-      .then(([reconciliation, expectedCloseData]) => {
+      ])
+      .then(([analyticsData, reconciliation, expectedCloseData]) => {
+        setAnalytics(analyticsData);
         setDayReconciliation(reconciliation);
         setExpectedCloseDetails(expectedCloseData);
       })
@@ -188,13 +197,12 @@ export default function StoreAccountingPage() {
       Math.abs(cash2 - expectedCash2) > 0.01;
 
     if (isMismatch) {
-      const confirmed = await dialog.confirm({
-        title: 'Закрытие дня с расхождением',
-        message: 'Вы уверены, что хотите закрыть день с несхождением?',
+      await dialog.alert({
+        title: 'Нельзя закрыть день с несхождением',
+        message: 'Проверьте фактические суммы и добейтесь совпадения с ожидаемым закрытием.',
         tone: 'warning',
-        confirmText: 'Закрыть день',
       });
-      if (!confirmed) return;
+      return;
     }
 
     try {
@@ -206,7 +214,6 @@ export default function StoreAccountingPage() {
           bankTransferPaid: bank,
           cashbox1Paid: cash1,
           cashbox2Paid: cash2,
-          forceClose: isMismatch,
         }),
       });
       setDayReconciliation(data);

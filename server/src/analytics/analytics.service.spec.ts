@@ -10,10 +10,16 @@ describe('AnalyticsService', () => {
     const additionalChargeFindMany = jest.fn();
     const pavilionMonthlyLedgerFindMany = jest.fn();
     const pavilionMonthlyLedgerAggregate = jest.fn();
+    const paymentFindMany = jest.fn();
+    const additionalChargePaymentFindMany = jest.fn();
+    const storeExtraIncomeFindMany = jest.fn();
 
     return {
       store: { findUnique: storeFindUnique },
       pavilion: { updateMany: pavilionUpdateMany, findMany: pavilionFindMany },
+      payment: { findMany: paymentFindMany },
+      additionalChargePayment: { findMany: additionalChargePaymentFindMany },
+      storeExtraIncome: { findMany: storeExtraIncomeFindMany },
       pavilionExpense: { findMany: pavilionExpenseFindMany },
       additionalCharge: { findMany: additionalChargeFindMany },
       pavilionMonthlyLedger: {
@@ -116,13 +122,52 @@ describe('AnalyticsService', () => {
         { type: 'HOUSEHOLD', amount: 50, status: 'PAID' },
         { type: 'STORE_FACILITIES', amount: 40, status: 'PAID' },
       ])
-      .mockResolvedValue([]);
+      .mockResolvedValueOnce([
+        { type: 'PAYROLL_TAX', amount: 100, status: 'PAID' },
+        { type: 'HOUSEHOLD', amount: 50, status: 'PAID' },
+        { type: 'STORE_FACILITIES', amount: 40, status: 'PAID' },
+      ])
+      .mockResolvedValue([
+        {
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          amount: 300,
+          status: 'PAID',
+        },
+      ]);
 
     prisma.additionalCharge.findMany.mockResolvedValue([]);
     prisma.pavilionMonthlyLedger.findMany.mockResolvedValue([]);
     prisma.pavilionMonthlyLedger.aggregate.mockResolvedValue({
       _sum: { closingDebt: 0 },
     });
+    prisma.payment.findMany.mockResolvedValue([
+      {
+        rentPaid: 500,
+        utilitiesPaid: 50,
+        advertisingPaid: 50,
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        rentBankTransferPaid: 500,
+        rentCashbox1Paid: 0,
+        rentCashbox2Paid: 0,
+        utilitiesBankTransferPaid: 0,
+        utilitiesCashbox1Paid: 50,
+        utilitiesCashbox2Paid: 0,
+        advertisingBankTransferPaid: 0,
+        advertisingCashbox1Paid: 50,
+        advertisingCashbox2Paid: 0,
+      },
+    ]);
+    prisma.additionalChargePayment.findMany.mockResolvedValue([
+      {
+        amountPaid: 25,
+        bankTransferPaid: 25,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+      },
+    ]);
+    prisma.storeExtraIncome.findMany.mockResolvedValue([]);
 
     const service = new AnalyticsService(prisma as any);
     const result = await service.getStoreAnalytics(2);
@@ -149,6 +194,97 @@ describe('AnalyticsService', () => {
       forecastIncome: 1250,
       actualIncome: 1350,
       delta: 100,
+    });
+  });
+
+  it('uses previous month closing saldo as carry-over for the next month', async () => {
+    const prisma = makePrismaMock();
+
+    prisma.store.findUnique
+      .mockResolvedValueOnce({
+        utilitiesExpenseStatus: 'UNPAID',
+        householdExpenseStatus: 'UNPAID',
+        staff: [],
+      })
+      .mockResolvedValueOnce({
+        utilitiesExpenseStatus: 'UNPAID',
+        householdExpenseStatus: 'UNPAID',
+        staff: [],
+      });
+
+    prisma.pavilion.updateMany.mockResolvedValue({ count: 0 });
+    prisma.pavilion.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    prisma.pavilionExpense.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          amount: 250,
+          status: 'PAID',
+          bankTransferPaid: 250,
+          cashbox1Paid: 0,
+          cashbox2Paid: 0,
+          paymentMethod: 'BANK_TRANSFER',
+        },
+      ])
+      .mockResolvedValue([
+        {
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          amount: 250,
+          status: 'PAID',
+        },
+      ]);
+    prisma.additionalCharge.findMany.mockResolvedValue([]);
+    prisma.pavilionMonthlyLedger.findMany.mockResolvedValue([]);
+    prisma.pavilionMonthlyLedger.aggregate.mockResolvedValue({ _sum: { closingDebt: 0 } });
+    prisma.payment.findMany.mockResolvedValue([
+      {
+        rentPaid: 1000,
+        utilitiesPaid: 100,
+        advertisingPaid: 50,
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        rentBankTransferPaid: 700,
+        rentCashbox1Paid: 300,
+        rentCashbox2Paid: 0,
+        utilitiesBankTransferPaid: 100,
+        utilitiesCashbox1Paid: 0,
+        utilitiesCashbox2Paid: 0,
+        advertisingBankTransferPaid: 0,
+        advertisingCashbox1Paid: 50,
+        advertisingCashbox2Paid: 0,
+      },
+      {
+        rentPaid: 500,
+        utilitiesPaid: 0,
+        advertisingPaid: 0,
+        bankTransferPaid: 0,
+        cashbox1Paid: 0,
+        cashbox2Paid: 0,
+        rentBankTransferPaid: 500,
+        rentCashbox1Paid: 0,
+        rentCashbox2Paid: 0,
+        utilitiesBankTransferPaid: 0,
+        utilitiesCashbox1Paid: 0,
+        utilitiesCashbox2Paid: 0,
+        advertisingBankTransferPaid: 0,
+        advertisingCashbox1Paid: 0,
+        advertisingCashbox2Paid: 0,
+      },
+    ]);
+    prisma.additionalChargePayment.findMany.mockResolvedValue([]);
+    prisma.storeExtraIncome.findMany.mockResolvedValue([]);
+
+    const service = new AnalyticsService(prisma as any);
+    const result = await service.getStoreAnalytics(2);
+
+    expect(result.summaryPage.income.previousMonthBalance).toBe(1400);
+    expect(result.summaryPage.income.previousMonthChannels).toEqual({
+      bankTransfer: 1050,
+      cashbox1: 350,
+      cashbox2: 0,
+      total: 1400,
     });
   });
 });
