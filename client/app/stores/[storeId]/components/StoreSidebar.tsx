@@ -67,7 +67,7 @@ export function StoreSidebar({
   }> = [
     {
       key: 'pavilions',
-      label: 'Павильоны',
+      label: 'Объекты аренды',
       href: `/stores/${storeId}#pavilions`,
       visible: hasPermission(permissions, 'VIEW_PAVILIONS'),
       icon: Store,

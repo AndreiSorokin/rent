@@ -248,7 +248,7 @@ export default function UtilitiesPage() {
                           Перенос
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                          Павильон
+                          Объекты аренды
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                           Наименование организации

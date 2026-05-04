@@ -16,7 +16,7 @@ export function PaymentSummary({
       <h2 className="mb-2 font-semibold">Сводка</h2>
 
       <div className="mb-2 text-sm text-gray-700">
-        Павильоны: всего {analytics.pavilions.total}, занято {analytics.pavilions.rented},
+        Объекты аренды: всего {analytics.pavilions.total}, занято {analytics.pavilions.rented},
         предоплата {analytics.pavilions.prepaid ?? 0}, свободно {analytics.pavilions.free}
       </div>
 

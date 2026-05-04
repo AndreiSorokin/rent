@@ -141,7 +141,7 @@ export default function HomePage() {
         <div className="mb-12 grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="rounded-2xl border border-[#D8D1CB] bg-white p-5 shadow-sm">
             <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">Фокус</p>
-            <p className="mt-2 text-xl font-bold">Павильоны и начисления</p>
+            <p className="mt-2 text-xl font-bold">Объекты аренды и начисления</p>
           </div>
           <div className="rounded-2xl border border-[#D8D1CB] bg-white p-5 shadow-sm">
             <p className="text-xs uppercase tracking-widest text-[#6B6B6B]">Прозрачность</p>

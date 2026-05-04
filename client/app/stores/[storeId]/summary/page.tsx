@@ -1327,12 +1327,12 @@ export default function StoreSummaryPage() {
           <h2 className="text-xl font-semibold text-[#111111]">4. Торговая площадь</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <MetricCard title="Павильонов всего" value={String(data.tradeArea.pavilionsTotal ?? 0)} />
-            <MetricCard title="Павильонов занято" value={String(data.tradeArea.pavilionsRented ?? 0)} />
-            <MetricCard title="Павильонов свободно" value={String(data.tradeArea.pavilionsAvailable ?? 0)} />
+            <MetricCard title="Объектов аренды всего" value={String(data.tradeArea.pavilionsTotal ?? 0)} />
+            <MetricCard title="Объектов аренды занято" value={String(data.tradeArea.pavilionsRented ?? 0)} />
+            <MetricCard title="Объектов аренды свободно" value={String(data.tradeArea.pavilionsAvailable ?? 0)} />
           </div>
           <MonthlyLineChart
-            title="Динамика занятых павильонов по месяцам"
+            title="Динамика занятых объектов аренды по месяцам"
             items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
             valueKey="pavilionsRented"
             totalKey="pavilionsTotal"

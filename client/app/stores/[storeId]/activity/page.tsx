@@ -44,7 +44,7 @@ const ACTION_STYLES: Record<string, string> = {
 };
 
 const ENTITY_LABELS: Record<string, string> = {
-  PAVILION: 'Павильон',
+  PAVILION: 'Объекты аренды',
   STAFF: 'Штатное расписание',
   HOUSEHOLD_EXPENSE: 'Хозяйственные расходы',
   PAVILION_EXPENSE: 'Расходы',
@@ -56,7 +56,7 @@ const ENTITY_LABELS: Record<string, string> = {
   PAYMENT_TRANSACTION: 'Платеж',
   CONTRACT: 'Договор',
   DISCOUNT: 'Скидка',
-  PAVILION_IMPORT: 'Выгрузка павильонов',
+  PAVILION_IMPORT: 'Выгрузка объектов аренды',
   STORE_MEDIA: 'Описание и фото объекта',
   STORE_IMAGE: 'Фото объекта',
   STORE_USER_INVITE: 'Приглашение пользователя',
@@ -107,7 +107,7 @@ const DETAIL_LABELS: Record<string, string> = {
   category: 'Категория',
   description: 'Описание',
   imagePath: 'Фото',
-  pavilionNumber: 'Павильон',
+  pavilionNumber: 'Объект аренды',
   position: 'Должность',
   fullName: 'Сотрудник',
   tenantName: 'Арендатор',
@@ -552,7 +552,7 @@ export default function StoreActivityPage() {
             </label>
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                Павильон
+                Объекты аренды
               </span>
               <input
                 type="text"
@@ -621,7 +621,7 @@ export default function StoreActivityPage() {
               <tr>
                 <th className="px-4 py-3">Когда</th>
                 <th className="px-4 py-3">Пользователь</th>
-                <th className="px-4 py-3">Павильон</th>
+                <th className="px-4 py-3">Объекты аренды</th>
                 <th className="px-4 py-3">Действие</th>
                 <th className="px-4 py-3">Сущность</th>
                 <th className="px-4 py-3">Детали</th>

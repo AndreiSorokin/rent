@@ -47,7 +47,7 @@ type ParsedResult = {
 };
 
 const SHEETS = {
-  pavilions: 'Павильоны',
+  pavilions: 'Объекты аренды',
   householdExpenses: 'РасходыНаХозЧасть',
   expenses: 'Расходы',
   accounting: 'БухТаблица',
@@ -331,7 +331,7 @@ export function ImportStoreDataModal({
 
     if (pavilions.length === 0) {
       localErrors.push(
-        'Лист "Павильоны": не найдено валидных строк (проверьте Номер павильона / Площадь / Цена за м²)',
+        'Лист "Объекты аренды": не найдено валидных строк (проверьте Номер объекта / Площадь / Цена за м²)',
       );
     }
 
@@ -367,7 +367,7 @@ export function ImportStoreDataModal({
       );
       const imported = result?.imported ?? {};
       alert(
-        `Импорт завершен: павильоны ${imported.pavilions ?? 0}`,
+        `Импорт завершен: объекты аренды ${imported.pavilions ?? 0}`,
       );
       onImported();
     } catch (e) {

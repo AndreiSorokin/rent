@@ -535,9 +535,9 @@ export default function PavilionPage() {
     return startsAt <= now && (endsAt === null || endsAt >= now);
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем павильон..." />;
+  if (loading) return <FullScreenLoader label="Загружаем объект аренды..." />;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600">Павильон не найден</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600">Объекты аренды не найден</div>;
 
   const currency = pavilion.store?.currency ?? 'RUB';
   const storeTimeZone = pavilion.store?.timeZone || 'UTC';
@@ -571,7 +571,7 @@ export default function PavilionPage() {
             >
               Назад к объекту
             </Link>
-            <h1 className="text-2xl font-bold md:text-3xl">Павильон {pavilion.number}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">Объекты аренды {pavilion.number}</h1>
           </div>
           {hasPermission(permissions, 'EDIT_PAVILIONS') && (
           <div className="flex flex-wrap gap-3">

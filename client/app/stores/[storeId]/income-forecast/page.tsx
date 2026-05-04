@@ -178,7 +178,7 @@ export default function IncomeForecastBreakdownPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Павильон</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Объекты аренды</th>
                     <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
                     <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
                     <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Коммуналка</th>
