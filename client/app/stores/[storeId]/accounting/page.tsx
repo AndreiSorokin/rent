@@ -108,14 +108,6 @@ export default function StoreAccountingPage() {
     setDidInitDateFromStoreTz(true);
   }, [store?.timeZone, didInitDateFromStoreTz]);
 
-  useEffect(() => {
-    if (!dayReconciliation || dayReconciliation.isOpened) return;
-    const objectState = dayReconciliation.objectState;
-    setDayOpenBank(String(Number(objectState?.bankTransferPaid ?? 0)));
-    setDayOpenCash1(String(Number(objectState?.cashbox1Paid ?? 0)));
-    setDayOpenCash2(String(Number(objectState?.cashbox2Paid ?? 0)));
-  }, [dayReconciliation]);
-
   const handleDeleteAccountingRecord = async (recordId: number) => {
     const confirmed = await dialog.confirm({
       title: 'Удаление записи',
@@ -598,7 +590,7 @@ export default function StoreAccountingPage() {
           </Link>
         </div>
 
-        {dayReconciliation?.objectState && (
+        {/* {dayReconciliation?.objectState && (
           <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm text-[#111111]">
             Состояние объекта:{' '}
             <span className="font-semibold">
@@ -625,7 +617,7 @@ export default function StoreAccountingPage() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
