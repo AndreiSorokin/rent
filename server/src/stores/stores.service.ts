@@ -3214,7 +3214,86 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
+  private async getLatestClosedAccountingStateBefore(storeId: number, dayStart: Date) {
+    const candidateRecords = await this.prisma.storeAccountingRecord.findMany({
+      where: {
+        storeId,
+        recordDate: {
+          lt: dayStart,
+        },
+      },
+      orderBy: [{ recordDate: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: 20,
+    });
+
+    if (candidateRecords.length === 0) {
+      return null;
+    }
+
+    const recordIds = candidateRecords.map((record) => record.id);
+    const closeActions = await (this.prisma as any).storeActivity.findMany({
+      where: {
+        storeId,
+        entityType: 'ACCOUNTING_DAY',
+        entityId: { in: recordIds },
+        action: 'CLOSE',
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: {
+        entityId: true,
+      },
+    });
+
+    const closeIds = new Set(
+      closeActions
+        .map((action: any) => Number(action.entityId ?? 0))
+        .filter((id: number) => id > 0),
+    );
+
+    const latestCloseRecord =
+      candidateRecords.find((record) => closeIds.has(record.id)) ?? null;
+
+    if (!latestCloseRecord) {
+      return null;
+    }
+
+    return {
+      recordDate: latestCloseRecord.recordDate,
+      bankTransferPaid: Number(latestCloseRecord.bankTransferPaid ?? 0),
+      cashbox1Paid: Number(latestCloseRecord.cashbox1Paid ?? 0),
+      cashbox2Paid: Number(latestCloseRecord.cashbox2Paid ?? 0),
+      total:
+        Number(latestCloseRecord.bankTransferPaid ?? 0) +
+        Number(latestCloseRecord.cashbox1Paid ?? 0) +
+        Number(latestCloseRecord.cashbox2Paid ?? 0),
+    };
+  }
+
   private async getAccountingObjectState(storeId: number, dayStart: Date, timeZone: string) {
+    const latestClose = await this.getLatestClosedAccountingStateBefore(storeId, dayStart);
+    if (latestClose) {
+      const closeDayRange = this.getTimeZoneDayRange(latestClose.recordDate, timeZone);
+      const rangeStart = new Date(closeDayRange.dayEnd.getTime() + 1);
+
+      if (rangeStart.getTime() >= dayStart.getTime()) {
+        return latestClose;
+      }
+
+      const postCloseActual = await this.getActualAccountingByRange(
+        storeId,
+        rangeStart,
+        new Date(dayStart.getTime() - 1),
+      );
+
+      return {
+        bankTransferPaid:
+          latestClose.bankTransferPaid + postCloseActual.bankTransferPaid,
+        cashbox1Paid: latestClose.cashbox1Paid + postCloseActual.cashbox1Paid,
+        cashbox2Paid: latestClose.cashbox2Paid + postCloseActual.cashbox2Paid,
+        total: latestClose.total + postCloseActual.total,
+      };
+    }
+
     const formatter = new Intl.DateTimeFormat('en-CA', {
       timeZone,
       year: 'numeric',
