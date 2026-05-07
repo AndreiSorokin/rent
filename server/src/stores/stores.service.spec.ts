@@ -524,4 +524,38 @@ describe('StoresService accounting day resolution', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('builds object state from latest closed day before falling back to reconstructed balance', async () => {
+    jest.spyOn(service as any, 'getLatestClosedAccountingStateBefore').mockResolvedValue({
+      recordDate: new Date('2026-03-13T00:00:00.000Z'),
+      bankTransferPaid: 100,
+      cashbox1Paid: 50,
+      cashbox2Paid: 25,
+      total: 175,
+    });
+    jest.spyOn(service as any, 'getActualAccountingByRange').mockResolvedValue({
+      bankTransferPaid: 20,
+      cashbox1Paid: 0,
+      cashbox2Paid: 5,
+      total: 25,
+    });
+
+    const result = await (service as any).getAccountingObjectState(
+      1,
+      new Date('2026-03-15T00:00:00.000Z'),
+      'UTC',
+    );
+
+    expect(result).toEqual({
+      bankTransferPaid: 120,
+      cashbox1Paid: 50,
+      cashbox2Paid: 30,
+      total: 200,
+    });
+    expect((service as any).getActualAccountingByRange).toHaveBeenCalledWith(
+      1,
+      new Date('2026-03-14T00:00:00.000Z'),
+      new Date('2026-03-14T23:59:59.999Z'),
+    );
+  });
+
 });
