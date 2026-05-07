@@ -346,7 +346,7 @@ export default function StoreAccountingPage() {
           </Link>
         </div>
 
-        {dayReconciliation?.objectState && (
+        {/* {dayReconciliation?.objectState && (
           <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm text-[#111111]">
             Состояние объекта:{' '}
             <span className="font-semibold">
@@ -373,7 +373,7 @@ export default function StoreAccountingPage() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
