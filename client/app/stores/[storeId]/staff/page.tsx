@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -273,21 +274,29 @@ export default function StoreStaffPage() {
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Штатное расписание</h1>
-                {canManage && (
-                  <button
-                    onClick={() =>
-                      setAddModal({
-                        fullName: '',
-                        position: '',
-                        salary: '',
-                      })
-                    }
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/stores/${storeId}/expenses-history/staff`}
+                    className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                   >
-                    <CirclePlus className="h-4 w-4" />
-                    Добавить сотрудника
-                  </button>
-                )}
+                    Все расходы
+                  </Link>
+                  {canManage && (
+                    <button
+                      onClick={() =>
+                        setAddModal({
+                          fullName: '',
+                          position: '',
+                          salary: '',
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                    >
+                      <CirclePlus className="h-4 w-4" />
+                      Добавить сотрудника
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">

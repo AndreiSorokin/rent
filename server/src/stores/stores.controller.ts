@@ -495,6 +495,12 @@ export class StoresController {
     return this.service.reorderStaff(storeId, req.user.id, dto.orderedIds);
   }
 
+  @Get(':storeId/staff/expense-history')
+  @Permissions(Permission.VIEW_STAFF)
+  listStaffExpenseHistory(@Param('storeId', ParseIntPipe) storeId: number) {
+    return this.service.listStaffExpenseHistory(storeId);
+  }
+
   @Patch(':storeId/staff/:staffId')
   @Permissions(Permission.MANAGE_STAFF)
   updateStaff(

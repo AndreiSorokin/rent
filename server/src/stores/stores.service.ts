@@ -2129,6 +2129,47 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     return deletedStaff;
   }
 
+  async listStaffExpenseHistory(storeId: number) {
+    const [staffMembers, expenses] = await Promise.all([
+      this.prisma.storeStaff.findMany({
+        where: { storeId },
+        select: {
+          id: true,
+          fullName: true,
+        },
+      }),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          storeId,
+          type: PavilionExpenseType.SALARIES,
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      }),
+    ]);
+
+    const staffNameById = new Map(
+      staffMembers.map((member) => [Number(member.id), String(member.fullName ?? '').trim()]),
+    );
+
+    return expenses.map((expense) => {
+      const rawNote = String(expense.note ?? '').trim();
+      const match = /^STAFF:(\d+):(.*)$/.exec(rawNote);
+      const staffId = match ? Number(match[1]) : null;
+      const currentStaffName = staffId ? staffNameById.get(staffId) : null;
+      const noteTail = match ? String(match[2] ?? '').trim() : rawNote;
+      const derivedName =
+        currentStaffName ||
+        (noteTail && !/^\d{4}-\d{2}-\d{2}T/.test(noteTail) ? noteTail : null) ||
+        (staffId ? `Сотрудник #${staffId}` : 'Расход по штату');
+
+      return {
+        ...expense,
+        staffId,
+        staffName: derivedName,
+      };
+    });
+  }
+
   async reorderStaff(storeId: number, userId: number, orderedIds: number[]) {
     await this.assertStorePermission(storeId, userId, [
       Permission.MANAGE_STAFF,
