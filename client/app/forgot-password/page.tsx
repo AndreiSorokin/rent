@@ -29,6 +29,7 @@ export default function ForgotPasswordPage() {
         method: 'POST',
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
+      console.log('Password reset request sent for email:', email);
       setMessage('Если аккаунт с таким email существует, ссылка отправлена.');
     } catch (err: any) {
       setError(err?.message || 'Не удалось отправить письмо');

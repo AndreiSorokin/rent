@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import { getDatePartsInTimeZone, isSameMonthInTimeZone } from '@/lib/dateTime';
 import { FullScreenLoader } from '@/components/AppLoader';
+import { ExpenseEditModal } from '../components/ExpenseEditModal';
 
 type AdminExpenseType = Exclude<PavilionExpenseType, 'SALARIES' | 'HOUSEHOLD' | 'OTHER'>;
 
@@ -279,20 +281,28 @@ export default function StoreAdminExpensesPage() {
                 <div>
                   <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Административные расходы</h1>
                 </div>
-                {canCreate && (
-                  <button
-                    onClick={() =>
-                    setCreateModal({
-                      note: '',
-                      amount: '',
-                    })
-                  }
-                    className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/stores/${storeId}/expenses-history/admin`}
+                    className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                   >
-                    <CirclePlus className="h-4 w-4" />
-                    Добавить расход
-                  </button>
-                )}
+                    Все расходы
+                  </Link>
+                  {canCreate && (
+                    <button
+                      onClick={() =>
+                        setCreateModal({
+                          note: '',
+                          amount: '',
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
+                    >
+                      <CirclePlus className="h-4 w-4" />
+                      Добавить расход
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
@@ -422,7 +432,7 @@ export default function StoreAdminExpensesPage() {
               e.preventDefault();
               void handleCreate();
             }}
-            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+            className="w-full max-w-[34rem] rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
           >
             <h3 className="text-lg font-semibold text-slate-900">Новый административный расход</h3>
             <p className="mt-1 text-sm text-slate-600">
@@ -478,162 +488,56 @@ export default function StoreAdminExpensesPage() {
         </div>
       )}
 
-      {editModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEdit();
-            }}
-            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Изменить административный расход</h3>
-
-            <div className="mt-4 space-y-3">
-              <input
-                type="text"
-                value={editModal.note}
-                onChange={(e) =>
-                  setEditModal((prev) => (prev ? { ...prev, note: e.target.value } : prev))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Название расхода"
-              />
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Статус оплаты</label>
-                <select
-                  value={editModal.status}
-                  onChange={(e) =>
-                    setEditModal((prev) => {
-                      if (!prev) return prev;
-                      const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                      if (nextStatus === 'UNPAID') {
-                        return { ...prev, status: 'UNPAID' };
-                      }
-                      const amountValue = Number(prev.amount || 0);
-                      return {
-                        ...prev,
-                        status: 'PAID',
-                        bankTransferPaid:
-                          Number.isFinite(amountValue) && amountValue > 0
-                            ? amountValue
-                            : prev.bankTransferPaid,
-                        cashbox1Paid: 0,
-                        cashbox2Paid: 0,
-                      };
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editModal.status === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.bankTransferPaid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                bankTransferPaid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.cashbox1Paid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                cashbox1Paid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.cashbox2Paid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                cashbox2Paid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <div>
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await handleDelete(editModal.id);
-                      setEditModal(null);
-                    }}
-                    disabled={saving}
-                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    Удалить
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditModal(null)}
-                  disabled={saving}
-                  className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-                >
-                  {saving ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      <ExpenseEditModal
+        open={Boolean(editModal)}
+        title="Изменить административный расход"
+        nameValue={editModal?.note ?? ''}
+        status={editModal?.status ?? 'UNPAID'}
+        bankTransferPaid={editModal?.bankTransferPaid ?? 0}
+        cashbox1Paid={editModal?.cashbox1Paid ?? 0}
+        cashbox2Paid={editModal?.cashbox2Paid ?? 0}
+        saving={saving}
+        canDelete={canDelete}
+        onNameChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, note: value } : prev))
+        }
+        onStatusChange={(nextStatus) =>
+          setEditModal((prev) => {
+            if (!prev) return prev;
+            if (nextStatus === 'UNPAID') {
+              return { ...prev, status: 'UNPAID' };
+            }
+            const amountValue = Number(prev.amount || 0);
+            return {
+              ...prev,
+              status: 'PAID',
+              bankTransferPaid:
+                Number.isFinite(amountValue) && amountValue > 0
+                  ? amountValue
+                  : prev.bankTransferPaid,
+              cashbox1Paid: 0,
+              cashbox2Paid: 0,
+            };
+          })
+        }
+        onBankTransferPaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        onCashbox1PaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        onCashbox2PaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        onDelete={async () => {
+          if (!editModal) return;
+          await handleDelete(editModal.id);
+          setEditModal(null);
+        }}
+        onClose={() => setEditModal(null)}
+        onSubmit={() => void handleSaveEdit()}
+      />
     </div>
   );
 }
+

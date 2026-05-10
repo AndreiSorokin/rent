@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatMoney } from '@/lib/currency';
@@ -8,6 +9,7 @@ import { apiFetch } from '@/lib/api';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { FullScreenLoader } from '@/components/AppLoader';
+import { ExpenseEditModal } from '../components/ExpenseEditModal';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -265,6 +267,12 @@ export default function StoreHouseholdPage() {
                   </h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/stores/${storeId}/expenses-history/household`}
+                    className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
+                  >
+                    Все расходы
+                  </Link>
                   <input
                     type="date"
                     value={filterDate}
@@ -426,7 +434,7 @@ export default function StoreHouseholdPage() {
               e.preventDefault();
               void handleCreate();
             }}
-            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
+            className="w-full max-w-[34rem] rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
           >
             <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
             <p className="mt-1 text-sm text-slate-600">Создаётся сразу в статусе «Оплачено».</p>
@@ -514,162 +522,56 @@ export default function StoreHouseholdPage() {
         </div>
       )}
 
-      {editModal && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleSaveEdit();
-            }}
-            className="w-full max-w-md rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
-          >
-            <h3 className="text-lg font-semibold text-slate-900">Изменить хозяйственный расход</h3>
-
-            <div className="mt-4 space-y-3">
-              <input
-                type="text"
-                value={editModal.name}
-                onChange={(e) =>
-                  setEditModal((prev) => (prev ? { ...prev, name: e.target.value } : prev))
-                }
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Название расхода"
-              />
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Статус оплаты</label>
-                <select
-                  value={editModal.status}
-                  onChange={(e) =>
-                    setEditModal((prev) => {
-                      if (!prev) return prev;
-                      const nextStatus = e.target.value as 'UNPAID' | 'PAID';
-                      if (nextStatus === 'UNPAID') {
-                        return { ...prev, status: 'UNPAID' };
-                      }
-                      const amountValue = Number(prev.amount || 0);
-                      return {
-                        ...prev,
-                        status: 'PAID',
-                        bankTransferPaid:
-                          Number.isFinite(amountValue) && amountValue > 0
-                            ? amountValue
-                            : prev.bankTransferPaid,
-                        cashbox1Paid: 0,
-                        cashbox2Paid: 0,
-                      };
-                    })
-                  }
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                >
-                  <option value="UNPAID">Не оплачено</option>
-                  <option value="PAID">Оплачено</option>
-                </select>
-              </div>
-
-              {editModal.status === 'PAID' && (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.bankTransferPaid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                bankTransferPaid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.cashbox1Paid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                cashbox1Paid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={editModal.cashbox2Paid}
-                      onChange={(e) =>
-                        setEditModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                cashbox2Paid: e.target.value === '' ? 0 : Number(e.target.value),
-                              }
-                            : prev,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex items-center justify-between gap-3">
-              <div>
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await handleDelete(editModal.id);
-                      setEditModal(null);
-                    }}
-                    disabled={saving}
-                    className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
-                  >
-                    Удалить
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditModal(null)}
-                  disabled={saving}
-                  className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
-                >
-                  {saving ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      <ExpenseEditModal
+        open={Boolean(editModal)}
+        title="Изменить хозяйственный расход"
+        nameValue={editModal?.name ?? ''}
+        status={editModal?.status ?? 'UNPAID'}
+        bankTransferPaid={editModal?.bankTransferPaid ?? 0}
+        cashbox1Paid={editModal?.cashbox1Paid ?? 0}
+        cashbox2Paid={editModal?.cashbox2Paid ?? 0}
+        saving={saving}
+        canDelete={canDelete}
+        onNameChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, name: value } : prev))
+        }
+        onStatusChange={(nextStatus) =>
+          setEditModal((prev) => {
+            if (!prev) return prev;
+            if (nextStatus === 'UNPAID') {
+              return { ...prev, status: 'UNPAID' };
+            }
+            const amountValue = Number(prev.amount || 0);
+            return {
+              ...prev,
+              status: 'PAID',
+              bankTransferPaid:
+                Number.isFinite(amountValue) && amountValue > 0
+                  ? amountValue
+                  : prev.bankTransferPaid,
+              cashbox1Paid: 0,
+              cashbox2Paid: 0,
+            };
+          })
+        }
+        onBankTransferPaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, bankTransferPaid: value } : prev))
+        }
+        onCashbox1PaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, cashbox1Paid: value } : prev))
+        }
+        onCashbox2PaidChange={(value) =>
+          setEditModal((prev) => (prev ? { ...prev, cashbox2Paid: value } : prev))
+        }
+        onDelete={async () => {
+          if (!editModal) return;
+          await handleDelete(editModal.id);
+          setEditModal(null);
+        }}
+        onClose={() => setEditModal(null)}
+        onSubmit={() => void handleSaveEdit()}
+      />
     </div>
   );
 }
+

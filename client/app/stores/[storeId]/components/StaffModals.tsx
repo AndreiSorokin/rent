@@ -89,7 +89,7 @@ export function AddStaffModal({
           e.preventDefault();
           onSubmit();
         }}
-        className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+        className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
         <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
         <p className="mt-1 text-sm text-slate-600">
@@ -221,7 +221,7 @@ export function PayStaffSalaryModal({
           e.preventDefault();
           onSubmit();
         }}
-        className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+        className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
         <h3 className="text-lg font-semibold text-slate-900">Оплата зарплаты</h3>
         <p className="mt-1 text-sm text-slate-600">
@@ -313,7 +313,7 @@ export function EditStaffSalaryModal({
           e.preventDefault();
           onSubmit();
         }}
-        className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
+        className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
         <h3 className="text-lg font-semibold text-slate-900">Изменить зарплату</h3>
         <p className="mt-1 text-sm text-slate-600">{fullName}</p>
