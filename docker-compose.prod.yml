@@ -4,6 +4,7 @@ services:
     build:
       context: ./server
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports: []
     expose:
       - "3000"
@@ -15,6 +16,18 @@ services:
       CORS_ORIGIN: https://${APP_DOMAIN}
     volumes:
       - ./certs/root.crt:/app/certs/root.crt:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   client:
     image: ${CLIENT_IMAGE:-ghcr.io/your-org/rent-client:latest}
@@ -23,6 +36,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+    restart: unless-stopped
     ports: []
     expose:
       - "3001"
@@ -30,14 +44,28 @@ services:
       NODE_ENV: production
       PORT: 3001
       NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3001',res=>process.exit(res.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   proxy:
     image: caddy:2.8-alpine
     container_name: rent-proxy
     restart: unless-stopped
     depends_on:
-      - client
-      - server
+      client:
+        condition: service_healthy
+      server:
+        condition: service_healthy
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}

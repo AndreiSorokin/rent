@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 };
 
 const examples = [
-  { occupied: 10, amount: '200 ₽' },
-  { occupied: 50, amount: '1000 ₽' },
-  { occupied: 120, amount: '2400 ₽' },
+  { occupied: 10, amount: '50 ₽' },
+  { occupied: 50, amount: '250 ₽' },
+  { occupied: 120, amount: '600 ₽' },
 ];
 
 export default function TariffsPage() {
@@ -61,7 +61,7 @@ export default function TariffsPage() {
             </div>
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Ставка</p>
-              <p className="mt-2 text-sm font-semibold text-[#111111]">20 ₽ за м²</p>
+              <p className="mt-2 text-sm font-semibold text-[#111111]">5 ₽ за м²</p>
             </div>
             <div className="rounded-2xl border border-[#E5DED8] bg-[#F9F5F0] p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-[#6B6B6B]">Статус</p>
@@ -75,7 +75,7 @@ export default function TariffsPage() {
             </p>
             <div className="mt-4 space-y-4">
               <div className="rounded-2xl border border-[#F1D7C3] bg-white px-5 py-4 text-lg font-extrabold text-[#111111] md:text-2xl">
-                Стоимость = количество занятых м² × 20 ₽
+                Стоимость = количество занятых м² × 5 ₽
               </div>
               <p className="text-sm leading-7 text-[#4B5563]">
                 В расчет берутся только торговая площадь, у которой установлен статус{' '}

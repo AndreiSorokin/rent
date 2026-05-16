@@ -903,10 +903,10 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const occupiedSquareMeters = Number(
       rentedPavilionsArea._sum.squareMeters ?? 0,
     );
-    const ratePerSquareMeter = currency === 'KZT' ? 60 : 20;
+    const ratePerSquareMeter = currency === 'KZT' ? 15 : 5;
     //TODO: Delete *2
     const baseAmountRub = Math.round(
-      occupiedSquareMeters * ratePerSquareMeter * 3,
+      occupiedSquareMeters * ratePerSquareMeter,
     );
     const amountRub = isFirstMonthFree ? 0 : baseAmountRub;
     const hasChargeForCurrentMonth = amountRub > 0;
