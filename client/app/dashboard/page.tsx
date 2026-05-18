@@ -23,6 +23,26 @@ interface StoreSummary {
   } | null;
 }
 
+function normalizeStoresPayload(payload: unknown): StoreSummary[] | null {
+  if (Array.isArray(payload)) {
+    return payload as StoreSummary[];
+  }
+
+  if (payload && typeof payload === 'object') {
+    const maybeStores = (payload as { stores?: unknown }).stores;
+    if (Array.isArray(maybeStores)) {
+      return maybeStores as StoreSummary[];
+    }
+
+    const maybeItems = (payload as { items?: unknown }).items;
+    if (Array.isArray(maybeItems)) {
+      return maybeItems as StoreSummary[];
+    }
+  }
+
+  return null;
+}
+
 export default function StoresPage() {
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -36,7 +56,13 @@ export default function StoresPage() {
 
     apiFetch<StoreSummary[]>('/stores/my')
       .then((data) => {
-        setStores(data || []);
+        const normalizedStores = normalizeStoresPayload(data);
+        if (!normalizedStores) {
+          console.error('Unexpected /stores/my payload:', data);
+          setError('Не удалось загрузить объекты');
+          return;
+        }
+        setStores(normalizedStores);
       })
       .catch(() => setError('Не удалось загрузить объекты'))
       .finally(() => setLoading(false));
