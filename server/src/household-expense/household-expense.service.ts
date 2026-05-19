@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PavilionExpenseStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StoreActivityService } from 'src/store-activity/store-activity.service';
+import { addMonths, endOfMonth, startOfMonth } from 'date-fns';
 
 const HOUSEHOLD_TYPE = 'HOUSEHOLD' as any;
 
@@ -11,6 +12,210 @@ export class HouseholdExpenseService {
     private readonly prisma: PrismaService,
     private readonly storeActivity: StoreActivityService,
   ) {}
+
+  private async refreshLedgerChainFromPeriod(pavilionId: number, fromPeriod: Date) {
+    const start = startOfMonth(fromPeriod);
+    const current = startOfMonth(new Date());
+    for (
+      let cursor = start;
+      cursor.getTime() <= current.getTime();
+      cursor = startOfMonth(addMonths(cursor, 1))
+    ) {
+      await this.refreshMonthlyLedger(pavilionId, cursor);
+    }
+  }
+
+  private async refreshMonthlyLedger(pavilionId: number, period: Date) {
+    const normalizedPeriod = startOfMonth(period);
+    const monthStart = startOfMonth(normalizedPeriod);
+    const monthEnd = endOfMonth(normalizedPeriod);
+    const pavilion = await this.prisma.pavilion.findUnique({
+      where: { id: pavilionId },
+      include: {
+        discounts: true,
+        payments: {
+          where: { period: normalizedPeriod },
+        },
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: monthStart,
+                  lte: monthEnd,
+                },
+              },
+            },
+          },
+        },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        },
+      },
+    });
+
+    if (!pavilion) return;
+
+    const previousPeriod = startOfMonth(
+      new Date(normalizedPeriod.getFullYear(), normalizedPeriod.getMonth() - 1, 1),
+    );
+    const previousLedger = await this.prisma.pavilionMonthlyLedger.findUnique({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: previousPeriod,
+        },
+      },
+      select: { closingDebt: true },
+    });
+    const openingDebt = previousLedger?.closingDebt ?? 0;
+
+    const baseRent = Number(
+      pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM,
+    );
+    const monthlyDiscount = pavilion.discounts.reduce((sum, discount) => {
+      const discountStart = startOfMonth(discount.startsAt);
+      const discountEnd = discount.endsAt ? endOfMonth(discount.endsAt) : null;
+      const intersects =
+        discountStart.getTime() <= monthEnd.getTime() &&
+        (!discountEnd || discountEnd.getTime() >= monthStart.getTime());
+      if (!intersects) return sum;
+      return sum + Number(discount.amount ?? 0) * pavilion.squareMeters;
+    }, 0);
+
+    const expectedRent =
+      pavilion.status === 'PREPAID'
+        ? baseRent
+        : pavilion.status === 'RENTED'
+          ? Math.max(baseRent - monthlyDiscount, 0)
+          : 0;
+    const expectedUtilities =
+      pavilion.status === 'RENTED' ? Number(pavilion.utilitiesAmount ?? 0) : 0;
+    const expectedAdvertising =
+      pavilion.status === 'RENTED' ? Number(pavilion.advertisingAmount ?? 0) : 0;
+    const expectedAdditional =
+      pavilion.status === 'RENTED'
+        ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
+        : 0;
+    const expectedManualExpenses = pavilion.pavilionExpenses.reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const expectedHouseholdExpenses = pavilion.householdExpenses.reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const expectedTotal =
+      expectedRent +
+      expectedUtilities +
+      expectedAdvertising +
+      expectedAdditional +
+      expectedManualExpenses +
+      expectedHouseholdExpenses;
+
+    const actualBase = pavilion.payments.reduce((sum, payment) => {
+      const rentRaw = Number(payment.rentPaid ?? 0);
+      const rentChannels =
+        Number(payment.rentBankTransferPaid ?? 0) +
+        Number(payment.rentCashbox1Paid ?? 0) +
+        Number(payment.rentCashbox2Paid ?? 0);
+      const utilitiesRaw = Number(payment.utilitiesPaid ?? 0);
+      const utilitiesChannels =
+        Number(payment.utilitiesBankTransferPaid ?? 0) +
+        Number(payment.utilitiesCashbox1Paid ?? 0) +
+        Number(payment.utilitiesCashbox2Paid ?? 0);
+      const advertisingRaw = Number(payment.advertisingPaid ?? 0);
+      const advertisingChannels =
+        Number(payment.advertisingBankTransferPaid ?? 0) +
+        Number(payment.advertisingCashbox1Paid ?? 0) +
+        Number(payment.advertisingCashbox2Paid ?? 0);
+
+      const rent = rentRaw > 0 ? rentRaw : rentChannels;
+      const utilities = utilitiesRaw > 0 ? utilitiesRaw : utilitiesChannels;
+      const advertising = advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
+      return sum + rent + utilities + advertising;
+    }, 0);
+    const actualAdditional = pavilion.additionalCharges.reduce(
+      (sum, charge) =>
+        sum +
+        charge.payments.reduce(
+          (paymentSum, payment) => paymentSum + Number(payment.amountPaid ?? 0),
+          0,
+        ),
+      0,
+    );
+    const actualManualExpenses = pavilion.pavilionExpenses.reduce((sum, expense) => {
+      if (String(expense.status) !== 'PAID') return sum;
+      const paidByChannels =
+        Number((expense as any).bankTransferPaid ?? 0) +
+        Number((expense as any).cashbox1Paid ?? 0) +
+        Number((expense as any).cashbox2Paid ?? 0);
+      return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
+    }, 0);
+    const actualHouseholdExpenses = pavilion.householdExpenses.reduce(
+      (sum, expense) =>
+        String((expense as any).status) === 'PAID'
+          ? sum + Number(expense.amount ?? 0)
+          : sum,
+      0,
+    );
+    const actualTotal =
+      actualBase + actualAdditional + actualManualExpenses + actualHouseholdExpenses;
+    const monthDelta = expectedTotal - actualTotal;
+    const closingDebt = openingDebt + monthDelta;
+
+    await this.prisma.pavilionMonthlyLedger.upsert({
+      where: {
+        pavilionId_period: {
+          pavilionId,
+          period: normalizedPeriod,
+        },
+      },
+      update: {
+        expectedRent,
+        expectedUtilities,
+        expectedAdvertising,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
+      },
+      create: {
+        pavilionId,
+        period: normalizedPeriod,
+        expectedRent,
+        expectedUtilities,
+        expectedAdvertising,
+        expectedAdditional,
+        expectedTotal,
+        actualTotal,
+        openingDebt,
+        monthDelta,
+        closingDebt,
+      },
+    });
+  }
 
   private normalizePaymentMethod(
     paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2',
@@ -236,6 +441,9 @@ export class HouseholdExpenseService {
             occurredAt: row.createdAt,
           });
         }
+        if (row.pavilionId) {
+          await this.refreshLedgerChainFromPeriod(row.pavilionId, row.createdAt);
+        }
         await this.storeActivity.log({
           storeId,
           userId,
@@ -270,7 +478,7 @@ export class HouseholdExpenseService {
         storeId,
         type: HOUSEHOLD_TYPE,
       },
-      select: { id: true },
+      select: { id: true, pavilionId: true, createdAt: true },
     });
 
     if (!expense) {
@@ -290,7 +498,11 @@ export class HouseholdExpenseService {
         bankTransferPaid: -Number((deleted as any).bankTransferPaid ?? 0),
         cashbox1Paid: -Number((deleted as any).cashbox1Paid ?? 0),
         cashbox2Paid: -Number((deleted as any).cashbox2Paid ?? 0),
+        occurredAt: deleted.createdAt,
       });
+    }
+    if ((deleted as any).pavilionId) {
+      await this.refreshLedgerChainFromPeriod((deleted as any).pavilionId, deleted.createdAt);
     }
     await this.storeActivity.log({
       storeId,
@@ -335,6 +547,8 @@ export class HouseholdExpenseService {
         bankTransferPaid: true,
         cashbox1Paid: true,
         cashbox2Paid: true,
+        pavilionId: true,
+        createdAt: true,
       },
     });
 
@@ -442,7 +656,11 @@ export class HouseholdExpenseService {
       bankTransferPaid: nextBank - previousBank,
       cashbox1Paid: nextCash1 - previousCash1,
       cashbox2Paid: nextCash2 - previousCash2,
+      occurredAt: expense.createdAt,
     });
+    if (expense.pavilionId) {
+      await this.refreshLedgerChainFromPeriod(expense.pavilionId, expense.createdAt);
+    }
 
     await this.storeActivity.log({
       storeId,

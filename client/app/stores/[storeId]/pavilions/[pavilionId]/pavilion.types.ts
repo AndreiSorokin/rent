@@ -147,6 +147,7 @@ export type Pavilion = {
     id: number;
     name: string;
     amount: number;
+    status?: PavilionExpenseStatus;
     createdAt: string;
   }>;
   pavilionExpenses?: Array<{
@@ -154,6 +155,10 @@ export type Pavilion = {
     type: PavilionExpenseType;
     status: PavilionExpenseStatus;
     amount: number;
+    paymentMethod?: 'BANK_TRANSFER' | 'CASHBOX1' | 'CASHBOX2' | null;
+    bankTransferPaid?: number;
+    cashbox1Paid?: number;
+    cashbox2Paid?: number;
     note?: string | null;
     createdAt: string;
   }>;
