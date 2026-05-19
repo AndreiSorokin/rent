@@ -288,11 +288,11 @@ export class DiscountsService {
         ),
       0,
     );
-    const expectedManualExpenses = pavilion.pavilionExpenses.reduce(
+    const expectedManualExpenses = (pavilion.pavilionExpenses ?? []).reduce(
       (sum, expense) => sum + Number(expense.amount ?? 0),
       0,
     );
-    const actualManualExpenses = pavilion.pavilionExpenses.reduce((sum, expense) => {
+    const actualManualExpenses = (pavilion.pavilionExpenses ?? []).reduce((sum, expense) => {
       if (String(expense.status) !== 'PAID') return sum;
       const paidByChannels =
         Number((expense as any).bankTransferPaid ?? 0) +
@@ -300,11 +300,11 @@ export class DiscountsService {
         Number((expense as any).cashbox2Paid ?? 0);
       return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
     }, 0);
-    const expectedHouseholdExpenses = pavilion.householdExpenses.reduce(
+    const expectedHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
       (sum, expense) => sum + Number(expense.amount ?? 0),
       0,
     );
-    const actualHouseholdExpenses = pavilion.householdExpenses.reduce(
+    const actualHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
       (sum, expense) =>
         String((expense as any).status) === 'PAID'
           ? sum + Number(expense.amount ?? 0)
