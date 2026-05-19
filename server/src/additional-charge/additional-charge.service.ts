@@ -11,6 +11,26 @@ export class AdditionalChargeService {
     private readonly storeActivity: StoreActivityService,
   ) {}
 
+  private addMonths(date: Date, months: number) {
+    return startOfMonth(new Date(date.getFullYear(), date.getMonth() + months, 1));
+  }
+
+  private async refreshLedgerChainFromPeriod(pavilionId: number, fromPeriod: Date) {
+    const start = startOfMonth(fromPeriod);
+    const current = startOfMonth(new Date());
+
+    if (start.getTime() > current.getTime()) {
+      await this.refreshMonthlyLedger(pavilionId, start);
+      return;
+    }
+
+    let cursor = start;
+    while (cursor.getTime() <= current.getTime()) {
+      await this.refreshMonthlyLedger(pavilionId, cursor);
+      cursor = this.addMonths(cursor, 1);
+    }
+  }
+
   async deletePayment(
     pavilionId: number,
     additionalChargeId: number,
@@ -59,7 +79,7 @@ export class AdditionalChargeService {
       });
     }
 
-    await this.refreshMonthlyLedger(pavilionId, payment.paidAt);
+    await this.refreshLedgerChainFromPeriod(pavilionId, payment.paidAt);
     return deleted;
   }
 
@@ -149,7 +169,7 @@ export class AdditionalChargeService {
       });
     }
 
-    await this.refreshMonthlyLedger(charge.pavilionId, created.paidAt);
+    await this.refreshLedgerChainFromPeriod(charge.pavilionId, created.paidAt);
     return created;
   }
 
@@ -202,7 +222,7 @@ export class AdditionalChargeService {
         },
       });
     }
-    await this.refreshMonthlyLedger(pavilionId, created.createdAt);
+    await this.refreshLedgerChainFromPeriod(pavilionId, created.createdAt);
     return created;
   }
 
@@ -255,7 +275,7 @@ export class AdditionalChargeService {
         },
       });
     }
-    await this.refreshMonthlyLedger(pavilionId, updated.createdAt);
+    await this.refreshLedgerChainFromPeriod(pavilionId, updated.createdAt);
     return updated;
   }
 
@@ -290,7 +310,7 @@ export class AdditionalChargeService {
         },
       });
     }
-    await this.refreshMonthlyLedger(pavilionId, deleted.createdAt);
+    await this.refreshLedgerChainFromPeriod(pavilionId, deleted.createdAt);
     return deleted;
   }
 
@@ -384,7 +404,7 @@ export class AdditionalChargeService {
       });
     }
 
-    await this.refreshMonthlyLedger(pavilionId, updated.paidAt);
+    await this.refreshLedgerChainFromPeriod(pavilionId, updated.paidAt);
     return updated;
   }
 
@@ -433,6 +453,22 @@ export class AdditionalChargeService {
                   lte: monthEnd,
                 },
               },
+            },
+          },
+        },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
             },
           },
         },
@@ -519,8 +555,37 @@ export class AdditionalChargeService {
         ),
       0,
     );
-    const actualTotal = actualBase + actualAdditional;
-    const monthDelta = expectedTotal - actualTotal;
+    const expectedManualExpenses = (pavilion.pavilionExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualManualExpenses = (pavilion.pavilionExpenses ?? []).reduce((sum, expense) => {
+      if (String(expense.status) !== 'PAID') return sum;
+      const paidByChannels =
+        Number((expense as any).bankTransferPaid ?? 0) +
+        Number((expense as any).cashbox1Paid ?? 0) +
+        Number((expense as any).cashbox2Paid ?? 0);
+      return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
+    }, 0);
+    const expectedHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) =>
+        String((expense as any).status) === 'PAID'
+          ? sum + Number(expense.amount ?? 0)
+          : sum,
+      0,
+    );
+    const actualTotal =
+      actualBase +
+      actualAdditional +
+      actualManualExpenses +
+      actualHouseholdExpenses;
+    const expectedTotalWithExpenses =
+      expectedTotal + expectedManualExpenses + expectedHouseholdExpenses;
+    const monthDelta = expectedTotalWithExpenses - actualTotal;
     const closingDebt = openingDebt + monthDelta;
 
     await this.prisma.pavilionMonthlyLedger.upsert({
@@ -535,7 +600,7 @@ export class AdditionalChargeService {
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         openingDebt,
         monthDelta,
@@ -548,7 +613,7 @@ export class AdditionalChargeService {
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         openingDebt,
         monthDelta,

@@ -662,12 +662,18 @@ export class PavilionsService {
         images: {
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         },
-        discounts: { orderBy: { createdAt: 'desc' } },
-        monthlyLedgers: { orderBy: { period: 'desc' } },
-        payments: { orderBy: { period: 'asc' } },
-        paymentTransactions: { orderBy: { createdAt: 'desc' } },
-      },
-    });
+          discounts: { orderBy: { createdAt: 'desc' } },
+          householdExpenses: {
+            orderBy: { createdAt: 'desc' },
+          },
+          pavilionExpenses: {
+            orderBy: { createdAt: 'desc' },
+          },
+          monthlyLedgers: { orderBy: { period: 'desc' } },
+          payments: { orderBy: { period: 'asc' } },
+          paymentTransactions: { orderBy: { createdAt: 'desc' } },
+        },
+      });
 
     if (!pavilion) return null;
 
@@ -1534,7 +1540,40 @@ export class PavilionsService {
         payments: {
           where: { period: normalizedPeriod },
         },
-        additionalCharges: true,
+        additionalCharges: {
+          where: {
+            createdAt: {
+              gte: startOfMonth(normalizedPeriod),
+              lte: endOfMonth(normalizedPeriod),
+            },
+          },
+          include: {
+            payments: {
+              where: {
+                paidAt: {
+                  gte: startOfMonth(normalizedPeriod),
+                  lte: endOfMonth(normalizedPeriod),
+                },
+              },
+            },
+          },
+        },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: startOfMonth(normalizedPeriod),
+              lte: endOfMonth(normalizedPeriod),
+            },
+          },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: startOfMonth(normalizedPeriod),
+              lte: endOfMonth(normalizedPeriod),
+            },
+          },
+        },
       },
     });
     if (!pavilion) return;
@@ -1582,9 +1621,37 @@ export class PavilionsService {
       pavilion.status === PavilionStatus.RENTED
         ? pavilion.additionalCharges.reduce((sum, charge) => sum + Number(charge.amount ?? 0), 0)
         : 0;
+    const expectedManualExpenses = (pavilion.pavilionExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualManualExpenses = (pavilion.pavilionExpenses ?? []).reduce((sum, expense) => {
+      if (String(expense.status) !== 'PAID') return sum;
+      const paidByChannels =
+        Number((expense as any).bankTransferPaid ?? 0) +
+        Number((expense as any).cashbox1Paid ?? 0) +
+        Number((expense as any).cashbox2Paid ?? 0);
+      return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
+    }, 0);
+    const expectedHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) =>
+        String((expense as any).status) === 'PAID'
+          ? sum + Number(expense.amount ?? 0)
+          : sum,
+      0,
+    );
     const expectedTotal =
-      expectedRent + expectedUtilities + expectedAdvertising + expectedAdditional;
-    const actualTotal = pavilion.payments.reduce((sum, payment) => {
+      expectedRent +
+      expectedUtilities +
+      expectedAdvertising +
+      expectedAdditional +
+      expectedManualExpenses +
+      expectedHouseholdExpenses;
+    const actualBase = pavilion.payments.reduce((sum, payment) => {
       const rentRaw = Number(payment.rentPaid ?? 0);
       const rentChannels =
         Number(payment.rentBankTransferPaid ?? 0) +
@@ -1606,6 +1673,17 @@ export class PavilionsService {
       const advertising = advertisingRaw > 0 ? advertisingRaw : advertisingChannels;
       return sum + rent + utilities + advertising;
     }, 0);
+    const actualAdditional = pavilion.additionalCharges.reduce(
+      (sum, charge) =>
+        sum +
+        charge.payments.reduce(
+          (paymentSum, payment) => paymentSum + Number(payment.amountPaid ?? 0),
+          0,
+        ),
+      0,
+    );
+    const actualTotal =
+      actualBase + actualAdditional + actualManualExpenses + actualHouseholdExpenses;
     const monthDelta = expectedTotal - actualTotal;
     const closingDebt = openingDebt + monthDelta;
 

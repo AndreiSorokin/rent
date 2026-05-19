@@ -187,6 +187,22 @@ export class DiscountsService {
             },
           },
         },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: monthStart,
+              lte: monthEnd,
+            },
+          },
+        },
       },
     });
 
@@ -272,8 +288,37 @@ export class DiscountsService {
         ),
       0,
     );
-    const actualTotal = actualBase + actualAdditional;
-    const monthDelta = expectedTotal - actualTotal;
+    const expectedManualExpenses = (pavilion.pavilionExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualManualExpenses = (pavilion.pavilionExpenses ?? []).reduce((sum, expense) => {
+      if (String(expense.status) !== 'PAID') return sum;
+      const paidByChannels =
+        Number((expense as any).bankTransferPaid ?? 0) +
+        Number((expense as any).cashbox1Paid ?? 0) +
+        Number((expense as any).cashbox2Paid ?? 0);
+      return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
+    }, 0);
+    const expectedHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) =>
+        String((expense as any).status) === 'PAID'
+          ? sum + Number(expense.amount ?? 0)
+          : sum,
+      0,
+    );
+    const actualTotal =
+      actualBase +
+      actualAdditional +
+      actualManualExpenses +
+      actualHouseholdExpenses;
+    const expectedTotalWithExpenses =
+      expectedTotal + expectedManualExpenses + expectedHouseholdExpenses;
+    const monthDelta = expectedTotalWithExpenses - actualTotal;
     const closingDebt = openingDebt + monthDelta;
 
     await this.prisma.pavilionMonthlyLedger.upsert({
@@ -288,7 +333,7 @@ export class DiscountsService {
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         monthDelta,
         openingDebt,
@@ -301,7 +346,7 @@ export class DiscountsService {
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         monthDelta,
         openingDebt,

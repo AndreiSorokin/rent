@@ -581,14 +581,14 @@ export default function PavilionPage() {
             >
               Редактировать
             </button>
-            {hasPermission(permissions, 'VIEW_PAYMENTS') && (
-              <Link
-                href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/archive`}
-                className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-[#111111] hover:bg-[#f4efeb]"
-              >
-                Бухгалтерский архив
-              </Link>
-            )}
+              {hasPermission(permissions, 'VIEW_PAYMENTS') && (
+                <Link
+                  href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/archive`}
+                  className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-[#111111] hover:bg-[#f4efeb]"
+                >
+                  Бухгалтерский архив и расходы
+                </Link>
+              )}
           </div>
         )}
         </div>

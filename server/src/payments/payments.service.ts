@@ -1029,6 +1029,22 @@ async addPayment(
             },
           },
         },
+        pavilionExpenses: {
+          where: {
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
+          },
+        },
+        householdExpenses: {
+          where: {
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
+          },
+        },
       },
     });
 
@@ -1128,8 +1144,37 @@ async addPayment(
         charge.payments.reduce((paymentSum, payment) => paymentSum + Number(payment.amountPaid ?? 0), 0),
       0,
     );
-    const actualTotal = actualRentAndUtilities + actualAdditional;
-    const monthDelta = expectedTotal - actualTotal;
+    const expectedManualExpenses = (pavilion.pavilionExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualManualExpenses = (pavilion.pavilionExpenses ?? []).reduce((sum, expense) => {
+      if (String(expense.status) !== 'PAID') return sum;
+      const paidByChannels =
+        Number((expense as any).bankTransferPaid ?? 0) +
+        Number((expense as any).cashbox1Paid ?? 0) +
+        Number((expense as any).cashbox2Paid ?? 0);
+      return sum + (paidByChannels > 0 ? paidByChannels : Number(expense.amount ?? 0));
+    }, 0);
+    const expectedHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) => sum + Number(expense.amount ?? 0),
+      0,
+    );
+    const actualHouseholdExpenses = (pavilion.householdExpenses ?? []).reduce(
+      (sum, expense) =>
+        String((expense as any).status) === 'PAID'
+          ? sum + Number(expense.amount ?? 0)
+          : sum,
+      0,
+    );
+    const actualTotal =
+      actualRentAndUtilities +
+      actualAdditional +
+      actualManualExpenses +
+      actualHouseholdExpenses;
+    const expectedTotalWithExpenses =
+      expectedTotal + expectedManualExpenses + expectedHouseholdExpenses;
+    const monthDelta = expectedTotalWithExpenses - actualTotal;
     const closingDebt = openingDebt + monthDelta;
 
     return this.prisma.pavilionMonthlyLedger.upsert({
@@ -1144,7 +1189,7 @@ async addPayment(
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         openingDebt,
         monthDelta,
@@ -1157,7 +1202,7 @@ async addPayment(
         expectedUtilities,
         expectedAdvertising,
         expectedAdditional,
-        expectedTotal,
+        expectedTotal: expectedTotalWithExpenses,
         actualTotal,
         openingDebt,
         monthDelta,

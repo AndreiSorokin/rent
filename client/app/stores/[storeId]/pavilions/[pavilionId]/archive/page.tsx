@@ -16,7 +16,7 @@ import {
   updatePavilionPaymentEntry,
 } from '@/lib/payments';
 import { formatMonthLabelFromKey, getMonthKeyInTimeZone } from '@/lib/dateTime';
-import { Pavilion } from '../pavilion.types';
+import { MANUAL_EXPENSE_CATEGORIES, Pavilion, PavilionExpenseType } from '../pavilion.types';
 import { FullScreenLoader } from '@/components/AppLoader';
 
 type ArchiveMonth = {
@@ -52,6 +52,38 @@ type ArchiveMonth = {
     cashbox1: number;
     cashbox2: number;
   }>;
+  expenseSummary: {
+    rentExpected: number;
+    rentPaid: number;
+    utilitiesExpected: number;
+    utilitiesPaid: number;
+    advertisingExpected: number;
+    advertisingPaid: number;
+    additionalExpected: number;
+    additionalPaid: number;
+    manualExpected: number;
+    manualPaid: number;
+    householdTotal: number;
+    totalExpected: number;
+    totalActual: number;
+  };
+  manualExpenses: Array<{
+    id: number;
+    date: string;
+    type: PavilionExpenseType;
+    label: string;
+    status: 'UNPAID' | 'PAID';
+    amount: number;
+    paidAmount: number;
+    note?: string | null;
+  }>;
+  householdExpenses: Array<{
+    id: number;
+    date: string;
+    name: string;
+    amount: number;
+    status: 'UNPAID' | 'PAID';
+  }>;
 };
 
 type RentEditDraft = {
@@ -70,6 +102,9 @@ type AdditionalEditDraft = {
 function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[] {
   const currentMonthKey = getMonthKeyInTimeZone(new Date(), timeZone);
   const map = new Map<string, ArchiveMonth>();
+  const expenseTypeLabels = new Map(
+    MANUAL_EXPENSE_CATEGORIES.map((item) => [item.type, item.label] as const),
+  );
 
   const ensureMonth = (key: string) => {
     const existing = map.get(key);
@@ -90,6 +125,23 @@ function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[
       },
       rentPayments: [],
       additionalPayments: [],
+      expenseSummary: {
+        rentExpected: 0,
+        rentPaid: 0,
+        utilitiesExpected: 0,
+        utilitiesPaid: 0,
+        advertisingExpected: 0,
+        advertisingPaid: 0,
+        additionalExpected: 0,
+        additionalPaid: 0,
+        manualExpected: 0,
+        manualPaid: 0,
+        householdTotal: 0,
+        totalExpected: 0,
+        totalActual: 0,
+      },
+      manualExpenses: [],
+      householdExpenses: [],
     };
     map.set(key, next);
     return next;
@@ -115,6 +167,9 @@ function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[
     month.totals.cashbox1 += cashbox1;
     month.totals.cashbox2 += cashbox2;
     month.totals.total += total;
+    month.expenseSummary.rentPaid += rent;
+    month.expenseSummary.utilitiesPaid += utilities;
+    month.expenseSummary.advertisingPaid += advertising;
 
     month.rentPayments.push({
       id: payment.id,
@@ -144,6 +199,7 @@ function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[
       month.totals.cashbox1 += cashbox1;
       month.totals.cashbox2 += cashbox2;
       month.totals.total += amount;
+      month.expenseSummary.additionalPaid += amount;
 
       month.additionalPayments.push({
         id: chargePayment.id,
@@ -158,10 +214,87 @@ function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[
     }
   }
 
+  for (const ledger of pavilion.monthlyLedgers || []) {
+    const monthKey = getMonthKeyInTimeZone(ledger.period, timeZone);
+    if (monthKey >= currentMonthKey) continue;
+
+    const month = ensureMonth(monthKey);
+    month.expenseSummary.rentExpected += Number((ledger as any).expectedRent ?? 0);
+    month.expenseSummary.utilitiesExpected += Number(ledger.expectedUtilities ?? 0);
+    month.expenseSummary.advertisingExpected += Number((ledger as any).expectedAdvertising ?? 0);
+    month.expenseSummary.additionalExpected += Number((ledger as any).expectedAdditional ?? 0);
+  }
+
+  for (const expense of pavilion.pavilionExpenses || []) {
+    const monthKey = getMonthKeyInTimeZone(expense.createdAt, timeZone);
+    if (monthKey >= currentMonthKey) continue;
+
+    const month = ensureMonth(monthKey);
+    const amount = Number(expense.amount ?? 0);
+    const paidAmount =
+      expense.status === 'PAID'
+        ? Math.max(
+            Number(expense.bankTransferPaid ?? 0) +
+              Number(expense.cashbox1Paid ?? 0) +
+              Number(expense.cashbox2Paid ?? 0),
+            amount,
+          )
+        : 0;
+
+    month.expenseSummary.manualExpected += amount;
+    month.expenseSummary.manualPaid += paidAmount;
+    month.manualExpenses.push({
+      id: expense.id,
+      date: expense.createdAt,
+      type: expense.type,
+      label: expenseTypeLabels.get(expense.type) ?? expense.type,
+      status: expense.status,
+      amount,
+      paidAmount,
+      note: expense.note ?? null,
+    });
+  }
+
+  for (const expense of pavilion.householdExpenses || []) {
+    const monthKey = getMonthKeyInTimeZone(expense.createdAt, timeZone);
+    if (monthKey >= currentMonthKey) continue;
+
+    const month = ensureMonth(monthKey);
+    const amount = Number(expense.amount ?? 0);
+
+    month.expenseSummary.householdTotal += amount;
+    month.householdExpenses.push({
+      id: expense.id,
+      date: expense.createdAt,
+      name: expense.name,
+      amount,
+      status: expense.status ?? 'UNPAID',
+    });
+  }
+
+  for (const month of map.values()) {
+    month.expenseSummary.totalExpected =
+      month.expenseSummary.rentExpected +
+      month.expenseSummary.utilitiesExpected +
+      month.expenseSummary.advertisingExpected +
+      month.expenseSummary.additionalExpected +
+      month.expenseSummary.manualExpected +
+      month.expenseSummary.householdTotal;
+    month.expenseSummary.totalActual =
+      month.expenseSummary.rentPaid +
+      month.expenseSummary.utilitiesPaid +
+      month.expenseSummary.advertisingPaid +
+      month.expenseSummary.additionalPaid +
+      month.expenseSummary.manualPaid +
+      month.expenseSummary.householdTotal;
+  }
+
   const months = Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
   for (const month of months) {
     month.rentPayments.sort((a, b) => b.date.localeCompare(a.date));
     month.additionalPayments.sort((a, b) => b.date.localeCompare(a.date));
+    month.manualExpenses.sort((a, b) => b.date.localeCompare(a.date));
+    month.householdExpenses.sort((a, b) => b.date.localeCompare(a.date));
   }
   return months;
 }
@@ -409,19 +542,51 @@ export default function PavilionArchivePage() {
           months.map((month) => (
             <div key={month.key} className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
               <h2 className="mb-4 text-xl font-semibold capitalize">{month.label}</h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-[#ece4dd]">
+                  <thead className="bg-[#f4efeb]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Наименование</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Факт</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#ece4dd] bg-white">
+                    {[
+                      { label: 'Аренда', expected: month.expenseSummary.rentExpected, actual: month.expenseSummary.rentPaid },
+                      { label: 'Коммуналка', expected: month.expenseSummary.utilitiesExpected, actual: month.expenseSummary.utilitiesPaid },
+                      { label: 'Реклама', expected: month.expenseSummary.advertisingExpected, actual: month.expenseSummary.advertisingPaid },
+                      { label: 'Доп. начисления', expected: month.expenseSummary.additionalExpected, actual: month.expenseSummary.additionalPaid },
+                      { label: 'Прочие расходы', expected: month.expenseSummary.manualExpected, actual: month.expenseSummary.manualPaid },
+                      { label: 'Хозяйственные расходы', expected: month.expenseSummary.householdTotal, actual: month.expenseSummary.householdTotal },
+                      { label: 'Итого', expected: month.expenseSummary.totalExpected, actual: month.expenseSummary.totalActual },
+                    ].map((row) => {
+                      const diff = row.actual - row.expected;
+                      const diffClass =
+                        Math.abs(diff) <= 0.009
+                          ? 'text-[#111111]'
+                          : diff > 0
+                            ? 'text-emerald-700'
+                            : 'text-red-700';
 
-              <div className="mb-5 grid grid-cols-1 gap-2 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3 text-sm md:grid-cols-2">
-                <div>Аренда: {formatMoney(month.totals.rent, currency)}</div>
-                <div>Коммунальные: {formatMoney(month.totals.utilities, currency)}</div>
-                <div>Реклама: {formatMoney(month.totals.advertising, currency)}</div>
-                <div>Доп. начисления: {formatMoney(month.totals.additional, currency)}</div>
-                <div>Безналичные: {formatMoney(month.totals.bankTransfer, currency)}</div>
-                <div>Наличные касса 1: {formatMoney(month.totals.cashbox1, currency)}</div>
-                <div>Наличные касса 2: {formatMoney(month.totals.cashbox2, currency)}</div>
-                <div className="font-semibold">Итого: {formatMoney(month.totals.total, currency)}</div>
+                      return (
+                        <tr key={`${month.key}-${row.label}`}>
+                          <td className="px-4 py-3 text-sm font-medium text-[#111111]">{row.label}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151]">{formatMoney(row.expected, currency)}</td>
+                          <td className="px-4 py-3 text-sm text-[#374151]">{formatMoney(row.actual, currency)}</td>
+                          <td className={`px-4 py-3 text-sm font-semibold ${diffClass}`}>
+                            {diff > 0 ? '+' : ''}
+                            {formatMoney(diff, currency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="space-y-5">
+              <div className="mt-6 space-y-5">
                 <div>
                   <h3 className="mb-2 font-medium">Платежи аренды/коммуналки/рекламы</h3>
                   {month.rentPayments.length === 0 ? (
@@ -433,7 +598,7 @@ export default function PavilionArchivePage() {
                           <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Коммунальные</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Коммуналка</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Реклама</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Безнал</th>
                             <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
@@ -524,23 +689,19 @@ export default function PavilionArchivePage() {
                                       </div>
                                     ) : (
                                       <div className="flex justify-end gap-3">
-                                        {canEditRentPayments && (
-                                          <button
-                                            onClick={() => startRentEdit(item)}
-                                            className="text-[#ff6a13] hover:underline"
-                                          >
-                                            Изменить
-                                          </button>
-                                        )}
-                                        {canEditRentPayments && (
-                                          <button
-                                            onClick={() => removeRentEntry(item.id)}
-                                            disabled={busyKey === `rent-del-${item.id}`}
-                                            className="text-[#b91c1c] hover:underline disabled:opacity-60"
-                                          >
-                                            Удалить
-                                          </button>
-                                        )}
+                                        <button
+                                          onClick={() => startRentEdit(item)}
+                                          className="text-[#ff6a13] hover:underline"
+                                        >
+                                          Изменить
+                                        </button>
+                                        <button
+                                          onClick={() => removeRentEntry(item.id)}
+                                          disabled={busyKey === `rent-del-${item.id}`}
+                                          className="text-[#b91c1c] hover:underline disabled:opacity-60"
+                                        >
+                                          Удалить
+                                        </button>
                                       </div>
                                     )}
                                   </td>
