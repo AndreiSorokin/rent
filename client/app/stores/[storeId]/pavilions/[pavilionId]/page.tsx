@@ -735,19 +735,6 @@ export default function PavilionPage() {
                         (ledger: any) =>
                           getMonthKeyInTimeZone(ledger.period, storeTimeZone) === periodKey,
                       );
-                      const previousPeriodDate = new Date(
-                        periodDate.getFullYear(),
-                        periodDate.getMonth() - 1,
-                        1,
-                      );
-                      const previousPeriodKey = getMonthKeyInTimeZone(
-                        previousPeriodDate,
-                        storeTimeZone,
-                      );
-                      const previousLedgerForPeriod = allMonthlyLedgers.find(
-                        (ledger: any) =>
-                          getMonthKeyInTimeZone(ledger.period, storeTimeZone) === previousPeriodKey,
-                      );
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
                       const periodAdditionalCharges = (pavilion.additionalCharges || []).filter(
@@ -792,9 +779,7 @@ export default function PavilionPage() {
                           expectedAdvertising +
                           periodAdditionalExpected);
                       const carryAdjustment = Number(
-                        previousLedgerForPeriod?.closingDebt ??
-                          ledgerForPeriod?.openingDebt ??
-                          0,
+                        ledgerForPeriod?.openingDebt ?? 0,
                       );
                       const expectedWithCarry = expected + carryAdjustment;
                       const paid =
