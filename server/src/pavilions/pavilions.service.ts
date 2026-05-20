@@ -695,7 +695,7 @@ export class PavilionsService {
       null;
 
     return {
-      ...pavilion,
+      ...this.enrichPavilionPaymentStatus(pavilion as any, pavilion.store?.timeZone || 'UTC'),
       contracts,
       activeLease,
       leaseHistory,
