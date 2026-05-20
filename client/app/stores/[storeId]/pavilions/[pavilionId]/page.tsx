@@ -735,6 +735,19 @@ export default function PavilionPage() {
                         (ledger: any) =>
                           getMonthKeyInTimeZone(ledger.period, storeTimeZone) === periodKey,
                       );
+                      const previousPeriodDate = new Date(
+                        periodDate.getFullYear(),
+                        periodDate.getMonth() - 1,
+                        1,
+                      );
+                      const previousPeriodKey = getMonthKeyInTimeZone(
+                        previousPeriodDate,
+                        storeTimeZone,
+                      );
+                      const previousLedgerForPeriod = allMonthlyLedgers.find(
+                        (ledger: any) =>
+                          getMonthKeyInTimeZone(ledger.period, storeTimeZone) === previousPeriodKey,
+                      );
                       const baseRent = pavilion.squareMeters * pavilion.pricePerSqM;
                       const periodDiscount = getDiscountForPeriod(periodDate);
                       const periodAdditionalCharges = (pavilion.additionalCharges || []).filter(
@@ -778,19 +791,34 @@ export default function PavilionPage() {
                           expectedUtilities +
                           expectedAdvertising +
                           periodAdditionalExpected);
+                      const carryAdjustment = Number(
+                        previousLedgerForPeriod?.closingDebt ??
+                          ledgerForPeriod?.openingDebt ??
+                          0,
+                      );
+                      const expectedWithCarry = expected + carryAdjustment;
                       const paid =
                         (pay.rentPaid || 0) +
                         (pay.utilitiesPaid || 0) +
                         (pay.advertisingPaid || 0) +
                         periodAdditionalPaid;
-                      const balance = paid - expected;
+                      const balance = paid - expectedWithCarry;
 
                       return (
                         <tr key={pay.id}>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">
                             {formatMonthNumberYearInTimeZone(pay.period, storeTimeZone)}
                           </td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(expected, currency)}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">
+                            <div>{formatMoney(expectedWithCarry, currency)}</div>
+                            {Math.abs(carryAdjustment) > 0.009 && (
+                              <div className="mt-1 text-xs text-[#6b6b6b]">
+                                включая перенос{' '}
+                                {carryAdjustment < 0 ? '+' : '-'}
+                                {formatMoney(Math.abs(carryAdjustment), currency)}
+                              </div>
+                            )}
+                          </td>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">{formatMoney(paid, currency)}</td>
                           <td
                             className={`whitespace-nowrap px-6 py-4 text-sm font-medium ${
