@@ -15,12 +15,24 @@ import {
   PavilionStatus,
   Prisma,
 } from '@prisma/client';
-import { endOfDay, endOfMonth, startOfDay, startOfMonth, subMonths } from 'date-fns';
+import {
+  addDays,
+  endOfDay,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subMonths,
+} from 'date-fns';
 import { StoreActivityService } from 'src/store-activity/store-activity.service';
 import * as fs from 'fs';
 import { join } from 'path';
 import { createHash } from 'crypto';
 import { th } from 'date-fns/locale';
+
+const SUBSCRIPTION_GRACE_PERIOD_DAYS = 10;
+const SUBSCRIPTION_ACCESS_ENFORCEMENT_ROLLOUT_AT = new Date(
+  '2026-05-31T00:00:00.000Z',
+);
 
 @Injectable()
 export class StoresService implements OnModuleInit, OnModuleDestroy {
@@ -33,6 +45,17 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   private activityCleanupLastRunAt?: number;
   private readonly activityCleanupIntervalMs = 12 * 60 * 60 * 1000;
   private readonly activityRetentionMonths = 6;
+
+  private getSubscriptionGraceStart(currentPeriod: Date) {
+    return currentPeriod.getTime() > SUBSCRIPTION_ACCESS_ENFORCEMENT_ROLLOUT_AT.getTime()
+      ? currentPeriod
+      : new Date(SUBSCRIPTION_ACCESS_ENFORCEMENT_ROLLOUT_AT);
+  }
+
+  private getSubscriptionDaysUntilFreeze(now: Date, graceEndsAt: Date) {
+    const diffMs = startOfDay(graceEndsAt).getTime() - startOfDay(now).getTime();
+    return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+  }
 
   private comparePavilionOrder(
     a: { id: number; number: string; sortIndex?: number | null },
@@ -926,27 +949,53 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     } else if (!hasChargeForCurrentMonth) {
       status = 'PAID';
       statusReason = 'NO_CHARGE';
-    } else if (currentInvoice?.status === 'PAID') {
-      status = 'PAID';
-      statusReason = 'PAID_INVOICE';
-    }
+      } else if (currentInvoice?.status === 'PAID') {
+        status = 'PAID';
+        statusReason = 'PAID_INVOICE';
+      }
 
-    return {
-      currentPeriod: currentPeriod.toISOString(),
-      amountRub,
-      baseAmountRub,
+      const now = new Date();
+      const needsSubscriptionAction =
+        status === 'UNPAID' && hasChargeForCurrentMonth && !isFirstMonthFree;
+      const graceStartsAt = needsSubscriptionAction
+        ? this.getSubscriptionGraceStart(currentPeriod)
+        : null;
+      const graceEndsAt = graceStartsAt
+        ? addDays(graceStartsAt, SUBSCRIPTION_GRACE_PERIOD_DAYS)
+        : null;
+      const isFrozen = Boolean(graceEndsAt && now.getTime() >= graceEndsAt.getTime());
+      const daysUntilFreeze =
+        graceEndsAt && !isFrozen
+          ? this.getSubscriptionDaysUntilFreeze(now, graceEndsAt)
+          : null;
+      const showPaymentReminder = Boolean(needsSubscriptionAction && !isFrozen);
+      const canManageSubscription = Boolean(
+        needsSubscriptionAction && hasBillingDetails,
+      );
+
+      return {
+        currentPeriod: currentPeriod.toISOString(),
+        amountRub,
+        baseAmountRub,
       currency,
       occupiedSquareMeters,
       ratePerSquareMeter,
       rentedPavilionsCount,
       isFirstMonthFree,
-      hasChargeForCurrentMonth,
-      hasBillingDetails,
-      status,
-      statusReason,
-      currentInvoice: currentInvoice
-        ? {
-            id: Number(currentInvoice.id),
+        hasChargeForCurrentMonth,
+        hasBillingDetails,
+        status,
+        statusReason,
+        showPaymentReminder,
+        isFrozen,
+        canManageSubscription,
+        gracePeriodDays: needsSubscriptionAction ? SUBSCRIPTION_GRACE_PERIOD_DAYS : 0,
+        graceStartsAt: graceStartsAt ? graceStartsAt.toISOString() : null,
+        graceEndsAt: graceEndsAt ? graceEndsAt.toISOString() : null,
+        daysUntilFreeze,
+        currentInvoice: currentInvoice
+          ? {
+              id: Number(currentInvoice.id),
             status: String(currentInvoice.status ?? 'PENDING'),
             amountRub: Number(currentInvoice.amountRub ?? 0),
             paymentUrl: currentInvoice.paymentUrl ? String(currentInvoice.paymentUrl) : null,

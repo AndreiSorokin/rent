@@ -20,6 +20,7 @@ import { getCurrencySymbol } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import { LogoutButton } from '@/components/LogoutButton';
 import Link from 'next/link';
+import { StoreSubscriptionGuard } from './StoreSubscriptionGuard';
 
 type SidebarSection =
   | 'pavilions'
@@ -34,6 +35,17 @@ type StoreSidebarProps = {
     name?: string;
     currency?: 'RUB' | 'KZT' | string;
     permissions?: string[];
+    subscriptionBilling?: {
+      status?: 'PAID' | 'UNPAID';
+      amountRub?: number;
+      hasChargeForCurrentMonth?: boolean;
+      hasBillingDetails?: boolean;
+      isFirstMonthFree?: boolean;
+      showPaymentReminder?: boolean;
+      isFrozen?: boolean;
+      canManageSubscription?: boolean;
+      daysUntilFreeze?: number | null;
+    } | null;
   };
   active?: SidebarSection;
   onOpenExtraIncome?: () => void;
@@ -250,6 +262,8 @@ export function StoreSidebar({
 
   return (
     <>
+      <StoreSubscriptionGuard storeId={storeId} store={store} />
+
       {enableMobileMenu && (
         <>
           <button
