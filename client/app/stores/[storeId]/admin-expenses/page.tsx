@@ -23,6 +23,7 @@ import {
 import { getDatePartsInTimeZone, isSameMonthInTimeZone } from '@/lib/dateTime';
 import { FullScreenLoader } from '@/components/AppLoader';
 import { ExpenseEditModal } from '../components/ExpenseEditModal';
+import { ExpenseSearchInput } from '../components/ExpenseSearchInput';
 
 type AdminExpenseType = Exclude<PavilionExpenseType, 'SALARIES' | 'HOUSEHOLD' | 'OTHER'>;
 
@@ -97,6 +98,7 @@ export default function StoreAdminExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [createModal, setCreateModal] = useState<{
     note: string;
     amount: string;
@@ -146,11 +148,21 @@ export default function StoreAdminExpensesPage() {
     return expenses
       .filter((item: any) => ADMIN_TYPE_SET.has(item.type))
       .filter((item: any) => isSameMonthInTimeZone(item.createdAt, year, month, timeZone))
+      .filter((item: any) => {
+        const needle = searchQuery.trim().toLocaleLowerCase('ru-RU');
+        if (!needle) return true;
+        return (
+          String(item.note ?? '')
+            .toLocaleLowerCase('ru-RU')
+            .includes(needle) ||
+          getAdminTypeLabel(item.type).toLocaleLowerCase('ru-RU').includes(needle)
+        );
+      })
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [expenses, store?.timeZone]);
+  }, [expenses, searchQuery, store?.timeZone]);
   const adminExpensesTotal = useMemo(
     () => adminExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount ?? 0), 0),
     [adminExpenses],
@@ -303,6 +315,13 @@ export default function StoreAdminExpensesPage() {
                     </button>
                   )}
                 </div>
+              </div>
+              <div className="mb-4">
+                <ExpenseSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Поиск по названию или типу расхода"
+                />
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">

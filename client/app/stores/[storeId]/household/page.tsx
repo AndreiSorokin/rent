@@ -10,6 +10,7 @@ import { useDialog } from '@/components/dialog/DialogProvider';
 import { useToast } from '@/components/toast/ToastProvider';
 import { FullScreenLoader } from '@/components/AppLoader';
 import { ExpenseEditModal } from '../components/ExpenseEditModal';
+import { ExpenseSearchInput } from '../components/ExpenseSearchInput';
 import {
   createHouseholdExpense,
   deleteHouseholdExpense,
@@ -82,6 +83,7 @@ export default function StoreHouseholdPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [filterDate, setFilterDate] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [createModal, setCreateModal] = useState<{
     name: string;
@@ -134,11 +136,16 @@ export default function StoreHouseholdPage() {
     return items
       .filter((item: any) => isSameMonthInTimeZone(item.createdAt, year, month, timeZone))
       .filter((item: any) => isSameDayKeyInTimeZone(item.createdAt, filterDate, timeZone))
+      .filter((item: any) =>
+        String(item.name ?? '')
+          .toLocaleLowerCase('ru-RU')
+          .includes(searchQuery.trim().toLocaleLowerCase('ru-RU')),
+      )
       .sort(
         (a: any, b: any) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
       );
-  }, [items, filterDate, store?.timeZone]);
+  }, [items, filterDate, searchQuery, store?.timeZone]);
   const householdTotal = useMemo(
     () => householdExpenses.reduce((sum: number, expense: any) => sum + Number(expense.amount ?? 0), 0),
     [householdExpenses],
@@ -305,6 +312,13 @@ export default function StoreHouseholdPage() {
                     </button>
                   )}
                 </div>
+              </div>
+              <div className="mb-4">
+                <ExpenseSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Поиск по названию расхода"
+                />
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">

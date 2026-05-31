@@ -101,6 +101,17 @@ export class AnalyticsService {
     };
   }
 
+  private getDateKeyInTimeZone(value: Date, timeZone: string) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const map = new Map(parts.map((part) => [part.type, part.value]));
+    return `${map.get('year')}-${map.get('month')}-${map.get('day')}`;
+  }
+
   private async getClosingBalanceSnapshot(storeId: number, period: Date, timeZone: string) {
     const { monthEnd } = this.getTimeZoneMonthRange(period, timeZone);
     const paymentRepo = (this.prisma as any).payment;
@@ -402,6 +413,7 @@ export class AnalyticsService {
         },
       },
       select: {
+        pavilionId: true,
         period: true,
         expectedTotal: true,
         actualTotal: true,
@@ -412,6 +424,23 @@ export class AnalyticsService {
         },
       },
     });
+    const trendPavilions =
+      (await this.prisma.pavilion.findMany({
+      where: { storeId },
+      select: {
+        id: true,
+        squareMeters: true,
+        leases: {
+          select: {
+            status: true,
+            startsOn: true,
+            endsOn: true,
+            vacatedOn: true,
+            createdAt: true,
+          },
+        },
+      },
+      })) ?? [];
     const [
       manualExpenses,
       previousManualExpenses,
@@ -1323,24 +1352,47 @@ export class AnalyticsService {
       });
     }
 
+    const occupiedByLedgerMonth = new Map<string, Set<number>>();
     for (const ledger of monthlyLedgers) {
       const monthKey = startOfMonth(ledger.period).toISOString();
-      const bucket = monthlyByKey.get(monthKey);
-      if (!bucket) continue;
       if (Number(ledger.expectedTotal ?? 0) > 0) {
-        bucket.pavilionsRented += 1;
-        bucket.squareRented += Number(ledger.pavilion.squareMeters ?? 0);
+        if (!occupiedByLedgerMonth.has(monthKey)) {
+          occupiedByLedgerMonth.set(monthKey, new Set<number>());
+        }
+        occupiedByLedgerMonth.get(monthKey)?.add(Number(ledger.pavilionId));
       }
     }
 
-    const currentKey = startOfMonth(period).toISOString();
-    monthlyByKey.set(currentKey, {
-      pavilionsRented: pavilions.filter(
-        (p) =>
-          p.status === PavilionStatus.RENTED || p.status === PavilionStatus.PREPAID,
-      ).length,
-      squareRented: areaRented,
-    });
+    for (const monthDate of months) {
+      const key = monthDate.toISOString();
+      const bucket = monthlyByKey.get(key);
+      if (!bucket) continue;
+      const { monthStart, monthEnd } = this.getTimeZoneMonthRange(monthDate, storeTimeZone);
+      const monthStartKey = this.getDateKeyInTimeZone(monthStart, storeTimeZone);
+      const monthEndKey = this.getDateKeyInTimeZone(monthEnd, storeTimeZone);
+      const occupiedByLedger = occupiedByLedgerMonth.get(key) ?? new Set<number>();
+
+      for (const pavilion of trendPavilions) {
+        const occupiedByLease = (pavilion.leases || []).some((lease) => {
+          if (lease.status === 'CANCELLED') return false;
+          const startsOn = String(lease.startsOn ?? '').trim();
+          const endsOn = String(lease.vacatedOn ?? lease.endsOn ?? '').trim();
+          const leaseStartKey =
+            startsOn.length > 0
+              ? startsOn
+              : this.getDateKeyInTimeZone(new Date(lease.createdAt), storeTimeZone);
+          const leaseEndKey = endsOn.length > 0 ? endsOn : null;
+          return leaseStartKey <= monthEndKey && (!leaseEndKey || leaseEndKey >= monthStartKey);
+        });
+
+        if (!occupiedByLease && !occupiedByLedger.has(Number(pavilion.id))) {
+          continue;
+        }
+
+        bucket.pavilionsRented += 1;
+        bucket.squareRented += Number(pavilion.squareMeters ?? 0);
+      }
+    }
 
     const monthlyTrend = months.map((monthDate) => {
       const key = monthDate.toISOString();
@@ -1418,6 +1470,7 @@ export class AnalyticsService {
       }
     }
 
+    const currentKey = startOfMonth(period).toISOString();
     if (monthlyFinanceMap.has(currentKey)) {
       const current = monthlyFinanceMap.get(currentKey);
       if (current) {
@@ -1447,11 +1500,20 @@ export class AnalyticsService {
       };
     });
 
+    const selectedMonthTradeArea =
+      monthlyTrend.find(
+        (item) => startOfMonth(item.period).getTime() === startOfMonth(period).getTime(),
+      ) ?? monthlyTrend[monthlyTrend.length - 1];
+
     return {
       pavilions: {
         total: pavilions.length,
-        rented: pavilions.filter((p) => p.status === 'RENTED').length,
-        free: pavilions.filter((p) => p.status === 'AVAILABLE').length,
+        rented:
+          selectedMonthTradeArea?.pavilionsRented ??
+          pavilions.filter((p) => p.status === 'RENTED').length,
+        free:
+          selectedMonthTradeArea?.pavilionsAvailable ??
+          pavilions.filter((p) => p.status === 'AVAILABLE').length,
         prepaid: pavilions.filter((p) => p.status === 'PREPAID').length,
       },
       forecastIncome: {
@@ -1727,11 +1789,15 @@ export class AnalyticsService {
         },
         tradeArea: {
           pavilionsTotal: pavilions.length,
-          pavilionsRented: pavilions.filter((p) => p.status === PavilionStatus.RENTED).length,
-          pavilionsAvailable: pavilions.filter((p) => p.status === PavilionStatus.AVAILABLE).length,
+          pavilionsRented:
+            selectedMonthTradeArea?.pavilionsRented ??
+            pavilions.filter((p) => p.status === PavilionStatus.RENTED).length,
+          pavilionsAvailable:
+            selectedMonthTradeArea?.pavilionsAvailable ??
+            pavilions.filter((p) => p.status === PavilionStatus.AVAILABLE).length,
           squareTotal: areaTotal,
-          squareRented: areaRented,
-          squareAvailable: areaAvailable,
+          squareRented: selectedMonthTradeArea?.squareRented ?? areaRented,
+          squareAvailable: selectedMonthTradeArea?.squareAvailable ?? areaAvailable,
           monthlyTrend,
         },
         groupedByPavilionGroups: groupSummaries,
