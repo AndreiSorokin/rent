@@ -430,6 +430,17 @@ export class AnalyticsService {
       select: {
         id: true,
         squareMeters: true,
+        payments: {
+          where: {
+            period: {
+              gte: trendStart,
+              lte: period,
+            },
+          },
+          select: {
+            period: true,
+          },
+        },
         leases: {
           select: {
             status: true,
@@ -1353,6 +1364,7 @@ export class AnalyticsService {
     }
 
     const occupiedByLedgerMonth = new Map<string, Set<number>>();
+    const occupiedByPaymentMonth = new Map<string, Set<number>>();
     for (const ledger of monthlyLedgers) {
       const monthKey = startOfMonth(ledger.period).toISOString();
       if (Number(ledger.expectedTotal ?? 0) > 0) {
@@ -1360,6 +1372,15 @@ export class AnalyticsService {
           occupiedByLedgerMonth.set(monthKey, new Set<number>());
         }
         occupiedByLedgerMonth.get(monthKey)?.add(Number(ledger.pavilionId));
+      }
+    }
+    for (const pavilion of trendPavilions) {
+      for (const payment of pavilion.payments || []) {
+        const monthKey = startOfMonth(payment.period).toISOString();
+        if (!occupiedByPaymentMonth.has(monthKey)) {
+          occupiedByPaymentMonth.set(monthKey, new Set<number>());
+        }
+        occupiedByPaymentMonth.get(monthKey)?.add(Number(pavilion.id));
       }
     }
 
@@ -1371,6 +1392,7 @@ export class AnalyticsService {
       const monthStartKey = this.getDateKeyInTimeZone(monthStart, storeTimeZone);
       const monthEndKey = this.getDateKeyInTimeZone(monthEnd, storeTimeZone);
       const occupiedByLedger = occupiedByLedgerMonth.get(key) ?? new Set<number>();
+      const occupiedByPayment = occupiedByPaymentMonth.get(key) ?? new Set<number>();
 
       for (const pavilion of trendPavilions) {
         const occupiedByLease = (pavilion.leases || []).some((lease) => {
@@ -1385,7 +1407,11 @@ export class AnalyticsService {
           return leaseStartKey <= monthEndKey && (!leaseEndKey || leaseEndKey >= monthStartKey);
         });
 
-        if (!occupiedByLease && !occupiedByLedger.has(Number(pavilion.id))) {
+        if (
+          !occupiedByLease &&
+          !occupiedByLedger.has(Number(pavilion.id)) &&
+          !occupiedByPayment.has(Number(pavilion.id))
+        ) {
           continue;
         }
 

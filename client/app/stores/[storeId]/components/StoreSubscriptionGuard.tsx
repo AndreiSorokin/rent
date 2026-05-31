@@ -51,6 +51,7 @@ export function StoreSubscriptionGuard({
 }: StoreSubscriptionGuardProps) {
   const toast = useToast();
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const subscriptionBilling = store.subscriptionBilling ?? null;
   const permissions = store.permissions ?? [];
@@ -155,9 +156,14 @@ export function StoreSubscriptionGuard({
     return null;
   }
 
+  const handleClose = () => {
+    setIsOpen(false);
+  }
+
   return (
     <div className="pointer-events-none fixed inset-x-0 top-3 z-[80] flex justify-center px-3">
-      <div className="pointer-events-auto w-full max-w-5xl rounded-2xl border border-[#f3c6a8] bg-[#fff1e8]/95 px-4 py-3 text-[#111111] shadow-[0_14px_40px_rgba(194,65,12,0.16)] backdrop-blur">
+      {isOpen && (
+        <div className="pointer-events-auto w-full max-w-5xl rounded-2xl border border-[#f3c6a8] bg-[#fff1e8]/95 px-4 py-3 text-[#111111] shadow-[0_14px_40px_rgba(194,65,12,0.16)] backdrop-blur">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[#c2410c]">
@@ -165,6 +171,7 @@ export function StoreSubscriptionGuard({
               <span className="text-xs font-semibold uppercase tracking-[0.14em]">
                 Напоминание об оплате
               </span>
+
             </div>
             <p className="mt-1 text-sm font-semibold text-[#111111]">
               Подписка по объекту не оплачена. К оплате: {amountLabel}.
@@ -177,7 +184,8 @@ export function StoreSubscriptionGuard({
 
           <div className="flex flex-wrap gap-2">
             {canStartCheckout ? (
-              <button
+              <div className="flex gap-2">
+                <button
                 type="button"
                 onClick={handleStartPayment}
                 disabled={paymentLoading}
@@ -186,6 +194,14 @@ export function StoreSubscriptionGuard({
                 <CreditCard className="h-4 w-4" />
                 {paymentLoading ? 'Переходим к оплате...' : 'Оплатить'}
               </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[red] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#bbb] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Закрыть
+              </button>
+              </div>
             ) : needsBillingDetails && canManageStore ? (
               <Link
                 href={`/stores/${storeId}/settings`}
@@ -198,6 +214,7 @@ export function StoreSubscriptionGuard({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
