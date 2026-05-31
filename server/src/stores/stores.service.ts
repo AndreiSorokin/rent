@@ -929,7 +929,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const ratePerSquareMeter = currency === 'KZT' ? 15 : 5;
     //TODO: Delete *2
     const baseAmountRub = Math.round(
-      occupiedSquareMeters * ratePerSquareMeter,
+      occupiedSquareMeters * ratePerSquareMeter * 4,
     );
     const amountRub = isFirstMonthFree ? 0 : baseAmountRub;
     const hasChargeForCurrentMonth = amountRub > 0;
