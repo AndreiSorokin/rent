@@ -33,6 +33,15 @@ const SUBSCRIPTION_GRACE_PERIOD_DAYS = 10;
 const SUBSCRIPTION_ACCESS_ENFORCEMENT_ROLLOUT_AT = new Date(
   '2026-05-31T00:00:00.000Z',
 );
+const MONTHLY_RECURRING_ADMIN_EXPENSE_TYPES: PavilionExpenseType[] = [
+  PavilionExpenseType.PAYROLL_TAX,
+  PavilionExpenseType.PROFIT_TAX,
+  PavilionExpenseType.VAT,
+  PavilionExpenseType.BANK_SERVICES,
+  PavilionExpenseType.DIVIDENDS,
+  PavilionExpenseType.LAND_RENT,
+  PavilionExpenseType.STORE_FACILITIES,
+];
 
 @Injectable()
 export class StoresService implements OnModuleInit, OnModuleDestroy {
@@ -55,6 +64,18 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
   private getSubscriptionDaysUntilFreeze(now: Date, graceEndsAt: Date) {
     const diffMs = startOfDay(graceEndsAt).getTime() - startOfDay(now).getTime();
     return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+  }
+
+  private buildAdminExpenseCarryKey(expense: {
+    type: PavilionExpenseType;
+    note?: string | null;
+    amount?: number | null;
+  }) {
+    return [
+      String(expense.type),
+      String(expense.note ?? '').trim(),
+      Number(expense.amount ?? 0).toFixed(2),
+    ].join('::');
   }
 
   private comparePavilionOrder(
@@ -4694,6 +4715,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
     const timeZone = this.normalizeStoreTimeZone(store.timeZone);
     const currentPeriod = this.getMonthPeriodInTimeZone(timeZone);
     const previousPeriod = startOfMonth(subMonths(currentPeriod, 1));
+    const currentPeriodRange = this.getTimeZoneMonthRange(currentPeriod, timeZone);
     const previousPeriodRange = this.getTimeZoneMonthRange(previousPeriod, timeZone);
 
     // Always keep PREPAID state up to date.
@@ -4753,6 +4775,39 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         },
       },
     });
+    const [previousAdminExpenses, currentAdminExpenses] = await Promise.all([
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          storeId,
+          type: { in: MONTHLY_RECURRING_ADMIN_EXPENSE_TYPES },
+          createdAt: {
+            gte: previousPeriodRange.monthStart,
+            lte: previousPeriodRange.monthEnd,
+          },
+        },
+        select: {
+          type: true,
+          note: true,
+          amount: true,
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.pavilionExpense.findMany({
+        where: {
+          storeId,
+          type: { in: MONTHLY_RECURRING_ADMIN_EXPENSE_TYPES },
+          createdAt: {
+            gte: currentPeriodRange.monthStart,
+            lte: currentPeriodRange.monthEnd,
+          },
+        },
+        select: {
+          type: true,
+          note: true,
+          amount: true,
+        },
+      }),
+    ]);
 
     await this.prisma.$transaction(async (tx) => {
       for (const pavilion of pavilions) {
@@ -4852,6 +4907,38 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
             monthDelta,
             closingDebt,
           },
+        });
+      }
+
+      const currentAdminCounts = new Map<string, number>();
+      for (const expense of currentAdminExpenses) {
+        const key = this.buildAdminExpenseCarryKey(expense);
+        currentAdminCounts.set(key, (currentAdminCounts.get(key) ?? 0) + 1);
+      }
+
+      const adminExpensesToCarry = previousAdminExpenses.filter((expense) => {
+        const key = this.buildAdminExpenseCarryKey(expense);
+        const currentCount = currentAdminCounts.get(key) ?? 0;
+        if (currentCount > 0) {
+          currentAdminCounts.set(key, currentCount - 1);
+          return false;
+        }
+        return true;
+      });
+
+      if (adminExpensesToCarry.length > 0) {
+        await tx.pavilionExpense.createMany({
+          data: adminExpensesToCarry.map((expense) => ({
+            storeId,
+            type: expense.type,
+            note: expense.note ?? null,
+            amount: Number(expense.amount ?? 0),
+            status: 'UNPAID' as const,
+            paymentMethod: null,
+            bankTransferPaid: 0,
+            cashbox1Paid: 0,
+            cashbox2Paid: 0,
+          })),
         });
       }
 

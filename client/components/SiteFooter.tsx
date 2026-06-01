@@ -16,6 +16,9 @@ export function SiteFooter() {
             <p className="mt-2 leading-6 text-[#6B6B6B]">{operatorText}</p>
           </div>
           <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2 md:gap-x-8">
+            <Link href="/support" className="hover:text-[#111111]">
+              Поддержка
+            </Link>
             <Link href="/solutions" className="hover:text-[#111111]">
               Решения
             </Link>
