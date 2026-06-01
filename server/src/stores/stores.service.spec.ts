@@ -28,6 +28,10 @@ describe('StoresService monthly rollover', () => {
       pavilionMonthlyLedger: {
         upsert: jest.fn(),
       },
+      pavilionExpense: {
+        findMany: jest.fn().mockResolvedValue([]),
+        createMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
       $transaction: jest.fn(),
     };
 
@@ -35,6 +39,7 @@ describe('StoresService monthly rollover', () => {
       callback({
         pavilionMonthlyLedger: prisma.pavilionMonthlyLedger,
         pavilion: prisma.pavilion,
+        pavilionExpense: prisma.pavilionExpense,
         storeStaff: prisma.storeStaff,
         store: prisma.store,
       }),
@@ -136,6 +141,56 @@ describe('StoresService monthly rollover', () => {
         salaryCashbox1Paid: 0,
         salaryCashbox2Paid: 0,
       },
+    });
+  });
+
+  it('copies previous month admin expense positions into the new month as unpaid without duplicates', async () => {
+    prisma.pavilion.updateMany.mockResolvedValue({ count: 1 });
+    prisma.store.findUnique.mockResolvedValue({
+      id: 10,
+      timeZone: 'UTC',
+      lastMonthlyResetPeriod: null,
+    });
+    prisma.pavilion.findMany.mockResolvedValue([]);
+    prisma.storeStaff.findMany.mockResolvedValue([]);
+    prisma.store.update.mockResolvedValue({});
+    prisma.pavilionExpense.findMany
+      .mockResolvedValueOnce([
+        {
+          type: 'STORE_FACILITIES',
+          note: 'Коммуналка объекта',
+          amount: 12500,
+        },
+        {
+          type: 'VAT',
+          note: 'НДС май',
+          amount: 8000,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          type: 'VAT',
+          note: 'НДС май',
+          amount: 8000,
+        },
+      ]);
+
+    await (service as any).runMonthlyRolloverForStore(10);
+
+    expect(prisma.pavilionExpense.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          storeId: 10,
+          type: 'STORE_FACILITIES',
+          note: 'Коммуналка объекта',
+          amount: 12500,
+          status: 'UNPAID',
+          paymentMethod: null,
+          bankTransferPaid: 0,
+          cashbox1Paid: 0,
+          cashbox2Paid: 0,
+        }),
+      ],
     });
   });
 
