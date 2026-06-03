@@ -22,6 +22,7 @@ import { FullScreenLoader } from '@/components/AppLoader';
 type ArchiveMonth = {
   key: string;
   label: string;
+  tenantName: string | null;
   totals: {
     rent: number;
     utilities: number;
@@ -99,6 +100,42 @@ type AdditionalEditDraft = {
   cashbox2: string;
 };
 
+function getMonthStartDateKey(monthKey: string) {
+  return `${monthKey}-01`;
+}
+
+function getMonthEndDateKey(monthKey: string) {
+  const [yearRaw, monthRaw] = monthKey.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const endDate = new Date(Date.UTC(year, month, 0));
+  return endDate.toISOString().slice(0, 10);
+}
+
+function getTenantNameForMonth(pavilion: Pavilion, monthKey: string) {
+  const monthStartKey = getMonthStartDateKey(monthKey);
+  const monthEndKey = getMonthEndDateKey(monthKey);
+  const leases = [...(pavilion.leaseHistory || [])].sort((a, b) => {
+    const aStart = String(a.startsOn || a.createdAt || '');
+    const bStart = String(b.startsOn || b.createdAt || '');
+    return bStart.localeCompare(aStart);
+  });
+
+  const lease = leases.find((item) => {
+    if (item.status === 'CANCELLED') return false;
+    const startsOn = String(item.startsOn ?? '').trim();
+    const endsOn = String(item.vacatedOn ?? item.endsOn ?? '').trim();
+    const leaseStartKey =
+      startsOn.length > 0 ? startsOn : String(item.createdAt).slice(0, 10);
+    const leaseEndKey = endsOn.length > 0 ? endsOn : null;
+
+    return leaseStartKey <= monthEndKey && (!leaseEndKey || leaseEndKey >= monthStartKey);
+  });
+
+  const tenantName = String(lease?.tenantName ?? '').trim();
+  return tenantName.length > 0 ? tenantName : null;
+}
+
 function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[] {
   const currentMonthKey = getMonthKeyInTimeZone(new Date(), timeZone);
   const map = new Map<string, ArchiveMonth>();
@@ -113,6 +150,7 @@ function buildArchiveMonths(pavilion: Pavilion, timeZone: string): ArchiveMonth[
     const next: ArchiveMonth = {
       key,
       label: formatMonthLabelFromKey(key, timeZone),
+      tenantName: getTenantNameForMonth(pavilion, key),
       totals: {
         rent: 0,
         utilities: 0,
@@ -541,7 +579,12 @@ export default function PavilionArchivePage() {
         ) : (
           months.map((month) => (
             <div key={month.key} className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-              <h2 className="mb-4 text-xl font-semibold capitalize">{month.label}</h2>
+              <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold capitalize">{month.label}</h2>
+                  <h2 className="text-lg font-bold">Наименование организации: {month.tenantName || 'Не указано'}</h2>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-[#ece4dd]">
                   <thead className="bg-[#f4efeb]">
