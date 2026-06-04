@@ -56,6 +56,18 @@ export default function PavilionPage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showAddAdditionalChargeModal, setShowAddAdditionalChargeModal] = useState(false);
+  const [editingAdditionalCharge, setEditingAdditionalCharge] = useState<{
+    id: number;
+    name: string;
+    amount: number;
+    currentMonthPayments: Array<{
+      id: number;
+      amountPaid: number;
+      bankTransferPaid?: number | null;
+      cashbox1Paid?: number | null;
+      cashbox2Paid?: number | null;
+    }>;
+  } | null>(null);
   const [showPrepaymentModal, setShowPrepaymentModal] = useState(false);
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
   const [payingCharge, setPayingCharge] = useState<{
@@ -1137,19 +1149,19 @@ export default function PavilionPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-[1200px] divide-y divide-gray-200">
                 <thead className="bg-[#f4efeb]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500"></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичные</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                    <th className="px-4 py-4 text-left text-xs font-medium uppercase text-gray-500"></th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Название</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Безналичные</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
+                    <th className="px-8 py-4 text-center text-xs font-medium uppercase text-gray-500">Действия</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1186,7 +1198,7 @@ export default function PavilionPage() {
                     return (
                       <React.Fragment key={charge.id}>
                         <tr>
-                          <td className="px-4 py-4">
+                          <td className="px-4 py-5 align-top">
                             {hasPayments ? (
                               <button
                                 onClick={() => toggleCharge(charge.id)}
@@ -1198,14 +1210,14 @@ export default function PavilionPage() {
                               <span className="text-gray-300">.</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm font-medium">{charge.name}</td>
-                          <td className="px-6 py-4 text-sm">{formatMoney(charge.amount, currency)}</td>
-                          <td className="px-6 py-4 text-sm">{formatMoney(totalPaid, currency)}</td>
-                          <td className="px-6 py-4 text-sm">{formatMoney(totalBankTransferPaid, currency)}</td>
-                          <td className="px-6 py-4 text-sm">{formatMoney(totalCashbox1Paid, currency)}</td>
-                          <td className="px-6 py-4 text-sm">{formatMoney(totalCashbox2Paid, currency)}</td>
+                          <td className="px-8 py-5 text-sm font-medium align-top whitespace-nowrap">{charge.name}</td>
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">{formatMoney(charge.amount, currency)}</td>
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">{formatMoney(totalPaid, currency)}</td>
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">{formatMoney(totalBankTransferPaid, currency)}</td>
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">{formatMoney(totalCashbox1Paid, currency)}</td>
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">{formatMoney(totalCashbox2Paid, currency)}</td>
                           <td
-                            className={`px-6 py-4 text-sm font-medium ${
+                            className={`px-8 py-5 text-sm font-medium align-top whitespace-nowrap ${
                               balance > 0
                                 ? 'text-green-600'
                                 : balance < 0
@@ -1216,16 +1228,39 @@ export default function PavilionPage() {
                             {balance > 0 ? '+' : balance < 0 ? '-' : ''}
                             {formatMoney(Math.abs(balance), currency)}
                           </td>
-                          <td className="px-6 py-4 text-sm">
+                          <td className="px-8 py-5 text-sm align-top whitespace-nowrap">
                             {isPaid ? (
                               <span className="font-semibold text-green-700">Оплачено</span>
                             ) : (
                               <span className="font-semibold text-amber-600">Не оплачено</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm">
-                            <div className="flex min-w-[120px] flex-col items-end gap-2">
-                              {!isPaid && hasPermission(permissions, 'CREATE_PAYMENTS') && (
+                          <td className="px-8 py-5 text-center text-sm align-top">
+                            <div className="flex min-w-[180px] flex-col items-center gap-2">
+                              {hasPermission(permissions, 'EDIT_CHARGES') && (
+                                <button
+                                  onClick={() =>
+                                    setEditingAdditionalCharge({
+                                      id: charge.id,
+                                      name: charge.name,
+                                      amount: charge.amount,
+                                      currentMonthPayments: currentMonthChargePayments.map((p: any) => ({
+                                        id: p.id,
+                                        amountPaid: Number(p.amountPaid ?? 0),
+                                        bankTransferPaid: Number(p.bankTransferPaid ?? 0),
+                                        cashbox1Paid: Number(p.cashbox1Paid ?? 0),
+                                        cashbox2Paid: Number(p.cashbox2Paid ?? 0),
+                                      })),
+                                    })
+                                  }
+                                className="inline-flex min-w-[160px] justify-center rounded-lg border border-[#CFC6BF] bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
+                                >
+                                  Оплатить/изменить
+                                </button>
+                              )}
+                              {!hasPermission(permissions, 'EDIT_CHARGES') &&
+                                !isPaid &&
+                                hasPermission(permissions, 'CREATE_PAYMENTS') && (
                                 <button
                                   onClick={() =>
                                     setPayingCharge({
@@ -1235,17 +1270,9 @@ export default function PavilionPage() {
                                       amount: charge.amount - totalPaid,
                                     })
                                   }
-                                  className="inline-flex w-full justify-center rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20"
+                                  className="inline-flex min-w-[160px] justify-center rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20"
                                 >
                                   Оплатить
-                                </button>
-                              )}
-                              {hasPermission(permissions, 'DELETE_CHARGES') && (
-                                <button
-                                  onClick={() => handleDeleteCharge(charge.id)}
-                                  className="inline-flex w-full justify-center rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-3 py-1.5 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
-                                >
-                                  Удалить
                                 </button>
                               )}
                             </div>
@@ -1258,7 +1285,7 @@ export default function PavilionPage() {
                               {currentMonthChargePayments.length ? (
                                 <div className="space-y-2">
                                   <div className="text-xs font-semibold text-gray-500">История оплат</div>
-                                  <div className="grid grid-cols-[120px_1fr_1fr_1fr_1fr_auto] gap-3 text-xs font-semibold text-gray-500">
+                                  <div className="grid grid-cols-[160px_1fr_1fr_1fr_1fr_auto] gap-3 text-xs font-semibold text-gray-500">
                                     <span>Дата</span>
                                     <span>Сумма</span>
                                     <span>Безналичные</span>
@@ -1449,6 +1476,30 @@ export default function PavilionPage() {
             pavilionId={pavilionIdNum}
             onClose={() => setShowAddAdditionalChargeModal(false)}
             onSaved={handleActionSuccess}
+          />
+        )}
+
+        {editingAdditionalCharge && (
+          <AddAdditionalChargeModal
+            pavilionId={pavilionIdNum}
+            charge={editingAdditionalCharge}
+            onClose={() => setEditingAdditionalCharge(null)}
+            onDelete={async () => {
+              const confirmed = await dialog.confirm({
+                title: 'Удаление начисления',
+                message: 'Удалить это начисление?',
+                tone: 'danger',
+                confirmText: 'Удалить',
+              });
+              if (!confirmed) return;
+              await deleteAdditionalCharge(pavilionIdNum, editingAdditionalCharge.id);
+              setEditingAdditionalCharge(null);
+              handleActionSuccess();
+            }}
+            onSaved={() => {
+              setEditingAdditionalCharge(null);
+              handleActionSuccess();
+            }}
           />
         )}
       </div>
