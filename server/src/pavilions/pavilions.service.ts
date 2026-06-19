@@ -282,11 +282,13 @@ export class PavilionsService {
       previousMonthLedger?.closingDebt ?? currentMonthLedger?.openingDebt ?? 0,
     );
     const expectedWithCarry = expectedTotal + carryAdjustment;
+    const carryCredit = Math.max(0, -carryAdjustment);
+    const coveredTotal = paidTotal + carryCredit;
 
     let paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' = 'PAID';
-    if (expectedWithCarry > 0.01) {
-      if (paidTotal <= 0.01) paymentStatus = 'UNPAID';
-      else if (paidTotal + 0.01 >= expectedWithCarry) paymentStatus = 'PAID';
+    if (expectedTotal > 0.01) {
+      if (coveredTotal <= 0.01) paymentStatus = 'UNPAID';
+      else if (coveredTotal + 0.01 >= expectedTotal) paymentStatus = 'PAID';
       else paymentStatus = 'PARTIAL';
     }
 
@@ -297,6 +299,7 @@ export class PavilionsService {
       paymentExpectedTotalWithCarry: expectedWithCarry,
       paymentCarryAdjustment: carryAdjustment,
       paymentPaidTotal: paidTotal,
+      paymentCoveredTotal: coveredTotal,
       paymentBalance: paidTotal - expectedWithCarry,
     };
   }
