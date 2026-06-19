@@ -343,19 +343,48 @@ export default function StorePage() {
       pavilion.status === 'RENTED' ? Number(pavilion.utilitiesAmount ?? 0) : 0;
     const advertisingExpected =
       pavilion.status === 'RENTED' ? Number(pavilion.advertisingAmount ?? 0) : 0;
+    const currentMonthAdditionalCharges = (pavilion.additionalCharges || []).filter((charge: any) => {
+      return getMonthKeyInTimeZone(charge.createdAt, storeTimeZone) === currentMonthKey;
+    });
+    const additionalExpected = currentMonthAdditionalCharges.reduce(
+      (sum: number, charge: any) => sum + Number(charge.amount ?? 0),
+      0,
+    );
 
     const expectedTotal =
-      pavilion.status === 'AVAILABLE' ? 0 : rentExpected + utilitiesExpected + advertisingExpected;
+      pavilion.status === 'AVAILABLE'
+        ? 0
+        : rentExpected + utilitiesExpected + advertisingExpected + additionalExpected;
     const paidTotal =
       Number(currentMonthPayment?.rentPaid ?? 0) +
       Number(currentMonthPayment?.utilitiesPaid ?? 0) +
-      Number(currentMonthPayment?.advertisingPaid ?? 0);
+      Number(currentMonthPayment?.advertisingPaid ?? 0) +
+      currentMonthAdditionalCharges.reduce((sum: number, charge: any) => {
+        const currentMonthChargePayments = (charge.payments || []).filter((payment: any) => {
+          return getMonthKeyInTimeZone(payment.paidAt, storeTimeZone) === currentMonthKey;
+        });
+        return (
+          sum +
+          currentMonthChargePayments.reduce(
+            (inner: number, payment: any) => inner + Number(payment.amountPaid ?? 0),
+            0,
+          )
+        );
+      }, 0);
+    const carryAdjustment = Number(
+      pavilion.paymentCarryAdjustment ??
+        pavilion.previousMonthLedger?.closingDebt ??
+        pavilion.currentMonthLedger?.openingDebt ??
+        0,
+    );
+    const carryCredit = Math.max(0, -carryAdjustment);
+    const coveredTotal = paidTotal + carryCredit;
 
-    if (expectedTotal <= 0.01 || paidTotal + 0.01 >= expectedTotal) {
+    if (expectedTotal <= 0.01 || coveredTotal + 0.01 >= expectedTotal) {
       return { label: 'Оплачено', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
     }
 
-    if (paidTotal <= 0.01) {
+    if (coveredTotal <= 0.01) {
       return { label: 'Не оплачено', className: 'border-rose-200 bg-rose-50 text-rose-700' };
     }
 

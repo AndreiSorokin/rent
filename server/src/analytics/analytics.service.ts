@@ -429,6 +429,7 @@ export class AnalyticsService {
       where: { storeId },
       select: {
         id: true,
+        status: true,
         squareMeters: true,
         payments: {
           where: {
@@ -452,6 +453,29 @@ export class AnalyticsService {
         },
       },
       })) ?? [];
+    const trendPavilionIds = trendPavilions.map((pavilion) => Number(pavilion.id));
+    const pavilionCreateActivities =
+      trendPavilionIds.length > 0
+        ? await this.prisma.storeActivity.findMany({
+            where: {
+              storeId,
+              action: 'CREATE',
+              entityType: 'PAVILION',
+              pavilionId: { in: trendPavilionIds },
+            },
+            select: {
+              pavilionId: true,
+              createdAt: true,
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          })
+        : [];
+    const pavilionCreatedAtById = new Map<number, Date>();
+    for (const activity of pavilionCreateActivities) {
+      const pavilionId = Number(activity.pavilionId ?? 0);
+      if (!pavilionId || pavilionCreatedAtById.has(pavilionId)) continue;
+      pavilionCreatedAtById.set(pavilionId, activity.createdAt);
+    }
     const [
       manualExpenses,
       previousManualExpenses,
@@ -1365,13 +1389,16 @@ export class AnalyticsService {
 
     const occupiedByLedgerMonth = new Map<string, Set<number>>();
     const occupiedByPaymentMonth = new Map<string, Set<number>>();
+    const occupiedByAnyHistoricalSignal = new Set<number>();
     for (const ledger of monthlyLedgers) {
       const monthKey = startOfMonth(ledger.period).toISOString();
       if (Number(ledger.expectedTotal ?? 0) > 0) {
         if (!occupiedByLedgerMonth.has(monthKey)) {
           occupiedByLedgerMonth.set(monthKey, new Set<number>());
         }
-        occupiedByLedgerMonth.get(monthKey)?.add(Number(ledger.pavilionId));
+        const pavilionId = Number(ledger.pavilionId);
+        occupiedByLedgerMonth.get(monthKey)?.add(pavilionId);
+        occupiedByAnyHistoricalSignal.add(pavilionId);
       }
     }
     for (const pavilion of trendPavilions) {
@@ -1380,7 +1407,9 @@ export class AnalyticsService {
         if (!occupiedByPaymentMonth.has(monthKey)) {
           occupiedByPaymentMonth.set(monthKey, new Set<number>());
         }
-        occupiedByPaymentMonth.get(monthKey)?.add(Number(pavilion.id));
+        const pavilionId = Number(pavilion.id);
+        occupiedByPaymentMonth.get(monthKey)?.add(pavilionId);
+        occupiedByAnyHistoricalSignal.add(pavilionId);
       }
     }
 
@@ -1389,12 +1418,18 @@ export class AnalyticsService {
       const bucket = monthlyByKey.get(key);
       if (!bucket) continue;
       const { monthStart, monthEnd } = this.getTimeZoneMonthRange(monthDate, storeTimeZone);
+      const isFirstTrendMonth = monthDate.getTime() === months[0]?.getTime();
       const monthStartKey = this.getDateKeyInTimeZone(monthStart, storeTimeZone);
       const monthEndKey = this.getDateKeyInTimeZone(monthEnd, storeTimeZone);
       const occupiedByLedger = occupiedByLedgerMonth.get(key) ?? new Set<number>();
       const occupiedByPayment = occupiedByPaymentMonth.get(key) ?? new Set<number>();
 
       for (const pavilion of trendPavilions) {
+        const pavilionId = Number(pavilion.id);
+        const pavilionCreatedAt = pavilionCreatedAtById.get(pavilionId);
+        if (pavilionCreatedAt && pavilionCreatedAt.getTime() > monthEnd.getTime()) {
+          continue;
+        }
         const occupiedByLease = (pavilion.leases || []).some((lease) => {
           if (lease.status === 'CANCELLED') return false;
           const startsOn = String(lease.startsOn ?? '').trim();
@@ -1406,11 +1441,17 @@ export class AnalyticsService {
           const leaseEndKey = endsOn.length > 0 ? endsOn : null;
           return leaseStartKey <= monthEndKey && (!leaseEndKey || leaseEndKey >= monthStartKey);
         });
+        const occupiedByFirstMonthFallback =
+          isFirstTrendMonth &&
+          (pavilion.status === PavilionStatus.RENTED ||
+            pavilion.status === PavilionStatus.PREPAID) &&
+          occupiedByAnyHistoricalSignal.has(pavilionId);
 
         if (
           !occupiedByLease &&
-          !occupiedByLedger.has(Number(pavilion.id)) &&
-          !occupiedByPayment.has(Number(pavilion.id))
+          !occupiedByLedger.has(pavilionId) &&
+          !occupiedByPayment.has(pavilionId) &&
+          !occupiedByFirstMonthFallback
         ) {
           continue;
         }
@@ -1813,17 +1854,14 @@ export class AnalyticsService {
               expenseChannelsCashbox1 +
               expenseChannelsCashbox2),
         },
-        tradeArea: {
+                tradeArea: {
           pavilionsTotal: pavilions.length,
-          pavilionsRented:
-            selectedMonthTradeArea?.pavilionsRented ??
-            pavilions.filter((p) => p.status === PavilionStatus.RENTED).length,
+          pavilionsRented: selectedMonthTradeArea?.pavilionsRented ?? 0,
           pavilionsAvailable:
-            selectedMonthTradeArea?.pavilionsAvailable ??
-            pavilions.filter((p) => p.status === PavilionStatus.AVAILABLE).length,
+            selectedMonthTradeArea?.pavilionsAvailable ?? pavilions.length,
           squareTotal: areaTotal,
-          squareRented: selectedMonthTradeArea?.squareRented ?? areaRented,
-          squareAvailable: selectedMonthTradeArea?.squareAvailable ?? areaAvailable,
+          squareRented: selectedMonthTradeArea?.squareRented ?? 0,
+          squareAvailable: selectedMonthTradeArea?.squareAvailable ?? areaTotal,
           monthlyTrend,
         },
         groupedByPavilionGroups: groupSummaries,
