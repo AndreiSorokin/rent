@@ -380,7 +380,7 @@ export default function StorePage() {
     const carryCredit = Math.max(0, -carryAdjustment);
     const coveredTotal = paidTotal + carryCredit;
 
-    if (expectedTotal <= 0.01 || coveredTotal + 0.01 >= expectedTotal) {
+    if (expectedTotal <= 0.01 || paidTotal + 0.01 >= expectedTotal) {
       return { label: 'Оплачено', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
     }
 
