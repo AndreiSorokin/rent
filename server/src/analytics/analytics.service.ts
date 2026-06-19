@@ -1418,7 +1418,6 @@ export class AnalyticsService {
       const bucket = monthlyByKey.get(key);
       if (!bucket) continue;
       const { monthStart, monthEnd } = this.getTimeZoneMonthRange(monthDate, storeTimeZone);
-      const isFirstTrendMonth = monthDate.getTime() === months[0]?.getTime();
       const monthStartKey = this.getDateKeyInTimeZone(monthStart, storeTimeZone);
       const monthEndKey = this.getDateKeyInTimeZone(monthEnd, storeTimeZone);
       const occupiedByLedger = occupiedByLedgerMonth.get(key) ?? new Set<number>();
@@ -1441,17 +1440,11 @@ export class AnalyticsService {
           const leaseEndKey = endsOn.length > 0 ? endsOn : null;
           return leaseStartKey <= monthEndKey && (!leaseEndKey || leaseEndKey >= monthStartKey);
         });
-        const occupiedByFirstMonthFallback =
-          isFirstTrendMonth &&
-          (pavilion.status === PavilionStatus.RENTED ||
-            pavilion.status === PavilionStatus.PREPAID) &&
-          occupiedByAnyHistoricalSignal.has(pavilionId);
 
         if (
           !occupiedByLease &&
           !occupiedByLedger.has(pavilionId) &&
-          !occupiedByPayment.has(pavilionId) &&
-          !occupiedByFirstMonthFallback
+          !occupiedByPayment.has(pavilionId)
         ) {
           continue;
         }
@@ -1854,7 +1847,7 @@ export class AnalyticsService {
               expenseChannelsCashbox1 +
               expenseChannelsCashbox2),
         },
-                tradeArea: {
+        tradeArea: {
           pavilionsTotal: pavilions.length,
           pavilionsRented: selectedMonthTradeArea?.pavilionsRented ?? 0,
           pavilionsAvailable:
