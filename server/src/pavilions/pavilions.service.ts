@@ -288,7 +288,7 @@ export class PavilionsService {
     let paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID' = 'PAID';
     if (expectedTotal > 0.01) {
       if (coveredTotal <= 0.01) paymentStatus = 'UNPAID';
-      else if (paidTotal + 0.01 >= expectedTotal) paymentStatus = 'PAID';
+      else if (coveredTotal + 0.01 >= expectedTotal) paymentStatus = 'PAID';
       else paymentStatus = 'PARTIAL';
     }
 
