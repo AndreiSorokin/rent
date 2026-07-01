@@ -66,6 +66,10 @@ export function StoreSubscriptionGuard({
     return null;
   }
 
+  if ([8, 30, 16].includes(storeId)) {
+    return null;
+  }
+
   const amountLabel = `${Number(subscriptionBilling.amountRub ?? 0).toLocaleString(
     'ru-RU',
   )} ${getCurrencySymbol((store.currency as any) || 'RUB')}`;
