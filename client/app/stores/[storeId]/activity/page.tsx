@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { hasPermission } from '@/lib/permissions';
 
@@ -25,15 +26,6 @@ type ActivityResponse = {
   totalPages: number;
 };
 
-const ACTION_LABELS: Record<string, string> = {
-  CREATE: 'Добавление',
-  UPDATE: 'Изменение',
-  DELETE: 'Удаление',
-  OPEN: 'Открытие',
-  CLOSE: 'Закрытие',
-  IMPORT: 'Импорт',
-};
-
 const ACTION_STYLES: Record<string, string> = {
   CREATE: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
   UPDATE: 'bg-amber-50 text-amber-700 border border-amber-100',
@@ -43,121 +35,13 @@ const ACTION_STYLES: Record<string, string> = {
   IMPORT: 'bg-indigo-50 text-indigo-700 border border-indigo-100',
 };
 
-const ENTITY_LABELS: Record<string, string> = {
-  PAVILION: 'Объекты аренды',
-  STAFF: 'Штатное расписание',
-  HOUSEHOLD_EXPENSE: 'Хозяйственные расходы',
-  PAVILION_EXPENSE: 'Расходы',
-  STORE_EXTRA_INCOME: 'Доп. приход объекта',
-  ACCOUNTING_RECORD: 'Бух. запись',
-  ACCOUNTING_DAY: 'Сверка дня',
-  ADDITIONAL_CHARGE: 'Доп. начисление',
-  ADDITIONAL_CHARGE_PAYMENT: 'Оплата доп. начисления',
-  PAYMENT_TRANSACTION: 'Платеж',
-  CONTRACT: 'Договор',
-  DISCOUNT: 'Скидка',
-  PAVILION_IMPORT: 'Выгрузка объектов аренды',
-  STORE_MEDIA: 'Описание и фото объекта',
-  STORE_IMAGE: 'Фото объекта',
-  STORE_USER_INVITE: 'Приглашение пользователя',
-  STORE_USER_PERMISSIONS: 'Права пользователя',
-  STORE_USER_REMOVE: 'Удаление пользователя из объекта',
-  PAVILION_MEDIA: 'Описание и фото павильона',
-  PAVILION_IMAGE: 'Фото павильона',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  PAID: 'Оплачено',
-  UNPAID: 'Не оплачено',
-  AVAILABLE: 'Свободен',
-  RENTED: 'Занят',
-  PREPAID: 'Предоплата',
-};
-
-const PERMISSION_LABELS: Record<string, string> = {
-  VIEW_PAVILIONS: 'Просмотр павильонов',
-  VIEW_STAFF: 'Просмотр штатного расписания',
-  MANAGE_STAFF: 'Управление штатным расписанием',
-  CREATE_PAVILIONS: 'Создавать павильоны',
-  EXPORT_STORE_DATA: 'Выгружать данные',
-  MANAGE_MEDIA: 'Работа с описаниями и изображениями',
-  EDIT_PAVILIONS: 'Изменять павильоны',
-  DELETE_PAVILIONS: 'Удалять павильоны',
-  VIEW_PAYMENTS: 'Просмотр оплат',
-  VIEW_SUMMARY: 'Просмотр сводки',
-  VIEW_ACTIVITY: 'Просмотр журнала действий',
-  CREATE_PAYMENTS: 'Записывать оплаты',
-  EDIT_PAYMENTS: 'Изменять оплаты',
-  VIEW_CHARGES: 'Просмотр начислений',
-  CREATE_CHARGES: 'Создавать начисления',
-  EDIT_CHARGES: 'Изменять статус начислений',
-  DELETE_CHARGES: 'Удалять начисления',
-  VIEW_CONTRACTS: 'Просмотр контрактов',
-  UPLOAD_CONTRACTS: 'Загружать контракты',
-  DELETE_CONTRACTS: 'Удалять контракты',
-  INVITE_USERS: 'Приглашать пользователей',
-  REMOVE_USERS: 'Удалять пользователей из объекта',
-  ASSIGN_PERMISSIONS: 'Управлять правами доступа',
-};
-
-const DETAIL_LABELS: Record<string, string> = {
-  name: 'Название',
-  note: 'Примечание',
-  number: 'Номер',
-  category: 'Категория',
-  description: 'Описание',
-  imagePath: 'Фото',
-  pavilionNumber: 'Объект аренды',
-  position: 'Должность',
-  fullName: 'Сотрудник',
-  tenantName: 'Арендатор',
-  status: 'Статус',
-  salaryStatus: 'Статус оплаты',
-  amount: 'Сумма',
-  salary: 'Зарплата',
-  amountPaid: 'Оплачено',
-  rentPaid: 'Аренда (оплачено)',
-  utilitiesPaid: 'Коммунальные (оплачено)',
-  advertisingPaid: 'Реклама (оплачено)',
-  squareMeters: 'Площадь',
-  pricePerSqM: 'Цена за м2',
-  rentAmount: 'Аренда',
-  utilitiesAmount: 'Коммунальные',
-  advertisingAmount: 'Реклама',
-  prepaidUntil: 'Предоплата до',
-  startsAt: 'Дата начала',
-  endsAt: 'Дата окончания',
-  bankTransferPaid: 'Безналичные',
-  cashbox1Paid: 'Наличные касса 1',
-  cashbox2Paid: 'Наличные касса 2',
-  rentBankTransferPaid: 'Аренда: безналичные',
-  rentCashbox1Paid: 'Аренда: наличные касса 1',
-  rentCashbox2Paid: 'Аренда: наличные касса 2',
-  utilitiesBankTransferPaid: 'Коммунальные: безналичные',
-  utilitiesCashbox1Paid: 'Коммунальные: наличные касса 1',
-  utilitiesCashbox2Paid: 'Коммунальные: наличные касса 2',
-  advertisingBankTransferPaid: 'Реклама: безналичные',
-  advertisingCashbox1Paid: 'Реклама: наличные касса 1',
-  advertisingCashbox2Paid: 'Реклама: наличные касса 2',
-  salaryBankTransferPaid: 'Безналичные',
-  salaryCashbox1Paid: 'Наличные касса 1',
-  salaryCashbox2Paid: 'Наличные касса 2',
-  recordDate: 'Дата',
-  date: 'Дата',
-  diffBank: 'Расхождение безнал',
-  diffCash1: 'Расхождение касса 1',
-  diffCash2: 'Расхождение касса 2',
-  fileName: 'Файл',
-  fileType: 'Тип файла',
-  contractNumber: 'Номер договора',
-  expiresOn: 'Дата окончания договора',
-  invitedUserId: 'ID пользователя',
-  invitedUserEmail: 'Email пользователя',
-  invitedUserName: 'Имя пользователя',
-  targetUserId: 'ID пользователя',
-  targetUserEmail: 'Email пользователя',
-  targetUserName: 'Имя пользователя',
-  permissions: 'Права',
+type ActivityLabels = {
+  entity: Record<string, string>;
+  status: Record<string, string>;
+  permission: Record<string, string>;
+  detail: Record<string, string>;
+  otherExpenses: string;
+  administrativeExpenses: string;
 };
 
 const DETAIL_ORDER = [
@@ -253,13 +137,18 @@ const formatDateKey = (value: unknown) => {
   return `${day}.${month}.${year}`;
 };
 
-const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
+const formatDetailValue = (
+  key: string,
+  value: unknown,
+  labels: ActivityLabels,
+  timeZone = 'UTC',
+) => {
   if (value === null || value === undefined || value === '') return '-';
   if (Array.isArray(value)) {
     if (key === 'permissions') {
       return value
         .map((permission) =>
-          PERMISSION_LABELS[String(permission)] ?? String(permission),
+          labels.permission[String(permission)] ?? String(permission),
         )
         .join(', ');
     }
@@ -267,11 +156,11 @@ const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
   }
 
   if (key === 'permissions') {
-    return PERMISSION_LABELS[String(value)] ?? String(value);
+    return labels.permission[String(value)] ?? String(value);
   }
 
   if (key.toLowerCase().includes('status')) {
-    return STATUS_LABELS[String(value)] ?? String(value);
+    return labels.status[String(value)] ?? String(value);
   }
 
   if (key === 'expiresOn') {
@@ -304,6 +193,7 @@ const formatDetailValue = (key: string, value: unknown, timeZone = 'UTC') => {
 const renderDiffDetails = (
   before: Record<string, unknown>,
   after: Record<string, unknown>,
+  labels: ActivityLabels,
   timeZone = 'UTC',
 ) => {
   const changedKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
@@ -317,20 +207,24 @@ const renderDiffDetails = (
   ];
 
   return ordered.map((key) => {
-    const label = DETAIL_LABELS[key] ?? key;
-    const beforeValue = formatDetailValue(key, before[key], timeZone);
-    const afterValue = formatDetailValue(key, after[key], timeZone);
+    const label = labels.detail[key] ?? key;
+    const beforeValue = formatDetailValue(key, before[key], labels, timeZone);
+    const afterValue = formatDetailValue(key, after[key], labels, timeZone);
     return `${label}: ${beforeValue} -> ${afterValue}`;
   });
 };
 
-const renderDetails = (details?: Record<string, unknown> | null, timeZone = 'UTC') => {
+const renderDetails = (
+  details: Record<string, unknown> | null | undefined,
+  labels: ActivityLabels,
+  timeZone = 'UTC',
+) => {
   if (!details) return ['-'];
 
   const before = isRecord(details.before) ? details.before : null;
   const after = isRecord(details.after) ? details.after : null;
   if (before && after) {
-    return renderDiffDetails(before, after, timeZone);
+    return renderDiffDetails(before, after, labels, timeZone);
   }
 
   const keys = [
@@ -349,18 +243,34 @@ const renderDetails = (details?: Record<string, unknown> | null, timeZone = 'UTC
   ];
 
   return keys.map((key) => {
-    const label = DETAIL_LABELS[key] ?? key;
-    const value = formatDetailValue(key, details[key], timeZone);
+    const label = labels.detail[key] ?? key;
+    const value = formatDetailValue(key, details[key], labels, timeZone);
     return `${label}: ${value}`;
   });
 };
 
 export default function StoreActivityPage() {
+  const t = useTranslations('StoreActivityPage');
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const storeId = Number(params.storeId);
+
+  const actionLabels = t.raw('actionLabels') as Record<string, string>;
+  const entityLabels = t.raw('entityLabels') as Record<string, string>;
+  const labels: ActivityLabels = useMemo(
+    () => ({
+      entity: entityLabels,
+      status: t.raw('statusLabels') as Record<string, string>,
+      permission: t.raw('permissionLabels') as Record<string, string>,
+      detail: t.raw('detailLabels') as Record<string, string>,
+      otherExpenses: t('otherExpenses'),
+      administrativeExpenses: t('administrativeExpenses'),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const currentPage = Math.max(1, Number(searchParams.get('page') ?? 1));
   const queryDate = searchParams.get('date') ?? '';
@@ -442,9 +352,9 @@ export default function StoreActivityPage() {
           ? (details.after.type as string)
           : null;
       const expenseType = directType ?? afterType ?? beforeType;
-      return expenseType === 'OTHER' ? 'Прочие расходы' : 'Административные расходы';
+      return expenseType === 'OTHER' ? labels.otherExpenses : labels.administrativeExpenses;
     }
-    return ENTITY_LABELS[item.entityType] || item.entityType;
+    return labels.entity[item.entityType] || item.entityType;
   };
 
   const resetFilters = () => {
@@ -487,7 +397,7 @@ export default function StoreActivityPage() {
         setData(activityData);
       } catch (e: unknown) {
         setError(
-          e instanceof Error ? e.message : 'Не удалось загрузить журнал действий',
+          e instanceof Error ? e.message : t('loadError'),
         );
       } finally {
         if (isFirstLoad) {
@@ -500,7 +410,7 @@ export default function StoreActivityPage() {
   }, [storeId, currentPage, queryDate, queryPavilion, queryAction, queryEntityType]);
 
   if (loading) {
-    return <div className="p-6 text-sm text-[#6b6b6b]">Загрузка журнала действий...</div>;
+    return <div className="p-6 text-sm text-[#6b6b6b]">{t('loading')}</div>;
   }
 
   if (error) {
@@ -508,7 +418,7 @@ export default function StoreActivityPage() {
   }
 
   if (!store || !hasPermission(permissions, 'VIEW_ACTIVITY')) {
-    return <div className="p-6 text-sm text-red-600">Нет доступа к журналу действий</div>;
+    return <div className="p-6 text-sm text-red-600">{t('noAccess')}</div>;
   }
 
   return (
@@ -520,24 +430,24 @@ export default function StoreActivityPage() {
             href={`/stores/${storeId}/settings`}
             className="inline-flex items-center justify-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
           >
-            Назад к управлению объектом
+            {t('backToStore')}
           </Link>
         </div>
           <div className="mb-4 flex items-center justify-between gap-3 mt-5">
             <div>
-              <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Журнал действий</h1>
+              <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">{t('title')}</h1>
               <p className="text-sm text-[#6b6b6b]">{store.name}</p>
-              <p className="text-xs text-[#8b7f76]">Часовой пояс: {storeTimeZone}</p>
+              <p className="text-xs text-[#8b7f76]">{t('timeZoneLabel', { timeZone: storeTimeZone })}</p>
             </div>
             {isFetching && (
-              <span className="text-xs font-medium text-[#6b6b6b]">Обновление...</span>
+              <span className="text-xs font-medium text-[#6b6b6b]">{t('updating')}</span>
             )}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                Дата
+                {t('filters.date')}
               </span>
               <input
                 type="date"
@@ -552,19 +462,19 @@ export default function StoreActivityPage() {
             </label>
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                Объекты аренды
+                {t('filters.pavilion')}
               </span>
               <input
                 type="text"
                 value={filterPavilion}
                 onChange={(e) => setFilterPavilion(e.target.value)}
-                placeholder="Номер павильона"
+                placeholder={t('filters.pavilionPlaceholder')}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               />
             </label>
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                Действие
+                {t('filters.action')}
               </span>
               <select
                 value={filterAction}
@@ -575,8 +485,8 @@ export default function StoreActivityPage() {
                 }}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               >
-                <option value="">Все</option>
-                {Object.entries(ACTION_LABELS).map(([value, label]) => (
+                <option value="">{t('filters.all')}</option>
+                {Object.entries(actionLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -585,7 +495,7 @@ export default function StoreActivityPage() {
             </label>
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                Сущность
+                {t('filters.entityType')}
               </span>
               <select
                 value={filterEntityType}
@@ -596,8 +506,8 @@ export default function StoreActivityPage() {
                 }}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
               >
-                <option value="">Все</option>
-                {Object.entries(ENTITY_LABELS).map(([value, label]) => (
+                <option value="">{t('filters.all')}</option>
+                {Object.entries(entityLabels).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -611,7 +521,7 @@ export default function StoreActivityPage() {
               onClick={resetFilters}
               className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
             >
-              Сбросить
+              {t('filters.reset')}
             </button>
           </div>
 
@@ -619,12 +529,12 @@ export default function StoreActivityPage() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#f4efeb] text-xs uppercase tracking-wide text-[#6b6b6b]">
               <tr>
-                <th className="px-4 py-3">Когда</th>
-                <th className="px-4 py-3">Пользователь</th>
-                <th className="px-4 py-3">Объекты аренды</th>
-                <th className="px-4 py-3">Действие</th>
-                <th className="px-4 py-3">Сущность</th>
-                <th className="px-4 py-3">Детали</th>
+                <th className="px-4 py-3">{t('table.when')}</th>
+                <th className="px-4 py-3">{t('table.user')}</th>
+                <th className="px-4 py-3">{t('table.pavilion')}</th>
+                <th className="px-4 py-3">{t('table.action')}</th>
+                <th className="px-4 py-3">{t('table.entityType')}</th>
+                <th className="px-4 py-3">{t('table.details')}</th>
               </tr>
             </thead>
             <tbody>
@@ -637,20 +547,20 @@ export default function StoreActivityPage() {
                       })}
                     </td>
                     <td className="px-4 py-3 text-[#111111]">
-                      {item.user?.email || 'Система'}
+                      {item.user?.email || t('table.systemUser')}
                     </td>
                     <td className="px-4 py-3 text-[#111111]">{getPavilionLabel(item)}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[item.action] ?? 'bg-[#f4efeb] text-[#6b6b6b] border border-[#d8d1cb]'}`}
                       >
-                        {ACTION_LABELS[item.action] || item.action}
+                        {actionLabels[item.action] || item.action}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[#111111]">{getEntityLabel(item)}</td>
                     <td className="max-w-[460px] px-4 py-3 text-xs text-[#6b6b6b]">
                       <div className="space-y-0.5">
-                        {renderDetails(item.details, storeTimeZone).map((line, idx) => (
+                        {renderDetails(item.details, labels, storeTimeZone).map((line, idx) => (
                           <div key={`${item.id}-line-${idx}`}>{line}</div>
                         ))}
                       </div>
@@ -660,7 +570,7 @@ export default function StoreActivityPage() {
               ) : (
                 <tr>
                   <td className="px-4 py-6 text-sm text-[#6b6b6b]" colSpan={6}>
-                    Пока нет записей
+                    {t('table.empty')}
                   </td>
                 </tr>
               )}
@@ -671,7 +581,7 @@ export default function StoreActivityPage() {
           {data && data.totalPages > 1 && (
             <div className="mt-4 flex items-center justify-between rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-4 py-3 text-sm">
               <span className="text-[#6b6b6b]">
-                Страница {data.page} из {data.totalPages}
+                {t('pagination.pageOf', { page: data.page, totalPages: data.totalPages })}
               </span>
               <div className="flex gap-2">
                 <Link
@@ -682,7 +592,7 @@ export default function StoreActivityPage() {
                       : 'border-[#d8d1cb] text-[#111111] hover:bg-white'
                   }`}
                 >
-                  Назад
+                  {t('pagination.prev')}
                 </Link>
                 <Link
                   href={`${pathname}?${buildQueryString(
@@ -694,7 +604,7 @@ export default function StoreActivityPage() {
                       : 'border-[#d8d1cb] text-[#111111] hover:bg-white'
                   }`}
                 >
-                  Далее
+                  {t('pagination.next')}
                 </Link>
               </div>
             </div>

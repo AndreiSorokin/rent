@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 
 type ParsedResult = {
@@ -119,12 +120,13 @@ function requireColumns(
   columns: string[],
   sheetName: string,
   errors: string[],
+  t: (key: string, values?: Record<string, string>) => string,
 ) {
   if (rows.length === 0) return false;
   const headers = new Set(Object.keys(rows[0]));
   const missing = columns.filter((c) => !headers.has(c));
   if (missing.length > 0) {
-    errors.push(`Лист "${sheetName}": отсутствуют колонки ${missing.join(', ')}`);
+    errors.push(t('errorMissingColumns', { sheetName, columns: missing.join(', ') }));
     return false;
   }
   return true;
@@ -139,6 +141,7 @@ export function ImportStoreDataModal({
   onClose: () => void;
   onImported: () => void;
 }) {
+  const t = useTranslations('ImportStoreDataModal');
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
@@ -197,7 +200,7 @@ export function ImportStoreDataModal({
     const getSheetRows = (sheetName: string) => {
       const ws = workbook.Sheets[sheetName];
       if (!ws) {
-        localErrors.push(`Не найден лист "${sheetName}"`);
+        localErrors.push(t('errorSheetNotFound', { sheetName }));
         return [] as Array<Record<string, any>>;
       }
       return XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '', raw: false });
@@ -223,16 +226,18 @@ export function ImportStoreDataModal({
       ],
       SHEETS.pavilions,
       localErrors,
+      t,
     );
-    requireColumns(householdRows, ['name', 'amount', 'status'], SHEETS.householdExpenses, localErrors);
-    requireColumns(expensesRows, ['type', 'amount', 'status', 'note'], SHEETS.expenses, localErrors);
+    requireColumns(householdRows, ['name', 'amount', 'status'], SHEETS.householdExpenses, localErrors, t);
+    requireColumns(expensesRows, ['type', 'amount', 'status', 'note'], SHEETS.expenses, localErrors, t);
     requireColumns(
       accountingRows,
       ['recordDate', 'bankTransferPaid', 'cashbox1Paid', 'cashbox2Paid'],
       SHEETS.accounting,
       localErrors,
+      t,
     );
-    requireColumns(staffRows, ['fullName', 'position', 'salary', 'salaryStatus'], SHEETS.staff, localErrors);
+    requireColumns(staffRows, ['fullName', 'position', 'salary', 'salaryStatus'], SHEETS.staff, localErrors, t);
 
     const pavilions: ParsedResult['pavilions'] = pavilionRows
       .map((r, index) => {
@@ -248,7 +253,12 @@ export function ImportStoreDataModal({
           const mappedStatus = mapPavilionStatus(rawStatus);
           if (!mappedStatus) {
             localErrors.push(
-              `Sheet "${SHEETS.pavilions}", row ${index + 2}: invalid status "${rawStatus}". Allowed values: ${STATUS_VALUES.join(', ')}`,
+              t('errorInvalidStatus', {
+                sheetName: SHEETS.pavilions,
+                row: String(index + 2),
+                status: rawStatus,
+                allowed: STATUS_VALUES.join(', '),
+              }),
             );
             return null;
           }
@@ -330,9 +340,7 @@ export function ImportStoreDataModal({
       .filter((r) => r.fullName && r.position && !isSummaryText(r.fullName));
 
     if (pavilions.length === 0) {
-      localErrors.push(
-        'Лист "Объекты аренды": не найдено валидных строк (проверьте Номер объекта / Площадь / Цена за м²)',
-      );
+      localErrors.push(t('errorPavilionsNoValidRows'));
     }
 
     setErrors(localErrors);
@@ -349,7 +357,7 @@ export function ImportStoreDataModal({
 
   const handleImport = async () => {
     if (!file) {
-      setErrors(['Сначала выберите файл шаблона']);
+      setErrors([t('errorSelectFileFirst')]);
       return;
     }
     try {
@@ -367,12 +375,12 @@ export function ImportStoreDataModal({
       );
       const imported = result?.imported ?? {};
       alert(
-        `Импорт завершен: объекты аренды ${imported.pavilions ?? 0}`,
+        t('importCompleted', { count: String(imported.pavilions ?? 0) }),
       );
       onImported();
     } catch (e) {
       console.error(e);
-      setErrors(['Не удалось импортировать данные из шаблона']);
+      setErrors([t('errorImportFailed')]);
     } finally {
       setImporting(false);
     }
@@ -382,25 +390,25 @@ export function ImportStoreDataModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-2xl rounded-xl bg-white p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Импорт по шаблону Excel</h2>
+          <h2 className="text-xl font-semibold">{t('title')}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            Закрыть
+            {t('close')}
           </button>
         </div>
 
         <div className="space-y-4">
           <p className="text-sm text-gray-700">
-            Шаг 1: скачайте шаблон, заполните его и загрузите обратно.
+            {t('step1Instruction')}
           </p>
           <button
             onClick={downloadTemplate}
             className="rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
           >
-            Скачать шаблон
+            {t('downloadTemplate')}
           </button>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Файл шаблона (.xlsx)</label>
+            <label className="mb-1 block text-sm font-medium">{t('templateFileLabel')}</label>
             <input
               type="file"
               accept=".xlsx,.xls"
@@ -419,14 +427,14 @@ export function ImportStoreDataModal({
 
         <div className="mt-6 flex justify-end gap-3">
           <button onClick={onClose} className="rounded border px-4 py-2">
-            Отмена
+            {t('cancel')}
           </button>
           <button
             onClick={handleImport}
             disabled={importing}
             className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-60"
           >
-            {importing ? 'Импорт...' : 'Импортировать'}
+            {importing ? t('importing') : t('import')}
           </button>
         </div>
       </div>

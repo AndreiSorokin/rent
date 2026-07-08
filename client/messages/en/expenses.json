@@ -1,0 +1,164 @@
+{
+  "StoreAdminExpensesPage": {
+    "adminExpenseTypes": {
+      "PAYROLL_TAX": "Payroll taxes",
+      "PROFIT_TAX": "Income tax",
+      "VAT": "VAT",
+      "BANK_SERVICES": "Bank services",
+      "DIVIDENDS": "Dividends",
+      "LAND_RENT": "Land rent",
+      "STORE_FACILITIES": "Property utilities",
+      "OTHER": "Other"
+    },
+    "paymentChannels": {
+      "bankTransfer": "Bank transfer: {amount}",
+      "cashbox1": "Cash register 1: {amount}",
+      "cashbox2": "Cash register 2: {amount}"
+    },
+    "loadError": "Failed to load administrative expenses",
+    "loading": "Loading expenses...",
+    "title": "Administrative expenses",
+    "allExpenses": "All expenses",
+    "addExpense": "Add expense",
+    "searchPlaceholder": "Search by expense name or type",
+    "totalAmountLabel": "Total expenses",
+    "emptyState": "No expenses yet",
+    "table": {
+      "date": "Date",
+      "name": "Name",
+      "status": "Status",
+      "paymentChannels": "Payment channels",
+      "amount": "Amount",
+      "actions": "Actions"
+    },
+    "defaultExpenseName": "Administrative expense",
+    "statusPaid": "Paid",
+    "statusUnpaid": "Unpaid",
+    "noPaymentChannels": "Payment channels not set",
+    "payOrEdit": "Pay / Edit",
+    "createModal": {
+      "title": "New administrative expense",
+      "hint": "Created with the status \"Unpaid\".",
+      "namePlaceholder": "Expense name",
+      "amountLabel": "Amount",
+      "amountPlaceholder": "0",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "editModal": {
+      "title": "Edit administrative expense"
+    },
+    "deleteDialog": {
+      "title": "Delete expense",
+      "message": "Delete this expense?",
+      "confirmText": "Delete"
+    },
+    "toast": {
+      "enterName": "Enter an expense name",
+      "enterValidAmount": "Enter a valid amount",
+      "createError": "Failed to add administrative expense",
+      "enterValidName": "Enter a valid name",
+      "nonNegativeChannels": "Payment channel amounts must be non-negative",
+      "enterAtLeastOneChannel": "Enter an amount in at least one payment channel",
+      "updateError": "Failed to update administrative expense",
+      "deleteError": "Failed to delete expense"
+    }
+  },
+  "StoreOtherExpensesPage": {
+    "paymentChannels": {
+      "bankTransfer": "Bank transfer: {amount}",
+      "cashbox1": "Cash register 1: {amount}",
+      "cashbox2": "Cash register 2: {amount}"
+    },
+    "loadError": "Failed to load other expenses",
+    "loading": "Loading expenses...",
+    "title": "Other expenses",
+    "allExpenses": "All expenses",
+    "dateFilterTitle": "Filter by date",
+    "reset": "Reset",
+    "addExpense": "Add expense",
+    "searchPlaceholder": "Search by expense name",
+    "totalAmountLabel": "Total expenses",
+    "emptyState": "No expenses yet",
+    "table": {
+      "date": "Date",
+      "name": "Name",
+      "status": "Status",
+      "paymentChannels": "Payment channels",
+      "amount": "Amount",
+      "actions": "Actions"
+    },
+    "defaultExpenseName": "Other expense",
+    "statusPaid": "Paid",
+    "statusUnpaid": "Unpaid",
+    "noPaymentChannels": "Payment channels not set",
+    "payOrEdit": "Pay / Edit",
+    "createModal": {
+      "title": "New other expense",
+      "hint": "Created immediately with the status \"Paid\".",
+      "namePlaceholder": "Expense name",
+      "bankTransferLabel": "Bank transfer",
+      "cashbox1Label": "Cash register 1",
+      "cashbox2Label": "Cash register 2",
+      "amountPlaceholder": "0",
+      "cancel": "Cancel",
+      "saving": "Saving...",
+      "save": "Save"
+    },
+    "editModal": {
+      "title": "Edit other expense"
+    },
+    "deleteDialog": {
+      "title": "Delete expense",
+      "message": "Delete this expense?",
+      "confirmText": "Delete"
+    },
+    "toast": {
+      "enterName": "Enter an expense name",
+      "enterValidChannelAmounts": "Enter valid amounts for the payment channels",
+      "createError": "Failed to add other expense",
+      "enterValidName": "Enter a valid name",
+      "nonNegativeChannels": "Payment channel amounts must be non-negative",
+      "enterAtLeastOneChannel": "Enter an amount in at least one payment channel",
+      "updateError": "Failed to update other expense",
+      "deleteError": "Failed to delete expense"
+    }
+  },
+  "StoreExpenseHistoryPage": {
+    "categoryTitles": {
+      "household": "Household expenses for previous months",
+      "other": "Other expenses for previous months",
+      "admin": "Administrative expenses for previous months",
+      "staff": "Staff expenses for previous months"
+    },
+    "adminExpenseTypes": {
+      "PAYROLL_TAX": "Payroll taxes",
+      "PROFIT_TAX": "Income tax",
+      "VAT": "VAT",
+      "BANK_SERVICES": "Bank services",
+      "DIVIDENDS": "Dividends",
+      "LAND_RENT": "Land rent",
+      "STORE_FACILITIES": "Property utilities",
+      "OTHER": "Administrative expense"
+    },
+    "defaultHouseholdName": "Household expense",
+    "defaultStaffName": "Staff expense",
+    "staffMemberLabel": "Staff member #{id}",
+    "defaultOtherName": "Other expense",
+    "paymentChannels": {
+      "bankTransfer": "Bank transfer: {amount}",
+      "cashbox1": "Cash register 1: {amount}",
+      "cashbox2": "Cash register 2: {amount}"
+    },
+    "loadError": "Failed to load expense history",
+    "loading": "Loading expense history...",
+    "categoryNotFound": "Category not found",
+    "back": "Back",
+    "emptyState": "No records for previous months yet",
+    "totalAmountLabel": "Total amount",
+    "statusPaid": "Paid",
+    "statusUnpaid": "Unpaid",
+    "noPaymentChannels": "Payment channels not set"
+  }
+}

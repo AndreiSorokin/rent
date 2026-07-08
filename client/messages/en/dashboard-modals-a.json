@@ -1,0 +1,181 @@
+{
+  "CreatePavilionModal": {
+    "title": "Create new pavilion",
+    "close": "Close",
+    "fields": {
+      "number": "Pavilion number",
+      "numberPlaceholder": "e.g. A-12",
+      "existingCategory": "Category from existing",
+      "notSelected": "Not selected",
+      "newCategoryHidesSelect": "You are entering a new category, so the selection list is hidden.",
+      "newCategoryLabel": "Or enter a new category",
+      "newCategoryPlaceholder": "e.g. Clothing",
+      "selectedCategoryHidesNew": "An existing category is selected, the new category field is hidden.",
+      "pavilionDescription": "Pavilion description",
+      "squareMeters": "Area (m²)",
+      "pricePerSqM": "Price per m²",
+      "status": "Status",
+      "tenantName": "Organization name",
+      "tenantNamePlaceholder": "e.g. Romashka LLC",
+      "advertising": "Advertising"
+    },
+    "statusOptions": {
+      "available": "AVAILABLE",
+      "rented": "RENTED",
+      "prepaid": "PREPAID"
+    },
+    "contract": {
+      "title": "Lease agreement for this status",
+      "recommendation": "For the \"RENTED\" and \"PREPAID\" statuses it is recommended to upload the lease agreement right away. If saved without an agreement, the pavilion will later be flagged as requiring attention.",
+      "number": "Agreement number",
+      "numberPlaceholder": "e.g. 12/2026",
+      "expiresOn": "Agreement expiration date",
+      "dateFormatError": "Enter the date in dd.mm.yyyy format",
+      "file": "Agreement file",
+      "fileSelected": "Selected file: {name}",
+      "fileHint": "The file can be added now or later on the pavilion page",
+      "noPermission": "You do not have permission to upload agreements. If needed, the agreement can be added later by a user with the \"Upload agreements\" permission."
+    },
+    "prepayment": {
+      "month": "Prepayment month",
+      "amount": "Prepayment amount (if empty, full rent will be used)",
+      "amountPlaceholder": "e.g. 1200",
+      "channelsTitle": "Prepayment payment channels"
+    },
+    "channels": {
+      "bankTransfer": "Bank transfer",
+      "cashbox1": "Cash - register 1",
+      "cashbox2": "Cash - register 2"
+    },
+    "media": {
+      "title": "Pavilion description and photos",
+      "description": "Description",
+      "descriptionPlaceholder": "Add a pavilion description for tenants",
+      "descriptionHint": "The description can be left empty and filled in later.",
+      "photos": "Photos",
+      "photosPlaceholder": "Photos will appear after the pavilion is saved",
+      "filesSelected": "Files selected: {count}",
+      "fileHint": "You can add JPG, PNG and WEBP files up to 10 MB."
+    },
+    "errors": {
+      "missingRequiredFields": "Fill in all required fields, including category",
+      "tenantRequired": "For \"RENTED\" or \"PREPAID\" status, specify the organization name",
+      "prepaymentAmountPositive": "Prepayment amount must be greater than 0",
+      "channelsSumMismatch": "The sum of payment channels must match the prepayment amount",
+      "createFailed": "Error creating pavilion"
+    },
+    "success": {
+      "created": "Rental property created successfully"
+    },
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "submit": "Create pavilion"
+  },
+  "EditPavilionModal": {
+    "title": "Edit pavilion",
+    "close": "Close",
+    "fields": {
+      "number": "Pavilion number",
+      "category": "Category",
+      "existingCategorySelect": "Select from existing categories",
+      "chooseCategory": "Choose a category",
+      "newCategoryHint": "Entering a new category: selection from existing ones is hidden.",
+      "newCategory": "New category",
+      "selectedCategoryHint": "An existing category is selected: the new category field is hidden.",
+      "squareMeters": "Area (m²)",
+      "pricePerSqM": "Price per m²",
+      "rentAmount": "Rent (auto-calculated)",
+      "status": "Status",
+      "tenantName": "Organization name",
+      "utilities": "Utilities",
+      "advertising": "Advertising"
+    },
+    "statusOptions": {
+      "available": "AVAILABLE",
+      "rented": "RENTED",
+      "prepaid": "PREPAID"
+    },
+    "media": {
+      "title": "Pavilion description and photos",
+      "description": "Description",
+      "descriptionPlaceholder": "Add a pavilion description for tenants",
+      "descriptionHint": "Leave the field empty to remove the description when saving.",
+      "photos": "Photos",
+      "photoAlt": "Photo of pavilion {number}",
+      "noPhoto": "No pavilion photo uploaded yet",
+      "filesSelected": "Files selected: {count}",
+      "fileHint": "You can add JPG, PNG and WEBP files up to 10 MB.",
+      "allPhotos": "All photos"
+    },
+    "additionalCharges": {
+      "title": "Additional charges",
+      "empty": "No charges yet",
+      "delete": "Delete",
+      "newTitle": "New charge",
+      "namePlaceholder": "Charge name",
+      "amountPlaceholder": "Amount",
+      "add": "Add"
+    },
+    "prepayment": {
+      "autoZeroHint": "For the PREPAID status, utilities and advertising are automatically set to 0.",
+      "month": "Prepayment month",
+      "amount": "Prepayment amount (if empty - full rent)",
+      "channelsTitle": "Prepayment payment channels"
+    },
+    "channels": {
+      "bankTransfer": "Bank transfer",
+      "cashbox1": "Cash - register 1",
+      "cashbox2": "Cash - register 2"
+    },
+    "errors": {
+      "numberRequired": "Specify the pavilion number",
+      "squareMetersPositive": "Area must be greater than 0",
+      "pricePerSqMNonNegative": "Price per m² must be non-negative",
+      "tenantRequired": "Specify a tenant for occupied or prepaid pavilions",
+      "utilitiesAdvertisingNonNegative": "Utilities and advertising must be non-negative",
+      "prepaymentAmountPositive": "Prepayment amount must be greater than 0",
+      "channelsSumMismatch": "The sum of payment channels must match the prepayment amount",
+      "saveFailed": "Failed to save changes",
+      "chargeNameAndAmountRequired": "Enter the name and amount of the additional charge",
+      "chargeAmountNonNegative": "The additional charge amount must be non-negative",
+      "chargeAddFailed": "Failed to add additional charge",
+      "chargeDeleteConfirm": "Delete this additional charge?",
+      "chargeDeleteFailed": "Failed to delete additional charge"
+    },
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save"
+  },
+  "CreatePavilionPaymentModal": {
+    "title": "Record payment",
+    "fields": {
+      "period": "Period (month/year)"
+    },
+    "summary": {
+      "loading": "Loading current payments...",
+      "prefix": "Current paid amount for the month:",
+      "rent": "rent",
+      "utilities": "utilities",
+      "advertising": "advertising"
+    },
+    "sections": {
+      "rent": "Rent",
+      "utilities": "Utilities",
+      "advertising": "Advertising"
+    },
+    "channels": {
+      "bankTransfer": "Bank transfer",
+      "cashbox1": "Cash - register 1",
+      "cashbox2": "Cash - register 2"
+    },
+    "prepaidNotice": "For the PREPAID status, only the first month's rent payment is available.",
+    "errors": {
+      "periodRequired": "Select a period",
+      "pastMonthDisallowed": "Payment for a past month is not available. Select the current or a future month.",
+      "amountRequired": "Enter an amount in at least one payment channel, utilities, or advertising",
+      "payFailed": "Error recording payment"
+    },
+    "cancel": "Cancel",
+    "submit": "Record payment"
+  }
+}

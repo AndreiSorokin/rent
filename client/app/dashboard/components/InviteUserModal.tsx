@@ -2,6 +2,7 @@
 
 import { inviteUserByEmail } from '@/lib/storeUsers';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ErrorMessage } from '@/components/messages/StatusMessage';
 
 type InviteUserModalProps = {
@@ -15,13 +16,14 @@ export function InviteUserModal({
   onClose,
   onSuccess,
 }: InviteUserModalProps) {
+  const t = useTranslations('InviteUserModal');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleInvite = async () => {
     if (!email.trim() || !email.includes('@')) {
-      setError('Введите корректный email');
+      setError(t('invalidEmail'));
       return;
     }
 
@@ -34,7 +36,7 @@ export function InviteUserModal({
       onClose();
     } catch (err: any) {
       setError(
-        err?.message || 'Не удалось пригласить пользователя. Пожалуйста, попробуйте снова.',
+        err?.message || t('inviteFailed'),
       );
     } finally {
       setLoading(false);
@@ -46,16 +48,16 @@ export function InviteUserModal({
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
         <div className="flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
           <div>
-            <h2 className="text-xl font-extrabold text-[#111111]">Пригласить пользователя</h2>
+            <h2 className="text-xl font-extrabold text-[#111111]">{t('title')}</h2>
             <p className="mt-1 text-sm text-[#6b6b6b]">
-              Отправьте доступ к объекту по email.
+              {t('subtitle')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            aria-label="Закрыть"
+            aria-label={t('close')}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d8d1cb] bg-white text-xl leading-none text-[#6b6b6b] transition hover:bg-[#f4efeb] hover:text-[#111111] disabled:opacity-50"
           >
             ×
@@ -67,7 +69,7 @@ export function InviteUserModal({
 
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-[#111111]">
-              Email пользователя
+              {t('emailLabel')}
             </label>
             <input
               type="email"
@@ -78,7 +80,7 @@ export function InviteUserModal({
               disabled={loading}
             />
             <p className="text-xs text-[#6b6b6b]">
-              Пользователь получит доступ к объекту после принятия приглашения.
+              {t('hint')}
             </p>
           </div>
         </div>
@@ -90,7 +92,7 @@ export function InviteUserModal({
             disabled={loading}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -98,7 +100,7 @@ export function InviteUserModal({
             disabled={loading || !email.trim()}
             className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
-            {loading ? 'Приглашение...' : 'Пригласить'}
+            {loading ? t('inviting') : t('invite')}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPavilionDiscount } from '@/lib/discounts';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
 
@@ -27,6 +28,7 @@ export function CreateDiscountModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('CreateDiscountModal');
   const currentMonth = getCurrentMonthKeyInTimeZone(timeZone);
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
@@ -42,22 +44,22 @@ export function CreateDiscountModal({
   const handleSave = async () => {
     const amountNumber = Number(amount);
     if (!amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
-      setError('Введите корректную сумму скидки.');
+      setError(t('errorInvalidAmount'));
       return;
     }
 
     if (!startsAtMonth) {
-      setError('Выберите начальный месяц.');
+      setError(t('errorSelectStartMonth'));
       return;
     }
 
     if (hasEndDate && !endsAtMonth) {
-      setError('Выберите конечный месяц или отключите ограничение по сроку.');
+      setError(t('errorSelectEndMonthOrDisable'));
       return;
     }
 
     if (hasEndDate && endsAtMonth < startsAtMonth) {
-      setError('Конечный месяц не может быть раньше начального.');
+      setError(t('errorEndBeforeStart'));
       return;
     }
 
@@ -74,7 +76,7 @@ export function CreateDiscountModal({
       onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Не удалось создать скидку.');
+      setError(err.message || t('errorCreateFailed'));
     } finally {
       setSaving(false);
     }
@@ -89,7 +91,7 @@ export function CreateDiscountModal({
         }}
         className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
-        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Добавить скидку</h2>
+        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">{t('title')}</h2>
 
         {error && (
           <p className="mb-4 rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 px-3 py-2 text-sm font-medium text-[#b91c1c]">
@@ -100,7 +102,7 @@ export function CreateDiscountModal({
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#111111]">
-              Сумма скидки
+              {t('amountLabel')}
             </label>
             <input
               type="number"
@@ -109,16 +111,16 @@ export function CreateDiscountModal({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className={inputClass}
-              placeholder="100"
+              placeholder={t('amountPlaceholder')}
             />
             <p className="mt-1 text-xs text-[#6b6b6b]">
-              Скидка применяется как фиксированная сумма за месяц.
+              {t('amountHint')}
             </p>
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#111111]">
-              Начальный месяц
+              {t('startMonthLabel')}
             </label>
             <input
               type="month"
@@ -135,13 +137,13 @@ export function CreateDiscountModal({
               onChange={(e) => setHasEndDate(e.target.checked)}
               className="h-4 w-4 rounded border-[#d8d1cb] text-[#ff6a13] focus:ring-[#ff6a13]/30"
             />
-            Указать конечный месяц
+            {t('hasEndDateLabel')}
           </label>
 
           {hasEndDate && (
             <div>
               <label className="mb-1 block text-sm font-semibold text-[#111111]">
-                Конечный месяц
+                {t('endMonthLabel')}
               </label>
               <input
                 type="month"
@@ -154,14 +156,14 @@ export function CreateDiscountModal({
 
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#111111]">
-              Примечание
+              {t('noteLabel')}
             </label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className={inputClass}
-              placeholder="Например: сезонная скидка"
+              placeholder={t('notePlaceholder')}
             />
           </div>
         </div>
@@ -173,14 +175,14 @@ export function CreateDiscountModal({
             disabled={saving}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? t('saving') : t('save')}
           </button>
         </div>
       </form>

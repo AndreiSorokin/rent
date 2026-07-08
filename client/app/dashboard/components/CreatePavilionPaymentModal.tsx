@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPavilionPayment } from '@/lib/payments';
 import { apiFetch } from '@/lib/api';
 import { getCurrentMonthKeyInTimeZone } from '@/lib/dateTime';
@@ -20,6 +21,7 @@ export function CreatePavilionPaymentModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('CreatePavilionPaymentModal');
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
   const sectionCardClass = 'rounded-xl border border-[#d8d1cb] bg-white p-3';
@@ -78,11 +80,11 @@ export function CreatePavilionPaymentModal({
 
   const handlePay = async () => {
     if (!period) {
-      alert('Выберите период');
+      alert(t('errors.periodRequired'));
       return;
     }
     if (period < currentMonth) {
-      alert('Оплата в прошлом месяце недоступна. Выберите текущий или будущий месяц.');
+      alert(t('errors.pastMonthDisallowed'));
       return;
     }
 
@@ -100,7 +102,7 @@ export function CreatePavilionPaymentModal({
     const advertisingTotal = advertisingBank + advertisingCash1 + advertisingCash2;
 
     if (rentTotal <= 0 && utilitiesTotal <= 0 && advertisingTotal <= 0) {
-      alert('Введите сумму хотя бы в один канал оплаты, коммунальные или рекламу');
+      alert(t('errors.amountRequired'));
       return;
     }
 
@@ -147,7 +149,7 @@ export function CreatePavilionPaymentModal({
       onSaved();
       onClose();
     } catch (err) {
-      alert('Ошибка записи платежа');
+      alert(t('errors.payFailed'));
     }
   };
 
@@ -161,13 +163,13 @@ export function CreatePavilionPaymentModal({
         className="w-full max-w-4xl overflow-hidden rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
         <div className="border-b border-[#e8e1da] p-4 md:p-6">
-          <h2 className="text-xl font-extrabold text-[#111111]">Записать платеж</h2>
+          <h2 className="text-xl font-extrabold text-[#111111]">{t('title')}</h2>
         </div>
 
         <div className="max-h-[72vh] space-y-4 overflow-y-auto p-4 md:p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[#111111]">Период (месяц/год)</label>
+              <label className="mb-1 block text-sm font-semibold text-[#111111]">{t('fields.period')}</label>
               <input
                 type="month"
                 value={period}
@@ -178,13 +180,13 @@ export function CreatePavilionPaymentModal({
             </div>
             <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3 text-sm text-[#6b6b6b]">
               {loadingCurrent ? (
-                'Загрузка текущих платежей...'
+                t('summary.loading')
               ) : (
                 <>
-                  Текущая оплаченная сумма за месяц:
-                  <strong> {currentRentPaid.toFixed(2)}</strong> (аренда) +
-                  <strong> {currentUtilitiesPaid.toFixed(2)}</strong> (коммунальные) +
-                  <strong> {currentAdvertisingPaid.toFixed(2)}</strong> (реклама)
+                  {t('summary.prefix')}
+                  <strong> {currentRentPaid.toFixed(2)}</strong> ({t('summary.rent')}) +
+                  <strong> {currentUtilitiesPaid.toFixed(2)}</strong> ({t('summary.utilities')}) +
+                  <strong> {currentAdvertisingPaid.toFixed(2)}</strong> ({t('summary.advertising')})
                 </>
               )}
             </div>
@@ -192,10 +194,10 @@ export function CreatePavilionPaymentModal({
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className={sectionCardClass}>
-              <h3 className="mb-2 text-sm font-semibold">Аренда</h3>
+              <h3 className="mb-2 text-sm font-semibold">{t('sections.rent')}</h3>
               <div className="space-y-2">
                 <div>
-                  <label className={subLabelClass}>Безналичный</label>
+                  <label className={subLabelClass}>{t('channels.bankTransfer')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -207,7 +209,7 @@ export function CreatePavilionPaymentModal({
                   />
                 </div>
                 <div>
-                  <label className={subLabelClass}>Наличные - касса 1</label>
+                  <label className={subLabelClass}>{t('channels.cashbox1')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -219,7 +221,7 @@ export function CreatePavilionPaymentModal({
                   />
                 </div>
                 <div>
-                  <label className={subLabelClass}>Наличные - касса 2</label>
+                  <label className={subLabelClass}>{t('channels.cashbox2')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -235,15 +237,15 @@ export function CreatePavilionPaymentModal({
 
             {pavilionStatus === 'PREPAID' ? (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 lg:col-span-2">
-                Для статуса ПРЕДОПЛАТА доступна только оплата аренды за первый месяц.
+                {t('prepaidNotice')}
               </div>
             ) : (
               <>
                 <div className={sectionCardClass}>
-                  <h3 className="mb-2 text-sm font-semibold">Коммунальные</h3>
+                  <h3 className="mb-2 text-sm font-semibold">{t('sections.utilities')}</h3>
                   <div className="space-y-2">
                     <div>
-                      <label className={subLabelClass}>Безналичный</label>
+                      <label className={subLabelClass}>{t('channels.bankTransfer')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -255,7 +257,7 @@ export function CreatePavilionPaymentModal({
                       />
                     </div>
                     <div>
-                      <label className={subLabelClass}>Наличные - касса 1</label>
+                      <label className={subLabelClass}>{t('channels.cashbox1')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -267,7 +269,7 @@ export function CreatePavilionPaymentModal({
                       />
                     </div>
                     <div>
-                      <label className={subLabelClass}>Наличные - касса 2</label>
+                      <label className={subLabelClass}>{t('channels.cashbox2')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -282,10 +284,10 @@ export function CreatePavilionPaymentModal({
                 </div>
 
                 <div className={sectionCardClass}>
-                  <h3 className="mb-2 text-sm font-semibold">Реклама</h3>
+                  <h3 className="mb-2 text-sm font-semibold">{t('sections.advertising')}</h3>
                   <div className="space-y-2">
                     <div>
-                      <label className={subLabelClass}>Безналичный</label>
+                      <label className={subLabelClass}>{t('channels.bankTransfer')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -297,7 +299,7 @@ export function CreatePavilionPaymentModal({
                       />
                     </div>
                     <div>
-                      <label className={subLabelClass}>Наличные - касса 1</label>
+                      <label className={subLabelClass}>{t('channels.cashbox1')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -309,7 +311,7 @@ export function CreatePavilionPaymentModal({
                       />
                     </div>
                     <div>
-                      <label className={subLabelClass}>Наличные - касса 2</label>
+                      <label className={subLabelClass}>{t('channels.cashbox2')}</label>
                       <input
                         type="number"
                         step="0.01"
@@ -333,13 +335,13 @@ export function CreatePavilionPaymentModal({
             onClick={onClose}
             className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c]"
           >
-            Записать платеж
+            {t('submit')}
           </button>
         </div>
       </form>

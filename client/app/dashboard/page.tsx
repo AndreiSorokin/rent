@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
 import { CreateStoreModal } from './components/CreateStoreModal';
@@ -44,6 +45,7 @@ function normalizeStoresPayload(payload: unknown): StoreSummary[] | null {
 }
 
 export default function StoresPage() {
+  const t = useTranslations('StoresPage');
   const [stores, setStores] = useState<StoreSummary[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -59,21 +61,21 @@ export default function StoresPage() {
         const normalizedStores = normalizeStoresPayload(data);
         if (!normalizedStores) {
           console.error('Unexpected /stores/my payload:', data);
-          setError('Не удалось загрузить объекты');
+          setError(t('loadError'));
           return;
         }
         setStores(normalizedStores);
       })
-      .catch(() => setError('Не удалось загрузить объекты'))
+      .catch(() => setError(t('loadError')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [t]);
 
   const handleStoreCreated = (newStore: StoreSummary) => {
     setStores((prev) => [...prev, newStore]);
     setShowCreateModal(false);
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем кабинет..." />;
+  if (loading) return <FullScreenLoader label={t('loadingCabinet')} />;
   if (error) return <div className="p-8 text-center text-lg text-[#EF4444]">{error}</div>;
 
   return (
@@ -84,14 +86,14 @@ export default function StoresPage() {
             <p className="mb-3 text-sm font-medium tracking-wide text-[#6B6B6B]">
               {currentUser ? (
                 <>
-                  Добро пожаловать, <span className="font-semibold text-[#111111]">{currentUser.name || 'Пользователь'}</span> ({currentUser.email})
+                  {t('welcome')} <span className="font-semibold text-[#111111]">{currentUser.name || t('defaultUserName')}</span> ({currentUser.email})
                 </>
               ) : (
-                'Панель управления объектами'
+                t('subtitle')
               )}
             </p>
             <h1 className="text-5xl font-extrabold leading-none tracking-tight md:text-4xl">
-              Мои объекты
+              {t('title')}
             </h1>
           </div>
 
@@ -100,7 +102,7 @@ export default function StoresPage() {
             className="group relative inline-flex items-center gap-2 self-start rounded-full bg-[#FF6A13] px-7 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:-translate-y-0.5 hover:bg-[#E65C00]"
           >
             <span className="text-lg leading-none">+</span>
-            <span>Добавить объект</span>
+            <span>{t('createStore')}</span>
             <span className="pointer-events-none absolute -inset-1 -z-10 rounded-full bg-[#FF6A13]/30 blur-xl transition group-hover:opacity-80" />
           </button>
         </div>
@@ -109,22 +111,22 @@ export default function StoresPage() {
           <div className="mb-10 rounded-[1.75rem] border border-[#D8D1CB] bg-[#F4EFEB] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] md:p-7">
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="mb-1 text-2xl font-bold">Профиль</h2>
+                <h2 className="mb-1 text-2xl font-bold">{t('profile')}</h2>
                 <p className="text-[15px] text-[#6B6B6B]">
-                  <span className="font-semibold text-[#111111]">{currentUser.name || 'Пользователь'}</span> ({currentUser.email})
+                  <span className="font-semibold text-[#111111]">{currentUser.name || t('defaultUserName')}</span> ({currentUser.email})
                 </p>
               </div>
               <Link
                 href="/reset-password"
                 className="inline-flex items-center justify-center rounded-full bg-[#22C55E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#16a34a]"
               >
-                Изменить пароль
+                {t('changePassword')}
               </Link>
             </div>
           </div>
         ) : (
           <div className="mb-10 animate-pulse rounded-[1.75rem] border border-[#D8D1CB] bg-[#F4EFEB] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-            <h2 className="mb-4 text-xl font-semibold">Загрузка пользователя...</h2>
+            <h2 className="mb-4 text-xl font-semibold">{t('loadingUser')}</h2>
           </div>
         )}
 
@@ -133,8 +135,8 @@ export default function StoresPage() {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl text-[#6B6B6B]">
               +
             </div>
-            <p className="mb-2 text-lg font-semibold text-[#111111]">У вас пока нет объектов</p>
-            <p className="text-sm text-[#6B6B6B]">Нажмите «Добавить объект», чтобы создать первый объект.</p>
+            <p className="mb-2 text-lg font-semibold text-[#111111]">{t('emptyTitle')}</p>
+            <p className="text-sm text-[#6B6B6B]">{t('emptySubtitle')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -144,7 +146,7 @@ export default function StoresPage() {
                 const badgeClass = isPaid
                   ? 'bg-[#dcfce7] text-[#15803d]'
                   : 'bg-[#fff1e8] text-[#c2410c]';
-                const badgeLabel = isPaid ? 'Оплачен' : 'Не оплачен';
+                const badgeLabel = isPaid ? t('paid') : t('unpaid');
 
                 return (
               <Link
@@ -160,7 +162,7 @@ export default function StoresPage() {
                   <h3 className="mb-3 truncate text-2xl font-bold text-[#111111]">{store.name}</h3>
                   <div className="mb-8">
                     <div className="inline-flex rounded-full bg-[#F4EFEB] px-3 py-1 text-sm text-[#6B6B6B]">
-                      Адрес: {store.address || 'Не указан'}
+                      {t('address', { address: store.address || t('addressNotSpecified') })}
                     </div>
                   </div>
                   <div className="flex items-center justify-between border-t border-[#ECE6E0] pt-4">
@@ -170,7 +172,7 @@ export default function StoresPage() {
                       {badgeLabel}
                     </span>
                     <span className="text-sm font-bold text-[#111111] transition group-hover:text-[#FF6A13]">
-                      Управление →
+                      {t('manage')}
                     </span>
                   </div>
                 </div>

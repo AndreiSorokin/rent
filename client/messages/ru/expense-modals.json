@@ -1,0 +1,59 @@
+{
+  "AddExpenseModal": {
+    "hint": "Если каналы оплаты не заполнены, расход будет создан как «Не оплачено».",
+    "nameLabel": "Название",
+    "namePlaceholder": "Введите название расхода",
+    "amountLabel": "Сумма",
+    "bankTransferLabel": "Безналичные",
+    "cashbox1Label": "Наличные касса 1",
+    "cashbox2Label": "Наличные касса 2",
+    "channelsTotal": "Каналы оплаты: {amount}",
+    "cancel": "Отмена",
+    "saving": "Сохранение...",
+    "submit": "Добавить",
+    "errorNameRequired": "Введите название расхода",
+    "errorInvalidAmount": "Некорректная сумма",
+    "errorNegativeChannels": "Каналы оплаты должны быть неотрицательными",
+    "errorAmountMismatch": "Сумма должна совпадать с суммой каналов оплаты"
+  },
+  "ExpenseEditModal": {
+    "nameLabelDefault": "Название",
+    "namePlaceholderDefault": "Название расхода",
+    "statusLabel": "Статус оплаты",
+    "statusUnpaid": "Не оплачено",
+    "statusPaid": "Оплачено",
+    "bankTransferLabel": "Безналичные",
+    "cashbox1Label": "Наличные касса 1",
+    "cashbox2Label": "Наличные касса 2",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "saving": "Сохранение...",
+    "save": "Сохранить"
+  },
+  "ExpenseSearchInput": {
+    "placeholderDefault": "Поиск по названию"
+  },
+  "ExpenseCreatePaidModal": {
+    "subtitleDefault": "Расход создается сразу со статусом «Оплачено».",
+    "nameLabelDefault": "Название",
+    "bankTransferLabel": "Безналичные",
+    "cashbox1Label": "Наличные касса 1",
+    "cashbox2Label": "Наличные касса 2",
+    "cancel": "Отмена",
+    "saving": "Сохранение...",
+    "submitLabelDefault": "Сохранить"
+  },
+  "ExpenseEditModalOverview": {
+    "nameLabelDefault": "Название",
+    "statusLabel": "Статус оплаты",
+    "statusUnpaid": "Не оплачено",
+    "statusPaid": "Оплачено",
+    "bankTransferLabel": "Безналичные",
+    "cashbox1Label": "Наличные касса 1",
+    "cashbox2Label": "Наличные касса 2",
+    "delete": "Удалить",
+    "cancel": "Отмена",
+    "saving": "Сохранение...",
+    "submitLabelDefault": "Сохранить"
+  }
+}

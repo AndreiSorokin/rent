@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   ArrowLeft,
   BanknoteArrowDown,
@@ -59,6 +60,7 @@ export function StoreSidebar({
   onOpenExtraIncome,
   enableMobileMenu = true,
 }: StoreSidebarProps) {
+  const t = useTranslations('StoreSidebar');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const permissions = store.permissions || [];
@@ -79,35 +81,35 @@ export function StoreSidebar({
   }> = [
     {
       key: 'pavilions',
-      label: 'Объекты аренды',
+      label: t('items.pavilions'),
       href: `/stores/${storeId}#pavilions`,
       visible: hasPermission(permissions, 'VIEW_PAVILIONS'),
       icon: Store,
     },
     {
       key: 'household',
-      label: 'Хоз расходы',
+      label: t('items.household'),
       href: `/stores/${storeId}/household`,
       visible: hasPermission(permissions, 'VIEW_CHARGES'),
       icon: Toolbox,
     },
     {
       key: 'other-expenses',
-      label: 'Прочие расходы',
+      label: t('items.otherExpenses'),
       href: `/stores/${storeId}/other-expenses`,
       visible: hasPermission(permissions, 'VIEW_CHARGES'),
       icon: BanknoteArrowDown,
     },
     {
       key: 'admin-expenses',
-      label: 'Административные расходы',
+      label: t('items.adminExpenses'),
       href: `/stores/${storeId}/admin-expenses`,
       visible: hasPermission(permissions, 'VIEW_CHARGES'),
       icon: LockKeyhole,
     },
     {
       key: 'staff',
-      label: 'Штатное расписание',
+      label: t('items.staff'),
       href: `/stores/${storeId}/staff`,
       visible: hasPermission(permissions, 'VIEW_STAFF'),
       icon: UsersRound,
@@ -117,10 +119,13 @@ export function StoreSidebar({
   const renderMenuContent = (isMobile = false) => (
     <>
       <div className="mb-5">
-        <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Объект</p>
-        <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name || 'Объект'}</h1>
+        <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('property')}</p>
+        <h1 className="mt-1 text-xl font-bold text-slate-900">{store.name || t('defaultName')}</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Валюта: {store.currency} ({getCurrencySymbol((store.currency as any) || 'RUB')})
+          {t('currencyLabel', {
+            currency: store.currency || 'RUB',
+            symbol: getCurrencySymbol((store.currency as any) || 'RUB'),
+          })}
         </p>
         <Link
           href="/dashboard"
@@ -130,7 +135,7 @@ export function StoreSidebar({
           className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-[#f9f5f0]"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Назад к объектам
+          {t('backToProperties')}
         </Link>
       </div>
 
@@ -144,7 +149,7 @@ export function StoreSidebar({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
           >
             <Sigma className="h-4 w-4" />
-            СВОДКА
+            {t('summary')}
           </Link>
         )}
 
@@ -157,7 +162,7 @@ export function StoreSidebar({
             className="flex items-center justify-center gap-2 rounded-xl bg-[#0F172A] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#020617]"
           >
             <CheckCheck className="h-4 w-4" />
-            Открытие/закрытие смены
+            {t('shiftOpenClose')}
           </Link>
         )}
 
@@ -174,7 +179,7 @@ export function StoreSidebar({
                 }`}
               >
                 <HandCoins className="h-3.5 w-3.5" />
-                Начисления
+                {t('charges')}
               </Link>
             )}
             {canViewAccounting &&
@@ -189,7 +194,7 @@ export function StoreSidebar({
                   }`}
                 >
                   <BanknoteArrowDown className="h-3.5 w-3.5" />
-                  Доп приход
+                  {t('extraIncome')}
                 </button>
               ) : (
                 <Link
@@ -202,7 +207,7 @@ export function StoreSidebar({
                   }`}
                 >
                   <BanknoteArrowDown className="h-3.5 w-3.5" />
-                  Доп приход
+                  {t('extraIncome')}
                 </Link>
               ))}
           </div>
@@ -210,7 +215,7 @@ export function StoreSidebar({
       </div>
 
       <div className="pt-4">
-        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('navigation')}</p>
         <nav className="space-y-1">
           {items
             .filter((i) => i.visible)
@@ -243,7 +248,7 @@ export function StoreSidebar({
               className="flex items-center justify-center gap-2 rounded-xl border border-[#D8D1CB] px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#F4EFEB]"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Управление объектом
+              {t('managePavilion')}
             </Link>
           </div>
         )}
@@ -272,7 +277,7 @@ export function StoreSidebar({
             className="fixed right-3 top-3 z-50 inline-flex items-center gap-1.5 rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] shadow-sm lg:hidden"
           >
             <Menu className="h-4 w-4" />
-            Меню
+            {t('menu')}
           </button>
 
           <div
@@ -282,7 +287,7 @@ export function StoreSidebar({
           >
             <button
               type="button"
-              aria-label="Закрыть меню"
+              aria-label={t('closeMenu')}
               className="absolute inset-0"
               onClick={() => setMobileMenuOpen(false)}
             />
@@ -292,7 +297,7 @@ export function StoreSidebar({
               }`}
             >
               <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#111111]">Навигация</p>
+                <p className="text-sm font-semibold text-[#111111]">{t('navigation')}</p>
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}

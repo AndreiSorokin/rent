@@ -1,26 +1,29 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LifeBuoy, Mail, ArrowRight } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 
-export const metadata: Metadata = {
-  title: 'Тех поддержка | Rendlify',
-  description:
-    'Как связаться с технической поддержкой Rendlify. Если у вас есть вопрос по платформе, напишите на info@rendlify.com.',
-  alternates: {
-    canonical: '/support',
-  },
-  openGraph: {
-    title: 'Тех поддержка | Rendlify',
-    description:
-      'Если у вас есть вопрос по платформе Rendlify, напишите на info@rendlify.com.',
-    url: '/support',
-    siteName: 'Rendlify',
-    locale: 'ru_RU',
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('SupportPage.meta');
+  return {
+    title: t('title'),
+    description: t('description'),
+    alternates: {
+      canonical: '/support',
+    },
+    openGraph: {
+      title: t('title'),
+      description: t('ogDescription'),
+      url: '/support',
+      siteName: 'Rendlify',
+      type: 'website',
+    },
+  };
+}
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const t = await getTranslations('SupportPage');
+
   return (
     <main className="min-h-screen bg-[#f9f5f0] text-[#111111]">
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-14 md:px-10 md:pt-20">
@@ -30,21 +33,19 @@ export default function SupportPage() {
           </div>
 
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#6B6B6B]">
-            Тех поддержка
+            {t('eyebrow')}
           </p>
           <h1 className="mt-3 max-w-3xl text-3xl font-extrabold leading-tight md:text-4xl">
-            Если у вас есть вопрос по платформе, мы на связи
+            {t('title')}
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-7 text-[#4B5563] md:text-lg">
-            Если что-то работает не так, как вы ожидаете, или вам нужна помощь по
-            работе с Rendlify, напишите нам на почту. Опишите вопрос как можно
-            подробнее - так мы сможем помочь быстрее.
+            {t('description')}
           </p>
 
           <div className="mt-8 rounded-[1.5rem] border border-[#f3c6a8] bg-[#fff1e8] p-5 md:p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm text-[#8A4B26]">Почта технической поддержки</p>
+                <p className="text-sm text-[#8A4B26]">{t('emailLabel')}</p>
                 <a
                   href="mailto:info@rendlify.com"
                   className="mt-1 inline-flex items-center gap-2 text-xl font-bold text-[#C2410C] transition hover:text-[#9A3412]"
@@ -54,10 +55,10 @@ export default function SupportPage() {
               </div>
 
               <a
-                href="mailto:info@rendlify.com?subject=Вопрос%20по%20Rendlify"
+                href={`mailto:info@rendlify.com?subject=${encodeURIComponent(t('emailSubject'))}`}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6A13] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
               >
-                Написать в поддержку
+                {t('writeToSupport')}
                 <ArrowRight className="h-4 w-4" />
               </a>
             </div>
@@ -65,11 +66,8 @@ export default function SupportPage() {
 
           <div className="mt-8 grid gap-4 text-sm text-[#4B5563] md:grid-cols-2">
             <div className="rounded-2xl border border-[#E7DED7] bg-[#FAF7F3] p-4">
-              <p className="font-semibold text-[#111111]">Что полезно указать в письме</p>
-              <p className="mt-2 leading-6">
-                Название объекта, краткое описание проблемы, шаги до ошибки и, если
-                есть, скриншот или точный текст сообщения.
-              </p>
+              <p className="font-semibold text-[#111111]">{t('usefulInfoTitle')}</p>
+              <p className="mt-2 leading-6">{t('usefulInfoText')}</p>
             </div>
           </div>
 
@@ -79,7 +77,7 @@ export default function SupportPage() {
               className="inline-flex items-center gap-2 text-sm font-semibold text-[#374151] transition hover:text-[#111111]"
             >
               <ArrowRight className="h-4 w-4 rotate-180" />
-              Вернуться на главную
+              {t('backHome')}
             </Link>
           </div>
         </div>

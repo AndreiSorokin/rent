@@ -1,0 +1,218 @@
+{
+  "StoreSettingsPage": {
+    "loading": "Открываем настройки объекта...",
+    "notFound": "Объект не найден",
+    "errors": {
+      "loadFailed": "Не удалось загрузить настройки",
+      "enterStoreName": "Введите название объекта",
+      "nameUpdateFailed": "Не удалось изменить название",
+      "currencyUpdateFailed": "Не удалось изменить валюту",
+      "addressUpdateFailed": "Не удалось изменить адрес",
+      "billingUpdateFailed": "Не удалось обновить реквизиты",
+      "contactUpdateFailed": "Не удалось изменить контактные данные",
+      "timeZoneUpdateFailed": "Не удалось изменить часовой пояс",
+      "descriptionUpdateFailed": "Не удалось сохранить описание объекта",
+      "photoUploadFailed": "Не удалось загрузить фото объекта",
+      "enterConfirmWord": "Введите слово \"УДАЛИТЬ\" для подтверждения",
+      "storeDeleteFailed": "Не удалось удалить объект",
+      "enterCategoryName": "Введите название категории",
+      "categoryAddFailed": "Не удалось добавить категорию",
+      "enterNewCategoryName": "Введите новое название категории",
+      "categoryRenameFailed": "Не удалось переименовать категорию",
+      "categoryDeleteFailed": "Не удалось удалить категорию",
+      "enterGroupName": "Введите название группы",
+      "groupCreateFailed": "Не удалось создать группу",
+      "groupRenameFailed": "Не удалось переименовать группу",
+      "groupDeleteFailed": "Не удалось удалить группу",
+      "groupPavilionsSaveFailed": "Не удалось сохранить состав группы",
+      "dataExportFailed": "Не удалось выгрузить данные"
+    },
+    "success": {
+      "nameUpdated": "Название объекта обновлено",
+      "currencyUpdated": "Валюта объекта обновлена",
+      "addressUpdated": "Адрес объекта обновлен",
+      "addressRemoved": "Адрес объекта удален",
+      "billingUpdated": "Реквизиты организации обновлены",
+      "billingRemoved": "Реквизиты организации удалены",
+      "contactUpdated": "Контактные данные объекта обновлены",
+      "timeZoneUpdated": "Часовой пояс объекта обновлен",
+      "descriptionUpdated": "Описание объекта обновлено",
+      "descriptionRemoved": "Описание объекта удалено",
+      "photoAdded": "Фото объекта добавлено",
+      "photosAdded": "Добавлено фотографий: {count}",
+      "categoryAdded": "Категория добавлена",
+      "categoryRenamed": "Категория переименована",
+      "categoryDeleted": "Категория удалена",
+      "groupCreated": "Группа создана",
+      "groupRenamed": "Группа переименована",
+      "groupDeleted": "Группа удалена",
+      "groupPavilionsSaved": "Состав группы сохранен",
+      "dataExported": "Данные объекта выгружены"
+    },
+    "subscription": {
+      "statusPaid": "Оплачено",
+      "statusUnpaid": "Не оплачено",
+      "invoiceOpened": "Счет открыт в новой вкладке",
+      "invoiceOpenFailed": "Не удалось открыть счет",
+      "popupBlocked": "Браузер заблокировал новую вкладку для оплаты",
+      "paymentPrepareFailed": "Не удалось подготовить оплату",
+      "title": "Подписка на Rendlify",
+      "statusForPeriod": "Статус за {period}",
+      "statusForCurrentMonth": "Статус текущего календарного месяца",
+      "monthlyCost": "Стоимость за месяц:",
+      "firstMonthFree": "Первый месяц бесплатный.",
+      "noOccupiedPavilions": "В этом месяце нет занятых павильонов, поэтому счет не требуется.",
+      "fillBillingDetails": "Чтобы открыть счет и перейти к оплате, заполните реквизиты организации ниже.",
+      "paymentConfirmed": "Оплата за текущий календарный месяц подтверждена.",
+      "paymentPendingConfirmation": "Оплата отправлена, ожидается подтверждение.",
+      "opening": "Открываем...",
+      "viewInvoice": "Посмотреть счет",
+      "preparing": "Подготавливаем...",
+      "pay": "Оплатить"
+    },
+    "categories": {
+      "deleteDialogTitle": "Удаление категории",
+      "deleteDialogMessage": "Удалить категорию \"{name}\"?",
+      "deleteDialogConfirm": "Удалить",
+      "title": "Категории павильонов",
+      "newCategoryPlaceholder": "Новая категория",
+      "adding": "Добавление...",
+      "empty": "Категорий пока нет"
+    },
+    "groups": {
+      "deleteDialogTitle": "Удаление группы",
+      "deleteDialogMessage": "Удалить эту группу?",
+      "deleteDialogConfirm": "Удалить",
+      "title": "Группы павильонов",
+      "newGroupPlaceholder": "Название новой группы",
+      "creating": "Создание...",
+      "empty": "Групп пока нет",
+      "hideList": "Скрыть список",
+      "addPavilions": "Добавить павильоны",
+      "currentComposition": "Текущий состав: {count} павильонов",
+      "searchPavilionPlaceholder": "Поиск объекта аренды по номеру",
+      "noPavilionsFound": "Объекты аренды не найдены",
+      "selectedCount": "Выбрано: {count}",
+      "saveSelection": "Сохранить выбор"
+    },
+    "export": {
+      "sheets": {
+        "pavilions": "Объекты аренды",
+        "householdExpenses": "ХозяйственныеРасходы",
+        "otherExpenses": "ПрочиеРасходы",
+        "adminExpenses": "АдминистративныеРасходы",
+        "accounting": "Закрытие дня",
+        "staff": "Сотрудники"
+      },
+      "pavilionsHeaders": {
+        "number": "Номер павильона",
+        "category": "Категория",
+        "area": "Площадь",
+        "pricePerSqM": "Цена за м2",
+        "utilities": "Коммунальные",
+        "status": "Статус",
+        "tenantName": "Наименование организации",
+        "advertising": "Реклама"
+      },
+      "nameAmountStatusHeaders": {
+        "name": "Название",
+        "amount": "Сумма"
+      },
+      "accountingHeaders": {
+        "date": "Дата",
+        "bankTransfer": "Безналичные",
+        "cashbox1": "Наличные касса 1",
+        "cashbox2": "Наличные касса 2"
+      },
+      "staffHeaders": {
+        "position": "Должность",
+        "fullName": "Имя Фамилия",
+        "salary": "Зарплата",
+        "paymentStatus": "Статус оплаты"
+      },
+      "statusValues": {
+        "paid": "Оплачено",
+        "unpaid": "Не оплачено",
+        "rented": "ЗАНЯТ",
+        "prepaid": "ПРЕДОПЛАТА",
+        "available": "СВОБОДЕН"
+      },
+      "adminTypeLabels": {
+        "PAYROLL_TAX": "Налоги с зарплаты",
+        "PROFIT_TAX": "Налог на прибыль",
+        "DIVIDENDS": "Дивиденды",
+        "BANK_SERVICES": "Банковские услуги",
+        "VAT": "НДС",
+        "LAND_RENT": "Аренда земли"
+      },
+      "otherExpenseFallbackName": "Прочий расход"
+    },
+    "header": {
+      "title": "Управление объектом: {name}",
+      "activityLog": "Журнал действий",
+      "importData": "Загрузить данные",
+      "exporting": "Выгрузка...",
+      "exportData": "Выгрузить данные"
+    },
+    "basicSettings": {
+      "title": "Основные настройки",
+      "storeName": "Название объекта",
+      "storeAddress": "Адрес объекта",
+      "optionalPlaceholder": "Необязательно",
+      "addressClearHint": "Оставьте поле пустым, чтобы удалить адрес.",
+      "billingDetails": "Реквизиты организации",
+      "companyNamePlaceholder": "Название организации",
+      "legalAddressPlaceholder": "Юридический адрес организации",
+      "innPlaceholder": "ИНН организации",
+      "billingHint": "Эти данные используются для автоматического выставления счета на оплату сервиса.",
+      "currency": "Валюта",
+      "currentCurrency": "Текущая валюта: {currency} ({symbol})",
+      "currencyRub": "Российский рубль (₽)",
+      "currencyKzt": "Казахстанский тенге (₸)",
+      "timeZone": "Часовой пояс объекта",
+      "currentTimeZone": "Текущий часовой пояс: {timeZone}",
+      "timeZonePlaceholder": "Введите город или таймзону (например: Москва, Almaty, Europe/Moscow)",
+      "contactDetails": "Контактные данные объекта",
+      "phonePlaceholder": "Телефон объекта",
+      "emailPlaceholder": "Почта объекта",
+      "contactClearHint": "Оставьте поля пустыми, чтобы удалить контактные данные."
+    },
+    "media": {
+      "title": "Описание и фото объекта",
+      "descriptionLabel": "Описание объекта",
+      "descriptionPlaceholder": "Добавьте короткое описание объекта для будущей версии арендатора",
+      "descriptionClearHint": "Оставьте поле пустым, чтобы удалить описание.",
+      "photoLabel": "Фото объекта",
+      "photoAlt": "Фото объекта {name}",
+      "noPhotoYet": "Фото объекта пока не загружено",
+      "uploading": "Загрузка...",
+      "addPhoto": "Добавить фото",
+      "allPhotosWithCount": "Все фото ({count})",
+      "allPhotos": "Все фото",
+      "formatsHint": "Поддерживаются JPG, PNG и WEBP до 10 МБ."
+    },
+    "users": {
+      "title": "Пользователи и права"
+    },
+    "dangerZone": {
+      "title": "Опасная зона",
+      "deleteStore": "Удалить объект"
+    },
+    "deleteStore": {
+      "confirmWord": "УДАЛИТЬ",
+      "modalTitle": "Удаление объекта",
+      "instruction": "Чтобы удалить, напишите слово <strong>{word}</strong>."
+    },
+    "common": {
+      "save": "Сохранить",
+      "savingEllipsis": "...",
+      "savingInProgress": "Сохранение...",
+      "add": "Добавить",
+      "rename": "Переименовать",
+      "delete": "Удалить",
+      "deletingEllipsis": "Удаление...",
+      "create": "Создать",
+      "cancel": "Отмена"
+    }
+  }
+}

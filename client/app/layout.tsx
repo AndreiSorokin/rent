@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages, getTranslations } from 'next-intl/server';
 import './globals.css';
 import { AuthGuard } from '@/components/AuthGuard';
 import { DialogProvider } from '@/components/dialog/DialogProvider';
 import { ToastProvider } from '@/components/toast/ToastProvider';
 import { SiteFooter } from '@/components/SiteFooter';
 import { CookieConsentBanner } from '@/components/CookieConsentBanner';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,60 +20,64 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://rendlify.com'),
-  title: {
-    default: 'Rendlify — контроль торгового объекта в реальном времени',
-    template: '%s | Rendlify',
-  },
-  description:
-    'Rendlify помогает собственнику и управляющему контролировать павильоны, арендаторов, платежи, доходы, расходы и состояние торгового объекта в одном интерфейсе.',
-  keywords: [
-    'контроль торгового объекта',
-    'программа для торгового дома',
-    'управление павильонами',
-    'контроль арендаторов и платежей',
-    'учет доходов и расходов объекта',
-  ],
-  verification: {
-    yandex: 'b21ff933b81d7751',
-  },
-  icons: {
-    icon: '/logo1.png',
-    shortcut: '/logo1.png',
-    apple: '/logo1.png',
-  },
-  openGraph: {
-    siteName: 'Rendlify',
-    locale: 'ru_RU',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('RootLayout');
+  const locale = await getLocale();
 
-export default function RootLayout({
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://rendlify.com'),
+    title: {
+      default: t('title'),
+      template: t('titleTemplate'),
+    },
+    description: t('description'),
+    keywords: t.raw('keywords'),
+    verification: {
+      yandex: 'b21ff933b81d7751',
+    },
+    icons: {
+      icon: '/logo1.png',
+      shortcut: '/logo1.png',
+      apple: '/logo1.png',
+    },
+    openGraph: {
+      siteName: 'Rendlify',
+      locale: locale === 'en' ? 'en_US' : 'ru_RU',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="ru">
+    <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-[#f6f1eb] text-[#111111] antialiased`}
       >
-        <DialogProvider>
-          <ToastProvider>
-            <div className="flex min-h-screen flex-col">
-              <div className="flex-1">
-                <AuthGuard>{children}</AuthGuard>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <DialogProvider>
+            <ToastProvider>
+              <div className="flex min-h-screen flex-col">
+                <div className="flex-1">
+                  <AuthGuard>{children}</AuthGuard>
+                </div>
+                <SiteFooter />
+                <CookieConsentBanner />
+                <LanguageSwitcher />
               </div>
-              <SiteFooter />
-              <CookieConsentBanner />
-            </div>
-          </ToastProvider>
-        </DialogProvider>
+            </ToastProvider>
+          </DialogProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

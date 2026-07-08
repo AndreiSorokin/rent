@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { FullScreenLoader } from '@/components/AppLoader';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
@@ -53,24 +54,19 @@ const ADMIN_TYPES: PavilionExpenseType[] = [
 const CATEGORY_META: Record<
   HistoryCategory,
   {
-    title: string;
     permission: Permission;
   }
 > = {
   household: {
-    title: 'Хоз расходы за предыдущие месяцы',
     permission: 'VIEW_CHARGES',
   },
   other: {
-    title: 'Прочие расходы за предыдущие месяцы',
     permission: 'VIEW_CHARGES',
   },
   admin: {
-    title: 'Административные расходы за предыдущие месяцы',
     permission: 'VIEW_CHARGES',
   },
   staff: {
-    title: 'Расходы по штату за предыдущие месяцы',
     permission: 'VIEW_STAFF',
   },
 };
@@ -94,50 +90,34 @@ function paymentChannelsLines(
   cashbox1Paid: number,
   cashbox2Paid: number,
   currency: 'RUB' | 'KZT',
+  t: ReturnType<typeof useTranslations>,
 ) {
   const lines: string[] = [];
   if (bankTransferPaid > 0) {
-    lines.push(`Безналичные: ${formatMoney(bankTransferPaid, currency)}`);
+    lines.push(t('paymentChannels.bankTransfer', { amount: formatMoney(bankTransferPaid, currency) }));
   }
   if (cashbox1Paid > 0) {
-    lines.push(`Наличные касса 1: ${formatMoney(cashbox1Paid, currency)}`);
+    lines.push(t('paymentChannels.cashbox1', { amount: formatMoney(cashbox1Paid, currency) }));
   }
   if (cashbox2Paid > 0) {
-    lines.push(`Наличные касса 2: ${formatMoney(cashbox2Paid, currency)}`);
+    lines.push(t('paymentChannels.cashbox2', { amount: formatMoney(cashbox2Paid, currency) }));
   }
   return lines;
 }
 
-function getAdminTypeLabel(type: PavilionExpenseType) {
-  switch (type) {
-    case 'PAYROLL_TAX':
-      return 'Налоги с зарплаты';
-    case 'PROFIT_TAX':
-      return 'Налог на прибыль';
-    case 'VAT':
-      return 'НДС';
-    case 'BANK_SERVICES':
-      return 'Услуги банка';
-    case 'DIVIDENDS':
-      return 'Дивиденды';
-    case 'LAND_RENT':
-      return 'Аренда земли';
-    case 'STORE_FACILITIES':
-      return 'Коммуналка объекта';
-    default:
-      return 'Административный расход';
-  }
+function getAdminTypeLabel(type: PavilionExpenseType, labels: Record<string, string>) {
+  return labels[type] ?? labels.OTHER ?? '';
 }
 
-function getStaffTitle(note: string | null | undefined) {
+function getStaffTitle(note: string | null | undefined, defaultStaffName: string, staffMemberLabel: (id: string) => string) {
   const raw = String(note ?? '').trim();
   const match = /^STAFF:(\d+):(.*)$/.exec(raw);
-  if (!match) return raw || 'Расход по штату';
+  if (!match) return raw || defaultStaffName;
   const tail = String(match[2] ?? '').trim();
   if (tail && !/^\d{4}-\d{2}-\d{2}T/.test(tail)) {
     return tail;
   }
-  return `Сотрудник #${match[1]}`;
+  return staffMemberLabel(match[1]);
 }
 
 export default function StoreExpenseHistoryPage() {
@@ -150,9 +130,16 @@ export default function StoreExpenseHistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('StoreExpenseHistoryPage');
+  const adminTypeLabels = t.raw('adminExpenseTypes') as Record<string, string>;
+  const defaultHouseholdName = t('defaultHouseholdName');
+  const defaultStaffName = t('defaultStaffName');
+  const defaultOtherName = t('defaultOtherName');
+  const staffMemberLabel = (id: string) => t('staffMemberLabel', { id });
 
   const category = isHistoryCategory(categoryParam) ? categoryParam : null;
   const meta = category ? CATEGORY_META[category] : null;
+  const categoryTitle = category ? t(`categoryTitles.${category}`) : '';
 
   useEffect(() => {
     if (!storeId || !category || !meta) return;
@@ -175,7 +162,7 @@ export default function StoreExpenseHistoryPage() {
             createdAt: item.createdAt,
             amount: Number(item.amount ?? 0),
             status: String(item.status ?? 'UNPAID'),
-            title: String(item.name ?? 'Хозяйственный расход'),
+            title: String(item.name ?? defaultHouseholdName),
             bankTransferPaid: Number(item.bankTransferPaid ?? 0),
             cashbox1Paid: Number(item.cashbox1Paid ?? 0),
             cashbox2Paid: Number(item.cashbox2Paid ?? 0),
@@ -189,7 +176,7 @@ export default function StoreExpenseHistoryPage() {
             createdAt: item.createdAt,
             amount: Number(item.amount ?? 0),
             status: String(item.status ?? 'UNPAID'),
-            title: String(item.staffName ?? getStaffTitle(item.note)),
+            title: String(item.staffName ?? getStaffTitle(item.note, defaultStaffName, staffMemberLabel)),
             bankTransferPaid: Number(item.bankTransferPaid ?? 0),
             cashbox1Paid: Number(item.cashbox1Paid ?? 0),
             cashbox2Paid: Number(item.cashbox2Paid ?? 0),
@@ -209,8 +196,8 @@ export default function StoreExpenseHistoryPage() {
               status: String(item.status ?? 'UNPAID'),
               title:
                 category === 'admin'
-                  ? getAdminTypeLabel(item.type)
-                  : String(item.note ?? 'Прочий расход'),
+                  ? getAdminTypeLabel(item.type, adminTypeLabels)
+                  : String(item.note ?? defaultOtherName),
               subtitle:
                 category === 'admin'
                   ? String(item.note ?? '').trim() || undefined
@@ -226,13 +213,14 @@ export default function StoreExpenseHistoryPage() {
         setError(null);
       } catch (err) {
         console.error(err);
-        setError('Не удалось загрузить историю расходов');
+        setError(t('loadError'));
       } finally {
         setLoading(false);
       }
     };
 
     void fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, meta, router, storeId]);
 
   const groupedHistory = useMemo(() => {
@@ -262,10 +250,10 @@ export default function StoreExpenseHistoryPage() {
   }, [items, store?.timeZone]);
 
   if (!category || !meta) {
-    return <div className="p-6 text-center text-red-600">Категория не найдена</div>;
+    return <div className="p-6 text-center text-red-600">{t('categoryNotFound')}</div>;
   }
 
-  if (loading) return <FullScreenLoader label="Загружаем историю расходов..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 
@@ -293,7 +281,7 @@ export default function StoreExpenseHistoryPage() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">
-                    {meta.title}
+                    {categoryTitle}
                   </h1>
                 </div>
                 <Link
@@ -308,12 +296,12 @@ export default function StoreExpenseHistoryPage() {
                   }
                   className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                 >
-                  Назад
+                  {t('back')}
                 </Link>
               </div>
 
               {groupedHistory.length === 0 ? (
-                <p className="text-[#6b6b6b]">За предыдущие месяцы записей пока нет</p>
+                <p className="text-[#6b6b6b]">{t('emptyState')}</p>
               ) : (
                 <div className="space-y-6">
                   {groupedHistory.map((group) => (
@@ -329,7 +317,7 @@ export default function StoreExpenseHistoryPage() {
                         </div>
                         <div className="rounded-xl border border-[#E5DED8] bg-white px-4 py-2">
                           <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
-                            Общая сумма
+                            {t('totalAmountLabel')}
                           </p>
                           <p className="mt-1 text-lg font-semibold text-[#111111]">
                             {formatMoney(group.total, currency)}
@@ -344,6 +332,7 @@ export default function StoreExpenseHistoryPage() {
                             item.cashbox1Paid,
                             item.cashbox2Paid,
                             currency,
+                            t,
                           );
 
                           return (
@@ -385,7 +374,7 @@ export default function StoreExpenseHistoryPage() {
                                         : 'bg-amber-100 text-amber-700'
                                     }`}
                                   >
-                                    {item.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                                    {item.status === 'PAID' ? t('statusPaid') : t('statusUnpaid')}
                                   </span>
                                 </div>
                               </div>
@@ -394,7 +383,7 @@ export default function StoreExpenseHistoryPage() {
                                 {paymentLines.length ? (
                                   paymentLines.map((line) => <div key={`${item.id}-${line}`}>{line}</div>)
                                 ) : (
-                                  <div>Каналы оплаты не заданы</div>
+                                  <div>{t('noPaymentChannels')}</div>
                                 )}
                               </div>
                             </article>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
@@ -18,6 +19,7 @@ type StoreMediaResponse = {
 };
 
 export default function StoreMediaPage() {
+  const t = useTranslations('StoreMediaPage');
   const params = useParams();
   const storeId = Number(params.storeId);
   const toast = useToast();
@@ -61,10 +63,10 @@ export default function StoreMediaPage() {
         method: 'POST',
         body: formData,
       });
-      toast.success(files.length === 1 ? 'Фото добавлено' : `Добавлено фотографий: ${files.length}`);
+      toast.success(files.length === 1 ? t('uploadSuccessOne') : t('uploadSuccessMany', { count: files.length }));
       await fetchData();
     } catch (err: any) {
-      toast.error(err?.message || 'Не удалось загрузить фотографии');
+      toast.error(err?.message || t('uploadError'));
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -73,32 +75,32 @@ export default function StoreMediaPage() {
 
   const handleDelete = async (imageId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление фотографии',
-      message: 'Удалить эту фотографию объекта?',
+      title: t('deleteDialogTitle'),
+      message: t('deleteDialogMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('delete'),
     });
     if (!confirmed) return;
 
     try {
       setDeletingId(imageId);
       await apiFetch(`/stores/${storeId}/media/${imageId}`, { method: 'DELETE' });
-      toast.success('Фотография удалена');
+      toast.success(t('deleteSuccess'));
       await fetchData();
     } catch (err: any) {
-      toast.error(err?.message || 'Не удалось удалить фотографию');
+      toast.error(err?.message || t('deleteError'));
     } finally {
       setDeletingId(null);
     }
   };
 
   if (loading) {
-    return <div className="p-6 text-center text-lg">Загрузка...</div>;
+    return <div className="p-6 text-center text-lg">{t('loading')}</div>;
   }
 
   const permissions = store?.permissions || [];
   if (!hasPermission(permissions, 'MANAGE_MEDIA')) {
-    return <div className="p-6 text-center text-red-600">Недостаточно прав для управления фотографиями</div>;
+    return <div className="p-6 text-center text-red-600">{t('noPermission')}</div>;
   }
 
   return (
@@ -109,9 +111,9 @@ export default function StoreMediaPage() {
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
             <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.12em] text-[#6b6b6b]">Медиа объекта</p>
+                <p className="text-sm uppercase tracking-[0.12em] text-[#6b6b6b]">{t('eyebrow')}</p>
                 <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">
-                  Фото объекта: {store.name}
+                  {t('title', { name: store.name })}
                 </h1>
               </div>
               <div className="flex items-center gap-2">
@@ -119,10 +121,10 @@ export default function StoreMediaPage() {
                   href={`/stores/${storeId}/settings`}
                   className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
                 >
-                  Назад к управлению объектом
+                  {t('backToStore')}
                 </Link>
                 <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]">
-                  {uploading ? 'Загрузка...' : 'Добавить фото'}
+                  {uploading ? t('loading') : t('addPhoto')}
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -138,7 +140,7 @@ export default function StoreMediaPage() {
             <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
               {!media || media.images.length === 0 ? (
                 <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-[#f8f4ef] text-sm text-[#6b6b6b]">
-                  Фотографий пока нет
+                  {t('emptyState')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -149,7 +151,7 @@ export default function StoreMediaPage() {
                     >
                       <img
                         src={resolveApiMediaUrl(image.filePath) || undefined}
-                        alt={`Фото объекта ${store.name}`}
+                        alt={t('photoAlt', { name: store.name })}
                         className="h-64 w-full object-cover"
                       />
                       <div className="flex items-center justify-between gap-3 p-4">
@@ -162,7 +164,7 @@ export default function StoreMediaPage() {
                           disabled={deletingId === image.id}
                           className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-60"
                         >
-                          {deletingId === image.id ? 'Удаление...' : 'Удалить'}
+                          {deletingId === image.id ? t('deleting') : t('delete')}
                         </button>
                       </div>
                     </article>

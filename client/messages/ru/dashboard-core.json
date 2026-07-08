@@ -1,0 +1,112 @@
+{
+  "StoresPage": {
+    "loadError": "Не удалось загрузить объекты",
+    "loadingCabinet": "Загружаем кабинет...",
+    "welcome": "Добро пожаловать,",
+    "defaultUserName": "Пользователь",
+    "subtitle": "Панель управления объектами",
+    "title": "Мои объекты",
+    "createStore": "Добавить объект",
+    "profile": "Профиль",
+    "changePassword": "Изменить пароль",
+    "loadingUser": "Загрузка пользователя...",
+    "emptyTitle": "У вас пока нет объектов",
+    "emptySubtitle": "Нажмите «Добавить объект», чтобы создать первый объект.",
+    "paid": "Оплачен",
+    "unpaid": "Не оплачен",
+    "address": "Адрес: {address}",
+    "addressNotSpecified": "Не указан",
+    "manage": "Управление →"
+  },
+  "PavilionList": {
+    "pavilionLabel": "Павильон {number}",
+    "statusLabel": "Статус:",
+    "statusRented": "ЗАНЯТ",
+    "statusAvailable": "СВОБОДЕН",
+    "statusPrepaid": "ПРЕДОПЛАТА",
+    "tenantLabel": "Арендатор: {name}",
+    "edit": "Изменить",
+    "delete": "Удалить",
+    "recordPayment": "Внести аренду и коммунальные платежи →",
+    "additionalCharges": "Дополнительные начисления",
+    "addCharge": "+ Добавить начисление",
+    "noAdditionalCharges": "Нет дополнительных начислений",
+    "pay": "Оплатить",
+    "confirmDeleteCharge": "Удалить \"{name}\"?",
+    "deleteChargeFailed": "Не удалось удалить начисление. Попробуйте снова."
+  },
+  "PavilionStats": {
+    "total": "Всего: {count}",
+    "rented": "Занят: {count}",
+    "prepaid": "Предоплата: {count}",
+    "free": "Свободен: {count}"
+  },
+  "IncomeSummary": {
+    "title": "Доходы",
+    "formula": "Формула: аренда + коммуналка + доп. начисления (по всем павильонам)",
+    "forecast": "Прогнозные доходы: {amount}",
+    "actual": "Фактические доходы: {amount}"
+  },
+  "ExpensesSummary": {
+    "title": "Расходы",
+    "description": "Сумма по всем павильонам из таблиц расходов на страницах павильонов",
+    "forecast": "Итого прогноз: {amount}",
+    "actual": "Итого факт: {amount}"
+  },
+  "PaymentSummary": {
+    "title": "Сводка",
+    "pavilionsSummary": "Объекты аренды: всего {total}, занято {rented}, предоплата {prepaid}, свободно {free}",
+    "expected": "Ожидается: {amount}",
+    "paid": "Оплачено: {amount}",
+    "reconciliation": "Схождение: {amount}",
+    "debt": "Долг: {amount}"
+  },
+  "CreatePavilionButton": {
+    "addPavilion": "+ Добавить павильон"
+  },
+  "CreateStoreModal": {
+    "nameRequired": "Введите название объекта",
+    "createSuccess": "Объект успешно создан",
+    "createFailed": "Ошибка создания объекта",
+    "title": "Создать новый объект",
+    "nameLabel": "Название объекта*",
+    "namePlaceholder": "Например: Торговый центр Альфа",
+    "optionalFieldsTitle": "Опциональные поля",
+    "addressLabel": "Адрес объекта",
+    "descriptionLabel": "Описание объекта",
+    "descriptionPlaceholder": "Короткое описание объекта",
+    "billingSectionTitle": "Реквизиты организации",
+    "billingCompanyNameLabel": "Название организации",
+    "billingPlaceholder": "Для выставления счета",
+    "billingLegalAddressLabel": "Юридический адрес организации",
+    "billingInnLabel": "ИНН организации",
+    "billingInnPlaceholder": "10 или 12 цифр",
+    "contactPhoneLabel": "Контактный телефон",
+    "contactEmailLabel": "Контактная почта",
+    "currencyLabel": "Валюта объекта",
+    "currencyDefault": "По умолчанию: RUB",
+    "currencyRub": "Российский рубль (₽)",
+    "currencyKzt": "Казахстанский тенге (₸)",
+    "timeZoneLabel": "Часовой пояс объекта",
+    "timeZonePlaceholder": "Например: Москва, Астана, Новосибирск",
+    "timeZoneHint": "Доступны крупные города России и Казахстана. Если не указывать, будет использоваться UTC.",
+    "photosLabel": "Фотографии объекта",
+    "photosSelected": "Выбрано фотографий: {count}",
+    "photosHint": "Можно добавить одну или несколько фотографий",
+    "cancel": "Отмена",
+    "creating": "Создание...",
+    "create": "Создать"
+  },
+  "InviteUserModal": {
+    "invalidEmail": "Введите корректный email",
+    "inviteFailed": "Не удалось пригласить пользователя. Пожалуйста, попробуйте снова.",
+    "title": "Пригласить пользователя",
+    "subtitle": "Отправьте доступ к объекту по email.",
+    "close": "Закрыть",
+    "emailLabel": "Email пользователя",
+    "hint": "Пользователь получит доступ к объекту после принятия приглашения.",
+    "cancel": "Отмена",
+    "inviting": "Приглашение...",
+    "invite": "Пригласить"
+  }
+}

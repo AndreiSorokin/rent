@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AuthField } from '@/components/auth/AuthField';
 import { AuthMessage } from '@/components/auth/AuthMessage';
 import { AuthShell } from '@/components/auth/AuthShell';
@@ -11,6 +12,7 @@ import { setStoredAccessToken } from '@/lib/session';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('LoginPage');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,9 +21,9 @@ export default function LoginPage() {
   const mapLoginError = (message: string) => {
     const normalized = message.toLowerCase();
     if (normalized.includes('invalid credentials') || normalized.includes('unauthorized')) {
-      return 'Неверный логин или пароль';
+      return t('errorInvalidCredentials');
     }
-    return 'Не удалось выполнить вход. Попробуйте снова.';
+    return t('errorGeneric');
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,11 +48,11 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Вход"
-      subtitle="Введите email и пароль, чтобы продолжить"
-      sideTitle="Управляйте объектами без хаоса"
-      sideDescription="Доходы, расходы, права доступа и сводка по объектам в одном рабочем пространстве."
-      sideFooter="Вход доступен только зарегистрированным пользователям."
+      title={t('title')}
+      subtitle={t('subtitle')}
+      sideTitle={t('sideTitle')}
+      sideDescription={t('sideDescription')}
+      sideFooter={t('sideFooter')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField
@@ -58,8 +60,8 @@ export default function LoginPage() {
           type="email"
           autoComplete="email"
           required
-          label="Email"
-          placeholder="Email"
+          label={t('emailLabel')}
+          placeholder={t('emailPlaceholder')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -69,8 +71,8 @@ export default function LoginPage() {
           type="password"
           autoComplete="current-password"
           required
-          label="Пароль"
-          placeholder="Введите пароль"
+          label={t('passwordLabel')}
+          placeholder={t('passwordPlaceholder')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -82,18 +84,18 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? 'Выполняется вход...' : 'Войти'}
+          {loading ? t('submitLoading') : t('submit')}
         </button>
       </form>
 
       <div className="mt-5 flex items-center justify-between gap-3 text-sm">
         <Link href="/forgot-password" className="font-medium text-[#ff6a13] hover:underline">
-          Забыли пароль?
+          {t('forgotPassword')}
         </Link>
         <span className="text-[#6b6b6b]">
-          Нет аккаунта?{' '}
+          {t('noAccount')}{' '}
           <Link href="/register" className="font-semibold text-[#111111] hover:underline">
-            Зарегистрироваться
+            {t('register')}
           </Link>
         </span>
       </div>

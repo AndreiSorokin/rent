@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { getCurrencySymbol } from '@/lib/currency';
@@ -21,6 +22,7 @@ type Pavilion = {
 };
 
 export default function UtilitiesPage() {
+  const t = useTranslations('UtilitiesPage');
   const params = useParams();
   const storeId = Number(params.storeId);
   const toast = useToast();
@@ -57,7 +59,7 @@ export default function UtilitiesPage() {
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить данные магазина');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -147,7 +149,7 @@ export default function UtilitiesPage() {
         utilitiesAmount < 0 ||
         advertisingAmount < 0
       ) {
-        toast.error(`Некорректная сумма у павильона ${pavilion.number}`);
+        toast.error(t('invalidAmount', { number: pavilion.number }));
         return;
       }
 
@@ -189,18 +191,18 @@ export default function UtilitiesPage() {
           }),
         };
       });
-      toast.success('Все значения сохранены');
+      toast.success(t('saveAllSuccess'));
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось сохранить все значения');
+      toast.error(t('saveAllFailed'));
     } finally {
       setSavingAll(false);
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем начисления..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
+  if (!store) return <div className="p-6 text-center text-red-600">{t('storeNotFound')}</div>;
 
   const inputClass =
     'w-32 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-2 py-1 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
@@ -209,7 +211,7 @@ export default function UtilitiesPage() {
     return (
       <div className="p-6">
         <div className="rounded-xl border border-[#ef4444]/30 bg-[#ef4444]/10 p-4 text-sm font-medium text-[#b91c1c]">
-          Недостаточно прав для просмотра и редактирования коммунальных счетов.
+          {t('noAccess')}
         </div>
       </div>
     );
@@ -224,9 +226,9 @@ export default function UtilitiesPage() {
             <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">Начисления</h1>
+                <h1 className="mt-2 text-2xl font-bold text-[#111111] md:text-3xl">{t('title')}</h1>
                 <p className="mt-1 text-sm text-[#6b6b6b]">
-                  Валюта магазина: {store.currency} ({currencySymbol})
+                  {t('currencyLabel', { currency: store.currency, symbol: currencySymbol })}
                 </p>
               </div>
               <button
@@ -234,30 +236,30 @@ export default function UtilitiesPage() {
                 disabled={savingAll || pavilions.length === 0}
                 className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
               >
-                {savingAll ? 'Сохранение...' : 'Сохранить'}
+                {savingAll ? t('saving') : t('save')}
               </button>
             </div>
               {pavilions.length === 0 ? (
-                <p className="py-8 text-center text-[#6b6b6b]">В магазине пока нет павильонов</p>
+                <p className="py-8 text-center text-[#6b6b6b]">{t('empty')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-[#E5DED8]">
                     <thead className="bg-[#f4efeb]">
                       <tr>
                         <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Перенос
+                          {t('columnReorder')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                          Объекты аренды
+                          {t('columnPavilion')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                          Наименование организации
+                          {t('columnOrganization')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                          Коммунальные
+                          {t('columnUtilities')}
                         </th>
                         <th className="rounded-r-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Реклама
+                          {t('columnAdvertising')}
                         </th>
                       </tr>
                     </thead>
@@ -298,8 +300,8 @@ export default function UtilitiesPage() {
                                     ? 'cursor-grab text-[#6b6b6b] hover:bg-[#f8f4ef] active:cursor-grabbing'
                                     : 'cursor-not-allowed text-gray-300'
                                 }`}
-                                title="Потяните, чтобы изменить порядок"
-                                aria-label={`Переместить павильон ${p.number}`}
+                                title={t('dragToReorder')}
+                                aria-label={t('movePavilion', { number: p.number })}
                               >
                                 ⋮⋮
                               </button>
@@ -311,7 +313,7 @@ export default function UtilitiesPage() {
                             <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                               {isAvailable || isPrepaid ? (
                                 <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
-                                  {isAvailable ? '-' : 'Недоступно'}
+                                  {isAvailable ? '-' : t('unavailable')}
                                 </div>
                               ) : (
                                 <input
@@ -328,7 +330,7 @@ export default function UtilitiesPage() {
                             <td className="px-4 py-3 text-sm text-[#6b6b6b]">
                               {isAvailable || isPrepaid ? (
                                 <div className="w-32 rounded-xl border border-[#e2d9d1] bg-[#f1ece6] px-2 py-1 text-sm text-[#8a8a8a]">
-                                  {isAvailable ? '-' : 'Недоступно'}
+                                  {isAvailable ? '-' : t('unavailable')}
                                 </div>
                               ) : (
                                 <input

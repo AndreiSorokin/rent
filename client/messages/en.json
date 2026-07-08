@@ -1,0 +1,295 @@
+{
+  "LanguageSwitcher": {
+    "ariaLabel": "Language switcher"
+  },
+  "RootLayout": {
+    "title": "Rendlify — real-time control of your retail property",
+    "titleTemplate": "%s | Rendlify",
+    "description": "Rendlify helps owners and managers control pavilions, tenants, payments, income, expenses and the overall state of a retail property in one interface.",
+    "keywords": [
+      "retail property control",
+      "shopping mall management software",
+      "pavilion management",
+      "tenant and payment control",
+      "property income and expense tracking"
+    ]
+  },
+  "Footer": {
+    "operatorText": "Rendlify service operator: Sole Proprietor Vladimir Sergeevich Fedorov, OGRNIP 326774600201511, INN 366112533269, email: fvs.post@yandex.ru",
+    "support": "Support",
+    "solutions": "Solutions",
+    "tariffs": "Pricing",
+    "offer": "Public offer",
+    "userAgreement": "User agreement",
+    "privacy": "Personal data processing policy",
+    "siteConsent": "Site user consent to data processing",
+    "contentRules": "Content placement and moderation rules",
+    "operator": "Full operator information",
+    "cookies": "Cookies"
+  },
+  "CookieConsent": {
+    "title": "Cookies",
+    "description": "We use cookies to make the site work correctly and improve your experience. By continuing to use Rendlify, you can accept all cookies or keep only the essential ones.",
+    "learnMore": "Learn more about cookies",
+    "privacyPolicy": "Privacy policy",
+    "essentialOnly": "Essential only",
+    "accept": "Accept"
+  },
+  "HomePage": {
+    "meta": {
+      "title": "Rendlify — real-time control of your retail property",
+      "description": "Rendlify helps owners and managers see income, expenses, tenants, pavilions, debts and property status in real time, all in one interface.",
+      "keywords": [
+        "retail property control",
+        "shopping mall management software",
+        "pavilion management",
+        "tenant and payment control",
+        "property income and expenses"
+      ],
+      "ogDescription": "Pavilions, tenants, payments, income, expenses and property status — in one clear system."
+    },
+    "hero": {
+      "eyebrow": "Rendlify",
+      "title": "Control your retail property without spreadsheet chaos",
+      "description": "A platform for owners and managers who need to see in real time what's happening with their property: pavilions, tenants, charges, payments, income, expenses, debts and cash register status — all in one workspace.",
+      "ctaStart": "Get started",
+      "ctaSolutions": "View solutions",
+      "ctaLogin": "Sign in"
+    },
+    "stats": [
+      { "label": "Focus", "value": "The full picture of your property — on one screen" },
+      { "label": "Transparency", "value": "Income, expenses, debts and cash registers without manual summaries" },
+      { "label": "Control", "value": "Access rights and an activity log for your team" }
+    ],
+    "features": [
+      {
+        "title": "Property and pavilions",
+        "text": "Keep track of occupancy, area, tenants and charges for every pavilion."
+      },
+      {
+        "title": "Payments and cash registers",
+        "text": "Split operations across bank transfers, cash register 1 and cash register 2 without spreadsheet chaos or manual reconciliation."
+      },
+      {
+        "title": "History and control",
+        "text": "Track changes, monitor staff actions and quickly find the operations you need."
+      },
+      {
+        "title": "Summary and analytics",
+        "text": "See income, expenses, profit, forecast and the actual state of the property on one screen."
+      },
+      {
+        "title": "Access rights",
+        "text": "Configure roles so every employee sees and edits only the sections they need."
+      },
+      {
+        "title": "Daily operations",
+        "text": "Shift opening and closing, cash register reconciliation and clear control of the financial situation."
+      }
+    ],
+    "notOnlyAccounting": {
+      "title": "Not just accounting — fast control of the situation",
+      "text": "Rendlify first helps you understand what's happening with the property right now, and only then lets you manage the data in more depth. This matters most for owners and managers who need a clear answer: where's the money, where's the debt, where's the deviation, and what needs attention."
+    },
+    "solutionsSection": {
+      "eyebrow": "Landing pages by use case",
+      "title": "Key areas people search for us by",
+      "linkAll": "All solutions →",
+      "openPage": "Open page"
+    },
+    "solutionLinks": [
+      {
+        "href": "/solutions/trading-houses",
+        "title": "For shopping malls and trading houses",
+        "text": "Control of the property, tenants and pavilions in one interface."
+      },
+      {
+        "href": "/solutions/tenant-payments",
+        "title": "Tenants and payments",
+        "text": "Charges, payments, utilities, advertising and outstanding debt for every pavilion."
+      },
+      {
+        "href": "/solutions/pavilion-management",
+        "title": "Managing rental properties and pavilions",
+        "text": "Occupancy, statuses, area and day-to-day work with retail units."
+      },
+      {
+        "href": "/solutions/object-analytics",
+        "title": "Income, expenses and profit",
+        "text": "A transparent summary for the owner and manager on the current state of the property."
+      }
+    ],
+    "faq": {
+      "title": "Frequently asked questions",
+      "items": [
+        {
+          "q": "What kind of properties is Rendlify suited for?",
+          "a": "Rendlify is suited for trading houses, markets, galleries and other properties where it's important to quickly see the situation across pavilions, tenants, payments and income."
+        },
+        {
+          "q": "Is this an accounting system or a property control system?",
+          "a": "Both. But the main use case is fast, clear real-time control of the property's situation: who has paid, where there's debt, which expenses have already been recorded, and what the overall summary looks like."
+        },
+        {
+          "q": "Can payments be split across several channels?",
+          "a": "Yes. The system supports non-cash payments, cash register 1 and cash register 2."
+        },
+        {
+          "q": "Is there access rights control?",
+          "a": "Yes. You can separately configure permissions to view, create, edit and delete data for different employees."
+        }
+      ]
+    }
+  },
+  "LoginPage": {
+    "title": "Sign in",
+    "subtitle": "Enter your email and password to continue",
+    "sideTitle": "Manage your properties without the chaos",
+    "sideDescription": "Income, expenses, access rights and property summaries in one workspace.",
+    "sideFooter": "Sign-in is available only to registered users.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submitLoading": "Signing in...",
+    "submit": "Sign in",
+    "forgotPassword": "Forgot your password?",
+    "noAccount": "Don't have an account?",
+    "register": "Sign up",
+    "errorInvalidCredentials": "Incorrect email or password",
+    "errorGeneric": "Failed to sign in. Please try again."
+  },
+  "RegisterPage": {
+    "title": "Sign up",
+    "subtitle": "Fill in your details and confirm your email",
+    "sideTitle": "Create an account for your team",
+    "sideDescription": "After registering, you'll be able to manage properties, charges and access rights in one system.",
+    "sideFooter": "To complete registration you'll need a confirmation code from your email, and to accept the user agreement and personal data processing consent.",
+    "nameLabel": "Name",
+    "namePlaceholder": "John Smith",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Email",
+    "sendCode": "Send confirmation code",
+    "sendCodeAgain": "Resend code",
+    "sendingCode": "Sending...",
+    "codeLabel": "Confirmation code",
+    "codePlaceholder": "Enter the code from the email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPasswordLabel": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat your password",
+    "passwordHint": "Password: at least 6 characters, including letters, numbers and a special character.",
+    "consentPrefix": "I have read and accept the",
+    "consentOffer": "Public offer",
+    "consentUserAgreement": "User agreement",
+    "consentSiteConsent": "Site user consent to personal data processing",
+    "consentAnd": "and",
+    "consentPrivacy": "Personal data processing policy",
+    "submitLoading": "Signing up...",
+    "submit": "Sign up",
+    "haveAccount": "Already have an account?",
+    "login": "Sign in",
+    "codeSentMessage": "The confirmation code has been sent to your email",
+    "errorPasswordWeak": "Password must be at least 6 characters and contain letters, numbers and a special character",
+    "errorInvalidCode": "Invalid or expired confirmation code",
+    "errorEmailTaken": "A user with this email is already registered",
+    "errorEmailServiceUnavailable": "The email sending service is not configured",
+    "errorConsentRequired": "To register you must accept the user agreement and confirm consent to personal data processing",
+    "errorGeneric": "Failed to sign up. Please try again.",
+    "errorPasswordsMismatch": "Passwords do not match",
+    "errorCodeRequired": "Enter the confirmation code from the email",
+    "errorEmailRequired": "Enter an email to confirm"
+  },
+  "ForgotPasswordPage": {
+    "title": "Forgot your password?",
+    "subtitle": "Enter your email and we'll send you a link to create a new password.",
+    "sideTitle": "Account recovery",
+    "sideDescription": "Enter your email and we'll send you a link to reset your password.",
+    "back": "Back",
+    "emailLabel": "Email",
+    "emailPlaceholder": "Email",
+    "submitLoading": "Sending...",
+    "submit": "Send link",
+    "errorEmailRequired": "Enter your email",
+    "errorGeneric": "Failed to send the email",
+    "successMessage": "If an account with this email exists, a link has been sent."
+  },
+  "ResetPasswordPage": {
+    "title": "Change password",
+    "subtitle": "Enter your current and new password",
+    "sideTitle": "Password change",
+    "sideDescription": "After saving, you'll need to sign in again.",
+    "backToDashboard": "Back to dashboard",
+    "forgotPassword": "Forgot your password?",
+    "currentPasswordLabel": "Current password",
+    "currentPasswordPlaceholder": "Enter your current password",
+    "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "Enter your new password",
+    "confirmNewPasswordLabel": "Confirm password",
+    "confirmNewPasswordPlaceholder": "Repeat your new password",
+    "passwordHint": "At least 6 characters, including letters, numbers and a special character.",
+    "submitLoading": "Saving...",
+    "submit": "Update password",
+    "errorFillAll": "Fill in all fields",
+    "errorMismatch": "New password and confirmation do not match",
+    "errorPasswordWeak": "Password must be at least 6 characters and contain letters, numbers and a special character",
+    "errorCurrentPasswordIncorrect": "Current password is incorrect",
+    "errorSamePassword": "New password must be different from the current one",
+    "errorGeneric": "Failed to update password"
+  },
+  "TariffsPage": {
+    "meta": {
+      "title": "Pricing | Rendlify",
+      "description": "Rendlify pricing. The current cost is calculated based on the number of occupied pavilions on the property."
+    },
+    "backHome": "Home",
+    "eyebrow": "Pricing",
+    "title": "Rendlify's current pricing",
+    "descriptionPrefix": "Access to the platform is priced simply: we take the amount of",
+    "descriptionArea": "occupied area",
+    "descriptionAnd": "and multiply it by the",
+    "descriptionRate": "rate per m²",
+    "modelLabel": "Model",
+    "modelValue": "Per occupied area",
+    "rateLabel": "Rate",
+    "rateValue": "5 ₽ per m²",
+    "statusLabel": "Status",
+    "statusValue": "Current pricing",
+    "formulaLabel": "Calculation formula",
+    "formula": "Cost = occupied area in m² × 5 ₽",
+    "formulaNotePrefix": "Only retail area with the status",
+    "formulaNoteStatus": "\"OCCUPIED\"",
+    "formulaNoteSuffix": "is included in the calculation. Vacant pavilions, prepaid pavilions and other statuses are not counted under the current pricing.",
+    "examplesLabel": "Calculation examples",
+    "occupiedAreaLabel": "Occupied area",
+    "monthlyCostLabel": "Monthly cost",
+    "offer": "Public offer",
+    "userAgreement": "User agreement"
+  },
+  "SupportPage": {
+    "meta": {
+      "title": "Support | Rendlify",
+      "description": "How to contact Rendlify technical support. If you have a question about the platform, write to info@rendlify.com.",
+      "ogDescription": "If you have a question about the Rendlify platform, write to info@rendlify.com."
+    },
+    "eyebrow": "Support",
+    "title": "If you have a question about the platform, we're here to help",
+    "description": "If something isn't working the way you expect, or you need help using Rendlify, write to us by email. Describe your question in as much detail as possible - it helps us respond faster.",
+    "emailLabel": "Technical support email",
+    "writeToSupport": "Contact support",
+    "emailSubject": "Question about Rendlify",
+    "usefulInfoTitle": "What's useful to include in your message",
+    "usefulInfoText": "The property name, a brief description of the issue, the steps that led to the error, and, if available, a screenshot or the exact error text.",
+    "backHome": "Back to home"
+  },
+  "SolutionsIndexPage": {
+    "meta": {
+      "title": "Solutions for retail property control | Rendlify",
+      "description": "A collection of pages about how Rendlify helps control a retail property, tenants, pavilions, income and expenses in real time."
+    },
+    "eyebrow": "Rendlify solutions",
+    "title": "A platform built for the real tasks of owners and managers",
+    "description": "Here are the key scenarios people search for a system like Rendlify for: retail property control, pavilion management, tenants, payments, income and expenses.",
+    "openPage": "Open page"
+  }
+}

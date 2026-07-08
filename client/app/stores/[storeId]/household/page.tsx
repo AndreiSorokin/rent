@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams, useRouter } from 'next/navigation';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -39,6 +40,7 @@ type EditModalState = {
 };
 
 function paymentChannelsLines(
+  labels: { bank: string; cash1: string; cash2: string },
   bankTransferPaid: number | null | undefined,
   cashbox1Paid: number | null | undefined,
   cashbox2Paid: number | null | undefined,
@@ -49,9 +51,9 @@ function paymentChannelsLines(
   const cash1 = Number(cashbox1Paid ?? 0);
   const cash2 = Number(cashbox2Paid ?? 0);
 
-  if (bank > 0) lines.push(`Безналичные: ${formatMoney(bank, currency)}`);
-  if (cash1 > 0) lines.push(`Наличные касса 1: ${formatMoney(cash1, currency)}`);
-  if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
+  if (bank > 0) lines.push(`${labels.bank}: ${formatMoney(bank, currency)}`);
+  if (cash1 > 0) lines.push(`${labels.cash1}: ${formatMoney(cash1, currency)}`);
+  if (cash2 > 0) lines.push(`${labels.cash2}: ${formatMoney(cash2, currency)}`);
 
   return lines;
 }
@@ -71,6 +73,7 @@ function formatDateTime(value: string | Date | null | undefined, timeZone: strin
 }
 
 export default function StoreHouseholdPage() {
+  const t = useTranslations('StoreHouseholdPage');
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
@@ -109,7 +112,7 @@ export default function StoreHouseholdPage() {
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить хозяйственные расходы');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -156,7 +159,7 @@ export default function StoreHouseholdPage() {
 
     const name = createModal.name.trim();
     if (!name) {
-      toast.error('Введите название расхода');
+      toast.error(t('enterExpenseName'));
       return;
     }
 
@@ -166,7 +169,7 @@ export default function StoreHouseholdPage() {
     const amount = bank + cash1 + cash2;
 
     if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-      toast.error('Введите корректные суммы по каналам оплаты');
+      toast.error(t('enterValidPaymentAmounts'));
       return;
     }
 
@@ -184,7 +187,7 @@ export default function StoreHouseholdPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось добавить расход');
+      toast.error(t('createFailed'));
     } finally {
       setSaving(false);
     }
@@ -201,17 +204,17 @@ export default function StoreHouseholdPage() {
     const paidAmount = bank + cash1 + cash2;
 
     if (!name) {
-      toast.error('Введите корректное название');
+      toast.error(t('enterValidName'));
       return;
     }
 
     if (status === 'PAID') {
       if ([bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-        toast.error('Суммы по каналам оплаты должны быть неотрицательными');
+        toast.error(t('paymentAmountsNonNegative'));
         return;
       }
       if (paidAmount <= 0) {
-        toast.error('Введите сумму хотя бы в одном канале оплаты');
+        toast.error(t('enterAtLeastOneChannel'));
         return;
       }
     }
@@ -230,7 +233,7 @@ export default function StoreHouseholdPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось обновить расход');
+      toast.error(t('updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -238,10 +241,10 @@ export default function StoreHouseholdPage() {
 
   const handleDelete = async (id: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление расхода',
-      message: 'Удалить этот расход?',
+      title: t('deleteExpenseTitle'),
+      message: t('deleteExpenseMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('delete'),
     });
     if (!confirmed) return;
     try {
@@ -250,13 +253,13 @@ export default function StoreHouseholdPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось удалить расход');
+      toast.error(t('deleteFailed'));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 
@@ -270,7 +273,7 @@ export default function StoreHouseholdPage() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">
-                    Хозяйственные расходы
+                    {t('title')}
                   </h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -278,21 +281,21 @@ export default function StoreHouseholdPage() {
                     href={`/stores/${storeId}/expenses-history/household`}
                     className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                   >
-                    Все расходы
+                    {t('allExpenses')}
                   </Link>
                   <input
                     type="date"
                     value={filterDate}
                     onChange={(e) => setFilterDate(e.target.value)}
                     className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111]"
-                    title="Фильтр по дате"
+                    title={t('filterByDate')}
                   />
                   {filterDate && (
                     <button
                       onClick={() => setFilterDate('')}
                       className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                     >
-                      Сбросить
+                      {t('reset')}
                     </button>
                   )}
                   {canCreate && (
@@ -308,7 +311,7 @@ export default function StoreHouseholdPage() {
                       className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
                     >
                       <CirclePlus className="h-4 w-4" />
-                      Добавить расход
+                      {t('addExpense')}
                     </button>
                   )}
                 </div>
@@ -317,12 +320,12 @@ export default function StoreHouseholdPage() {
                 <ExpenseSearchInput
                   value={searchQuery}
                   onChange={setSearchQuery}
-                  placeholder="Поиск по названию расхода"
+                  placeholder={t('searchPlaceholder')}
                 />
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
-                  Общая сумма расходов
+                  {t('totalAmount')}
                 </p>
                 <p className="mt-1 text-xl font-semibold text-[#111111]">
                   {formatMoney(householdTotal, currency)}
@@ -330,29 +333,29 @@ export default function StoreHouseholdPage() {
               </div>
 
               {householdExpenses.length === 0 ? (
-                <p className="text-[#6b6b6b]">Расходов пока нет</p>
+                <p className="text-[#6b6b6b]">{t('empty')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full ">
                     <thead className="bg-[#F4EFEB]">
                       <tr>
                         <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Дата
+                          {t('columnDate')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Название
+                          {t('columnName')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Статус
+                          {t('columnStatus')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Каналы оплаты
+                          {t('columnPaymentChannels')}
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                          Сумма
+                          {t('columnAmount')}
                         </th>
                         <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                          Действия
+                          {t('columnActions')}
                         </th>
                       </tr>
                     </thead>
@@ -375,23 +378,28 @@ export default function StoreHouseholdPage() {
                                   : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                              {expense.status === 'PAID' ? t('statusPaid') : t('statusUnpaid')}
                             </span>
                           </td>
                           <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
                             {(expense.status ?? 'UNPAID') === 'PAID' ? (
                               (() => {
                                 const lines = paymentChannelsLines(
+                                  {
+                                    bank: t('bankTransferLabel'),
+                                    cash1: t('cashbox1Label'),
+                                    cash2: t('cashbox2Label'),
+                                  },
                                   expense.bankTransferPaid,
                                   expense.cashbox1Paid,
                                   expense.cashbox2Paid,
                                   currency,
                                 );
-                                if (!lines.length) return <div>Каналы оплаты не заданы</div>;
+                                if (!lines.length) return <div>{t('noPaymentChannels')}</div>;
                                 return lines.map((line) => <div key={`${expense.id}-${line}`}>{line}</div>);
                               })()
                             ) : (
-                              <div>Каналы оплаты не заданы</div>
+                              <div>{t('noPaymentChannels')}</div>
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
@@ -424,7 +432,7 @@ export default function StoreHouseholdPage() {
                                 }}
                                 className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                               >
-                                Оплатить/Изменить
+                                {t('payOrEdit')}
                               </button>
                             ) : (
                               <span className="text-xs text-[#6B6B6B]">-</span>
@@ -450,8 +458,8 @@ export default function StoreHouseholdPage() {
             }}
             className="w-full max-w-[34rem] rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
           >
-            <h3 className="text-lg font-semibold text-slate-900">Новый хозяйственный расход</h3>
-            <p className="mt-1 text-sm text-slate-600">Создаётся сразу в статусе «Оплачено».</p>
+            <h3 className="text-lg font-semibold text-slate-900">{t('createModalTitle')}</h3>
+            <p className="mt-1 text-sm text-slate-600">{t('createModalSubtitle')}</p>
 
             <div className="mt-4 space-y-3">
               <input
@@ -461,11 +469,11 @@ export default function StoreHouseholdPage() {
                   setCreateModal((prev) => (prev ? { ...prev, name: e.target.value } : prev))
                 }
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Название расхода"
+                placeholder={t('expenseNamePlaceholder')}
               />
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('bankTransferLabel')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -481,7 +489,7 @@ export default function StoreHouseholdPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox1Label')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -497,7 +505,7 @@ export default function StoreHouseholdPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox2Label')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -522,14 +530,14 @@ export default function StoreHouseholdPage() {
                 disabled={saving}
                 className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
               >
-                Отмена
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 disabled={saving}
                 className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? t('saving') : t('save')}
               </button>
             </div>
           </form>
@@ -538,7 +546,7 @@ export default function StoreHouseholdPage() {
 
       <ExpenseEditModal
         open={Boolean(editModal)}
-        title="Изменить хозяйственный расход"
+        title={t('editModalTitle')}
         nameValue={editModal?.name ?? ''}
         status={editModal?.status ?? 'UNPAID'}
         bankTransferPaid={editModal?.bankTransferPaid ?? 0}

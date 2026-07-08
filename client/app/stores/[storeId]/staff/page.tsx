@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
@@ -36,15 +37,16 @@ function paymentChannelsLines(
   cashbox1Paid: number | null | undefined,
   cashbox2Paid: number | null | undefined,
   currency: 'RUB' | 'KZT',
+  t: ReturnType<typeof useTranslations>,
 ) {
   const lines: string[] = [];
   const bank = Number(bankTransferPaid ?? 0);
   const cash1 = Number(cashbox1Paid ?? 0);
   const cash2 = Number(cashbox2Paid ?? 0);
 
-  if (bank > 0) lines.push(`Безналичные: ${formatMoney(bank, currency)}`);
-  if (cash1 > 0) lines.push(`Наличные касса 1: ${formatMoney(cash1, currency)}`);
-  if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
+  if (bank > 0) lines.push(t('channelBankTransfer', { amount: formatMoney(bank, currency) }));
+  if (cash1 > 0) lines.push(t('channelCashbox1', { amount: formatMoney(cash1, currency) }));
+  if (cash2 > 0) lines.push(t('channelCashbox2', { amount: formatMoney(cash2, currency) }));
 
   return lines;
 }
@@ -64,6 +66,7 @@ function formatDateTime(value: string | Date | null | undefined, timeZone: strin
 }
 
 export default function StoreStaffPage() {
+  const t = useTranslations('StoreStaffPage');
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
@@ -104,7 +107,7 @@ export default function StoreStaffPage() {
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить штатное расписание');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -166,12 +169,12 @@ export default function StoreStaffPage() {
   const handleAdd = async () => {
     if (!addModal) return;
     if (!addModal.fullName.trim() || !addModal.position.trim() || !addModal.salary) {
-      toast.error('Заполните все поля');
+      toast.error(t('fillAllFields'));
       return;
     }
     const salary = Number(addModal.salary);
     if (!Number.isFinite(salary) || salary < 0) {
-      toast.error('Зарплата должна быть неотрицательным числом');
+      toast.error(t('salaryMustBeNonNegative'));
       return;
     }
     try {
@@ -188,7 +191,7 @@ export default function StoreStaffPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось добавить сотрудника');
+      toast.error(t('addStaffError'));
     } finally {
       setSaving(false);
     }
@@ -196,10 +199,10 @@ export default function StoreStaffPage() {
 
   const handleDelete = async (id: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление сотрудника',
-      message: 'Удалить сотрудника?',
+      title: t('deleteStaffTitle'),
+      message: t('deleteStaffMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('deleteConfirm'),
     });
     if (!confirmed) return;
     try {
@@ -208,7 +211,7 @@ export default function StoreStaffPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось удалить сотрудника');
+      toast.error(t('deleteStaffError'));
     } finally {
       setSaving(false);
     }
@@ -218,7 +221,7 @@ export default function StoreStaffPage() {
     if (!editModal) return;
     const nextSalary = Number(editModal.salary);
     if (!Number.isFinite(nextSalary) || nextSalary < 0) {
-      toast.error('Зарплата должна быть неотрицательным числом');
+      toast.error(t('salaryMustBeNonNegative'));
       return;
     }
 
@@ -230,11 +233,11 @@ export default function StoreStaffPage() {
       cash1 = Number(editModal.salaryCashbox1Paid ?? 0);
       cash2 = Number(editModal.salaryCashbox2Paid ?? 0);
       if ([bank, cash1, cash2].some((v) => !Number.isFinite(v) || v < 0)) {
-        toast.error('Каналы оплаты должны быть неотрицательными');
+        toast.error(t('paymentChannelsMustBeNonNegative'));
         return;
       }
       if (Math.abs(bank + cash1 + cash2 - nextSalary) > 0.01) {
-        toast.error('Сумма каналов оплаты должна быть равна зарплате');
+        toast.error(t('paymentChannelsMustEqualSalary'));
         return;
       }
     }
@@ -255,13 +258,13 @@ export default function StoreStaffPage() {
       await fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось обновить сотрудника');
+      toast.error(t('updateStaffError'));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем штат..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !canView) return null;
 
@@ -273,13 +276,13 @@ export default function StoreStaffPage() {
           <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-2">
             <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Штатное расписание</h1>
+                <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">{t('title')}</h1>
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/stores/${storeId}/expenses-history/staff`}
                     className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                   >
-                    Все расходы
+                    {t('allExpenses')}
                   </Link>
                   {canManage && (
                     <button
@@ -293,14 +296,14 @@ export default function StoreStaffPage() {
                       className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
                     >
                       <CirclePlus className="h-4 w-4" />
-                      Добавить сотрудника
+                      {t('addStaff')}
                     </button>
                   )}
                 </div>
               </div>
               <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
-                  Общая сумма расходов
+                  {t('totalPayroll')}
                 </p>
                 <p className="mt-1 text-xl font-semibold text-[#111111]">
                   {formatMoney(payrollTotal, currency)}
@@ -308,32 +311,32 @@ export default function StoreStaffPage() {
               </div>
 
               {!staff.length ? (
-                <p className="text-[#6b6b6b]">Сотрудников пока нет</p>
+                <p className="text-[#6b6b6b]">{t('noStaff')}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
                     <thead className="bg-[#F4EFEB]">
                       <tr>
                         <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Дата
+                          {t('columnDate')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Должность
+                          {t('columnPosition')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Имя и фамилия
+                          {t('columnFullName')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Статус
+                          {t('columnStatus')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                          Каналы оплаты
+                          {t('columnPaymentChannels')}
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                          Зарплата
+                          {t('columnSalary')}
                         </th>
                         <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                          Действия
+                          {t('columnActions')}
                         </th>
                       </tr>
                     </thead>
@@ -375,8 +378,8 @@ export default function StoreStaffPage() {
                                     ? 'cursor-grab text-[#6b6b6b] hover:bg-[#f8f4ef] active:cursor-grabbing'
                                     : 'cursor-not-allowed text-gray-300'
                                 }`}
-                                title="Потяните, чтобы изменить порядок"
-                                aria-label={`Переместить сотрудника ${s.fullName}`}
+                                title={t('dragHint')}
+                                aria-label={t('moveStaffAriaLabel', { name: s.fullName })}
                               >
                                 <GripVertical className="h-4 w-4" />
                               </button>
@@ -394,7 +397,7 @@ export default function StoreStaffPage() {
                                   : 'bg-amber-100 text-amber-700'
                               }`}
                             >
-                              {(s.salaryStatus ?? 'UNPAID') === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                              {(s.salaryStatus ?? 'UNPAID') === 'PAID' ? t('statusPaid') : t('statusUnpaid')}
                             </span>
                           </td>
                           <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
@@ -405,12 +408,13 @@ export default function StoreStaffPage() {
                                   s.salaryCashbox1Paid,
                                   s.salaryCashbox2Paid,
                                   currency,
+                                  t,
                                 );
-                                if (!lines.length) return <div>Каналы оплаты не заданы</div>;
+                                if (!lines.length) return <div>{t('paymentChannelsNotSet')}</div>;
                                 return lines.map((line) => <div key={`${s.id}-${line}`}>{line}</div>);
                               })()
                             ) : (
-                              <div>Каналы оплаты не заданы</div>
+                              <div>{t('paymentChannelsNotSet')}</div>
                             )}
                           </td>
                           <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
@@ -422,7 +426,7 @@ export default function StoreStaffPage() {
                                 onClick={() =>
                                   setEditModal({
                                     id: Number(s.id),
-                                    fullName: String(s.fullName ?? 'Сотрудник'),
+                                    fullName: String(s.fullName ?? t('defaultStaffName')),
                                     salary: String(Number(s.salary ?? 0)),
                                     salaryStatus: (s.salaryStatus ?? 'UNPAID') as 'UNPAID' | 'PAID',
                                     salaryBankTransferPaid: Number(s.salaryBankTransferPaid ?? 0),
@@ -432,7 +436,7 @@ export default function StoreStaffPage() {
                                 }
                                 className="rounded-lg border border-[#d8d1cb] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#111111] hover:bg-[#f4efeb]"
                               >
-                                Оплатить/Изменить
+                                {t('payOrEdit')}
                               </button>
                             ) : (
                               <span className="text-xs text-[#6B6B6B]">-</span>

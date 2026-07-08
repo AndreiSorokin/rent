@@ -1,0 +1,138 @@
+{
+  "StoreSummaryPage": {
+    "loading": "Собираем сводку...",
+    "errors": {
+      "loadFailed": "Не удалось загрузить сводку",
+      "downloadFailed": "Не удалось скачать сводку",
+      "downloadFailedAlert": "Не удалось скачать PDF"
+    },
+    "nav": {
+      "sidebarLabel": "Сводка",
+      "backToStore": "Назад к объекту",
+      "navigation": "Навигация",
+      "menuButton": "Меню",
+      "closeMenu": "Закрыть меню",
+      "sections": {
+        "overview": "Обзор",
+        "prevBalance": "Остаток прошлого месяца",
+        "income": "Общий доход",
+        "expenses": "Общий расход",
+        "saldo": "Остаток",
+        "tradeArea": "Торговая площадь",
+        "groups": "Группы павильонов"
+      }
+    },
+    "header": {
+      "title": "СВОДКА",
+      "subtitle": "Ключевые финансовые показатели объекта",
+      "monthLabel": "Месяц:",
+      "downloadButton": "Скачать сводку"
+    },
+    "common": {
+      "forecast": "Прогноз",
+      "actual": "Факт",
+      "forecastValue": "Прогноз: {value}",
+      "actualValue": "Факт: {value}",
+      "bankTransfer": "Безналичные",
+      "cashbox1": "Наличные касса 1",
+      "cashbox2": "Наличные касса 2",
+      "bankTransferValue": "Безнал: {value}",
+      "cashbox1Value": "Касса 1: {value}",
+      "cashbox2Value": "Касса 2: {value}",
+      "byEntity": "По сущностям"
+    },
+    "overview": {
+      "incomeTitle": "Доходы",
+      "expensesTitle": "Расходы",
+      "profitTitle": "Прибыль"
+    },
+    "prevBalance": {
+      "title": "Остаток с прошлого месяца",
+      "totalTitle": "Итого остаток",
+      "totalSubtitle": "Факт прошлого месяца",
+      "byCashRegisters": "Остаток по кассам"
+    },
+    "income": {
+      "title": "1. Общий доход",
+      "forecastCardTitle": "Итого приход (прогноз)",
+      "forecastCardSubtitle": "С учетом остатка прошлого месяца",
+      "carryAdjustmentTitle": "Корректировка переносом",
+      "carryAdjustmentSubtitle": "Баланс после переноса переплаты/долга",
+      "totalTitle": "Итого приход",
+      "carryAdjustmentNote": "«Корректировка переносом» не подмешивается в факт текущего месяца.",
+      "channelsDistribution": "Распределение по каналам оплаты",
+      "entities": {
+        "rent": "Аренда",
+        "facilities": "Коммунальные",
+        "advertising": "Реклама",
+        "additional": "Доп. начисления",
+        "storeExtra": "Доп приход"
+      },
+      "trendTitle": "Тренд дохода по месяцам"
+    },
+    "expenses": {
+      "title": "2. Общий расход",
+      "forecastCardTitle": "Итого расход (прогноз)",
+      "actualCardTitle": "Итого расход (факт)",
+      "channelsTitle": "Каналы оплаты расходов (факт)",
+      "entities": {
+        "household": "Хоз. расходы",
+        "other": "Прочие расходы",
+        "admin": "Административные расходы",
+        "salaries": "Зарплаты"
+      },
+      "emptyEntities": "Данных по сущностям пока нет",
+      "trendTitle": "Тренд расхода по месяцам"
+    },
+    "saldo": {
+      "title": "3. Остаток",
+      "forecastCardTitle": "Остаток (прогноз)",
+      "totalIncomeTitle": "Общий приход",
+      "totalExpensesTitle": "Общий расход",
+      "saldoTitle": "Остаток",
+      "channelsTitle": "Каналы остатка (факт)",
+      "trendTitle": "Тренд остатка по месяцам"
+    },
+    "tradeArea": {
+      "title": "4. Торговая площадь",
+      "pavilionsTotal": "Объектов аренды всего",
+      "pavilionsRented": "Объектов аренды занято",
+      "pavilionsAvailable": "Объектов аренды свободно",
+      "pavilionsTrendTitle": "Динамика занятых объектов аренды по месяцам",
+      "squareTotal": "Общая площадь",
+      "squareRented": "Площадь в аренде",
+      "squareAvailable": "Свободная площадь",
+      "squareTrendTitle": "Динамика занятой площади по месяцам"
+    },
+    "groups": {
+      "title": "5. Группы павильонов",
+      "empty": "Группы не созданы",
+      "pavilionsCount": "{count} пав.",
+      "rentedOrPrepaid": "Занято/предоплата:",
+      "area": "Площадь:",
+      "forecastIncome": "Прогнозный доход",
+      "actualIncome": "Фактический доход",
+      "convergence": "Схождение"
+    },
+    "downloadModal": {
+      "title": "Скачать сводку (PDF)",
+      "description": "Выберите месяц, за который нужно сформировать файл.",
+      "monthLabel": "Месяц",
+      "cancel": "Отмена",
+      "downloadButton": "Скачать PDF",
+      "downloading": "Формирование..."
+    }
+  },
+  "MonthlyLineChart": {
+    "occupied": "Занято: {value}",
+    "ofTotal": "Из общего: {value}",
+    "currentValue": "Текущее значение:"
+  },
+  "FinanceTrendChart": {
+    "solidActual": "Сплошная = Факт",
+    "dashedForecast": "Пунктир = Прогноз",
+    "actual": "Факт: {value}",
+    "forecast": "Прогноз: {value}",
+    "currentValue": "Текущее значение:"
+  }
+}

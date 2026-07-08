@@ -1,6 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
 import {
@@ -32,6 +33,7 @@ export function PavilionExpensesSection({
     status: PavilionExpenseStatus,
   ) => void;
 }) {
+  const t = useTranslations('PavilionExpensesSection');
   const pavilionExpenses = pavilion.pavilionExpenses ?? [];
   const groupedManualExpenses = MANUAL_EXPENSE_CATEGORIES.reduce(
     (acc, category) => {
@@ -77,7 +79,7 @@ export function PavilionExpensesSection({
 
   return (
     <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-      <h2 className="mb-4 text-xl font-semibold">Расходы</h2>
+      <h2 className="mb-4 text-xl font-semibold">{t('heading')}</h2>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {MANUAL_EXPENSE_CATEGORIES.map((category) => {
@@ -107,7 +109,7 @@ export function PavilionExpensesSection({
                       }))
                     }
                     className="w-full rounded border px-2 py-1 text-sm"
-                    placeholder="Сумма"
+                    placeholder={t('amountPlaceholder')}
                   />
                   <button
                     onClick={() => onCreateManualExpense(category.type)}
@@ -143,8 +145,8 @@ export function PavilionExpensesSection({
                             }
                             className="rounded border px-1 py-0.5 text-[10px]"
                           >
-                            <option value="UNPAID">Не оплачено</option>
-                            <option value="PAID">Оплачено</option>
+                            <option value="UNPAID">{t('statusUnpaid')}</option>
+                            <option value="PAID">{t('statusPaid')}</option>
                           </select>
                         )}
                         {hasPermission(permissions, 'DELETE_CHARGES') && (
@@ -160,35 +162,35 @@ export function PavilionExpensesSection({
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-500">Записей нет</p>
+                <p className="text-xs text-gray-500">{t('noRecords')}</p>
               )}
             </div>
           );
         })}
 
         <div className="rounded-xl border border-[#d8d1cb] bg-[#fcfaf8] p-3">
-          <div className="text-sm font-semibold">Коммуналка</div>
+          <div className="text-sm font-semibold">{t('utilitiesLabel')}</div>
           <div className="text-xs text-gray-700">
-            Прогноз: {formatMoney(utilitiesExpenseForecast, currency)}
+            {t('forecastLabel')}: {formatMoney(utilitiesExpenseForecast, currency)}
           </div>
           <div className="text-xs text-gray-700">
-            Факт: {formatMoney(utilitiesExpenseActual, currency)}
+            {t('actualLabel')}: {formatMoney(utilitiesExpenseActual, currency)}
           </div>
         </div>
 
         <div className="rounded-xl border border-[#d8d1cb] bg-[#fcfaf8] p-3">
-          <div className="text-sm font-semibold">Хозяйственные расходы</div>
+          <div className="text-sm font-semibold">{t('householdExpensesLabel')}</div>
           <div className="text-xs text-gray-700">
-            Итого: {formatMoney(householdExpensesTotal, currency)}
+            {t('totalLabel')}: {formatMoney(householdExpensesTotal, currency)}
           </div>
         </div>
 
         <div className="rounded-md border bg-[#f4efeb] p-3 md:col-span-2 xl:col-span-1">
           <div className="text-sm font-semibold">
-            Итого прогноз: {formatMoney(pavilionExpenseForecastTotal, currency)}
+            {t('totalForecastLabel')}: {formatMoney(pavilionExpenseForecastTotal, currency)}
           </div>
           <div className="text-sm font-semibold">
-            Итого факт: {formatMoney(pavilionExpenseActualTotal, currency)}
+            {t('totalActualLabel')}: {formatMoney(pavilionExpenseActualTotal, currency)}
           </div>
         </div>
       </div>

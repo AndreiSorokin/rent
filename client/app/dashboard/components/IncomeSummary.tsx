@@ -1,12 +1,14 @@
+import { getTranslations } from 'next-intl/server';
 import { formatMoney } from '@/lib/currency';
 
-export function IncomeSummary({
+export async function IncomeSummary({
   analytics,
   currency,
 }: {
   analytics: any;
   currency?: 'RUB' | 'KZT';
 }) {
+  const t = await getTranslations('IncomeSummary');
   const forecast = analytics.income?.forecast;
   const actual = analytics.income?.actual;
 
@@ -15,13 +17,11 @@ export function IncomeSummary({
 
   return (
     <div className="rounded border p-4">
-      <h2 className="mb-2 font-semibold">Доходы</h2>
+      <h2 className="mb-2 font-semibold">{t('title')}</h2>
 
-      <div className="mb-2 text-sm text-gray-700">
-        Формула: аренда + коммуналка + доп. начисления (по всем павильонам)
-      </div>
-      <div>Прогнозные доходы: {formatMoney(forecastTotal, currency)}</div>
-      <div>Фактические доходы: {formatMoney(actualTotal, currency)}</div>
+      <div className="mb-2 text-sm text-gray-700">{t('formula')}</div>
+      <div>{t('forecast', { amount: formatMoney(forecastTotal, currency) })}</div>
+      <div>{t('actual', { amount: formatMoney(actualTotal, currency) })}</div>
     </div>
   );
 }

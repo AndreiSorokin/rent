@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getCurrentUserFromToken } from '@/lib/auth';
 import { useDialog } from '@/components/dialog/DialogProvider';
 import { hasPermission } from '@/lib/permissions';
@@ -23,6 +24,7 @@ export function StoreUsersSection({
   permissions,
   onUsersChanged,
 }: StoreUsersSectionProps) {
+  const t = useTranslations('StoreUsersSection');
   const dialog = useDialog();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,8 +75,8 @@ export function StoreUsersSection({
     } catch (err) {
       console.error('Failed to update permissions:', err);
       await dialog.alert({
-        title: 'Не удалось обновить права',
-        message: 'Попробуйте снова.',
+        title: t('confirmUpdateFailedTitle'),
+        message: t('tryAgain'),
         tone: 'danger',
       });
     }
@@ -82,10 +84,10 @@ export function StoreUsersSection({
 
   const handleRemove = async (userId: number, email: string) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление пользователя',
-      message: `Удалить ${email} из этого объекта?`,
+      title: t('confirmRemoveTitle'),
+      message: t('confirmRemoveMessage', { email }),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmRemoveButton'),
     });
     if (!confirmed) return;
 
@@ -96,8 +98,8 @@ export function StoreUsersSection({
     } catch (err) {
       console.error('Failed to remove user:', err);
       await dialog.alert({
-        title: 'Не удалось удалить пользователя',
-        message: 'Попробуйте снова.',
+        title: t('confirmRemoveFailedTitle'),
+        message: t('tryAgain'),
         tone: 'danger',
       });
     }
@@ -121,7 +123,7 @@ export function StoreUsersSection({
             onClick={() => setShowInviteModal(true)}
             className="rounded bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
           >
-            + Пригласить пользователя
+            {t('invite')}
           </button>
         )}
       </div>
@@ -138,25 +140,25 @@ export function StoreUsersSection({
       )}
 
       {loading ? (
-        <p className="text-gray-500">Загрузка пользователей...</p>
+        <p className="text-gray-500">{t('loadingUsers')}</p>
       ) : users.length === 0 ? (
-        <p className="italic text-gray-500">В этом магазине пока нет пользователей.</p>
+        <p className="italic text-gray-500">{t('noUsers')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Email
+                  {t('columnEmail')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Имя
+                  {t('columnName')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Права доступа
+                  {t('columnPermissions')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Действия
+                  {t('columnActions')}
                 </th>
               </tr>
             </thead>
@@ -170,13 +172,13 @@ export function StoreUsersSection({
                       {su.user.email}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                      {su.user.name || '-'}
+                      {su.user.name || t('nameFallback')}
                     </td>
                     <td className="px-6 py-4">
                       {isSelf ? (
-                        <span className="text-sm text-gray-500">Ваши права</span>
+                        <span className="text-sm text-gray-500">{t('yourPermissions')}</span>
                       ) : !canAssignPermissions ? (
-                        <span className="text-sm text-gray-500">Нет доступа</span>
+                        <span className="text-sm text-gray-500">{t('noAccess')}</span>
                       ) : (
                         <button
                           onClick={() =>
@@ -188,19 +190,19 @@ export function StoreUsersSection({
                           }
                           className="font-medium text-blue-600 hover:text-blue-800"
                         >
-                          Управление правами доступа ({su.permissions.length})
+                          {t('managePermissions', { count: su.permissions.length })}
                         </button>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       {isSelf || !canRemoveUsers ? (
-                        <span className="text-sm text-gray-500">—</span>
+                        <span className="text-sm text-gray-500">{t('notApplicable')}</span>
                       ) : (
                         <button
                           onClick={() => void handleRemove(su.user.id, su.user.email)}
                           className="text-red-600 transition-colors hover:text-red-800"
                         >
-                          Удалить
+                          {t('remove')}
                         </button>
                       )}
                     </td>

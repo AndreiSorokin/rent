@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { payAdditionalCharge } from '@/lib/additionalCharges';
 
 export function PayAdditionalChargeModal({
@@ -18,6 +19,7 @@ export function PayAdditionalChargeModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useTranslations('PayAdditionalChargeModal');
   const [amountPaid, setAmountPaid] = useState('');
   const [bankTransferPaid, setBankTransferPaid] = useState('');
   const [cashbox1Paid, setCashbox1Paid] = useState('');
@@ -31,17 +33,17 @@ export function PayAdditionalChargeModal({
     const channelsTotal = bank + cash1 + cash2;
 
     if (!amountPaid || amountValue <= 0) {
-      alert('Введите корректную сумму платежа');
+      alert(t('errorAmountInvalid'));
       return;
     }
 
     if (channelsTotal <= 0) {
-      alert('Укажите сумму хотя бы в одном канале оплаты');
+      alert(t('errorChannelAmountRequired'));
       return;
     }
 
     if (Math.abs(channelsTotal - amountValue) > 0.01) {
-      alert('Сумма по каналам должна совпадать с суммой платежа');
+      alert(t('errorChannelsMismatch'));
       return;
     }
 
@@ -55,7 +57,7 @@ export function PayAdditionalChargeModal({
       onClose();
     } catch (err) {
       console.error('Payment failed:', err);
-      alert('Не удалось записать платеж');
+      alert(t('errorPaymentFailed'));
     }
   };
 
@@ -68,22 +70,22 @@ export function PayAdditionalChargeModal({
         }}
         className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
-        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">Оплата доп. начисления</h2>
+        <h2 className="mb-4 text-xl font-extrabold text-[#111111]">{t('title')}</h2>
         <p className="mb-2 font-semibold text-[#111111]">{chargeName}</p>
-        <p className="mb-4 text-sm text-[#6b6b6b]">Начислено: {expectedAmount.toFixed(2)}</p>
+        <p className="mb-4 text-sm text-[#6b6b6b]">{t('chargedLabel', { amount: expectedAmount.toFixed(2) })}</p>
 
         <input
           type="number"
           step="0.01"
           min="0.01"
-          placeholder="Сумма оплаты"
+          placeholder={t('amountPlaceholder')}
           value={amountPaid}
           onChange={(e) => setAmountPaid(e.target.value)}
           className="mb-6 w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
         />
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-semibold text-[#111111]">Безналичные</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">{t('bankTransferLabel')}</label>
           <input
             type="number"
             step="0.01"
@@ -96,7 +98,7 @@ export function PayAdditionalChargeModal({
         </div>
 
         <div className="mb-3">
-          <label className="mb-1 block text-sm font-semibold text-[#111111]">Наличные - касса 1</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">{t('cashbox1Label')}</label>
           <input
             type="number"
             step="0.01"
@@ -109,7 +111,7 @@ export function PayAdditionalChargeModal({
         </div>
 
         <div className="mb-6">
-          <label className="mb-1 block text-sm font-semibold text-[#111111]">Наличные - касса 2</label>
+          <label className="mb-1 block text-sm font-semibold text-[#111111]">{t('cashbox2Label')}</label>
           <input
             type="number"
             step="0.01"
@@ -127,14 +129,14 @@ export function PayAdditionalChargeModal({
             onClick={onClose}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={!amountPaid || Number(amountPaid) <= 0}
             className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Записать платеж
+            {t('submit')}
           </button>
         </div>
       </form>

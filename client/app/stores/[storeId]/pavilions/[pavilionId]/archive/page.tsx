@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import {
@@ -347,6 +348,7 @@ function toNumber(value: string) {
 }
 
 export default function PavilionArchivePage() {
+  const t = useTranslations('PavilionArchivePage');
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
@@ -398,11 +400,11 @@ export default function PavilionArchivePage() {
       setPavilion(pavilionData);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить бухгалтерский архив');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
-  }, [pavilionId, router, storeId]);
+  }, [pavilionId, router, storeId, t]);
 
   useEffect(() => {
     if (storeId && pavilionId) {
@@ -440,7 +442,7 @@ export default function PavilionArchivePage() {
     const advertising = toNumber(rentDraft.advertising);
 
     if ([rent, utilities, advertising].some((value) => Number.isNaN(value) || value < 0)) {
-      alert('Проверьте суммы: должны быть неотрицательные числа.');
+      alert(t('invalidAmounts'));
       return;
     }
 
@@ -455,14 +457,14 @@ export default function PavilionArchivePage() {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось обновить платеж');
+      alert(err?.message || t('updateRentError'));
     } finally {
       setBusyKey(null);
     }
   };
 
   const removeRentEntry = async (entryId: number) => {
-    if (!confirm('Удалить этот платеж?')) return;
+    if (!confirm(t('confirmDeleteRent'))) return;
     try {
       setBusyKey(`rent-del-${entryId}`);
       await deletePavilionPaymentEntry(storeId, pavilionId, entryId);
@@ -470,7 +472,7 @@ export default function PavilionArchivePage() {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось удалить платеж');
+      alert(err?.message || t('deleteRentError'));
     } finally {
       setBusyKey(null);
     }
@@ -505,11 +507,11 @@ export default function PavilionArchivePage() {
     const cashbox2 = toNumber(additionalDraft.cashbox2);
 
     if ([amount, bankTransfer, cashbox1, cashbox2].some((v) => Number.isNaN(v) || v < 0)) {
-      alert('Проверьте суммы: должны быть неотрицательные числа.');
+      alert(t('invalidAmounts'));
       return;
     }
     if (Math.abs(amount - (bankTransfer + cashbox1 + cashbox2)) > 0.01) {
-      alert('Сумма должна быть равна сумме по каналам оплаты.');
+      alert(t('amountMismatch'));
       return;
     }
 
@@ -525,7 +527,7 @@ export default function PavilionArchivePage() {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось обновить оплату начисления');
+      alert(err?.message || t('updateAdditionalError'));
     } finally {
       setBusyKey(null);
     }
@@ -534,7 +536,7 @@ export default function PavilionArchivePage() {
   const removeAdditionalPayment = async (
     item: ArchiveMonth['additionalPayments'][number],
   ) => {
-    if (!confirm('Удалить эту оплату начисления?')) return;
+    if (!confirm(t('confirmDeleteAdditional'))) return;
     try {
       setBusyKey(`additional-del-${item.id}`);
       await deleteAdditionalChargePayment(pavilionId, item.chargeId, item.id);
@@ -542,15 +544,15 @@ export default function PavilionArchivePage() {
       await loadData();
     } catch (err: any) {
       console.error(err);
-      alert(err?.message || 'Не удалось удалить оплату начисления');
+      alert(err?.message || t('deleteAdditionalError'));
     } finally {
       setBusyKey(null);
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем архив павильона..." />;
+  if (loading) return <FullScreenLoader label={t('loadingLabel')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600"> не найден</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600">{t('notFound')}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
   return (
@@ -561,20 +563,19 @@ export default function PavilionArchivePage() {
             href={`/stores/${storeId}/pavilions/${pavilionId}`}
             className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
           >
-            Назад к павильону
+            {t('backToPavilion')}
           </Link>
           <h1 className="text-2xl font-bold md:text-3xl">
-            Бухгалтерский архив: павильон {pavilion.number}
+            {t('title', { number: pavilion.number })}
           </h1>
           <p className="text-sm text-[#6b6b6b]">
-            Платежи прошлых месяцев. Доступно редактирование и удаление с автоматическим
-            пересчетом.
+            {t('subtitle')}
           </p>
         </div>
 
         {months.length === 0 ? (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-            <p className="text-[#6b6b6b]">Архивных платежей пока нет.</p>
+            <p className="text-[#6b6b6b]">{t('emptyState')}</p>
           </div>
         ) : (
           months.map((month) => (
@@ -582,28 +583,28 @@ export default function PavilionArchivePage() {
               <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold capitalize">{month.label}</h2>
-                  <h2 className="text-lg font-bold">Наименование организации: {month.tenantName || 'Не указано'}</h2>
+                  <h2 className="text-lg font-bold">{t('orgName', { tenantName: month.tenantName || t('notSpecified') })}</h2>
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-[#ece4dd]">
                   <thead className="bg-[#f4efeb]">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Наименование</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Факт</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('summaryName')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('summaryExpected')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('summaryActual')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('summaryDiff')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#ece4dd] bg-white">
                     {[
-                      { label: 'Аренда', expected: month.expenseSummary.rentExpected, actual: month.expenseSummary.rentPaid },
-                      { label: 'Коммуналка', expected: month.expenseSummary.utilitiesExpected, actual: month.expenseSummary.utilitiesPaid },
-                      { label: 'Реклама', expected: month.expenseSummary.advertisingExpected, actual: month.expenseSummary.advertisingPaid },
-                      { label: 'Доп. начисления', expected: month.expenseSummary.additionalExpected, actual: month.expenseSummary.additionalPaid },
-                      { label: 'Прочие расходы', expected: month.expenseSummary.manualExpected, actual: month.expenseSummary.manualPaid },
-                      { label: 'Хозяйственные расходы', expected: month.expenseSummary.householdTotal, actual: month.expenseSummary.householdTotal },
-                      { label: 'Итого', expected: month.expenseSummary.totalExpected, actual: month.expenseSummary.totalActual },
+                      { label: t('rowRent'), expected: month.expenseSummary.rentExpected, actual: month.expenseSummary.rentPaid },
+                      { label: t('rowUtilities'), expected: month.expenseSummary.utilitiesExpected, actual: month.expenseSummary.utilitiesPaid },
+                      { label: t('rowAdvertising'), expected: month.expenseSummary.advertisingExpected, actual: month.expenseSummary.advertisingPaid },
+                      { label: t('rowAdditionalCharges'), expected: month.expenseSummary.additionalExpected, actual: month.expenseSummary.additionalPaid },
+                      { label: t('rowOtherExpenses'), expected: month.expenseSummary.manualExpected, actual: month.expenseSummary.manualPaid },
+                      { label: t('rowHouseholdExpenses'), expected: month.expenseSummary.householdTotal, actual: month.expenseSummary.householdTotal },
+                      { label: t('rowTotal'), expected: month.expenseSummary.totalExpected, actual: month.expenseSummary.totalActual },
                     ].map((row) => {
                       const diff = row.actual - row.expected;
                       const diffClass =
@@ -631,23 +632,23 @@ export default function PavilionArchivePage() {
 
               <div className="mt-6 space-y-5">
                 <div>
-                  <h3 className="mb-2 font-medium">Платежи аренды/коммуналки/рекламы</h3>
+                  <h3 className="mb-2 font-medium">{t('rentPaymentsHeading')}</h3>
                   {month.rentPayments.length === 0 ? (
-                    <p className="text-sm text-gray-500">Нет записей за этот месяц</p>
+                    <p className="text-sm text-gray-500">{t('noRecords')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-[#ece4dd]">
                         <thead className="bg-[#f4efeb]">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Коммуналка</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Реклама</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Безнал</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('dateHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('rentHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('utilitiesHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('advertisingHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('bankTransferHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('cashbox1Header')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('cashbox2Header')}</th>
                             {canEditRentPayments && (
-                              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('actionsHeader')}</th>
                             )}
                           </tr>
                         </thead>
@@ -721,13 +722,13 @@ export default function PavilionArchivePage() {
                                           disabled={busyKey === `rent-save-${item.id}`}
                                           className="rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-1 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20 disabled:opacity-60"
                                         >
-                                          Сохранить
+                                          {t('save')}
                                         </button>
                                         <button
                                           onClick={cancelRentEdit}
                                           className="rounded-lg border border-[#d8d1cb] px-2 py-1 text-xs font-medium text-[#111111] transition hover:bg-[#f8f4ef]"
                                         >
-                                          Отмена
+                                          {t('cancel')}
                                         </button>
                                       </div>
                                     ) : (
@@ -736,14 +737,14 @@ export default function PavilionArchivePage() {
                                           onClick={() => startRentEdit(item)}
                                           className="text-[#ff6a13] hover:underline"
                                         >
-                                          Изменить
+                                          {t('edit')}
                                         </button>
                                         <button
                                           onClick={() => removeRentEntry(item.id)}
                                           disabled={busyKey === `rent-del-${item.id}`}
                                           className="text-[#b91c1c] hover:underline disabled:opacity-60"
                                         >
-                                          Удалить
+                                          {t('delete')}
                                         </button>
                                       </div>
                                     )}
@@ -759,22 +760,22 @@ export default function PavilionArchivePage() {
                 </div>
 
                 <div>
-                  <h3 className="mb-2 font-medium">Оплаты дополнительных начислений</h3>
+                  <h3 className="mb-2 font-medium">{t('additionalPaymentsHeading')}</h3>
                   {month.additionalPayments.length === 0 ? (
-                    <p className="text-sm text-gray-500">Нет записей за этот месяц</p>
+                    <p className="text-sm text-gray-500">{t('noRecords')}</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-[#ece4dd]">
                         <thead className="bg-[#f4efeb]">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Начисление</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Безнал</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('dateHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('chargeHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('amountHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('bankTransferHeader')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('cashbox1Header')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('cashbox2Header')}</th>
                             {(canEditAdditionalPayments || canDeleteAdditionalPayments) && (
-                              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">{t('actionsHeader')}</th>
                             )}
                           </tr>
                         </thead>
@@ -874,13 +875,13 @@ export default function PavilionArchivePage() {
                                           disabled={busyKey === `additional-save-${item.id}`}
                                           className="rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-2 py-1 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20 disabled:opacity-60"
                                         >
-                                          Сохранить
+                                          {t('save')}
                                         </button>
                                         <button
                                           onClick={cancelAdditionalEdit}
                                           className="rounded-lg border border-[#d8d1cb] px-2 py-1 text-xs font-medium text-[#111111] transition hover:bg-[#f8f4ef]"
                                         >
-                                          Отмена
+                                          {t('cancel')}
                                         </button>
                                       </div>
                                     ) : (
@@ -890,7 +891,7 @@ export default function PavilionArchivePage() {
                                             onClick={() => startAdditionalEdit(item)}
                                             className="text-[#ff6a13] hover:underline"
                                           >
-                                            Изменить
+                                            {t('edit')}
                                           </button>
                                         )}
                                         {canDeleteAdditionalPayments && (
@@ -899,7 +900,7 @@ export default function PavilionArchivePage() {
                                             disabled={busyKey === `additional-del-${item.id}`}
                                             className="text-[#b91c1c] hover:underline disabled:opacity-60"
                                           >
-                                            Удалить
+                                            {t('delete')}
                                           </button>
                                         )}
                                       </div>

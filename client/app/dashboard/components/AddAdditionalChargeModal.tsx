@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   createAdditionalCharge,
   deleteAdditionalChargePayment,
@@ -37,6 +38,7 @@ export function AddAdditionalChargeModal({
   onSaved: () => void;
   onDelete?: () => Promise<void> | void;
 }) {
+  const t = useTranslations('AddAdditionalChargeModal');
   const currentMonthPayments = charge?.currentMonthPayments ?? [];
   const currentMonthPaidTotal = currentMonthPayments.reduce(
     (sum, payment) => sum + Number(payment.amountPaid ?? 0),
@@ -91,20 +93,20 @@ export function AddAdditionalChargeModal({
     const channelsTotal = bank + cash1 + cash2;
 
     if (!chargeName) {
-      alert('Введите название начисления');
+      alert(t('errorNameRequired'));
       return;
     }
     if (Number.isNaN(chargeAmount) || chargeAmount <= 0) {
-      alert('Введите корректную сумму начисления');
+      alert(t('errorAmountInvalid'));
       return;
     }
     if (paymentStatus === 'PAID') {
       if (channelsTotal <= 0) {
-        alert('Укажите сумму хотя бы в одном канале оплаты');
+        alert(t('errorChannelAmountRequired'));
         return;
       }
       if (Math.abs(channelsTotal - chargeAmount) > 0.01) {
-        alert('Сумма по каналам должна совпадать с суммой начисления');
+        alert(t('errorChannelsMismatch'));
         return;
       }
     }
@@ -168,8 +170,8 @@ export function AddAdditionalChargeModal({
       console.error(err);
       alert(
         isEditing
-          ? 'Не удалось изменить начисление'
-          : 'Не удалось создать начисление',
+          ? t('errorUpdateFailed')
+          : t('errorCreateFailed'),
       );
     } finally {
       setSaving(false);
@@ -197,12 +199,12 @@ export function AddAdditionalChargeModal({
         className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
         <h2 className="mb-4 text-xl font-extrabold text-[#111111]">
-          {isEditing ? 'Изменить дополнительное начисление' : 'Добавить дополнительное начисление'}
+          {isEditing ? t('titleEdit') : t('titleAdd')}
         </h2>
 
         <input
           className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
-          placeholder="Название начисления"
+          placeholder={t('namePlaceholder')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -212,13 +214,13 @@ export function AddAdditionalChargeModal({
           type="number"
           step="0.01"
           min="0"
-          placeholder="Сумма начисления"
+          placeholder={t('amountPlaceholder')}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
 
         <div className="mt-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-          <p className="mb-2 text-sm font-semibold text-[#111111]">Статус</p>
+          <p className="mb-2 text-sm font-semibold text-[#111111]">{t('statusLabel')}</p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <label className="flex items-center gap-2 text-sm text-[#111111]">
               <input
@@ -228,7 +230,7 @@ export function AddAdditionalChargeModal({
                 checked={paymentStatus === 'UNPAID'}
                 onChange={() => setPaymentStatus('UNPAID')}
               />
-              <span>Не оплачено</span>
+              <span>{t('unpaid')}</span>
             </label>
             <label className="flex items-center gap-2 text-sm text-[#111111]">
               <input
@@ -238,14 +240,14 @@ export function AddAdditionalChargeModal({
                 checked={paymentStatus === 'PAID'}
                 onChange={() => setPaymentStatus('PAID')}
               />
-              <span>Оплачено</span>
+              <span>{t('paid')}</span>
             </label>
           </div>
         </div>
 
         {paymentStatus === 'PAID' && (
           <div className="mt-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-            <p className="mb-2 text-sm font-semibold text-[#111111]">Каналы оплаты</p>
+            <p className="mb-2 text-sm font-semibold text-[#111111]">{t('paymentChannels')}</p>
             <div className="space-y-2">
               <input
                 type="number"
@@ -254,7 +256,7 @@ export function AddAdditionalChargeModal({
                 value={bankTransferPaid}
                 onChange={(e) => setBankTransferPaid(e.target.value)}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                placeholder="Безналичные"
+                placeholder={t('bankTransferPlaceholder')}
               />
               <input
                 type="number"
@@ -263,7 +265,7 @@ export function AddAdditionalChargeModal({
                 value={cashbox1Paid}
                 onChange={(e) => setCashbox1Paid(e.target.value)}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                placeholder="Наличные - касса 1"
+                placeholder={t('cashbox1Placeholder')}
               />
               <input
                 type="number"
@@ -272,12 +274,12 @@ export function AddAdditionalChargeModal({
                 value={cashbox2Paid}
                 onChange={(e) => setCashbox2Paid(e.target.value)}
                 className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                placeholder="Наличные - касса 2"
+                placeholder={t('cashbox2Placeholder')}
               />
             </div>
             {isEditing && currentMonthPayments.length > 0 && (
               <p className="mt-2 text-xs text-[#6b6b6b]">
-                При сохранении текущая оплата за этот месяц будет перезаписана по указанным каналам.
+                {t('overwriteNotice')}
               </p>
             )}
           </div>
@@ -294,7 +296,7 @@ export function AddAdditionalChargeModal({
                 }}
                 disabled={saving}
               >
-                Удалить начисление
+                {t('deleteCharge')}
               </button>
             )}
           </div>
@@ -305,14 +307,14 @@ export function AddAdditionalChargeModal({
               onClick={onClose}
               disabled={saving}
             >
-              Отмена
+              {t('cancel')}
             </button>
             <button
               type="submit"
               className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={saving}
             >
-              {saving ? 'Сохранение...' : isEditing ? 'Сохранить изменения' : 'Сохранить'}
+              {saving ? t('saving') : isEditing ? t('saveChanges') : t('save')}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { CreateDiscountModal } from '@/app/dashboard/components/CreateDiscountModal';
 import { CreatePavilionPaymentModal } from '@/app/dashboard/components/CreatePavilionPaymentModal';
@@ -35,6 +36,7 @@ import {
 } from '@/lib/dateTime';
 
 export default function PavilionPage() {
+  const t = useTranslations('PavilionPage');
   const { storeId, pavilionId } = useParams();
   const searchParams = useSearchParams();
   const storeIdNum = Number(storeId);
@@ -92,9 +94,9 @@ export default function PavilionPage() {
   const [permissions, setPermissions] = useState<string[]>([]);
 
   const statusLabel: Record<string, string> = {
-    AVAILABLE: 'СВОБОДЕН',
-    RENTED: 'ЗАНЯТ',
-    PREPAID: 'ПРЕДОПЛАТА',
+    AVAILABLE: t('statusLabels.available'),
+    RENTED: t('statusLabels.rented'),
+    PREPAID: t('statusLabels.prepaid'),
   };
   const activeLease = pavilion?.activeLease ?? null;
   const leaseHistory = Array.isArray(pavilion?.leaseHistory) ? pavilion.leaseHistory : [];
@@ -135,10 +137,10 @@ export default function PavilionPage() {
     !normalizeDateInputToDateKey(contractExpiresOnDraft);
 
   const leaseStatusLabel: Record<string, string> = {
-    ACTIVE: 'Активна',
-    DRAFT: 'Черновик',
-    ENDED: 'Завершена',
-    CANCELLED: 'Отменена',
+    ACTIVE: t('leaseStatusLabels.active'),
+    DRAFT: t('leaseStatusLabels.draft'),
+    ENDED: t('leaseStatusLabels.ended'),
+    CANCELLED: t('leaseStatusLabels.cancelled'),
   };
 
   const fetchPavilion = async () => {
@@ -167,7 +169,7 @@ export default function PavilionPage() {
       ).sort((a, b) => a.localeCompare(b));
       setExistingCategories(categories);
     } catch (err) {
-      setError('Не удалось загрузить павильон');
+      setError(t('loadError'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -194,10 +196,10 @@ export default function PavilionPage() {
 
   const handleDeletePavilion = async () => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление павильона',
-      message: 'Удалить этот павильон?',
+      title: t('deletePavilionConfirmTitle'),
+      message: t('deletePavilionConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -208,8 +210,8 @@ export default function PavilionPage() {
       router.push(`/stores/${storeIdNum}`);
     } catch (err: any) {
       await dialog.alert({
-        title: 'Не удалось удалить павильон',
-        message: err.message || 'Не удалось удалить павильон',
+        title: t('deletePavilionErrorTitle'),
+        message: err.message || t('deletePavilionErrorFallback'),
         tone: 'danger',
       });
     }
@@ -217,10 +219,10 @@ export default function PavilionPage() {
 
   const handleDeleteCharge = async (chargeId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление начисления',
-      message: 'Удалить это начисление?',
+      title: t('deleteChargeConfirmTitle'),
+      message: t('deleteChargeConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -230,8 +232,8 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить начисление',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deleteChargeErrorTitle'),
+        message: t('genericRetryMessage'),
         tone: 'danger',
       });
     }
@@ -239,10 +241,10 @@ export default function PavilionPage() {
 
   const handleDeleteChargePayment = async (chargeId: number, paymentId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление оплаты начисления',
-      message: 'Удалить этот платеж начисления?',
+      title: t('deleteChargePaymentConfirmTitle'),
+      message: t('deleteChargePaymentConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -255,8 +257,8 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить оплату начисления',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deleteChargePaymentErrorTitle'),
+        message: t('genericRetryMessage'),
         tone: 'danger',
       });
     }
@@ -264,10 +266,10 @@ export default function PavilionPage() {
 
   const handleDeleteDiscount = async (discountId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление скидки',
-      message: 'Удалить эту скидку?',
+      title: t('deleteDiscountConfirmTitle'),
+      message: t('deleteDiscountConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -277,8 +279,8 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить скидку',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deleteDiscountErrorTitle'),
+        message: t('genericRetryMessage'),
         tone: 'danger',
       });
     }
@@ -315,11 +317,11 @@ export default function PavilionPage() {
       setContractNumberDraft('');
       setContractExpiresOnDraft('');
       setContractExpiresOnTouched(false);
-      toast.success('Договор загружен');
+      toast.success(t('contractUploadedToast'));
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      toast.error(err instanceof Error ? err.message : 'Не удалось загрузить документ');
+      toast.error(err instanceof Error ? err.message : t('contractUploadErrorFallback'));
     } finally {
       setUploadingContract(false);
       e.target.value = '';
@@ -328,10 +330,10 @@ export default function PavilionPage() {
 
   const handleDeleteContract = async (contractId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление документа',
-      message: 'Удалить этот документ?',
+      title: t('deleteContractConfirmTitle'),
+      message: t('deleteContractConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -341,8 +343,8 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить документ',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deleteContractErrorTitle'),
+        message: t('genericRetryMessage'),
         tone: 'danger',
       });
     }
@@ -351,10 +353,10 @@ export default function PavilionPage() {
 
   const handleDeletePaymentEntry = async (entryId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление платежа',
-      message: 'Удалить этот платеж?',
+      title: t('deletePaymentConfirmTitle'),
+      message: t('deletePaymentConfirmMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -364,8 +366,8 @@ export default function PavilionPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить платеж',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deletePaymentErrorTitle'),
+        message: t('genericRetryMessage'),
         tone: 'danger',
       });
     }
@@ -384,15 +386,15 @@ export default function PavilionPage() {
     const channelsTotal = bank + cash1 + cash2;
 
     if (targetRentPaid <= 0) {
-      alert('Сумма предоплаты должна быть больше 0');
+      alert(t('prepaymentAmountInvalid'));
       return;
     }
     if (!tenantName) {
-      alert('Укажите наименование организации');
+      alert(t('prepaymentTenantNameRequired'));
       return;
     }
     if (Math.abs(channelsTotal - targetRentPaid) > 0.01) {
-      alert('Сумма по каналам оплаты должна совпадать с суммой предоплаты');
+      alert(t('prepaymentChannelsMismatch'));
       return;
     }
 
@@ -468,7 +470,7 @@ export default function PavilionPage() {
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось установить предоплату');
+      alert(t('setPrepaymentError'));
     }
   };
 
@@ -476,10 +478,10 @@ export default function PavilionPage() {
     if (!pavilion) return;
 
     const confirmed = await dialog.confirm({
-      title: 'Удаление предоплаты',
-      message: 'Удалить предоплату? Статус будет изменен на ЗАНЯТ.',
+      title: t('deletePrepaymentConfirmTitle'),
+      message: t('deletePrepaymentConfirmMessage', { status: statusLabel.RENTED }),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('confirmDelete'),
     });
     if (!confirmed) return;
 
@@ -512,7 +514,7 @@ export default function PavilionPage() {
       handleActionSuccess();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить предоплату');
+      alert(t('deletePrepaymentError'));
     }
   };
 
@@ -547,9 +549,9 @@ export default function PavilionPage() {
     return startsAt <= now && (endsAt === null || endsAt >= now);
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем объект аренды..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-lg text-red-600">{error}</div>;
-  if (!pavilion) return <div className="p-6 text-center text-red-600">Объекты аренды не найден</div>;
+  if (!pavilion) return <div className="p-6 text-center text-red-600">{t('notFound')}</div>;
 
   const currency = pavilion.store?.currency ?? 'RUB';
   const storeTimeZone = pavilion.store?.timeZone || 'UTC';
@@ -581,9 +583,9 @@ export default function PavilionPage() {
               href={backToStoreHref}
               className="mb-2 inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
             >
-              Назад к объекту
+              {t('backToProperty')}
             </Link>
-            <h1 className="text-2xl font-bold md:text-3xl">Объекты аренды {pavilion.number}</h1>
+            <h1 className="text-2xl font-bold md:text-3xl">{t('title', { number: pavilion.number })}</h1>
           </div>
           {hasPermission(permissions, 'EDIT_PAVILIONS') && (
           <div className="flex flex-wrap gap-3">
@@ -591,14 +593,14 @@ export default function PavilionPage() {
               onClick={() => setEditingPavilion(pavilion)}
               className="rounded-xl bg-[#111111] px-4 py-2 text-white hover:bg-[#2a2a2a]"
             >
-              Редактировать
+              {t('edit')}
             </button>
               {hasPermission(permissions, 'VIEW_PAYMENTS') && (
                 <Link
                   href={`/stores/${storeIdNum}/pavilions/${pavilionIdNum}/archive`}
                   className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-[#111111] hover:bg-[#f4efeb]"
                 >
-                  Бухгалтерский архив и расходы
+                  {t('accountingArchiveLink')}
                 </Link>
               )}
           </div>
@@ -606,26 +608,26 @@ export default function PavilionPage() {
         </div>
 
         <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
-          <h2 className="mb-4 text-xl font-semibold">Основная информация</h2>
+          <h2 className="mb-4 text-xl font-semibold">{t('mainInfo.heading')}</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <p className="text-gray-600">Наименование организации</p>
+              <p className="text-gray-600">{t('mainInfo.tenantName')}</p>
               <p className="text-lg font-medium">{pavilion.tenantName || '-'}</p>
             </div>
             <div>
-              <p className="text-gray-600">Статус</p>
+              <p className="text-gray-600">{t('mainInfo.status')}</p>
               <p className="text-lg font-medium">{statusLabel[pavilion.status] ?? pavilion.status}</p>
             </div>
             <div>
-              <p className="text-gray-600">Площадь</p>
+              <p className="text-gray-600">{t('mainInfo.area')}</p>
               <p className="text-lg font-medium">{pavilion.squareMeters} м²</p>
             </div>
             <div>
-              <p className="text-gray-600">Цена за м²</p>
+              <p className="text-gray-600">{t('mainInfo.pricePerSqM')}</p>
               <p className="text-lg font-medium">{formatMoney(pavilion.pricePerSqM, currency)}</p>
             </div>
             <div>
-              <p className="text-gray-600">Аренда</p>
+              <p className="text-gray-600">{t('mainInfo.rent')}</p>
               {pavilion.rentAmount == null ? (
                 <p className="text-lg font-medium">-</p>
               ) : currentMonthDiscount > 0 ? (
@@ -642,7 +644,7 @@ export default function PavilionPage() {
               )}
             </div>
             <div>
-              <p className="text-gray-600">Коммунальные</p>
+              <p className="text-gray-600">{t('mainInfo.utilities')}</p>
               <p className="text-lg font-medium">
                 {pavilion.utilitiesAmount == null
                   ? '-'
@@ -650,7 +652,7 @@ export default function PavilionPage() {
               </p>
             </div>
             <div>
-              <p className="text-gray-600">Реклама</p>
+              <p className="text-gray-600">{t('mainInfo.advertising')}</p>
               <p className="text-lg font-medium">
                 {pavilion.advertisingAmount == null
                   ? '-'
@@ -658,13 +660,13 @@ export default function PavilionPage() {
               </p>
             </div>
             <div>
-              <p className="text-gray-600">Сумма предоплаты</p>
+              <p className="text-gray-600">{t('mainInfo.prepaymentAmount')}</p>
               <p className="text-lg font-medium">
                 {prepaidAmount == null ? '-' : formatMoney(prepaidAmount, currency)}
               </p>
             </div>
             <div>
-              <p className="text-gray-600">Скидка (текущий месяц)</p>
+              <p className="text-gray-600">{t('mainInfo.currentMonthDiscount')}</p>
               <p className="text-lg font-medium">{formatMoney(currentMonthDiscount, currency)}</p>
             </div>
           </div>
@@ -679,20 +681,20 @@ export default function PavilionPage() {
                 className="rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e85a0c]"
               >
                 {pavilion.status === 'PREPAID'
-                  ? 'Изменить предоплату'
-                  : 'Установить предоплату'}
+                  ? t('changePrepayment')
+                  : t('setPrepayment')}
               </button>
               {pavilion.status === 'PREPAID' && (
                 <button
                   onClick={handleDeletePrepayment}
                   className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
                 >
-                  Удалить предоплату
+                  {t('deletePrepaymentButton')}
                 </button>
               )}
               {pavilion.status === 'PREPAID' && pavilion.prepaidUntil && (
                 <span className="inline-flex items-center rounded bg-blue-50 px-3 py-2 text-sm text-blue-700">
-                  Оплаченный месяц: {formatMonthNumberYearInTimeZone(pavilion.prepaidUntil, storeTimeZone)}
+                  {t('paidMonth', { month: formatMonthNumberYearInTimeZone(pavilion.prepaidUntil, storeTimeZone) })}
                 </span>
               )}
             </div>
@@ -700,10 +702,10 @@ export default function PavilionPage() {
 
           {missingContract && (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Для павильона со статусом «{statusLabel[pavilion.status] ?? pavilion.status}» договор пока не загружен.
+              {t('missingContractWarning', { status: statusLabel[pavilion.status] ?? pavilion.status })}
               {hasPermission(permissions, 'UPLOAD_CONTRACTS')
-                ? ' Добавьте его в разделе «Договоры».'
-                : ' Загрузить его может пользователь с правом «Загружать договоры».'
+                ? t('missingContractHintUpload')
+                : t('missingContractHintNoPermission')
               }
             </div>
           )}
@@ -712,31 +714,31 @@ export default function PavilionPage() {
         {hasPermission(permissions, 'VIEW_CHARGES') && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Платежи</h2>
+            <h2 className="text-xl font-semibold">{t('payments.heading')}</h2>
             {hasPermission(permissions, 'CREATE_PAYMENTS') &&
               (pavilion.status === 'RENTED' || pavilion.status === 'PREPAID') && (
                 <button
                   onClick={() => setShowPaymentModal(true)}
                   className="rounded-xl px-4 py-2 text-white bg-[#FF6A13]"
                 >
-                  + Новый платеж
+                  {t('payments.newPayment')}
                 </button>
               )}
           </div>
 
           {allPayments.length === 0 &&
           allPaymentTransactions.length === 0 ? (
-            <p className="text-gray-500">Платежей пока нет</p>
+            <p className="text-gray-500">{t('payments.empty')}</p>
           ) : (
             <div className="space-y-6">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-[#f4efeb]">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Ожидается</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.period')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.expected')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.paid')}</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.reconciliation')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -814,7 +816,7 @@ export default function PavilionPage() {
                             <div>{formatMoney(expectedWithCarry, currency)}</div>
                             {Math.abs(carryAdjustment) > 0.009 && (
                               <div className="mt-1 text-xs text-[#6b6b6b]">
-                                включая перенос{' '}
+                                {t('payments.includingCarry')}{' '}
                                 {carryAdjustment < 0 ? '+' : '-'}
                                 {formatMoney(Math.abs(carryAdjustment), currency)}
                               </div>
@@ -840,23 +842,23 @@ export default function PavilionPage() {
               </div>
 
               <div>
-                <h3 className="mb-3 text-sm font-semibold uppercase text-gray-600">История платежей</h3>
+                <h3 className="mb-3 text-sm font-semibold uppercase text-gray-600">{t('payments.historyHeading')}</h3>
                 {allPaymentTransactions.length === 0 ? (
-                  <p className="text-sm text-gray-500">Записей платежей пока нет</p>
+                  <p className="text-sm text-gray-500">{t('payments.historyEmpty')}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-[#f4efeb]">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Период</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Коммунальные</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Реклама</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Безналичный</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.date')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.period')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.rent')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.utilities')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.advertising')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.bankTransfer')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.cashbox1')}</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('payments.cashbox2')}</th>
+                          <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('payments.actions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -892,7 +894,7 @@ export default function PavilionPage() {
                                   onClick={() => handleDeletePaymentEntry(entry.id)}
                                   className="text-red-600 hover:underline"
                                 >
-                                  Удалить
+                                  {t('payments.delete')}
                                 </button>
                               )}
                             </td>
@@ -913,9 +915,9 @@ export default function PavilionPage() {
               <div className="mb-6 space-y-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold">Договоры</h2>
+                    <h2 className="text-xl font-semibold">{t('contracts.heading')}</h2>
                     <p className="mt-1 text-sm text-[#6b6b6b]">
-                      Текущие документы аренды.
+                      {t('contracts.subheading')}
                     </p>
                   </div>
                   <button
@@ -923,7 +925,7 @@ export default function PavilionPage() {
                     onClick={() => setShowAllContractsHistory(true)}
                     className="w-full rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-medium text-[#111111] transition hover:bg-[#f8f4ef] sm:w-auto"
                   >
-                    Все договоры
+                    {t('contracts.allContracts')}
                   </button>
                 </div>
 
@@ -932,21 +934,21 @@ export default function PavilionPage() {
                     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-start">
                     <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                        Номер договора
+                        {t('contracts.contractNumberLabel')}
                       </label>
                       <input
                         type="text"
                         value={contractNumberDraft}
                         onChange={(e) => setContractNumberDraft(e.target.value)}
                         className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                        placeholder="Например: 12/2026"
+                        placeholder={t('contracts.contractNumberPlaceholder')}
                         disabled={uploadingContract}
                       />
                       <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
                     <div className="min-w-0">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                        Дата окончания
+                        {t('contracts.expiresOnLabel')}
                       </label>
                       <input
                         type="text"
@@ -968,21 +970,21 @@ export default function PavilionPage() {
                             ? 'border-[#dc2626] focus:border-[#dc2626] focus:ring-[#dc2626]/20'
                             : 'border-[#d8d1cb] focus:border-[#ff6a13] focus:ring-[#ff6a13]/20'
                         }`}
-                        placeholder="дд.мм.гггг"
+                        placeholder={t('contracts.expiresOnPlaceholder')}
                         inputMode="numeric"
                         disabled={uploadingContract}
                       />
                       <div className="mt-1 min-h-[20px]">
                         {contractExpiresOnInvalid && (
                           <p className="text-xs text-[#b91c1c]">
-                            Введите дату в формате дд.мм.гггг
+                            {t('contracts.expiresOnInvalid')}
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="flex w-full lg:w-auto lg:pt-6">
                       <label className="flex w-full cursor-pointer items-center justify-center rounded-xl bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700 lg:w-auto">
-                        {uploadingContract ? 'Загрузка...' : '+ Загрузить договор'}
+                        {uploadingContract ? t('contracts.uploading') : t('contracts.uploadButton')}
                         <input
                           type="file"
                           className="hidden"
@@ -1004,10 +1006,10 @@ export default function PavilionPage() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">
-                            Истекающие договоры
+                            {t('contracts.expiringHeading')}
                           </p>
                           <p className="mt-1 text-sm">
-                            В ближайшие 30 дней истекают договоры по текущей аренде:
+                            {t('contracts.expiringSubheading')}
                           </p>
                         </div>
                       </div>
@@ -1020,19 +1022,19 @@ export default function PavilionPage() {
                             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                               <p className="text-sm font-medium text-[#8a5300]">
                                 {contract.contractNumber
-                                  ? `Договор №${contract.contractNumber}`
-                                  : `Договор #${contract.id}`}
+                                  ? t('contracts.contractNumberedLabel', { number: contract.contractNumber })
+                                  : t('contracts.contractIdLabel', { id: contract.id })}
                               </p>
                               <span className="text-xs font-medium text-[#9a6700]">
                                 {daysUntilExpiration === 0
-                                  ? 'Истекает сегодня'
+                                  ? t('contracts.expiresToday')
                                   : daysUntilExpiration === 1
-                                    ? 'Остался 1 день'
-                                    : `Осталось ${daysUntilExpiration} дн.`}
+                                    ? t('contracts.expiresInOneDay')
+                                    : t('contracts.expiresInDays', { days: daysUntilExpiration })}
                               </span>
                             </div>
                             <p className="mt-1 text-sm text-[#9a6700]">
-                              Дата окончания: {formatDateKey(contract.expiresOn)}
+                              {t('contracts.expiresOnDate', { date: formatDateKey(contract.expiresOn) })}
                             </p>
                           </div>
                         ))}
@@ -1040,7 +1042,7 @@ export default function PavilionPage() {
                     </div>
                   )}
                   {currentContracts.length === 0 ? (
-                    <p className="text-gray-500">По текущей аренде документы не загружены</p>
+                    <p className="text-gray-500">{t('contracts.noContractsForLease')}</p>
                   ) : (
                     <PavilionContractsTable
                       contracts={currentContracts}
@@ -1054,7 +1056,7 @@ export default function PavilionPage() {
 
                 </div>
               ) : (
-                <p className="text-gray-500">Документы не загружены</p>
+                <p className="text-gray-500">{t('contracts.noContracts')}</p>
               )}
           </div>
         )}
@@ -1062,30 +1064,30 @@ export default function PavilionPage() {
         {hasPermission(permissions, 'VIEW_PAYMENTS') && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Скидки</h2>
+            <h2 className="text-xl font-semibold">{t('discounts.heading')}</h2>
             {hasPermission(permissions, 'EDIT_PAVILIONS') && (
               <button
                 onClick={() => setShowDiscountModal(true)}
                 className="rounded-xl bg-[#111111] px-4 py-2 text-sm text-white hover:bg-[#2a2a2a]"
               >
-                + Добавить скидку
+                {t('discounts.add')}
               </button>
             )}
           </div>
 
           {pavilion.discounts.length === 0 ? (
-            <p className="text-gray-500">Скидок нет</p>
+            <p className="text-gray-500">{t('discounts.empty')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-[#f4efeb]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Сумма скидки</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Начало</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Конец</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Комментарий</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('discounts.amount')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('discounts.start')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('discounts.end')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('discounts.status')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('discounts.note')}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('discounts.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1100,13 +1102,13 @@ export default function PavilionPage() {
                       <td className="px-6 py-4 text-sm">
                         {discount.endsAt
                           ? formatDateInStoreTimeZone(discount.endsAt, storeTimeZone)
-                          : 'Бессрочно'}
+                          : t('discounts.unlimited')}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {isDiscountActiveNow(discount) ? (
-                          <span className="font-semibold text-green-700">Активна</span>
+                          <span className="font-semibold text-green-700">{t('discounts.active')}</span>
                         ) : (
-                          <span className="font-semibold text-gray-600">Не активна</span>
+                          <span className="font-semibold text-gray-600">{t('discounts.inactive')}</span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">{discount.note || '-'}</td>
@@ -1116,7 +1118,7 @@ export default function PavilionPage() {
                             onClick={() => handleDeleteDiscount(discount.id)}
                             className="text-red-600 hover:underline"
                           >
-                            Удалить
+                            {t('discounts.delete')}
                           </button>
                         )}
                       </td>
@@ -1132,20 +1134,20 @@ export default function PavilionPage() {
         {pavilion.status === 'RENTED' && (
           <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Дополнительные начисления</h2>
+              <h2 className="text-xl font-semibold">{t('additionalCharges.heading')}</h2>
               {hasPermission(permissions, 'CREATE_CHARGES') && (
                 <button
                   onClick={() => setShowAddAdditionalChargeModal(true)}
                   className="rounded-xl bg-[#111111] px-3 py-2 text-sm text-white hover:bg-[#2a2a2a]"
                 >
-                  + Новое начисление
+                  {t('additionalCharges.new')}
                 </button>
               )}
             </div>
 
             {currentMonthAdditionalCharges.length === 0 ? (
               <p className="text-gray-500">
-                Начислений нет.
+                {t('additionalCharges.empty')}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -1153,15 +1155,15 @@ export default function PavilionPage() {
                 <thead className="bg-[#f4efeb]">
                   <tr>
                     <th className="px-4 py-4 text-left text-xs font-medium uppercase text-gray-500"></th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Оплачено</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Безналичные</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Схождение</th>
-                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-8 py-4 text-center text-xs font-medium uppercase text-gray-500">Действия</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.name')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.amount')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.paid')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.bankTransfer')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.cashbox1')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.cashbox2')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.reconciliation')}</th>
+                    <th className="px-8 py-4 text-left text-xs font-medium uppercase text-gray-500">{t('additionalCharges.status')}</th>
+                    <th className="px-8 py-4 text-center text-xs font-medium uppercase text-gray-500">{t('additionalCharges.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1230,9 +1232,9 @@ export default function PavilionPage() {
                           </td>
                           <td className="px-8 py-5 text-sm align-top whitespace-nowrap">
                             {isPaid ? (
-                              <span className="font-semibold text-green-700">Оплачено</span>
+                              <span className="font-semibold text-green-700">{t('additionalCharges.paidStatus')}</span>
                             ) : (
-                              <span className="font-semibold text-amber-600">Не оплачено</span>
+                              <span className="font-semibold text-amber-600">{t('additionalCharges.unpaidStatus')}</span>
                             )}
                           </td>
                           <td className="px-8 py-5 text-center text-sm align-top">
@@ -1255,7 +1257,7 @@ export default function PavilionPage() {
                                   }
                                 className="inline-flex min-w-[160px] justify-center rounded-lg border border-[#CFC6BF] bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                                 >
-                                  Оплатить/изменить
+                                  {t('additionalCharges.payOrEdit')}
                                 </button>
                               )}
                               {!hasPermission(permissions, 'EDIT_CHARGES') &&
@@ -1272,7 +1274,7 @@ export default function PavilionPage() {
                                   }
                                   className="inline-flex min-w-[160px] justify-center rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-3 py-1.5 text-xs font-semibold text-[#15803d] transition hover:bg-[#22c55e]/20"
                                 >
-                                  Оплатить
+                                  {t('additionalCharges.pay')}
                                 </button>
                               )}
                             </div>
@@ -1284,14 +1286,14 @@ export default function PavilionPage() {
                             <td colSpan={10} className="px-6 py-3 text-sm text-gray-700">
                               {currentMonthChargePayments.length ? (
                                 <div className="space-y-2">
-                                  <div className="text-xs font-semibold text-gray-500">История оплат</div>
+                                  <div className="text-xs font-semibold text-gray-500">{t('additionalCharges.paymentHistory')}</div>
                                   <div className="grid grid-cols-[160px_1fr_1fr_1fr_1fr_auto] gap-3 text-xs font-semibold text-gray-500">
-                                    <span>Дата</span>
-                                    <span>Сумма</span>
-                                    <span>Безналичные</span>
-                                    <span>Касса 1</span>
-                                    <span>Касса 2</span>
-                                    <span className="text-right">Действия</span>
+                                    <span>{t('additionalCharges.date')}</span>
+                                    <span>{t('additionalCharges.amount')}</span>
+                                    <span>{t('additionalCharges.bankTransfer')}</span>
+                                    <span>{t('additionalCharges.cashbox1')}</span>
+                                    <span>{t('additionalCharges.cashbox2')}</span>
+                                    <span className="text-right">{t('additionalCharges.actions')}</span>
                                   </div>
                                   {currentMonthChargePayments.map((p: any) => (
                                     <div
@@ -1308,14 +1310,14 @@ export default function PavilionPage() {
                                           onClick={() => handleDeleteChargePayment(charge.id, p.id)}
                                           className="text-xs text-red-600 hover:underline"
                                         >
-                                          Удалить
+                                          {t('additionalCharges.delete')}
                                         </button>
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <div className="text-xs text-gray-500">Оплат пока нет</div>
+                                <div className="text-xs text-gray-500">{t('additionalCharges.noPayments')}</div>
                               )}
                             </td>
                           </tr>
@@ -1354,22 +1356,22 @@ export default function PavilionPage() {
         {showPrepaymentModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
             <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
-              <h2 className="mb-5 text-xl font-extrabold text-[#111111]">Установить предоплату</h2>
+              <h2 className="mb-5 text-xl font-extrabold text-[#111111]">{t('prepaymentModal.title')}</h2>
               <div className="space-y-4">
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#111111]">
-                    Наименование организации
+                    {t('prepaymentModal.tenantNameLabel')}
                   </label>
                   <input
                     type="text"
                     value={prepaymentTenantName}
                     onChange={(e) => setPrepaymentTenantName(e.target.value)}
                     className="w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20"
-                    placeholder="Введите наименование организации"
+                    placeholder={t('prepaymentModal.tenantNamePlaceholder')}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-semibold text-[#111111]">Месяц предоплаты</label>
+                  <label className="mb-1 block text-sm font-semibold text-[#111111]">{t('prepaymentModal.monthLabel')}</label>
                   <input
                     type="month"
                     value={prepaymentMonth}
@@ -1379,7 +1381,7 @@ export default function PavilionPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-semibold text-[#111111]">
-                    Сумма предоплаты (если пусто - полная аренда)
+                    {t('prepaymentModal.amountLabel')}
                   </label>
                   <input
                     type="number"
@@ -1391,7 +1393,7 @@ export default function PavilionPage() {
                   />
                 </div>
                 <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#111111]">Каналы оплаты предоплаты</p>
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">{t('prepaymentModal.channelsLabel')}</p>
                   <div className="space-y-2">
                     <input
                       type="number"
@@ -1400,7 +1402,7 @@ export default function PavilionPage() {
                       value={prepaymentBankTransferPaid}
                       onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
                       className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Безналичные"
+                      placeholder={t('prepaymentModal.bankTransferPlaceholder')}
                     />
                     <input
                       type="number"
@@ -1409,7 +1411,7 @@ export default function PavilionPage() {
                       value={prepaymentCashbox1Paid}
                       onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
                       className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Наличные - касса 1"
+                      placeholder={t('prepaymentModal.cashbox1Placeholder')}
                     />
                     <input
                       type="number"
@@ -1418,7 +1420,7 @@ export default function PavilionPage() {
                       value={prepaymentCashbox2Paid}
                       onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
                       className="w-full rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Наличные - касса 2"
+                      placeholder={t('prepaymentModal.cashbox2Placeholder')}
                     />
                   </div>
                 </div>
@@ -1431,13 +1433,13 @@ export default function PavilionPage() {
                   }}
                   className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
                 >
-                  Отмена
+                  {t('prepaymentModal.cancel')}
                 </button>
                 <button
                   onClick={handleSetPrepayment}
                   className="rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]"
                 >
-                  Сохранить
+                  {t('prepaymentModal.save')}
                 </button>
               </div>
             </div>
@@ -1486,10 +1488,10 @@ export default function PavilionPage() {
             onClose={() => setEditingAdditionalCharge(null)}
             onDelete={async () => {
               const confirmed = await dialog.confirm({
-                title: 'Удаление начисления',
-                message: 'Удалить это начисление?',
+                title: t('deleteChargeConfirmTitle'),
+                message: t('deleteChargeConfirmMessage'),
                 tone: 'danger',
-                confirmText: 'Удалить',
+                confirmText: t('confirmDelete'),
               });
               if (!confirmed) return;
               await deleteAdditionalCharge(pavilionIdNum, editingAdditionalCharge.id);
@@ -1509,7 +1511,7 @@ export default function PavilionPage() {
             onClick={handleDeletePavilion}
             className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           >
-            Удалить павильон
+            {t('deletePavilion')}
           </button>
         )}
       </div>

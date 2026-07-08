@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -136,6 +137,7 @@ const expensePaymentLabel = (expense: {
 };
 
 export default function StorePage() {
+  const t = useTranslations('StorePage');
   const params = useParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -305,27 +307,27 @@ export default function StorePage() {
   }, [storeId]);
 
   const statusLabel: Record<string, string> = {
-    AVAILABLE: 'СВОБОДЕН',
-    RENTED: 'ЗАНЯТ',
-    PREPAID: 'ПРЕДОПЛАТА',
+    AVAILABLE: t('statusLabels.available'),
+    RENTED: t('statusLabels.rented'),
+    PREPAID: t('statusLabels.prepaid'),
   };
 
   const getPavilionPaymentStatus = (pavilion: any) => {
     if (pavilion.paymentStatus) {
       if (pavilion.paymentStatus === 'PAID') {
         return {
-          label: 'Оплачено',
+          label: t('paymentStatusLabels.paid'),
           className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
         };
       }
       if (pavilion.paymentStatus === 'PARTIAL') {
         return {
-          label: 'Частично оплачено',
+          label: t('paymentStatusLabels.partial'),
           className: 'border-amber-200 bg-amber-50 text-amber-700',
         };
       }
       return {
-        label: 'Не оплачено',
+        label: t('paymentStatusLabels.unpaid'),
         className: 'border-rose-200 bg-rose-50 text-rose-700',
       };
     }
@@ -381,14 +383,14 @@ export default function StorePage() {
     const coveredTotal = paidTotal + carryCredit;
 
     if (expectedTotal <= 0.01 || paidTotal + 0.01 >= expectedTotal) {
-      return { label: 'Оплачено', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
+      return { label: t('paymentStatusLabels.paid'), className: 'border-emerald-200 bg-emerald-50 text-emerald-700' };
     }
 
     if (coveredTotal <= 0.01) {
-      return { label: 'Не оплачено', className: 'border-rose-200 bg-rose-50 text-rose-700' };
+      return { label: t('paymentStatusLabels.unpaid'), className: 'border-rose-200 bg-rose-50 text-rose-700' };
     }
 
-    return { label: 'Частично оплачено', className: 'border-amber-200 bg-amber-50 text-amber-700' };
+    return { label: t('paymentStatusLabels.partial'), className: 'border-amber-200 bg-amber-50 text-amber-700' };
   };
 
   const fetchPavilions = async () => {
@@ -464,7 +466,7 @@ export default function StorePage() {
 
       setStore(storeData);
     } catch (err) {
-      setError('Не удалось загрузить данные магазина');
+      setError(t('errors.loadFailed'));
       console.error(err);
     } finally {
       if (withLoader) {
@@ -1182,9 +1184,9 @@ export default function StorePage() {
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем объект..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!store) return <div className="p-6 text-center text-red-600">Магазин не найден</div>;
+  if (!store) return <div className="p-6 text-center text-red-600">{t('notFound')}</div>;
 
   const permissions = store.permissions || [];
   const allCategories: string[] = Array.from(
@@ -1358,7 +1360,7 @@ export default function StorePage() {
             className="scroll-mt-24 rounded-2xl border border-[#D8D1CB] bg-white p-6 shadow-sm md:p-8"
           >
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-xl font-semibold md:text-2xl bor">Объекты аренды</h2>
+              <h2 className="text-xl font-semibold md:text-2xl bor">{t('pavilions.title')}</h2>
               <div className="flex flex-wrap items-center gap-2">
                 {canCreatePavilion && (
                   <button
@@ -1366,7 +1368,7 @@ export default function StorePage() {
                     className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
                   >
                     <CirclePlus className="h-4 w-4" />
-                    Добавить павильон
+                    {t('pavilions.addButton')}
                   </button>
                 )}
               </div>
@@ -1380,7 +1382,7 @@ export default function StorePage() {
                   setPavilionSearch(e.target.value);
                 }}
                 className="w-full rounded-lg border border-[#D8D1CB] px-3 py-2"
-                placeholder="Поиск по имени павильона"
+                placeholder={t('pavilions.searchPlaceholder')}
               />
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <select
@@ -1390,7 +1392,7 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Категория</option>
+                <option value="">{t('pavilions.filters.categoryDefault')}</option>
                 {allCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -1404,10 +1406,10 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Статус</option>
-                <option value="AVAILABLE">СВОБОДЕН</option>
-                <option value="RENTED">ЗАНЯТ</option>
-                <option value="PREPAID">ПРЕДОПЛАТА</option>
+                <option value="">{t('pavilions.filters.statusDefault')}</option>
+                <option value="AVAILABLE">{t('statusLabels.available')}</option>
+                <option value="RENTED">{t('statusLabels.rented')}</option>
+                <option value="PREPAID">{t('statusLabels.prepaid')}</option>
               </select>
               <select
                 value={pavilionGroupFilter}
@@ -1416,7 +1418,7 @@ export default function StorePage() {
                 }}
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Группы</option>
+                <option value="">{t('pavilions.filters.groupDefault')}</option>
                 {(store.pavilionGroups || []).map((group: any) => (
                   <option key={group.id} value={group.id}>
                     {group.name}
@@ -1434,21 +1436,21 @@ export default function StorePage() {
                 }
                 className="rounded-lg border border-[#D8D1CB] px-3 py-2"
               >
-                <option value="">Статус оплаты</option>
-                <option value="PAID">Оплачено</option>
-                <option value="PARTIAL">Частично оплачено</option>
-                <option value="UNPAID">Не оплачено</option>
+                <option value="">{t('pavilions.filters.paymentStatusDefault')}</option>
+                <option value="PAID">{t('paymentStatusLabels.paid')}</option>
+                <option value="PARTIAL">{t('paymentStatusLabels.partial')}</option>
+                <option value="UNPAID">{t('paymentStatusLabels.unpaid')}</option>
               </select>
               </div>
             </div>
 
             {pavilionsLoading ? (
-              <p className="py-8 text-center text-[#6B6B6B]">Загрузка павильонов...</p>
+              <p className="py-8 text-center text-[#6B6B6B]">{t('pavilions.loadingPavilions')}</p>
             ) : orderedPavilions.length === 0 ? (
               <p className="py-8 text-center text-[#6B6B6B]">
                 {pavilionsTotal === 0
-                  ? 'В магазине пока нет павильонов'
-                  : 'По текущим фильтрам павильоны не найдены'}
+                  ? t('pavilions.emptyNoPavilions')
+                  : t('pavilions.emptyNoFilterMatch')}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -1456,28 +1458,28 @@ export default function StorePage() {
                   <thead className="bg-[#F4EFEB]">
                     <tr>
                       <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Перенос
+                        {t('pavilions.table.transfer')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Объекты аренды
+                        {t('pavilions.table.pavilion')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        м²
+                        {t('pavilions.table.area')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Статус
+                        {t('pavilions.table.status')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Оплата
+                        {t('pavilions.table.payment')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Категория
+                        {t('pavilions.table.category')}
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Наименование организации
+                        {t('pavilions.table.tenantName')}
                       </th>
                       <th className="rounded-r-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                        Группы
+                        {t('pavilions.table.groups')}
                       </th>
                     </tr>
                   </thead>
@@ -1539,10 +1541,10 @@ export default function StorePage() {
                             }`}
                             title={
                               canReorderPavilions
-                                ? 'Потяните, чтобы изменить порядок'
-                                : 'Сортировка по оплате активна'
+                                ? t('pavilions.dragHandle.titleEnabled')
+                                : t('pavilions.dragHandle.titleDisabled')
                             }
-                            aria-label={`Переместить павильон ${p.number}`}
+                            aria-label={t('pavilions.dragHandle.ariaLabel', { number: p.number })}
                           >
                             ⋮⋮
                           </button>
@@ -1581,7 +1583,7 @@ export default function StorePage() {
                                     : 'text-emerald-700'
                                 }`}
                               >
-                                Перенос: {formatMoney(carryBalance, store.currency)}
+                                {t('pavilions.carryLabel', { value: formatMoney(carryBalance, store.currency) })}
                               </div>
                             )}
                           </div>
@@ -1591,10 +1593,10 @@ export default function StorePage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-[#374151]">
                           <div className="space-y-1">
-                            <div>{p.tenantName || 'Свободен'}</div>
+                            <div>{p.tenantName || t('pavilions.vacantLabel')}</div>
                             {missingContract && (
                               <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                                Нет договора
+                                {t('pavilions.noContractBadge')}
                               </span>
                             )}
                           </div>
@@ -1606,7 +1608,7 @@ export default function StorePage() {
                           >
                             <div className="flex flex-wrap gap-2">
                               {(p.groupMemberships || []).length === 0 ? (
-                                <span className="text-xs text-[#6B6B6B]">Нет групп</span>
+                                <span className="text-xs text-[#6B6B6B]">{t('pavilions.noGroupsLabel')}</span>
                               ) : (
                                 p.groupMemberships.map((membership: any) => (
                                   <span
@@ -1638,9 +1640,9 @@ export default function StorePage() {
                   }
                   className="w-fit rounded-lg border border-[#D8D1CB] bg-white px-3 py-2 text-sm text-[#111111]"
                 >
-                  <option value="50">Показать первые 50</option>
-                  <option value="100">Показать первые 100</option>
-                  <option value="all">Показать все</option>
+                  <option value="50">{t('pavilions.displayLimit.show50')}</option>
+                  <option value="100">{t('pavilions.displayLimit.show100')}</option>
+                  <option value="all">{t('pavilions.displayLimit.showAll')}</option>
                 </select>
               </div>
             </div>

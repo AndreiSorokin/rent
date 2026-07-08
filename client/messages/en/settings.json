@@ -1,0 +1,218 @@
+{
+  "StoreSettingsPage": {
+    "loading": "Loading property settings...",
+    "notFound": "Property not found",
+    "errors": {
+      "loadFailed": "Failed to load settings",
+      "enterStoreName": "Enter a property name",
+      "nameUpdateFailed": "Failed to change the name",
+      "currencyUpdateFailed": "Failed to change the currency",
+      "addressUpdateFailed": "Failed to change the address",
+      "billingUpdateFailed": "Failed to update billing details",
+      "contactUpdateFailed": "Failed to change the contact details",
+      "timeZoneUpdateFailed": "Failed to change the time zone",
+      "descriptionUpdateFailed": "Failed to save the property description",
+      "photoUploadFailed": "Failed to upload the property photo",
+      "enterConfirmWord": "Type the word \"DELETE\" to confirm",
+      "storeDeleteFailed": "Failed to delete the property",
+      "enterCategoryName": "Enter a category name",
+      "categoryAddFailed": "Failed to add the category",
+      "enterNewCategoryName": "Enter a new category name",
+      "categoryRenameFailed": "Failed to rename the category",
+      "categoryDeleteFailed": "Failed to delete the category",
+      "enterGroupName": "Enter a group name",
+      "groupCreateFailed": "Failed to create the group",
+      "groupRenameFailed": "Failed to rename the group",
+      "groupDeleteFailed": "Failed to delete the group",
+      "groupPavilionsSaveFailed": "Failed to save the group composition",
+      "dataExportFailed": "Failed to export the data"
+    },
+    "success": {
+      "nameUpdated": "Property name updated",
+      "currencyUpdated": "Property currency updated",
+      "addressUpdated": "Property address updated",
+      "addressRemoved": "Property address removed",
+      "billingUpdated": "Company billing details updated",
+      "billingRemoved": "Company billing details removed",
+      "contactUpdated": "Property contact details updated",
+      "timeZoneUpdated": "Property time zone updated",
+      "descriptionUpdated": "Property description updated",
+      "descriptionRemoved": "Property description removed",
+      "photoAdded": "Property photo added",
+      "photosAdded": "Photos added: {count}",
+      "categoryAdded": "Category added",
+      "categoryRenamed": "Category renamed",
+      "categoryDeleted": "Category deleted",
+      "groupCreated": "Group created",
+      "groupRenamed": "Group renamed",
+      "groupDeleted": "Group deleted",
+      "groupPavilionsSaved": "Group composition saved",
+      "dataExported": "Property data exported"
+    },
+    "subscription": {
+      "statusPaid": "Paid",
+      "statusUnpaid": "Not paid",
+      "invoiceOpened": "Invoice opened in a new tab",
+      "invoiceOpenFailed": "Failed to open the invoice",
+      "popupBlocked": "The browser blocked the new payment tab",
+      "paymentPrepareFailed": "Failed to prepare the payment",
+      "title": "Rendlify subscription",
+      "statusForPeriod": "Status for {period}",
+      "statusForCurrentMonth": "Status for the current calendar month",
+      "monthlyCost": "Monthly cost:",
+      "firstMonthFree": "The first month is free.",
+      "noOccupiedPavilions": "There are no occupied pavilions this month, so no invoice is required.",
+      "fillBillingDetails": "Fill in the company billing details below to open the invoice and proceed to payment.",
+      "paymentConfirmed": "Payment for the current calendar month is confirmed.",
+      "paymentPendingConfirmation": "Payment sent, awaiting confirmation.",
+      "opening": "Opening...",
+      "viewInvoice": "View invoice",
+      "preparing": "Preparing...",
+      "pay": "Pay"
+    },
+    "categories": {
+      "deleteDialogTitle": "Delete category",
+      "deleteDialogMessage": "Delete the category \"{name}\"?",
+      "deleteDialogConfirm": "Delete",
+      "title": "Pavilion categories",
+      "newCategoryPlaceholder": "New category",
+      "adding": "Adding...",
+      "empty": "No categories yet"
+    },
+    "groups": {
+      "deleteDialogTitle": "Delete group",
+      "deleteDialogMessage": "Delete this group?",
+      "deleteDialogConfirm": "Delete",
+      "title": "Pavilion groups",
+      "newGroupPlaceholder": "New group name",
+      "creating": "Creating...",
+      "empty": "No groups yet",
+      "hideList": "Hide list",
+      "addPavilions": "Add pavilions",
+      "currentComposition": "Current composition: {count} pavilions",
+      "searchPavilionPlaceholder": "Search rental property by number",
+      "noPavilionsFound": "No rental properties found",
+      "selectedCount": "Selected: {count}",
+      "saveSelection": "Save selection"
+    },
+    "export": {
+      "sheets": {
+        "pavilions": "Rental Properties",
+        "householdExpenses": "HouseholdExpenses",
+        "otherExpenses": "OtherExpenses",
+        "adminExpenses": "AdminExpenses",
+        "accounting": "Day Closing",
+        "staff": "Staff"
+      },
+      "pavilionsHeaders": {
+        "number": "Pavilion Number",
+        "category": "Category",
+        "area": "Area",
+        "pricePerSqM": "Price per sqm",
+        "utilities": "Utilities",
+        "status": "Status",
+        "tenantName": "Company Name",
+        "advertising": "Advertising"
+      },
+      "nameAmountStatusHeaders": {
+        "name": "Name",
+        "amount": "Amount"
+      },
+      "accountingHeaders": {
+        "date": "Date",
+        "bankTransfer": "Bank Transfer",
+        "cashbox1": "Cash Register 1",
+        "cashbox2": "Cash Register 2"
+      },
+      "staffHeaders": {
+        "position": "Position",
+        "fullName": "Full Name",
+        "salary": "Salary",
+        "paymentStatus": "Payment Status"
+      },
+      "statusValues": {
+        "paid": "Paid",
+        "unpaid": "Not paid",
+        "rented": "OCCUPIED",
+        "prepaid": "PREPAID",
+        "available": "AVAILABLE"
+      },
+      "adminTypeLabels": {
+        "PAYROLL_TAX": "Payroll Taxes",
+        "PROFIT_TAX": "Profit Tax",
+        "DIVIDENDS": "Dividends",
+        "BANK_SERVICES": "Bank Services",
+        "VAT": "VAT",
+        "LAND_RENT": "Land Rent"
+      },
+      "otherExpenseFallbackName": "Other expense"
+    },
+    "header": {
+      "title": "Managing property: {name}",
+      "activityLog": "Activity log",
+      "importData": "Import data",
+      "exporting": "Exporting...",
+      "exportData": "Export data"
+    },
+    "basicSettings": {
+      "title": "General settings",
+      "storeName": "Property name",
+      "storeAddress": "Property address",
+      "optionalPlaceholder": "Optional",
+      "addressClearHint": "Leave the field empty to remove the address.",
+      "billingDetails": "Company billing details",
+      "companyNamePlaceholder": "Company name",
+      "legalAddressPlaceholder": "Company legal address",
+      "innPlaceholder": "Company tax ID",
+      "billingHint": "This information is used to automatically issue the invoice for the service.",
+      "currency": "Currency",
+      "currentCurrency": "Current currency: {currency} ({symbol})",
+      "currencyRub": "Russian ruble (₽)",
+      "currencyKzt": "Kazakhstani tenge (₸)",
+      "timeZone": "Property time zone",
+      "currentTimeZone": "Current time zone: {timeZone}",
+      "timeZonePlaceholder": "Enter a city or time zone (e.g., Moscow, Almaty, Europe/Moscow)",
+      "contactDetails": "Property contact details",
+      "phonePlaceholder": "Property phone number",
+      "emailPlaceholder": "Property email",
+      "contactClearHint": "Leave the fields empty to remove the contact details."
+    },
+    "media": {
+      "title": "Property description and photos",
+      "descriptionLabel": "Property description",
+      "descriptionPlaceholder": "Add a short description of the property for the future tenant version",
+      "descriptionClearHint": "Leave the field empty to remove the description.",
+      "photoLabel": "Property photo",
+      "photoAlt": "Photo of {name}",
+      "noPhotoYet": "No property photo uploaded yet",
+      "uploading": "Uploading...",
+      "addPhoto": "Add photo",
+      "allPhotosWithCount": "All photos ({count})",
+      "allPhotos": "All photos",
+      "formatsHint": "JPG, PNG and WEBP up to 10 MB are supported."
+    },
+    "users": {
+      "title": "Users and permissions"
+    },
+    "dangerZone": {
+      "title": "Danger zone",
+      "deleteStore": "Delete property"
+    },
+    "deleteStore": {
+      "confirmWord": "DELETE",
+      "modalTitle": "Delete property",
+      "instruction": "To delete, type the word <strong>{word}</strong>."
+    },
+    "common": {
+      "save": "Save",
+      "savingEllipsis": "...",
+      "savingInProgress": "Saving...",
+      "add": "Add",
+      "rename": "Rename",
+      "delete": "Delete",
+      "deletingEllipsis": "Deleting...",
+      "create": "Create",
+      "cancel": "Cancel"
+    }
+  }
+}
