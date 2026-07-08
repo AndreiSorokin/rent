@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 type ExpenseStatus = 'UNPAID' | 'PAID';
 
 type ExpenseCreatePaidModalProps = {
@@ -46,8 +48,8 @@ type ExpenseEditModalProps = {
 export function ExpenseCreatePaidModal({
   open,
   title,
-  subtitle = 'Расход создается сразу со статусом «Оплачено».',
-  nameLabel = 'Название',
+  subtitle,
+  nameLabel,
   nameValue,
   onNameChange,
   bankTransferPaid,
@@ -59,9 +61,14 @@ export function ExpenseCreatePaidModal({
   saving,
   onClose,
   onSubmit,
-  submitLabel = 'Сохранить',
+  submitLabel,
 }: ExpenseCreatePaidModalProps) {
+  const t = useTranslations('ExpenseCreatePaidModal');
   if (!open) return null;
+
+  const resolvedSubtitle = subtitle ?? t('subtitleDefault');
+  const resolvedNameLabel = nameLabel ?? t('nameLabelDefault');
+  const resolvedSubmitLabel = submitLabel ?? t('submitLabelDefault');
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
@@ -73,11 +80,11 @@ export function ExpenseCreatePaidModal({
         className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-        <p className="mt-1 text-sm text-slate-600">{subtitle}</p>
+        <p className="mt-1 text-sm text-slate-600">{resolvedSubtitle}</p>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{nameLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{resolvedNameLabel}</label>
             <input
               type="text"
               value={nameValue}
@@ -86,7 +93,7 @@ export function ExpenseCreatePaidModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('bankTransferLabel')}</label>
             <input
               type="number"
               step="0.01"
@@ -98,7 +105,7 @@ export function ExpenseCreatePaidModal({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Наличные касса 1
+              {t('cashbox1Label')}
             </label>
             <input
               type="number"
@@ -111,7 +118,7 @@ export function ExpenseCreatePaidModal({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Наличные касса 2
+              {t('cashbox2Label')}
             </label>
             <input
               type="number"
@@ -131,14 +138,14 @@ export function ExpenseCreatePaidModal({
             disabled={saving}
             className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
           >
-            {saving ? 'Сохранение...' : submitLabel}
+            {saving ? t('saving') : resolvedSubmitLabel}
           </button>
         </div>
       </form>
@@ -149,7 +156,7 @@ export function ExpenseCreatePaidModal({
 export function ExpenseEditModal({
   open,
   title,
-  nameLabel = 'Название',
+  nameLabel,
   nameValue,
   onNameChange,
   status,
@@ -165,9 +172,13 @@ export function ExpenseEditModal({
   onSubmit,
   onDelete,
   showDelete = false,
-  submitLabel = 'Сохранить',
+  submitLabel,
 }: ExpenseEditModalProps) {
+  const t = useTranslations('ExpenseEditModalOverview');
   if (!open) return null;
+
+  const resolvedNameLabel = nameLabel ?? t('nameLabelDefault');
+  const resolvedSubmitLabel = submitLabel ?? t('submitLabelDefault');
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 p-4">
@@ -182,7 +193,7 @@ export function ExpenseEditModal({
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{nameLabel}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{resolvedNameLabel}</label>
             <input
               type="text"
               value={nameValue}
@@ -191,14 +202,14 @@ export function ExpenseEditModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Статус оплаты</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('statusLabel')}</label>
             <select
               value={status}
               onChange={(e) => onStatusChange(e.target.value as ExpenseStatus)}
               className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
             >
-              <option value="UNPAID">Не оплачено</option>
-              <option value="PAID">Оплачено</option>
+              <option value="UNPAID">{t('statusUnpaid')}</option>
+              <option value="PAID">{t('statusPaid')}</option>
             </select>
           </div>
 
@@ -206,7 +217,7 @@ export function ExpenseEditModal({
             <>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Безналичные
+                  {t('bankTransferLabel')}
                 </label>
                 <input
                   type="number"
@@ -219,7 +230,7 @@ export function ExpenseEditModal({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Наличные касса 1
+                  {t('cashbox1Label')}
                 </label>
                 <input
                   type="number"
@@ -232,7 +243,7 @@ export function ExpenseEditModal({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Наличные касса 2
+                  {t('cashbox2Label')}
                 </label>
                 <input
                   type="number"
@@ -255,7 +266,7 @@ export function ExpenseEditModal({
               disabled={saving}
               className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
             >
-              Удалить
+              {t('delete')}
             </button>
           ) : (
             <span />
@@ -267,14 +278,14 @@ export function ExpenseEditModal({
               disabled={saving}
               className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
             >
-              Отмена
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
             >
-              {saving ? 'Сохранение...' : submitLabel}
+              {saving ? t('saving') : resolvedSubmitLabel}
             </button>
           </div>
         </div>

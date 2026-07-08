@@ -1,0 +1,138 @@
+{
+  "StoreSummaryPage": {
+    "loading": "Gathering summary...",
+    "errors": {
+      "loadFailed": "Failed to load the summary",
+      "downloadFailed": "Failed to download the summary",
+      "downloadFailedAlert": "Failed to download the PDF"
+    },
+    "nav": {
+      "sidebarLabel": "Summary",
+      "backToStore": "Back to property",
+      "navigation": "Navigation",
+      "menuButton": "Menu",
+      "closeMenu": "Close menu",
+      "sections": {
+        "overview": "Overview",
+        "prevBalance": "Previous month balance",
+        "income": "Total income",
+        "expenses": "Total expenses",
+        "saldo": "Balance",
+        "tradeArea": "Trade area",
+        "groups": "Pavilion groups"
+      }
+    },
+    "header": {
+      "title": "SUMMARY",
+      "subtitle": "Key financial metrics of the property",
+      "monthLabel": "Month:",
+      "downloadButton": "Download summary"
+    },
+    "common": {
+      "forecast": "Forecast",
+      "actual": "Actual",
+      "forecastValue": "Forecast: {value}",
+      "actualValue": "Actual: {value}",
+      "bankTransfer": "Non-cash",
+      "cashbox1": "Cash register 1",
+      "cashbox2": "Cash register 2",
+      "bankTransferValue": "Non-cash: {value}",
+      "cashbox1Value": "Cash register 1: {value}",
+      "cashbox2Value": "Cash register 2: {value}",
+      "byEntity": "By entity"
+    },
+    "overview": {
+      "incomeTitle": "Income",
+      "expensesTitle": "Expenses",
+      "profitTitle": "Profit"
+    },
+    "prevBalance": {
+      "title": "Balance from previous month",
+      "totalTitle": "Total balance",
+      "totalSubtitle": "Actual for previous month",
+      "byCashRegisters": "Balance by cash register"
+    },
+    "income": {
+      "title": "1. Total income",
+      "forecastCardTitle": "Total income (forecast)",
+      "forecastCardSubtitle": "Including previous month balance",
+      "carryAdjustmentTitle": "Carry-forward adjustment",
+      "carryAdjustmentSubtitle": "Balance after carrying forward overpayment/debt",
+      "totalTitle": "Total income",
+      "carryAdjustmentNote": "The \"carry-forward adjustment\" is not mixed into the current month's actual figures.",
+      "channelsDistribution": "Distribution by payment channel",
+      "entities": {
+        "rent": "Rent",
+        "facilities": "Utilities",
+        "advertising": "Advertising",
+        "additional": "Additional charges",
+        "storeExtra": "Additional income"
+      },
+      "trendTitle": "Monthly income trend"
+    },
+    "expenses": {
+      "title": "2. Total expenses",
+      "forecastCardTitle": "Total expenses (forecast)",
+      "actualCardTitle": "Total expenses (actual)",
+      "channelsTitle": "Expense payment channels (actual)",
+      "entities": {
+        "household": "Household expenses",
+        "other": "Other expenses",
+        "admin": "Administrative expenses",
+        "salaries": "Salaries"
+      },
+      "emptyEntities": "No data by entity yet",
+      "trendTitle": "Monthly expenses trend"
+    },
+    "saldo": {
+      "title": "3. Balance",
+      "forecastCardTitle": "Balance (forecast)",
+      "totalIncomeTitle": "Total income",
+      "totalExpensesTitle": "Total expenses",
+      "saldoTitle": "Balance",
+      "channelsTitle": "Balance channels (actual)",
+      "trendTitle": "Monthly balance trend"
+    },
+    "tradeArea": {
+      "title": "4. Trade area",
+      "pavilionsTotal": "Total rental units",
+      "pavilionsRented": "Occupied rental units",
+      "pavilionsAvailable": "Available rental units",
+      "pavilionsTrendTitle": "Monthly occupied rental units trend",
+      "squareTotal": "Total area",
+      "squareRented": "Rented area",
+      "squareAvailable": "Available area",
+      "squareTrendTitle": "Monthly occupied area trend"
+    },
+    "groups": {
+      "title": "5. Pavilion groups",
+      "empty": "No groups created",
+      "pavilionsCount": "{count} pav.",
+      "rentedOrPrepaid": "Occupied/prepaid:",
+      "area": "Area:",
+      "forecastIncome": "Forecast income",
+      "actualIncome": "Actual income",
+      "convergence": "Convergence"
+    },
+    "downloadModal": {
+      "title": "Download summary (PDF)",
+      "description": "Select the month to generate the file for.",
+      "monthLabel": "Month",
+      "cancel": "Cancel",
+      "downloadButton": "Download PDF",
+      "downloading": "Generating..."
+    }
+  },
+  "MonthlyLineChart": {
+    "occupied": "Occupied: {value}",
+    "ofTotal": "Of total: {value}",
+    "currentValue": "Current value:"
+  },
+  "FinanceTrendChart": {
+    "solidActual": "Solid = Actual",
+    "dashedForecast": "Dashed = Forecast",
+    "actual": "Actual: {value}",
+    "forecast": "Forecast: {value}",
+    "currentValue": "Current value:"
+  }
+}

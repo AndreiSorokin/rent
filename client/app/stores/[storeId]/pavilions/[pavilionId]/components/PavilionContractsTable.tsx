@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { PavilionContract } from '../pavilion.types';
 import { formatDateKey, formatDateInTimeZone } from '@/lib/dateTime';
 
@@ -16,17 +17,18 @@ export function PavilionContractsTable({
   canDeleteContracts: boolean;
   onDeleteContract: (contractId: number) => void;
 }) {
+  const t = useTranslations('PavilionContractsTable');
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-[#f4efeb]">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Файл</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Номер</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Окончание</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Тип</th>
-            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Загружен</th>
-            <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">Действия</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('fileHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('numberHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('expiresHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('typeHeader')}</th>
+            <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">{t('uploadedHeader')}</th>
+            <th className="px-6 py-3 text-right text-xs font-medium uppercase text-gray-500">{t('actionsHeader')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
@@ -54,7 +56,7 @@ export function PavilionContractsTable({
                     onClick={() => onDeleteContract(contract.id)}
                     className="text-red-600 hover:underline"
                   >
-                    Удалить
+                    {t('delete')}
                   </button>
                 )}
               </td>

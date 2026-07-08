@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -47,13 +48,9 @@ function isValidPeriod(value: string | null | undefined) {
 
 const currentPeriod = (timeZone = 'UTC') => getCurrentMonthKeyInTimeZone(timeZone);
 
-const statusMap: Record<string, string> = {
-  AVAILABLE: 'Свободен',
-  RENTED: 'Занят',
-  PREPAID: 'Предоплата',
-};
-
 export default function IncomeForecastBreakdownPage() {
+  const t = useTranslations('IncomeForecastBreakdownPage');
+  const statusMap = t.raw('statusLabels') as Record<string, string>;
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -98,7 +95,7 @@ export default function IncomeForecastBreakdownPage() {
         }
 
         setPermissions(nextPermissions);
-        setStoreName(store.name || `Объект #${storeId}`);
+        setStoreName(store.name || t('storeFallbackName', { storeId }));
         setCurrency(store.currency || 'RUB');
         setStoreTimeZone(store.timeZone || 'UTC');
         if (!isValidPeriod(searchParams.get('period'))) {
@@ -112,7 +109,7 @@ export default function IncomeForecastBreakdownPage() {
         setData(breakdown);
       } catch (err) {
         console.error(err);
-        setError('Не удалось загрузить расшифровку прогноза доходов');
+        setError(t('loadError'));
       } finally {
         setLoading(false);
       }
@@ -128,7 +125,7 @@ export default function IncomeForecastBreakdownPage() {
     router.replace(`/stores/${storeId}/income-forecast?period=${encodeURIComponent(value)}`);
   };
 
-  if (loading) return <FullScreenLoader label="Собираем прогноз..." />;
+  if (loading) return <FullScreenLoader label={t('loadingLabel')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
@@ -137,20 +134,20 @@ export default function IncomeForecastBreakdownPage() {
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
         <div className="space-y-2">
           <Link href={`/stores/${storeId}/summary`} className="text-blue-600 hover:underline">
-            Назад к объекту
+            {t('backToStore')}
           </Link>
-          <h1 className="text-2xl font-bold md:text-3xl">Расшифровка прогноза доходов</h1>
+          <h1 className="text-2xl font-bold md:text-3xl">{t('title')}</h1>
           <p className="text-sm text-gray-600">{storeName}</p>
-          <p className="text-xs text-gray-500">Часовой пояс: {storeTimeZone}</p>
+          <p className="text-xs text-gray-500">{t('timeZoneLabel', { timeZone: storeTimeZone })}</p>
         </div>
 
         <div className="rounded-xl bg-white p-4 shadow md:p-6">
           <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="text-sm text-gray-700">
-              Период расчета: <span className="font-medium">{selectedPeriod}</span>
+              {t('period')} <span className="font-medium">{selectedPeriod}</span>
             </div>
             <label className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">Месяц:</span>
+              <span className="text-gray-600">{t('month')}</span>
               <input
                 type="month"
                 value={selectedPeriod}
@@ -161,30 +158,30 @@ export default function IncomeForecastBreakdownPage() {
           </div>
 
           <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg bg-gray-50 p-3 text-sm md:grid-cols-2">
-            <div>Аренда: {formatMoney(data?.totals.rent ?? 0, currency)}</div>
-            <div>Коммуналка: {formatMoney(data?.totals.utilities ?? 0, currency)}</div>
-            <div>Реклама: {formatMoney(data?.totals.advertising ?? 0, currency)}</div>
-            <div>Доп. начисления: {formatMoney(data?.totals.additional ?? 0, currency)}</div>
-            <div>Доп приход: {formatMoney(data?.totals.storeExtra ?? 0, currency)}</div>
+            <div>{t('totals.rent')} {formatMoney(data?.totals.rent ?? 0, currency)}</div>
+            <div>{t('totals.utilities')} {formatMoney(data?.totals.utilities ?? 0, currency)}</div>
+            <div>{t('totals.advertising')} {formatMoney(data?.totals.advertising ?? 0, currency)}</div>
+            <div>{t('totals.additional')} {formatMoney(data?.totals.additional ?? 0, currency)}</div>
+            <div>{t('totals.storeExtra')} {formatMoney(data?.totals.storeExtra ?? 0, currency)}</div>
             <div className="font-semibold md:col-span-2">
-              Итого прогноз: {formatMoney(data?.totals.total ?? 0, currency)}
+              {t('totals.total')} {formatMoney(data?.totals.total ?? 0, currency)}
             </div>
           </div>
 
           {!data?.items?.length ? (
-            <p className="text-sm text-gray-500">Нет павильонов с прогнозом на выбранный месяц.</p>
+            <p className="text-sm text-gray-500">{t('noPavilions')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Объекты аренды</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Статус</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Аренда</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Коммуналка</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Реклама</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Доп. начисления</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Итого</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.pavilion')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.status')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.rent')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.utilities')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.advertising')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.additional')}</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('table.total')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -192,7 +189,7 @@ export default function IncomeForecastBreakdownPage() {
                     <tr key={item.pavilionId}>
                       <td className="px-4 py-2 text-sm">
                         <div className="font-medium">{item.number}</div>
-                        <div className="text-xs text-gray-500">{item.tenantName || 'Без арендатора'}</div>
+                        <div className="text-xs text-gray-500">{item.tenantName || t('noTenant')}</div>
                       </td>
                       <td className="px-4 py-2 text-sm">{statusMap[item.status] || item.status}</td>
                       <td className="px-4 py-2 text-sm">{formatMoney(item.rent, currency)}</td>
@@ -209,17 +206,17 @@ export default function IncomeForecastBreakdownPage() {
 
           {(data?.storeItems || []).length > 0 && (
             <div className="mt-5">
-              <h2 className="mb-2 text-base font-semibold text-gray-800">Доходы уровня объекта</h2>
+              <h2 className="mb-2 text-base font-semibold text-gray-800">{t('storeIncomeTitle')}</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Дата</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Название</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Сумма</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Безнал</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 1</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">Касса 2</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.date')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.name')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.amount')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.bankTransfer')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.cashbox1')}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">{t('storeIncomeTable.cashbox2')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">

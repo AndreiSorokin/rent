@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { resolveApiMediaUrl } from '@/lib/media';
 import { hasPermission } from '@/lib/permissions';
@@ -17,6 +18,7 @@ type PavilionMediaResponse = {
 };
 
 export default function PavilionMediaPage() {
+  const t = useTranslations('PavilionMediaPage');
   const params = useParams();
   const storeId = Number(params.storeId);
   const pavilionId = Number(params.pavilionId);
@@ -61,10 +63,10 @@ export default function PavilionMediaPage() {
         method: 'POST',
         body: formData,
       });
-      toast.success(files.length === 1 ? 'Фото добавлено' : `Добавлено фотографий: ${files.length}`);
+      toast.success(files.length === 1 ? t('uploadSuccessOne') : t('uploadSuccessMany', { count: files.length }));
       await fetchData();
     } catch (err: any) {
-      toast.error(err?.message || 'Не удалось загрузить фотографии');
+      toast.error(err?.message || t('uploadError'));
     } finally {
       setUploading(false);
       event.target.value = '';
@@ -73,10 +75,10 @@ export default function PavilionMediaPage() {
 
   const handleDelete = async (imageId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление фотографии',
-      message: 'Удалить эту фотографию павильона?',
+      title: t('deleteDialogTitle'),
+      message: t('deleteDialogMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('delete'),
     });
     if (!confirmed) return;
 
@@ -85,22 +87,22 @@ export default function PavilionMediaPage() {
       await apiFetch(`/stores/${storeId}/pavilions/${pavilionId}/media/${imageId}`, {
         method: 'DELETE',
       });
-      toast.success('Фотография удалена');
+      toast.success(t('deleteSuccess'));
       await fetchData();
     } catch (err: any) {
-      toast.error(err?.message || 'Не удалось удалить фотографию');
+      toast.error(err?.message || t('deleteError'));
     } finally {
       setDeletingId(null);
     }
   };
 
   if (loading) {
-    return <div className="p-6 text-center text-lg">Загрузка...</div>;
+    return <div className="p-6 text-center text-lg">{t('loading')}</div>;
   }
 
   const permissions = store?.permissions || [];
   if (!hasPermission(permissions, 'MANAGE_MEDIA')) {
-    return <div className="p-6 text-center text-red-600">Недостаточно прав для управления фотографиями</div>;
+    return <div className="p-6 text-center text-red-600">{t('noPermission')}</div>;
   }
 
   return (
@@ -112,14 +114,14 @@ export default function PavilionMediaPage() {
               href={`/stores/${storeId}/pavilions/${pavilionId}`}
               className="mb-2 inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
             >
-              Назад к павильону
+              {t('backToPavilion')}
             </Link>
             <h1 className="text-2xl font-bold text-[#111111] md:text-3xl">
-              Фото павильона {media?.number}
+              {t('title', { number: media?.number ?? '' })}
             </h1>
           </div>
           <label className="inline-flex cursor-pointer items-center rounded-xl bg-[#ff6a13] px-4 py-2 font-semibold text-white transition hover:bg-[#e85a0c]">
-            {uploading ? 'Загрузка...' : 'Добавить фото'}
+            {uploading ? t('loading') : t('addPhoto')}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -134,7 +136,7 @@ export default function PavilionMediaPage() {
         <div className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)]">
           {!media || media.images.length === 0 ? (
             <div className="flex min-h-[260px] items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-[#f8f4ef] text-sm text-[#6b6b6b]">
-              Фотографий пока нет
+              {t('emptyState')}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -145,7 +147,7 @@ export default function PavilionMediaPage() {
                 >
                   <img
                     src={resolveApiMediaUrl(image.filePath) || undefined}
-                    alt={`Фото павильона ${media.number}`}
+                    alt={t('photoAlt', { number: media.number })}
                     className="h-64 w-full object-cover"
                   />
                   <div className="flex items-center justify-between gap-3 p-4">
@@ -158,7 +160,7 @@ export default function PavilionMediaPage() {
                       disabled={deletingId === image.id}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-60"
                     >
-                      {deletingId === image.id ? 'Удаление...' : 'Удалить'}
+                      {deletingId === image.id ? t('deleting') : t('delete')}
                     </button>
                   </div>
                 </article>

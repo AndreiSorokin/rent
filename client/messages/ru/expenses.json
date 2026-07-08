@@ -1,0 +1,164 @@
+{
+  "StoreAdminExpensesPage": {
+    "adminExpenseTypes": {
+      "PAYROLL_TAX": "Налоги с зарплаты",
+      "PROFIT_TAX": "Налог на прибыль",
+      "VAT": "НДС",
+      "BANK_SERVICES": "Услуги банка",
+      "DIVIDENDS": "Дивиденды",
+      "LAND_RENT": "Аренда земли",
+      "STORE_FACILITIES": "Коммуналка объекта",
+      "OTHER": "Прочее"
+    },
+    "paymentChannels": {
+      "bankTransfer": "Безналичные: {amount}",
+      "cashbox1": "Наличные касса 1: {amount}",
+      "cashbox2": "Наличные касса 2: {amount}"
+    },
+    "loadError": "Не удалось загрузить административные расходы",
+    "loading": "Загружаем расходы...",
+    "title": "Административные расходы",
+    "allExpenses": "Все расходы",
+    "addExpense": "Добавить расход",
+    "searchPlaceholder": "Поиск по названию или типу расхода",
+    "totalAmountLabel": "Общая сумма расходов",
+    "emptyState": "Расходов пока нет",
+    "table": {
+      "date": "Дата",
+      "name": "Название",
+      "status": "Статус",
+      "paymentChannels": "Каналы оплаты",
+      "amount": "Сумма",
+      "actions": "Действия"
+    },
+    "defaultExpenseName": "Административный расход",
+    "statusPaid": "Оплачено",
+    "statusUnpaid": "Не оплачено",
+    "noPaymentChannels": "Каналы оплаты не заданы",
+    "payOrEdit": "Оплатить/Изменить",
+    "createModal": {
+      "title": "Новый административный расход",
+      "hint": "Создаётся в статусе «Не оплачено».",
+      "namePlaceholder": "Название расхода",
+      "amountLabel": "Сумма",
+      "amountPlaceholder": "0",
+      "cancel": "Отмена",
+      "saving": "Сохранение...",
+      "save": "Сохранить"
+    },
+    "editModal": {
+      "title": "Изменить административный расход"
+    },
+    "deleteDialog": {
+      "title": "Удаление расхода",
+      "message": "Удалить этот расход?",
+      "confirmText": "Удалить"
+    },
+    "toast": {
+      "enterName": "Введите название расхода",
+      "enterValidAmount": "Введите корректную сумму",
+      "createError": "Не удалось добавить административный расход",
+      "enterValidName": "Введите корректное название",
+      "nonNegativeChannels": "Суммы по каналам оплаты должны быть неотрицательными",
+      "enterAtLeastOneChannel": "Введите сумму хотя бы в одном канале оплаты",
+      "updateError": "Не удалось обновить административный расход",
+      "deleteError": "Не удалось удалить расход"
+    }
+  },
+  "StoreOtherExpensesPage": {
+    "paymentChannels": {
+      "bankTransfer": "Безналичные: {amount}",
+      "cashbox1": "Наличные касса 1: {amount}",
+      "cashbox2": "Наличные касса 2: {amount}"
+    },
+    "loadError": "Не удалось загрузить прочие расходы",
+    "loading": "Загружаем расходы...",
+    "title": "Прочие расходы",
+    "allExpenses": "Все расходы",
+    "dateFilterTitle": "Фильтр по дате",
+    "reset": "Сбросить",
+    "addExpense": "Добавить расход",
+    "searchPlaceholder": "Поиск по названию расхода",
+    "totalAmountLabel": "Общая сумма расходов",
+    "emptyState": "Расходов пока нет",
+    "table": {
+      "date": "Дата",
+      "name": "Название",
+      "status": "Статус",
+      "paymentChannels": "Каналы оплаты",
+      "amount": "Сумма",
+      "actions": "Действия"
+    },
+    "defaultExpenseName": "Прочий расход",
+    "statusPaid": "Оплачено",
+    "statusUnpaid": "Не оплачено",
+    "noPaymentChannels": "Каналы оплаты не заданы",
+    "payOrEdit": "Оплатить/Изменить",
+    "createModal": {
+      "title": "Новый прочий расход",
+      "hint": "Создаётся сразу в статусе «Оплачено».",
+      "namePlaceholder": "Название расхода",
+      "bankTransferLabel": "Безналичные",
+      "cashbox1Label": "Наличные касса 1",
+      "cashbox2Label": "Наличные касса 2",
+      "amountPlaceholder": "0",
+      "cancel": "Отмена",
+      "saving": "Сохранение...",
+      "save": "Сохранить"
+    },
+    "editModal": {
+      "title": "Изменить прочий расход"
+    },
+    "deleteDialog": {
+      "title": "Удаление расхода",
+      "message": "Удалить этот расход?",
+      "confirmText": "Удалить"
+    },
+    "toast": {
+      "enterName": "Введите название расхода",
+      "enterValidChannelAmounts": "Введите корректные суммы по каналам оплаты",
+      "createError": "Не удалось добавить прочий расход",
+      "enterValidName": "Введите корректное название",
+      "nonNegativeChannels": "Суммы по каналам оплаты должны быть неотрицательными",
+      "enterAtLeastOneChannel": "Введите сумму хотя бы в одном канале оплаты",
+      "updateError": "Не удалось обновить прочий расход",
+      "deleteError": "Не удалось удалить расход"
+    }
+  },
+  "StoreExpenseHistoryPage": {
+    "categoryTitles": {
+      "household": "Хоз расходы за предыдущие месяцы",
+      "other": "Прочие расходы за предыдущие месяцы",
+      "admin": "Административные расходы за предыдущие месяцы",
+      "staff": "Расходы по штату за предыдущие месяцы"
+    },
+    "adminExpenseTypes": {
+      "PAYROLL_TAX": "Налоги с зарплаты",
+      "PROFIT_TAX": "Налог на прибыль",
+      "VAT": "НДС",
+      "BANK_SERVICES": "Услуги банка",
+      "DIVIDENDS": "Дивиденды",
+      "LAND_RENT": "Аренда земли",
+      "STORE_FACILITIES": "Коммуналка объекта",
+      "OTHER": "Административный расход"
+    },
+    "defaultHouseholdName": "Хозяйственный расход",
+    "defaultStaffName": "Расход по штату",
+    "staffMemberLabel": "Сотрудник #{id}",
+    "defaultOtherName": "Прочий расход",
+    "paymentChannels": {
+      "bankTransfer": "Безналичные: {amount}",
+      "cashbox1": "Наличные касса 1: {amount}",
+      "cashbox2": "Наличные касса 2: {amount}"
+    },
+    "loadError": "Не удалось загрузить историю расходов",
+    "loading": "Загружаем историю расходов...",
+    "categoryNotFound": "Категория не найдена",
+    "back": "Назад",
+    "emptyState": "За предыдущие месяцы записей пока нет",
+    "totalAmountLabel": "Общая сумма",
+    "statusPaid": "Оплачено",
+    "statusUnpaid": "Не оплачено",
+    "noPaymentChannels": "Каналы оплаты не заданы"
+  }
+}

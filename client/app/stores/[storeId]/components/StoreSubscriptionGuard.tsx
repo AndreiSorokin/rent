@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, Clock3, CreditCard, LockKeyhole } from 'lucide-react';
 import { getCurrencySymbol } from '@/lib/currency';
 import { startStoreSubscriptionCheckout } from '@/lib/invoices';
@@ -33,22 +34,11 @@ type StoreSubscriptionGuardProps = {
   };
 };
 
-function formatDaysLeft(days: number) {
-  const mod10 = days % 10;
-  const mod100 = days % 100;
-
-  if (mod10 === 1 && mod100 !== 11) return `${days} день`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return `${days} дня`;
-  }
-
-  return `${days} дней`;
-}
-
 export function StoreSubscriptionGuard({
   storeId,
   store,
 }: StoreSubscriptionGuardProps) {
+  const t = useTranslations('StoreSubscriptionGuard');
   const toast = useToast();
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
@@ -91,7 +81,7 @@ export function StoreSubscriptionGuard({
 
       toast.success(result.message);
     } catch (err: any) {
-      toast.error(err?.message || 'Не удалось подготовить оплату');
+      toast.error(err?.message || t('paymentPrepareError'));
     } finally {
       setPaymentLoading(false);
     }
@@ -108,17 +98,16 @@ export function StoreSubscriptionGuard({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c2410c]">
-                  Подписка не оплачена
+                  {t('subscriptionUnpaid')}
                 </p>
                 <h2 className="mt-1 text-2xl font-bold text-[#111111]">
-                  Работа с объектом временно заморожена
+                  {t('frozenTitle')}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-[#5f5f5f]">
-                  Данные объекта сохранены. Чтобы снова пользоваться платформой, нужно
-                  оплатить подписку за текущий месяц.
+                  {t('frozenDescription')}
                 </p>
                 <div className="mt-4 rounded-2xl border border-[#e7ddd4] bg-[#faf7f3] px-4 py-3 text-sm text-[#3f3f46]">
-                  К оплате: <span className="font-semibold text-[#111111]">{amountLabel}</span>
+                  {t('amountDueLabel')} <span className="font-semibold text-[#111111]">{amountLabel}</span>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
@@ -130,7 +119,7 @@ export function StoreSubscriptionGuard({
                       className="inline-flex items-center gap-2 rounded-xl bg-[#FF6A13] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#E65C00] disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       <CreditCard className="h-4 w-4" />
-                      {paymentLoading ? 'Переходим к оплате...' : 'Оплатить подписку'}
+                      {paymentLoading ? t('processingPayment') : t('paySubscription')}
                     </button>
                   ) : needsBillingDetails && canManageStore ? (
                     <Link
@@ -138,14 +127,14 @@ export function StoreSubscriptionGuard({
                       className="inline-flex items-center gap-2 rounded-xl bg-[#FF6A13] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
                     >
                       <CreditCard className="h-4 w-4" />
-                      Заполнить реквизиты для оплаты
+                      {t('fillBillingDetails')}
                     </Link>
                   ) : null}
                 </div>
 
                 {!canManageStore && (
                   <p className="mt-4 text-sm text-[#6b6b6b]">
-                    Если у вас нет доступа к оплате, обратитесь к администратору объекта.
+                    {t('noAccessContactAdmin')}
                   </p>
                 )}
               </div>
@@ -173,16 +162,16 @@ export function StoreSubscriptionGuard({
             <div className="flex items-center gap-2 text-[#c2410c]">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span className="text-xs font-semibold uppercase tracking-[0.14em]">
-                Напоминание об оплате
+                {t('paymentReminderLabel')}
               </span>
 
             </div>
             <p className="mt-1 text-sm font-semibold text-[#111111]">
-              Подписка по объекту не оплачена. К оплате: {amountLabel}.
+              {t('reminderMessage', { amount: amountLabel })}
             </p>
             <p className="mt-1 flex items-center gap-2 text-sm text-[#6b4b38]">
               <Clock3 className="h-4 w-4 shrink-0" />
-              Через {formatDaysLeft(Math.max(1, daysUntilFreeze))} дней доступ будет ограничен.
+              {t('daysUntilFreezeWarning', { days: Math.max(1, daysUntilFreeze) })}
             </p>
           </div>
 
@@ -196,14 +185,14 @@ export function StoreSubscriptionGuard({
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <CreditCard className="h-4 w-4" />
-                {paymentLoading ? 'Переходим к оплате...' : 'Оплатить'}
+                {paymentLoading ? t('processingPayment') : t('pay')}
               </button>
               <button
                 type="button"
                 onClick={handleClose}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[red] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#bbb] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Закрыть
+                {t('close')}
               </button>
               </div>
             ) : needsBillingDetails && canManageStore ? (
@@ -212,7 +201,7 @@ export function StoreSubscriptionGuard({
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
               >
                 <CreditCard className="h-4 w-4" />
-                Заполнить реквизиты
+                {t('fillBillingDetailsShort')}
               </Link>
             ) : null}
           </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -102,15 +103,16 @@ function toDateInput(value?: string | null) {
   return getDateKeyInTimeZone(parsed, 'UTC');
 }
 
-function formatExpenseTitle(note: string | null, type: string) {
+function formatExpenseTitle(note: string | null, type: string, staffSalaryLabel: string) {
   const normalizedNote = String(note ?? '').trim();
   if (normalizedNote.startsWith('STAFF:')) {
-    return 'Зарплата сотрудника';
+    return staffSalaryLabel;
   }
   return normalizedNote || type;
 }
 
 export default function AccountingExpectedClosePage() {
+  const t = useTranslations('AccountingExpectedClosePage');
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -161,7 +163,7 @@ export default function AccountingExpectedClosePage() {
         }
 
         setPermissions(userPermissions);
-        setStoreName(store.name || `Объект #${storeId}`);
+        setStoreName(store.name || t('storeFallbackName', { storeId }));
         setCurrency(store.currency || 'RUB');
         setStoreTimeZone(store.timeZone || 'UTC');
         if (!searchParams.get('date')) {
@@ -171,7 +173,7 @@ export default function AccountingExpectedClosePage() {
         setReconciliation(reconciliationData);
       } catch (err) {
         console.error(err);
-        setError('Не удалось загрузить расшифровку ожидаемого закрытия');
+        setError(t('loadError'));
       } finally {
         setLoading(false);
       }
@@ -189,7 +191,7 @@ export default function AccountingExpectedClosePage() {
     );
   };
 
-  if (loading) return <FullScreenLoader label="Считаем закрытие дня..." />;
+  if (loading) return <FullScreenLoader label={t('loadingLabel')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) return null;
 
@@ -212,18 +214,18 @@ export default function AccountingExpectedClosePage() {
             href={`/stores/${storeId}/accounting?date=${encodeURIComponent(selectedDate)}`}
             className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
-            Назад к открытию/закрытию дня
+            {t('backLink')}
           </Link>
         </div>
-          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl mt-5">Ожидаемое закрытие дня</h1>
+          <h1 className="text-2xl font-bold text-[#111111] md:text-3xl mt-5">{t('title')}</h1>
           <p className="text-sm text-[#6b6b6b]">{storeName}</p>
-          <p className="text-xs text-[#8b7f76]">Часовой пояс: {storeTimeZone}</p>
+          <p className="text-xs text-[#8b7f76]">{t('timeZoneLabel', { timeZone: storeTimeZone })}</p>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-[#6b6b6b]">
-              Дата: <span className="font-medium">{selectedDate}</span>
+              {t('dateLabel')} <span className="font-medium">{selectedDate}</span>
             </div>
             <label className="flex items-center gap-2 text-sm">
-              <span className="text-[#6b6b6b]">Выбрать дату:</span>
+              <span className="text-[#6b6b6b]">{t('selectDateLabel')}</span>
               <input
                 type="date"
                 value={selectedDate}
@@ -235,19 +237,19 @@ export default function AccountingExpectedClosePage() {
 
           <div className="mb-5 grid grid-cols-1 gap-3 rounded-xl bg-[#f8f4ef] p-3 md:grid-cols-4">
             <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
-              <div className="text-xs uppercase text-[#6b6b6b]">Открытие дня</div>
+              <div className="text-xs uppercase text-[#6b6b6b]">{t('dayOpeningLabel')}</div>
               <div className="mt-1 font-semibold">
-                {opening ? formatMoney(opening.total, currency) : 'День не открыт'}
+                {opening ? formatMoney(opening.total, currency) : t('dayNotOpened')}
               </div>
             </div>
             <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
-              <div className="text-xs uppercase text-[#6b6b6b]">Операции за день</div>
+              <div className="text-xs uppercase text-[#6b6b6b]">{t('dayOperationsLabel')}</div>
               <div className="mt-1 font-semibold">
                 {formatMoney(details?.actual?.totals?.total ?? 0, currency)}
               </div>
             </div>
             <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
-              <div className="text-xs uppercase text-violet-600">Ожидаемое закрытие</div>
+              <div className="text-xs uppercase text-violet-600">{t('expectedCloseLabel')}</div>
               <div className="mt-1 font-semibold text-violet-900">
                 {expectedClose ? formatMoney(expectedClose.total, currency) : '-'}
               </div>
@@ -264,7 +266,7 @@ export default function AccountingExpectedClosePage() {
                   hasMismatch ? 'text-rose-600' : 'text-violet-600'
                 }`}
               >
-                Фактическое закрытие
+                {t('actualCloseLabel')}
               </div>
               <div
                 className={`mt-1 font-semibold ${
@@ -281,25 +283,25 @@ export default function AccountingExpectedClosePage() {
               <thead className="bg-[#f4efeb]">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-[#6b6b6b]">
-                    Источник
+                    {t('tableSource')}
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-[#6b6b6b]">
-                    Безналичные
+                    {t('tableBankTransfer')}
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-[#6b6b6b]">
-                    Касса 1
+                    {t('tableCash1')}
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-[#6b6b6b]">
-                    Касса 2
+                    {t('tableCash2')}
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-[#6b6b6b]">
-                    Итого
+                    {t('tableTotal')}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5ded8] bg-white">
                 <tr>
-                  <td className="px-4 py-2 text-sm">Платежи павильонов</td>
+                  <td className="px-4 py-2 text-sm">{t('pavilionPaymentsRow')}</td>
                   <td className="px-4 py-2 text-sm">
                     {formatMoney(details?.actual?.sources?.pavilionPayments?.bankTransferPaid ?? 0, currency)}
                   </td>
@@ -314,7 +316,7 @@ export default function AccountingExpectedClosePage() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2 text-sm">Доп. начисления</td>
+                  <td className="px-4 py-2 text-sm">{t('additionalChargesRow')}</td>
                   <td className="px-4 py-2 text-sm">
                     {formatMoney(details?.actual?.sources?.additionalCharges?.bankTransferPaid ?? 0, currency)}
                   </td>
@@ -329,7 +331,7 @@ export default function AccountingExpectedClosePage() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2 text-sm">Доп. приход объекта</td>
+                  <td className="px-4 py-2 text-sm">{t('storeExtraIncomeRow')}</td>
                   <td className="px-4 py-2 text-sm">
                     {formatMoney(details?.actual?.sources?.storeExtraIncome?.bankTransferPaid ?? 0, currency)}
                   </td>
@@ -344,7 +346,7 @@ export default function AccountingExpectedClosePage() {
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2 text-sm">Расходы</td>
+                  <td className="px-4 py-2 text-sm">{t('expensesRow')}</td>
                   <td className="px-4 py-2 text-sm text-rose-700">
                     -{formatMoney(details?.actual?.sources?.expenses?.bankTransferPaid ?? 0, currency)}
                   </td>
@@ -359,7 +361,7 @@ export default function AccountingExpectedClosePage() {
                   </td>
                 </tr>
                 <tr className="bg-[#f8f4ef]">
-                  <td className="px-4 py-2 text-sm font-semibold">Операции за день (итого)</td>
+                  <td className="px-4 py-2 text-sm font-semibold">{t('dayTotalRow')}</td>
                   <td className="px-4 py-2 text-sm font-semibold">
                     {formatMoney(details?.actual?.totals?.bankTransferPaid ?? 0, currency)}
                   </td>
@@ -379,9 +381,9 @@ export default function AccountingExpectedClosePage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
-              <h2 className="mb-2 text-sm font-semibold text-[#111111]">Платежи павильонов</h2>
+              <h2 className="mb-2 text-sm font-semibold text-[#111111]">{t('pavilionPaymentsHeading')}</h2>
               {!details?.items?.pavilionPayments?.length ? (
-                <p className="text-sm text-[#6b6b6b]">Записей нет</p>
+                <p className="text-sm text-[#6b6b6b]">{t('noRecords')}</p>
               ) : (
                 <div className="space-y-2">
                   {details.items.pavilionPayments.map((item) => (
@@ -391,9 +393,11 @@ export default function AccountingExpectedClosePage() {
                         {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                       </div>
                       <div className="text-xs text-[#4b5563]">
-                        Аренда: {formatMoney(item.rentPaid, currency)} | Коммуналка:{' '}
-                        {formatMoney(item.utilitiesPaid, currency)} | Реклама:{' '}
-                        {formatMoney(item.advertisingPaid, currency)}
+                        {t('pavilionPaymentDetail', {
+                          rent: formatMoney(item.rentPaid, currency),
+                          utilities: formatMoney(item.utilitiesPaid, currency),
+                          advertising: formatMoney(item.advertisingPaid, currency),
+                        })}
                       </div>
                     </div>
                   ))}
@@ -402,9 +406,9 @@ export default function AccountingExpectedClosePage() {
             </div>
 
             <div className="rounded-xl border border-[#d8d1cb] bg-white p-3">
-              <h2 className="mb-2 text-sm font-semibold text-[#111111]">Доп. начисления</h2>
+              <h2 className="mb-2 text-sm font-semibold text-[#111111]">{t('additionalChargesHeading')}</h2>
               {!details?.items?.additionalCharges?.length ? (
-                <p className="text-sm text-[#6b6b6b]">Записей нет</p>
+                <p className="text-sm text-[#6b6b6b]">{t('noRecords')}</p>
               ) : (
                 <div className="space-y-2">
                   {details.items.additionalCharges.map((item) => (
@@ -416,7 +420,7 @@ export default function AccountingExpectedClosePage() {
                         {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                       </div>
                       <div className="text-xs text-[#4b5563]">
-                        Сумма: {formatMoney(item.amountPaid, currency)}
+                        {t('amountLabel', { amount: formatMoney(item.amountPaid, currency) })}
                       </div>
                     </div>
                   ))}
@@ -426,9 +430,9 @@ export default function AccountingExpectedClosePage() {
           </div>
 
           <div className="mt-4 rounded-xl border border-[#d8d1cb] bg-white p-3">
-            <h2 className="mb-2 text-sm font-semibold text-[#111111]">Доп. приход объекта</h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#111111]">{t('storeExtraIncomeHeading')}</h2>
             {!details?.items?.storeExtraIncome?.length ? (
-              <p className="text-sm text-[#6b6b6b]">Записей нет</p>
+              <p className="text-sm text-[#6b6b6b]">{t('noRecords')}</p>
             ) : (
               <div className="space-y-2">
                 {details.items.storeExtraIncome.map((item) => (
@@ -438,7 +442,7 @@ export default function AccountingExpectedClosePage() {
                       {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                     </div>
                     <div className="text-xs text-[#4b5563]">
-                      Сумма: {formatMoney(item.amount, currency)}
+                      {t('amountLabel', { amount: formatMoney(item.amount, currency) })}
                     </div>
                   </div>
                 ))}
@@ -446,22 +450,22 @@ export default function AccountingExpectedClosePage() {
             )}
           </div>
           <div className="mt-4 rounded-xl border border-[#d8d1cb] bg-white p-3">
-            <h2 className="mb-2 text-sm font-semibold text-[#111111]">Расходы</h2>
+            <h2 className="mb-2 text-sm font-semibold text-[#111111]">{t('expensesHeading')}</h2>
             {!details?.items?.expenses?.length ? (
-              <p className="text-sm text-[#6b6b6b]">Записей нет</p>
+              <p className="text-sm text-[#6b6b6b]">{t('noRecords')}</p>
             ) : (
               <div className="space-y-2">
                 {details.items.expenses.map((item) => (
                     <div key={item.id} className="rounded-lg border border-[#e5ded8] bg-[#f8f4ef] p-2 text-sm">
                     <div className="font-medium">
                       {item.pavilionNumber ? `${item.pavilionNumber}: ` : ''}
-                      {formatExpenseTitle(item.note, item.type)}
+                      {formatExpenseTitle(item.note, item.type, t('staffSalaryExpense'))}
                     </div>
                     <div className="text-xs text-[#6b6b6b]">
                       {new Date(item.paidAt).toLocaleString('ru-RU', { timeZone: storeTimeZone })}
                     </div>
                     <div className="text-xs text-rose-700">
-                      Сумма: -{formatMoney(item.total, currency)}
+                      {t('expenseAmountLabel', { amount: formatMoney(item.total, currency) })}
                     </div>
                   </div>
                 ))}

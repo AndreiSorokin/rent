@@ -1,0 +1,59 @@
+{
+  "AddExpenseModal": {
+    "hint": "If payment channels are left empty, the expense will be created as \"Unpaid\".",
+    "nameLabel": "Name",
+    "namePlaceholder": "Enter expense name",
+    "amountLabel": "Amount",
+    "bankTransferLabel": "Bank transfer",
+    "cashbox1Label": "Cash register 1",
+    "cashbox2Label": "Cash register 2",
+    "channelsTotal": "Payment channels: {amount}",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "submit": "Add",
+    "errorNameRequired": "Enter an expense name",
+    "errorInvalidAmount": "Invalid amount",
+    "errorNegativeChannels": "Payment channels must be non-negative",
+    "errorAmountMismatch": "The amount must match the sum of payment channels"
+  },
+  "ExpenseEditModal": {
+    "nameLabelDefault": "Name",
+    "namePlaceholderDefault": "Expense name",
+    "statusLabel": "Payment status",
+    "statusUnpaid": "Unpaid",
+    "statusPaid": "Paid",
+    "bankTransferLabel": "Bank transfer",
+    "cashbox1Label": "Cash register 1",
+    "cashbox2Label": "Cash register 2",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "save": "Save"
+  },
+  "ExpenseSearchInput": {
+    "placeholderDefault": "Search by name"
+  },
+  "ExpenseCreatePaidModal": {
+    "subtitleDefault": "The expense will be created immediately with the \"Paid\" status.",
+    "nameLabelDefault": "Name",
+    "bankTransferLabel": "Bank transfer",
+    "cashbox1Label": "Cash register 1",
+    "cashbox2Label": "Cash register 2",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "submitLabelDefault": "Save"
+  },
+  "ExpenseEditModalOverview": {
+    "nameLabelDefault": "Name",
+    "statusLabel": "Payment status",
+    "statusUnpaid": "Unpaid",
+    "statusPaid": "Paid",
+    "bankTransferLabel": "Bank transfer",
+    "cashbox1Label": "Cash register 1",
+    "cashbox2Label": "Cash register 2",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "submitLabelDefault": "Save"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "StorePage": {
+    "loading": "Загружаем объект...",
+    "notFound": "Магазин не найден",
+    "errors": {
+      "loadFailed": "Не удалось загрузить данные магазина"
+    },
+    "statusLabels": {
+      "available": "СВОБОДЕН",
+      "rented": "ЗАНЯТ",
+      "prepaid": "ПРЕДОПЛАТА"
+    },
+    "paymentStatusLabels": {
+      "paid": "Оплачено",
+      "partial": "Частично оплачено",
+      "unpaid": "Не оплачено"
+    },
+    "pavilions": {
+      "title": "Объекты аренды",
+      "addButton": "Добавить павильон",
+      "searchPlaceholder": "Поиск по имени павильона",
+      "filters": {
+        "categoryDefault": "Категория",
+        "statusDefault": "Статус",
+        "groupDefault": "Группы",
+        "paymentStatusDefault": "Статус оплаты"
+      },
+      "loadingPavilions": "Загрузка павильонов...",
+      "emptyNoPavilions": "В магазине пока нет павильонов",
+      "emptyNoFilterMatch": "По текущим фильтрам павильоны не найдены",
+      "table": {
+        "transfer": "Перенос",
+        "pavilion": "Объекты аренды",
+        "area": "м²",
+        "status": "Статус",
+        "payment": "Оплата",
+        "category": "Категория",
+        "tenantName": "Наименование организации",
+        "groups": "Группы"
+      },
+      "dragHandle": {
+        "titleEnabled": "Потяните, чтобы изменить порядок",
+        "titleDisabled": "Сортировка по оплате активна",
+        "ariaLabel": "Переместить павильон {number}"
+      },
+      "carryLabel": "Перенос: {value}",
+      "vacantLabel": "Свободен",
+      "noContractBadge": "Нет договора",
+      "noGroupsLabel": "Нет групп",
+      "displayLimit": {
+        "show50": "Показать первые 50",
+        "show100": "Показать первые 100",
+        "showAll": "Показать все"
+      }
+    }
+  }
+}

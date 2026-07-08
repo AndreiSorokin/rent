@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
@@ -99,6 +100,7 @@ function MonthlyLineChart({
   valueFormatter = (value: number) => String(value),
   timeZone = 'UTC',
 }: MonthlyLineChartProps) {
+  const t = useTranslations('MonthlyLineChart');
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -240,13 +242,13 @@ function MonthlyLineChart({
             style={{ left: tooltip.x, top: tooltip.y }}
           >
             <div className="font-semibold text-[#111111]">{tooltip.label}</div>
-            <div className="text-[#444]">Занято: {tooltip.value}</div>
-            <div className="text-[#6b6b6b]">Из общего: {tooltip.total}</div>
+            <div className="text-[#444]">{t('occupied', { value: tooltip.value })}</div>
+            <div className="text-[#6b6b6b]">{t('ofTotal', { value: tooltip.total })}</div>
           </div>
         ) : null}
       </div>
       <div className="mt-2 text-xs text-[#6b6b6b]">
-        Текущее значение:{' '}
+        {t('currentValue')}{' '}
         <span className="font-medium text-[#111111]">
           {valueFormatter(points[points.length - 1]?.value ?? 0)}
         </span>
@@ -281,6 +283,7 @@ function FinanceTrendChart({
   valueFormatter = (value: number) => String(Math.round(value)),
   timeZone = 'UTC',
 }: FinanceTrendChartProps) {
+  const t = useTranslations('FinanceTrendChart');
   const [tooltip, setTooltip] = useState<{
     x: number;
     y: number;
@@ -334,12 +337,12 @@ function FinanceTrendChart({
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <span className="inline-flex items-center gap-1.5 text-[#444]">
             <span className="inline-block h-0.5 w-5 rounded bg-blue-600" />
-            Сплошная = Факт
+            {t('solidActual')}
           </span>
           {forecastKey ? (
             <span className="inline-flex items-center gap-1.5 text-[#6b6b6b]">
               <span className="inline-block h-0.5 w-5 border-t-2 border-dashed border-slate-400" />
-              Пунктир = Прогноз
+              {t('dashedForecast')}
             </span>
           ) : null}
         </div>
@@ -456,13 +459,13 @@ function FinanceTrendChart({
             style={{ left: tooltip.x, top: tooltip.y }}
           >
             <div className="font-semibold text-[#111111]">{tooltip.label}</div>
-            <div className="text-[#444]">Факт: {tooltip.actual}</div>
-            {tooltip.forecast ? <div className="text-[#6b6b6b]">Прогноз: {tooltip.forecast}</div> : null}
+            <div className="text-[#444]">{t('actual', { value: tooltip.actual })}</div>
+            {tooltip.forecast ? <div className="text-[#6b6b6b]">{t('forecast', { value: tooltip.forecast })}</div> : null}
           </div>
         ) : null}
       </div>
       <div className="mt-2 text-xs text-[#6b6b6b]">
-        Текущее значение:{' '}
+        {t('currentValue')}{' '}
         <span className="font-medium text-[#111111]">
           {valueFormatter(actualPoints[actualPoints.length - 1]?.actual ?? 0)}
         </span>
@@ -472,6 +475,7 @@ function FinanceTrendChart({
 }
 
 export default function StoreSummaryPage() {
+  const t = useTranslations('StoreSummaryPage');
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
@@ -517,7 +521,7 @@ export default function StoreSummaryPage() {
         setAnalytics(analyticsData);
       } catch (err) {
         console.error(err);
-        setError('Не удалось загрузить сводку');
+        setError(t('errors.loadFailed'));
       } finally {
         setLoading(false);
       }
@@ -656,13 +660,13 @@ export default function StoreSummaryPage() {
   }, [store, analytics, isMobile]);
 
   const navSections = [
-    { id: 'summary-overview', label: 'Обзор' },
-    { id: 'summary-prev-balance', label: 'Остаток прошлого месяца' },
-    { id: 'summary-income', label: 'Общий доход' },
-    { id: 'summary-expenses', label: 'Общий расход' },
-    { id: 'summary-saldo', label: 'Остаток' },
-    { id: 'summary-trade-area', label: 'Торговая площадь' },
-    { id: 'summary-groups', label: 'Группы павильонов' },
+    { id: 'summary-overview', label: t('nav.sections.overview') },
+    { id: 'summary-prev-balance', label: t('nav.sections.prevBalance') },
+    { id: 'summary-income', label: t('nav.sections.income') },
+    { id: 'summary-expenses', label: t('nav.sections.expenses') },
+    { id: 'summary-saldo', label: t('nav.sections.saldo') },
+    { id: 'summary-trade-area', label: t('nav.sections.tradeArea') },
+    { id: 'summary-groups', label: t('nav.sections.groups') },
   ];
 
   useEffect(() => {
@@ -690,7 +694,7 @@ export default function StoreSummaryPage() {
     return () => observer.disconnect();
   }, [loading, error, data]);
 
-  if (loading) return <FullScreenLoader label="Собираем сводку..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store || !analytics || !data) return null;
 
@@ -708,7 +712,7 @@ export default function StoreSummaryPage() {
       );
 
       if (!response.ok) {
-        throw new Error('Не удалось скачать сводку');
+        throw new Error(t('errors.downloadFailed'));
       }
 
       const blob = await response.blob();
@@ -723,7 +727,7 @@ export default function StoreSummaryPage() {
       setShowDownloadModal(false);
     } catch (downloadError) {
       console.error(downloadError);
-      alert('Не удалось скачать PDF');
+      alert(t('errors.downloadFailedAlert'));
     } finally {
       setDownloadingPdf(false);
     }
@@ -734,7 +738,7 @@ export default function StoreSummaryPage() {
       <div className="mx-auto flex max-w-[1600px] gap-6 p-4 md:p-8">
         <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[280px] shrink-0 overflow-y-auto rounded-2xl border border-[#D8D1CB] bg-[#F4EFEB] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)] lg:block">
           <div className="mb-4">
-            <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Сводка</p>
+            <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('nav.sidebarLabel')}</p>
             <h2 className="mt-1 text-lg font-bold text-slate-900">{store.name}</h2>
           </div>
           <div className="space-y-2 border-b border-slate-200 pb-4">
@@ -742,11 +746,11 @@ export default function StoreSummaryPage() {
               href={`/stores/${storeId}`}
               className="inline-flex w-full items-center justify-center rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#f9f5f0]"
             >
-              Назад к объекту
+              {t('nav.backToStore')}
             </Link>
           </div>
           <div className="pt-4">
-            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('nav.navigation')}</p>
             <nav className="space-y-1">
               {navSections.map((item) => (
                 <a
@@ -772,7 +776,7 @@ export default function StoreSummaryPage() {
             onClick={() => setMobileMenuOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg border border-[#D8D1CB] bg-[#F4EFEB] px-3 py-2 text-sm text-slate-700 shadow-sm"
           >
-            Меню
+            {t('nav.menuButton')}
           </button>
         </div>
 
@@ -783,7 +787,7 @@ export default function StoreSummaryPage() {
         >
           <button
             type="button"
-            aria-label="Закрыть меню"
+            aria-label={t('nav.closeMenu')}
             onClick={() => setMobileMenuOpen(false)}
             className="absolute inset-0 bg-black/35"
           />
@@ -794,7 +798,7 @@ export default function StoreSummaryPage() {
           >
             <div className="mb-4 flex items-start justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Сводка</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('nav.sidebarLabel')}</p>
                 <h2 className="mt-1 text-lg font-bold text-slate-900">{store.name}</h2>
               </div>
               <button
@@ -812,12 +816,12 @@ export default function StoreSummaryPage() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="inline-flex w-full items-center justify-center rounded-xl border border-[#D8D1CB] bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-[#f9f5f0]"
               >
-                Назад к объекту
+                {t('nav.backToStore')}
               </Link>
             </div>
 
             <div className="pt-4">
-              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">Навигация</p>
+              <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#6B6B6B]">{t('nav.navigation')}</p>
               <nav className="space-y-1">
                 {navSections.map((item) => (
                   <a
@@ -853,13 +857,13 @@ export default function StoreSummaryPage() {
                 href={`/stores/${storeId}`}
                 className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-medium text-[#111111] transition hover:bg-[#f4efeb]"
               >
-                Назад к объекту
+                {t('nav.backToStore')}
               </Link>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#111111]">СВОДКА</h1>
-              <p className="mt-1 text-sm text-[#6b6b6b]">Ключевые финансовые показатели объекта</p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#111111]">{t('header.title')}</h1>
+              <p className="mt-1 text-sm text-[#6b6b6b]">{t('header.subtitle')}</p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <label htmlFor="summary-month" className="text-sm text-[#6b6b6b]">
-                  Месяц:
+                  {t('header.monthLabel')}
                 </label>
                 <input
                   id="summary-month"
@@ -875,7 +879,7 @@ export default function StoreSummaryPage() {
                   }}
                   className="ml-1 rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c]"
                 >
-                  Скачать сводку
+                  {t('header.downloadButton')}
                 </button>
               </div>
             </div>
@@ -884,53 +888,52 @@ export default function StoreSummaryPage() {
 
         <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Доходы</h2>
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">{t('overview.incomeTitle')}</h2>
             <div className="space-y-1 text-sm text-[#444]">
               <div>
                 <Link
                   href={`/stores/${storeId}/income-forecast?period=${encodeURIComponent(selectedMonth)}`}
                   className="text-[#ff6a13] hover:underline"
                 >
-                  Прогноз: {formatMoney(data.income.forecastWithPrevious ?? 0, data.currency)}
+                  {t('common.forecastValue', { value: formatMoney(data.income.forecastWithPrevious ?? 0, data.currency) })}
                 </Link>
               </div>
-              {/* <div>Факт: {formatMoney(data.income.total ?? 0, data.currency)}</div> */}
               <div>
-                {/* Факт с учетом остатка:{' '} */}
-                Факт: {' '}
-                {formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
+                {t('common.actualValue', { value: formatMoney(data.income.totalWithPrevious ?? 0, data.currency) })}
               </div>
             </div>
           </div>
           <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Расходы</h2>
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">{t('overview.expensesTitle')}</h2>
             <div className="space-y-1 text-sm text-[#444]">
-              <div>Прогноз: {formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}</div>
-              <div>Факт: {formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}</div>
+              <div>{t('common.forecastValue', { value: formatMoney(data.expenses.totals?.forecast ?? 0, data.currency) })}</div>
+              <div>{t('common.actualValue', { value: formatMoney(data.expenses.totals?.actual ?? 0, data.currency) })}</div>
             </div>
           </div>
           <div className="rounded-xl border border-[#d8d1cb] bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-lg font-semibold text-[#111111]">Прибыль</h2>
+            <h2 className="mb-3 text-lg font-semibold text-[#111111]">{t('overview.profitTitle')}</h2>
             <div className="space-y-1 text-sm text-[#444]">
               <div>
-                Прогноз:{' '}
-                {formatMoney(
-                  calcProfit(
-                    Number(data.income.forecastWithPrevious ?? 0),
-                    Number(data.expenses.totals?.forecast ?? 0),
+                {t('common.forecastValue', {
+                  value: formatMoney(
+                    calcProfit(
+                      Number(data.income.forecastWithPrevious ?? 0),
+                      Number(data.expenses.totals?.forecast ?? 0),
+                    ),
+                    data.currency,
                   ),
-                  data.currency,
-                )}
+                })}
               </div>
               <div>
-                Факт:{' '}
-                {formatMoney(
-                  calcProfit(
-                    Number(data.income.totalWithPrevious ?? 0),
-                    Number(data.expenses.totals?.actual ?? 0),
+                {t('common.actualValue', {
+                  value: formatMoney(
+                    calcProfit(
+                      Number(data.income.totalWithPrevious ?? 0),
+                      Number(data.expenses.totals?.actual ?? 0),
+                    ),
+                    data.currency,
                   ),
-                  data.currency,
-                )}
+                })}
               </div>
             </div>
           </div>
@@ -941,27 +944,27 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">Остаток с прошлого месяца</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('prevBalance.title')}</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <MetricCard
-              title="Итого остаток"
+              title={t('prevBalance.totalTitle')}
               value={formatMoney(data.income.previousMonthBalance ?? 0, data.currency)}
-              subtitle="Факт прошлого месяца"
+              subtitle={t('prevBalance.totalSubtitle')}
               tone="primary"
             />
             <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[#6b6b6b]">
-                Остаток по кассам
+                {t('prevBalance.byCashRegisters')}
               </p>
               <div className="mt-2 space-y-1 text-sm text-[#444]">
                 <div>
-                  Безнал: {formatMoney(data.income.previousMonthChannels?.bankTransfer ?? 0, data.currency)}
+                  {t('common.bankTransferValue', { value: formatMoney(data.income.previousMonthChannels?.bankTransfer ?? 0, data.currency) })}
                 </div>
                 <div>
-                  Касса 1: {formatMoney(data.income.previousMonthChannels?.cashbox1 ?? 0, data.currency)}
+                  {t('common.cashbox1Value', { value: formatMoney(data.income.previousMonthChannels?.cashbox1 ?? 0, data.currency) })}
                 </div>
                 <div>
-                  Касса 2: {formatMoney(data.income.previousMonthChannels?.cashbox2 ?? 0, data.currency)}
+                  {t('common.cashbox2Value', { value: formatMoney(data.income.previousMonthChannels?.cashbox2 ?? 0, data.currency) })}
                 </div>
               </div>
             </div>
@@ -973,27 +976,27 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">1. Общий доход</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('income.title')}</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('common.forecast')}</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Итого приход (прогноз)"
+                  title={t('income.forecastCardTitle')}
                   value={formatMoney(data.income.forecastWithPrevious ?? 0, data.currency)}
-                  subtitle="С учетом остатка прошлого месяца"
+                  subtitle={t('income.forecastCardSubtitle')}
                   tone="primary"
                 />
               </div>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t('common.actual')}</p>
               <div className="margin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Корректировка переносом"
+                  title={t('income.carryAdjustmentTitle')}
                   value={formatMoney(-(Number(data.income.carryAdjustment ?? 0)), data.currency)}
-                  subtitle="Баланс после переноса переплаты/долга"
+                  subtitle={t('income.carryAdjustmentSubtitle')}
                   tone="primary"
                 />
                 {/* <MetricCard
@@ -1004,33 +1007,33 @@ export default function StoreSummaryPage() {
                 /> */}
                 <MetricCard
                   // title="Доход с учетом остатка"
-                  title="Итого приход"
+                  title={t('income.totalTitle')}
                   value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
                   // subtitle="Факт текущего месяца + остаток прошлого"
                   tone="primary"
                 />
               </div>
               <p className="mt-2 text-xs text-[#6b6b6b]">
-                «Корректировка переносом» не подмешивается в факт текущего месяца.
+                {t('income.carryAdjustmentNote')}
               </p>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-[#111111]">Распределение по каналам оплаты</p>
+                <p className="text-sm font-semibold text-[#111111]">{t('income.channelsDistribution')}</p>
                 <ChannelRow
-                  label="Безналичные"
+                  label={t('common.bankTransfer')}
                   value={data.income.channels?.bankTransfer ?? 0}
                   total={data.income.channels?.total ?? 0}
                   currency={data.currency}
                   colorClass="bg-blue-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 1"
+                  label={t('common.cashbox1')}
                   value={data.income.channels?.cashbox1 ?? 0}
                   total={data.income.channels?.total ?? 0}
                   currency={data.currency}
                   colorClass="bg-emerald-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 2"
+                  label={t('common.cashbox2')}
                   value={data.income.channels?.cashbox2 ?? 0}
                   total={data.income.channels?.total ?? 0}
                   currency={data.currency}
@@ -1041,57 +1044,57 @@ export default function StoreSummaryPage() {
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#111111]">По сущностям</p>
+            <p className="mb-3 text-sm font-semibold text-[#111111]">{t('common.byEntity')}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs uppercase text-gray-500">Аренда</p>
+                <p className="text-xs uppercase text-gray-500">{t('income.entities.rent')}</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.rent?.total ?? 0, data.currency)}</p>
                 <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                  <div>Безнал: {formatMoney(data.channelsByEntity.rent?.bankTransfer ?? 0, data.currency)}</div>
-                  <div>Касса 1: {formatMoney(data.channelsByEntity.rent?.cashbox1 ?? 0, data.currency)}</div>
-                  <div>Касса 2: {formatMoney(data.channelsByEntity.rent?.cashbox2 ?? 0, data.currency)}</div>
+                  <div>{t('common.bankTransferValue', { value: formatMoney(data.channelsByEntity.rent?.bankTransfer ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox1Value', { value: formatMoney(data.channelsByEntity.rent?.cashbox1 ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox2Value', { value: formatMoney(data.channelsByEntity.rent?.cashbox2 ?? 0, data.currency) })}</div>
                 </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs uppercase text-gray-500">Коммунальные</p>
+                <p className="text-xs uppercase text-gray-500">{t('income.entities.facilities')}</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.facilities?.total ?? 0, data.currency)}</p>
                 <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                  <div>Безнал: {formatMoney(data.channelsByEntity.facilities?.bankTransfer ?? 0, data.currency)}</div>
-                  <div>Касса 1: {formatMoney(data.channelsByEntity.facilities?.cashbox1 ?? 0, data.currency)}</div>
-                  <div>Касса 2: {formatMoney(data.channelsByEntity.facilities?.cashbox2 ?? 0, data.currency)}</div>
+                  <div>{t('common.bankTransferValue', { value: formatMoney(data.channelsByEntity.facilities?.bankTransfer ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox1Value', { value: formatMoney(data.channelsByEntity.facilities?.cashbox1 ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox2Value', { value: formatMoney(data.channelsByEntity.facilities?.cashbox2 ?? 0, data.currency) })}</div>
                 </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs uppercase text-gray-500">Реклама</p>
+                <p className="text-xs uppercase text-gray-500">{t('income.entities.advertising')}</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.advertising?.total ?? 0, data.currency)}</p>
                 <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                  <div>Безнал: {formatMoney(data.channelsByEntity.advertising?.bankTransfer ?? 0, data.currency)}</div>
-                  <div>Касса 1: {formatMoney(data.channelsByEntity.advertising?.cashbox1 ?? 0, data.currency)}</div>
-                  <div>Касса 2: {formatMoney(data.channelsByEntity.advertising?.cashbox2 ?? 0, data.currency)}</div>
+                  <div>{t('common.bankTransferValue', { value: formatMoney(data.channelsByEntity.advertising?.bankTransfer ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox1Value', { value: formatMoney(data.channelsByEntity.advertising?.cashbox1 ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox2Value', { value: formatMoney(data.channelsByEntity.advertising?.cashbox2 ?? 0, data.currency) })}</div>
                 </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs uppercase text-gray-500">Доп. начисления</p>
+                <p className="text-xs uppercase text-gray-500">{t('income.entities.additional')}</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.additional?.total ?? 0, data.currency)}</p>
                 <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                  <div>Безнал: {formatMoney(data.channelsByEntity.additional?.bankTransfer ?? 0, data.currency)}</div>
-                  <div>Касса 1: {formatMoney(data.channelsByEntity.additional?.cashbox1 ?? 0, data.currency)}</div>
-                  <div>Касса 2: {formatMoney(data.channelsByEntity.additional?.cashbox2 ?? 0, data.currency)}</div>
+                  <div>{t('common.bankTransferValue', { value: formatMoney(data.channelsByEntity.additional?.bankTransfer ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox1Value', { value: formatMoney(data.channelsByEntity.additional?.cashbox1 ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox2Value', { value: formatMoney(data.channelsByEntity.additional?.cashbox2 ?? 0, data.currency) })}</div>
                 </div>
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <p className="text-xs uppercase text-gray-500">Доп приход</p>
+                <p className="text-xs uppercase text-gray-500">{t('income.entities.storeExtra')}</p>
                 <p className="mt-1 text-lg font-semibold">{formatMoney(data.channelsByEntity.storeExtra?.total ?? 0, data.currency)}</p>
                 <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                  <div>Безнал: {formatMoney(data.channelsByEntity.storeExtra?.bankTransfer ?? 0, data.currency)}</div>
-                  <div>Касса 1: {formatMoney(data.channelsByEntity.storeExtra?.cashbox1 ?? 0, data.currency)}</div>
-                  <div>Касса 2: {formatMoney(data.channelsByEntity.storeExtra?.cashbox2 ?? 0, data.currency)}</div>
+                  <div>{t('common.bankTransferValue', { value: formatMoney(data.channelsByEntity.storeExtra?.bankTransfer ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox1Value', { value: formatMoney(data.channelsByEntity.storeExtra?.cashbox1 ?? 0, data.currency) })}</div>
+                  <div>{t('common.cashbox2Value', { value: formatMoney(data.channelsByEntity.storeExtra?.cashbox2 ?? 0, data.currency) })}</div>
                 </div>
               </div>
             </div>
           </div>
           <FinanceTrendChart
-            title="Тренд дохода по месяцам"
+            title={t('income.trendTitle')}
             items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
             actualKey="incomeActual"
             forecastKey="incomeForecast"
@@ -1105,46 +1108,46 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">2. Общий расход</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('expenses.title')}</h2>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('common.forecast')}</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Итого расход (прогноз)"
+                  title={t('expenses.forecastCardTitle')}
                   value={formatMoney(data.expenses.totals?.forecast ?? 0, data.currency)}
                   tone="danger"
                 />
               </div>
             </div>
             <div className="rounded-xl border border-rose-100 bg-rose-50/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Факт</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">{t('common.actual')}</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Итого расход (факт)"
+                  title={t('expenses.actualCardTitle')}
                   value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
                   tone="danger"
                 />
               </div>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-[#111111]">Каналы оплаты расходов (факт)</p>
+                <p className="text-sm font-semibold text-[#111111]">{t('expenses.channelsTitle')}</p>
                 <ChannelRow
-                  label="Безналичные"
+                  label={t('common.bankTransfer')}
                   value={data.expenseChannels?.bankTransfer ?? 0}
                   total={data.expenseChannels?.total ?? 0}
                   currency={data.currency}
                   colorClass="bg-blue-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 1"
+                  label={t('common.cashbox1')}
                   value={data.expenseChannels?.cashbox1 ?? 0}
                   total={data.expenseChannels?.total ?? 0}
                   currency={data.currency}
                   colorClass="bg-emerald-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 2"
+                  label={t('common.cashbox2')}
                   value={data.expenseChannels?.cashbox2 ?? 0}
                   total={data.expenseChannels?.total ?? 0}
                   currency={data.currency}
@@ -1155,7 +1158,7 @@ export default function StoreSummaryPage() {
           </div>
 
           <div>
-            <p className="mb-3 text-sm font-semibold text-[#111111]">По сущностям</p>
+            <p className="mb-3 text-sm font-semibold text-[#111111]">{t('common.byEntity')}</p>
             {(() => {
               const byType = (data.expenseByType || {}) as Record<string, number>;
               const channelsByType = (data.expenseChannelsByType || {}) as Record<
@@ -1188,10 +1191,10 @@ export default function StoreSummaryPage() {
               };
 
               const cards = [
-                { key: 'household', label: 'Хоз. расходы', ...sumGroup(['household']) },
-                { key: 'other', label: 'Прочие расходы', ...sumGroup(['other']) },
-                { key: 'admin', label: 'Административные расходы', ...sumGroup(adminKeys) },
-                { key: 'salaries', label: 'Зарплаты', ...sumGroup(['salaries']) },
+                { key: 'household', label: t('expenses.entities.household'), ...sumGroup(['household']) },
+                { key: 'other', label: t('expenses.entities.other'), ...sumGroup(['other']) },
+                { key: 'admin', label: t('expenses.entities.admin'), ...sumGroup(adminKeys) },
+                { key: 'salaries', label: t('expenses.entities.salaries'), ...sumGroup(['salaries']) },
               ]
                 .filter(
                   (item) =>
@@ -1204,7 +1207,7 @@ export default function StoreSummaryPage() {
               if (!cards.length) {
                 return (
                   <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4 text-sm text-[#6b6b6b]">
-                    Данных по сущностям пока нет
+                    {t('expenses.emptyEntities')}
                   </div>
                 );
               }
@@ -1218,9 +1221,9 @@ export default function StoreSummaryPage() {
                         {formatMoney(item.total, data.currency)}
                       </p>
                       <div className="mt-2 space-y-1 text-[11px] text-gray-600">
-                        <div>Безнал: {formatMoney(item.bank, data.currency)}</div>
-                        <div>Касса 1: {formatMoney(item.cash1, data.currency)}</div>
-                        <div>Касса 2: {formatMoney(item.cash2, data.currency)}</div>
+                        <div>{t('common.bankTransferValue', { value: formatMoney(item.bank, data.currency) })}</div>
+                        <div>{t('common.cashbox1Value', { value: formatMoney(item.cash1, data.currency) })}</div>
+                        <div>{t('common.cashbox2Value', { value: formatMoney(item.cash2, data.currency) })}</div>
                       </div>
                     </div>
                   ))}
@@ -1230,7 +1233,7 @@ export default function StoreSummaryPage() {
           </div>
 
           <FinanceTrendChart
-            title="Тренд расхода по месяцам"
+            title={t('expenses.trendTitle')}
             items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
             actualKey="expensesActual"
             forecastKey="expensesForecast"
@@ -1244,14 +1247,14 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">3. Остаток</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('saldo.title')}</h2>
 
           <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Прогноз</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">{t('common.forecast')}</p>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Остаток (прогноз)"
+                  title={t('saldo.forecastCardTitle')}
                   value={formatMoney(
                     calcProfit(
                       data.income.forecastWithPrevious ?? 0,
@@ -1264,42 +1267,42 @@ export default function StoreSummaryPage() {
               </div>
             </div>
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Факт</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{t('common.actual')}</p>
               <div className=",argin-top-3 grid grid-cols-1 gap-3">
                 <MetricCard
-                  title="Общий приход"
+                  title={t('saldo.totalIncomeTitle')}
                   value={formatMoney(data.income.totalWithPrevious ?? 0, data.currency)}
                   tone="success"
                 />
                 <MetricCard
-                  title="Общий расход"
+                  title={t('saldo.totalExpensesTitle')}
                   value={formatMoney(data.expenses.totals?.actual ?? 0, data.currency)}
                   tone="danger"
                 />
                 <MetricCard
-                  title="Остаток"
+                  title={t('saldo.saldoTitle')}
                   value={formatMoney(data.saldo, data.currency)}
                   tone={data.saldo >= 0 ? 'success' : 'danger'}
                 />
               </div>
               <div className="mt-3 space-y-3">
-                <p className="text-sm font-semibold text-[#111111]">Каналы остатка (факт)</p>
+                <p className="text-sm font-semibold text-[#111111]">{t('saldo.channelsTitle')}</p>
                 <ChannelRow
-                  label="Безналичные"
+                  label={t('common.bankTransfer')}
                   value={data.saldoChannels?.bankTransfer ?? 0}
                   total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
                   currency={data.currency}
                   colorClass="bg-blue-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 1"
+                  label={t('common.cashbox1')}
                   value={data.saldoChannels?.cashbox1 ?? 0}
                   total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
                   currency={data.currency}
                   colorClass="bg-emerald-500"
                 />
                 <ChannelRow
-                  label="Наличные касса 2"
+                  label={t('common.cashbox2')}
                   value={data.saldoChannels?.cashbox2 ?? 0}
                   total={Math.max(1, Math.abs(data.saldoChannels?.total ?? 0))}
                   currency={data.currency}
@@ -1310,7 +1313,7 @@ export default function StoreSummaryPage() {
           </div>
           <div className="mt-4">
             <FinanceTrendChart
-              title="Тренд остатка по месяцам"
+              title={t('saldo.trendTitle')}
               items={(data.financeTrend ?? []) as MonthlyFinancePoint[]}
               actualKey="saldo"
               valueFormatter={(value) => formatMoney(value, data.currency)}
@@ -1324,15 +1327,15 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">4. Торговая площадь</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('tradeArea.title')}</h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <MetricCard title="Объектов аренды всего" value={String(data.tradeArea.pavilionsTotal ?? 0)} />
-            <MetricCard title="Объектов аренды занято" value={String(data.tradeArea.pavilionsRented ?? 0)} />
-            <MetricCard title="Объектов аренды свободно" value={String(data.tradeArea.pavilionsAvailable ?? 0)} />
+            <MetricCard title={t('tradeArea.pavilionsTotal')} value={String(data.tradeArea.pavilionsTotal ?? 0)} />
+            <MetricCard title={t('tradeArea.pavilionsRented')} value={String(data.tradeArea.pavilionsRented ?? 0)} />
+            <MetricCard title={t('tradeArea.pavilionsAvailable')} value={String(data.tradeArea.pavilionsAvailable ?? 0)} />
           </div>
           <MonthlyLineChart
-            title="Динамика занятых объектов аренды по месяцам"
+            title={t('tradeArea.pavilionsTrendTitle')}
             items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
             valueKey="pavilionsRented"
             totalKey="pavilionsTotal"
@@ -1340,12 +1343,12 @@ export default function StoreSummaryPage() {
           />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <MetricCard title="Общая площадь" value={`${data.tradeArea.squareTotal ?? 0} м²`} />
-            <MetricCard title="Площадь в аренде" value={`${data.tradeArea.squareRented ?? 0} м²`} />
-            <MetricCard title="Свободная площадь" value={`${data.tradeArea.squareAvailable ?? 0} м²`} />
+            <MetricCard title={t('tradeArea.squareTotal')} value={`${data.tradeArea.squareTotal ?? 0} м²`} />
+            <MetricCard title={t('tradeArea.squareRented')} value={`${data.tradeArea.squareRented ?? 0} м²`} />
+            <MetricCard title={t('tradeArea.squareAvailable')} value={`${data.tradeArea.squareAvailable ?? 0} м²`} />
           </div>
           <MonthlyLineChart
-            title="Динамика занятой площади по месяцам"
+            title={t('tradeArea.squareTrendTitle')}
             items={(data.tradeArea.monthlyTrend ?? []) as MonthlyTradeAreaPoint[]}
             valueKey="squareRented"
             totalKey="squareTotal"
@@ -1359,10 +1362,10 @@ export default function StoreSummaryPage() {
           data-summary-section
           className="space-y-4 rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-6"
         >
-          <h2 className="text-xl font-semibold text-[#111111]">5. Группы павильонов</h2>
+          <h2 className="text-xl font-semibold text-[#111111]">{t('groups.title')}</h2>
 
           {data.groupedByPavilionGroups.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-gray-600">Группы не созданы</p>
+            <p className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 text-gray-600">{t('groups.empty')}</p>
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {data.groupedByPavilionGroups.map((group: any) => (
@@ -1370,26 +1373,26 @@ export default function StoreSummaryPage() {
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
                     <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
-                      {group.pavilionsTotal} пав.
+                      {t('groups.pavilionsCount', { count: group.pavilionsTotal })}
                     </span>
                   </div>
 
                   <div className="space-y-1 text-sm text-gray-700">
-                    <div>Занято/предоплата: <span className="font-medium">{group.pavilionsRentedOrPrepaid}</span></div>
-                    <div>Площадь: <span className="font-medium">{group.squareTotal} м²</span></div>
+                    <div>{t('groups.rentedOrPrepaid')} <span className="font-medium">{group.pavilionsRentedOrPrepaid}</span></div>
+                    <div>{t('groups.area')} <span className="font-medium">{group.squareTotal} м²</span></div>
                   </div>
 
                   <div className="mt-3 border-t border-gray-100 pt-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Прогнозный доход</span>
+                      <span className="text-gray-600">{t('groups.forecastIncome')}</span>
                       <span className="font-medium">{formatMoney(group.forecastIncome ?? 0, data.currency)}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="text-gray-600">Фактический доход</span>
+                      <span className="text-gray-600">{t('groups.actualIncome')}</span>
                       <span className="font-medium">{formatMoney(group.actualIncome ?? 0, data.currency)}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2">
-                      <span className="text-gray-700">Схождение</span>
+                      <span className="text-gray-700">{t('groups.convergence')}</span>
                       <span className={`font-semibold ${(group.delta ?? 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                         {formatMoney(group.delta ?? 0, data.currency)}
                       </span>
@@ -1405,13 +1408,13 @@ export default function StoreSummaryPage() {
       {showDownloadModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
-            <h3 className="text-lg font-semibold text-[#111111]">Скачать сводку (PDF)</h3>
+            <h3 className="text-lg font-semibold text-[#111111]">{t('downloadModal.title')}</h3>
             <p className="mt-1 text-sm text-[#6b6b6b]">
-              Выберите месяц, за который нужно сформировать файл.
+              {t('downloadModal.description')}
             </p>
             <div className="mt-4">
               <label htmlFor="download-month" className="mb-1 block text-sm text-[#444]">
-                Месяц
+                {t('downloadModal.monthLabel')}
               </label>
               <input
                 id="download-month"
@@ -1427,14 +1430,14 @@ export default function StoreSummaryPage() {
                 disabled={downloadingPdf}
                 className="rounded-xl border border-[#d8d1cb] px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-60"
               >
-                Отмена
+                {t('downloadModal.cancel')}
               </button>
               <button
                 onClick={handleDownloadSummaryPdf}
                 disabled={downloadingPdf || !downloadMonth}
                 className="rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
               >
-                {downloadingPdf ? 'Формирование...' : 'Скачать PDF'}
+                {downloadingPdf ? t('downloadModal.downloading') : t('downloadModal.downloadButton')}
               </button>
             </div>
           </div>

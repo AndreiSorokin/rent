@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -21,6 +22,7 @@ function formatDateKeyRu(dateKey: string) {
 }
 
 export default function StoreAccountingPage() {
+  const t = useTranslations('StoreAccountingPage');
   const params = useParams();
   const router = useRouter();
   const storeId = Number(params.storeId);
@@ -73,7 +75,7 @@ export default function StoreAccountingPage() {
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить бух. таблицу');
+      setError(t('loadError'));
     } finally {
       if (withLoader) setLoading(false);
     }
@@ -110,10 +112,10 @@ export default function StoreAccountingPage() {
 
   const handleDeleteAccountingRecord = async (recordId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление записи',
-      message: 'Удалить эту запись из бухгалтерской таблицы?',
+      title: t('deleteRecordDialogTitle'),
+      message: t('deleteRecordDialogMessage'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('deleteRecordConfirm'),
     });
     if (!confirmed) return;
     try {
@@ -124,8 +126,8 @@ export default function StoreAccountingPage() {
     } catch (err) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось удалить запись',
-        message: 'Попробуйте еще раз. Если ошибка повторится, проверьте соединение с сервером.',
+        title: t('deleteRecordFailedTitle'),
+        message: t('deleteRecordFailedMessage'),
         tone: 'danger',
       });
     }
@@ -136,7 +138,7 @@ export default function StoreAccountingPage() {
     const cash1 = dayOpenCash1 ? Number(dayOpenCash1) : 0;
     const cash2 = dayOpenCash2 ? Number(dayOpenCash2) : 0;
     if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
-      await dialog.alert('Введите корректные суммы');
+      await dialog.alert(t('invalidAmounts'));
       return;
     }
 
@@ -151,8 +153,8 @@ export default function StoreAccountingPage() {
 
     if (isMismatch) {
       await dialog.alert({
-        title: 'Нельзя открыть день с несхождением',
-        message: 'Сумма по каналам должна совпадать с состоянием объекта.',
+        title: t('openMismatchTitle'),
+        message: t('openMismatchMessage'),
         tone: 'warning',
       });
       return;
@@ -174,8 +176,8 @@ export default function StoreAccountingPage() {
     } catch (err: any) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось открыть день',
-        message: err?.message || 'Не удалось открыть день',
+        title: t('openFailedTitle'),
+        message: err?.message || t('openFailedTitle'),
         tone: 'danger',
       });
     } finally {
@@ -188,7 +190,7 @@ export default function StoreAccountingPage() {
     const cash1 = dayCloseCash1 ? Number(dayCloseCash1) : 0;
     const cash2 = dayCloseCash2 ? Number(dayCloseCash2) : 0;
     if (Number.isNaN(bank) || Number.isNaN(cash1) || Number.isNaN(cash2)) {
-      await dialog.alert('Введите корректные суммы');
+      await dialog.alert(t('invalidAmounts'));
       return;
     }
 
@@ -203,8 +205,8 @@ export default function StoreAccountingPage() {
 
     if (isMismatch) {
       await dialog.alert({
-        title: 'Нельзя закрыть день с несхождением',
-        message: 'Проверьте фактические суммы и добейтесь совпадения с ожидаемым закрытием.',
+        title: t('closeMismatchTitle'),
+        message: t('closeMismatchMessage'),
         tone: 'warning',
       });
       return;
@@ -226,8 +228,8 @@ export default function StoreAccountingPage() {
     } catch (err: any) {
       console.error(err);
       await dialog.alert({
-        title: 'Не удалось закрыть день',
-        message: err?.message || 'Не удалось закрыть день',
+        title: t('closeFailedTitle'),
+        message: err?.message || t('closeFailedTitle'),
         tone: 'danger',
       });
     } finally {
@@ -316,11 +318,11 @@ export default function StoreAccountingPage() {
     };
   }, [expectedCloseDetails]);
 
-  if (loading) return <FullScreenLoader label="Загружаем бухгалтерию..." />;
+  if (loading) return <FullScreenLoader label={t('loadingLabel')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
-  if (!store) return <div className="p-6 text-center text-red-600">Объект не найден</div>;
+  if (!store) return <div className="p-6 text-center text-red-600">{t('storeNotFound')}</div>;
   if (!hasPermission(permissions, 'VIEW_PAYMENTS')) {
-    return <div className="p-6 text-center text-red-600">Нет доступа</div>;
+    return <div className="p-6 text-center text-red-600">{t('noAccess')}</div>;
   }
 
 
@@ -337,12 +339,12 @@ export default function StoreAccountingPage() {
         >
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="mt-1 text-2xl font-bold text-[#111111] md:text-3xl">Открытие/закрытие смены</h1>
+          <h1 className="mt-1 text-2xl font-bold text-[#111111] md:text-3xl">{t('title')}</h1>
           <Link
             href={`/stores/${storeId}/accounting-expected-close?date=${encodeURIComponent(accountingDate)}`}
             className="inline-flex items-center rounded-xl border border-[#d8d1cb] bg-white px-4 py-2 text-sm font-semibold text-[#111111] transition hover:bg-[#f8f4ef]"
           >
-            Полная информация
+            {t('fullDetailsLink')}
           </Link>
         </div>
 
@@ -377,7 +379,7 @@ export default function StoreAccountingPage() {
 
         <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-            Ожидаемое закрытие
+            {t('expectedCloseTitle')}
           </div>
           <div className="mt-1 text-xl font-bold text-[#111111]">
             {dayReconciliation?.expectedClose
@@ -387,15 +389,15 @@ export default function StoreAccountingPage() {
           {dayReconciliation?.expectedClose && (
             <div className="mt-2 grid grid-cols-1 gap-1 text-sm text-[#6b6b6b] md:grid-cols-1">
               <div>
-                Безналичные:{' '}
+                {t('bankTransferLabel')}{' '}
                 {formatMoney(dayReconciliation.expectedClose.bankTransferPaid ?? 0, store.currency)}
               </div>
               <div>
-                Наличные касса 1:{' '}
+                {t('cash1Label')}{' '}
                 {formatMoney(dayReconciliation.expectedClose.cashbox1Paid ?? 0, store.currency)}
               </div>
               <div>
-                Наличные касса 2:{' '}
+                {t('cash2Label')}{' '}
                 {formatMoney(dayReconciliation.expectedClose.cashbox2Paid ?? 0, store.currency)}
               </div>
             </div>
@@ -404,9 +406,9 @@ export default function StoreAccountingPage() {
 
         <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-white p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold text-[#111111]">Сверка по дням</h3>
+            <h3 className="text-base font-semibold text-[#111111]">{t('reconciliationTitle')}</h3>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#6b6b6b]">Дата:</span>
+              <span className="text-xs text-[#6b6b6b]">{t('dateLabel')}</span>
               <input
                 type="date"
                 value={accountingDate}
@@ -420,9 +422,9 @@ export default function StoreAccountingPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {!dayReconciliation.isOpened && (
                 <div className="rounded-xl border border-[#e5ded8] bg-white p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#111111]">Открыть день</p>
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">{t('openDayHeading')}</p>
                   <p className="mb-3 text-xs text-[#6b6b6b]">
-                    Сумма по каналам должна совпадать с состоянием объекта.
+                    {t('openDayHint')}
                   </p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
@@ -431,7 +433,7 @@ export default function StoreAccountingPage() {
                       value={dayOpenBank}
                       onChange={(e) => setDayOpenBank(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Безналичные"
+                      placeholder={t('bankTransferPlaceholder')}
                     />
                     <input
                       type="number"
@@ -439,7 +441,7 @@ export default function StoreAccountingPage() {
                       value={dayOpenCash1}
                       onChange={(e) => setDayOpenCash1(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Касса 1"
+                      placeholder={t('cash1Placeholder')}
                     />
                     <input
                       type="number"
@@ -447,7 +449,7 @@ export default function StoreAccountingPage() {
                       value={dayOpenCash2}
                       onChange={(e) => setDayOpenCash2(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Касса 2"
+                      placeholder={t('cash2Placeholder')}
                     />
                   </div>
                   <button
@@ -455,14 +457,14 @@ export default function StoreAccountingPage() {
                     disabled={dayActionSaving}
                     className="mt-3 rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-60"
                   >
-                    Открыть день
+                    {t('openDayButton')}
                   </button>
                 </div>
               )}
 
               {dayReconciliation.isOpened && !dayReconciliation.isClosed && (
                 <div className="rounded-xl border border-[#e5ded8] bg-white p-3">
-                  <p className="mb-2 text-sm font-semibold text-[#111111]">Закрыть день</p>
+                  <p className="mb-2 text-sm font-semibold text-[#111111]">{t('closeDayHeading')}</p>
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                     <input
                       type="number"
@@ -470,7 +472,7 @@ export default function StoreAccountingPage() {
                       value={dayCloseBank}
                       onChange={(e) => setDayCloseBank(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Безналичные"
+                      placeholder={t('bankTransferPlaceholder')}
                     />
                     <input
                       type="number"
@@ -478,7 +480,7 @@ export default function StoreAccountingPage() {
                       value={dayCloseCash1}
                       onChange={(e) => setDayCloseCash1(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Касса 1"
+                      placeholder={t('cash1Placeholder')}
                     />
                     <input
                       type="number"
@@ -486,7 +488,7 @@ export default function StoreAccountingPage() {
                       value={dayCloseCash2}
                       onChange={(e) => setDayCloseCash2(e.target.value)}
                       className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-2 text-[#111111] outline-none transition focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20"
-                      placeholder="Касса 2"
+                      placeholder={t('cash2Placeholder')}
                     />
                   </div>
                   <button
@@ -494,14 +496,14 @@ export default function StoreAccountingPage() {
                     disabled={dayActionSaving}
                     className="mt-3 rounded-xl bg-[#ff6a13] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
                   >
-                    Закрыть день
+                    {t('closeDayButton')}
                   </button>
                 </div>
               )}
 
               {dayReconciliation.isClosed && (
                 <div className="rounded-xl border border-[#e5ded8] bg-[#f8f4ef] p-3 text-sm text-[#6b6b6b]">
-                  День уже закрыт для выбранной даты.
+                  {t('dayAlreadyClosed')}
                 </div>
               )}
             </div>
@@ -509,7 +511,7 @@ export default function StoreAccountingPage() {
         </div>
 
         {accountingDays.length === 0 ? (
-          <p className="text-[#6b6b6b]">Записей пока нет</p>
+          <p className="text-[#6b6b6b]">{t('noRecordsYet')}</p>
         ) : (
           <div className="space-y-3">
             {accountingDays.map((day: any) => {
@@ -533,17 +535,17 @@ export default function StoreAccountingPage() {
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     <article className="rounded-xl border border-[#e5ded8] bg-white p-3">
                       <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                        Открытие дня
+                        {t('dayOpeningHeading')}
                       </div>
                       {day.opening ? (
                         <>
                           <div className="space-y-1 text-sm text-[#111111]">
-                            <div>Безналичные: {formatMoney(day.opening.bankTransferPaid ?? 0, store.currency)}</div>
-                            <div>Наличные касса 1: {formatMoney(day.opening.cashbox1Paid ?? 0, store.currency)}</div>
-                            <div>Наличные касса 2: {formatMoney(day.opening.cashbox2Paid ?? 0, store.currency)}</div>
+                            <div>{t('bankTransferLabel')} {formatMoney(day.opening.bankTransferPaid ?? 0, store.currency)}</div>
+                            <div>{t('cash1Label')} {formatMoney(day.opening.cashbox1Paid ?? 0, store.currency)}</div>
+                            <div>{t('cash2Label')} {formatMoney(day.opening.cashbox2Paid ?? 0, store.currency)}</div>
                           </div>
                           <div className="mt-2 flex items-center justify-between border-t border-[#d8d1cb] pt-2">
-                            <span className="text-xs text-[#6b6b6b]">Итого</span>
+                            <span className="text-xs text-[#6b6b6b]">{t('totalLabel')}</span>
                             <span className="text-sm font-semibold">{formatMoney(openingTotal, store.currency)}</span>
                           </div>
                           {hasPermission(permissions, 'EDIT_PAYMENTS') && (
@@ -551,28 +553,28 @@ export default function StoreAccountingPage() {
                               onClick={() => handleDeleteAccountingRecord(day.opening.id)}
                               className="mt-2 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
-                              Удалить
+                              {t('deleteButton')}
                             </button>
                           )}
                         </>
                       ) : (
-                        <div className="text-sm text-[#6b6b6b]">Нет записи открытия</div>
+                        <div className="text-sm text-[#6b6b6b]">{t('noOpeningRecord')}</div>
                       )}
                     </article>
 
                     <article className="rounded-xl border border-[#e5ded8] bg-white p-3">
                       <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                        Закрытие дня
+                        {t('dayClosingHeading')}
                       </div>
                       {day.closing ? (
                         <>
                           <div className="space-y-1 text-sm text-[#111111]">
-                            <div>Безналичные: {formatMoney(day.closing.bankTransferPaid ?? 0, store.currency)}</div>
-                            <div>Наличные касса 1: {formatMoney(day.closing.cashbox1Paid ?? 0, store.currency)}</div>
-                            <div>Наличные касса 2: {formatMoney(day.closing.cashbox2Paid ?? 0, store.currency)}</div>
+                            <div>{t('bankTransferLabel')} {formatMoney(day.closing.bankTransferPaid ?? 0, store.currency)}</div>
+                            <div>{t('cash1Label')} {formatMoney(day.closing.cashbox1Paid ?? 0, store.currency)}</div>
+                            <div>{t('cash2Label')} {formatMoney(day.closing.cashbox2Paid ?? 0, store.currency)}</div>
                           </div>
                           <div className="mt-2 flex items-center justify-between border-t border-[#d8d1cb] pt-2">
-                            <span className="text-xs text-[#6b6b6b]">Итого</span>
+                            <span className="text-xs text-[#6b6b6b]">{t('totalLabel')}</span>
                             <span className="text-sm font-semibold">{formatMoney(closingTotal, store.currency)}</span>
                           </div>
                           {hasPermission(permissions, 'EDIT_PAYMENTS') && (
@@ -580,12 +582,12 @@ export default function StoreAccountingPage() {
                               onClick={() => handleDeleteAccountingRecord(day.closing.id)}
                               className="mt-2 rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-xs font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                             >
-                              Удалить
+                              {t('deleteButton')}
                             </button>
                           )}
                         </>
                       ) : (
-                        <div className="text-sm text-[#6b6b6b]">Нет записи закрытия</div>
+                        <div className="text-sm text-[#6b6b6b]">{t('noClosingRecord')}</div>
                       )}
                     </article>
                   </div>

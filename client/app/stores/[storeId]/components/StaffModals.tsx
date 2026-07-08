@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { formatMoney } from '@/lib/currency';
 
 type AddStaffModalProps = {
@@ -74,6 +75,7 @@ export function AddStaffModal({
   onClose,
   onSubmit,
 }: AddStaffModalProps) {
+  const t = useTranslations('AddStaffModal');
   if (!open) return null;
 
   const totalByChannels =
@@ -91,14 +93,14 @@ export function AddStaffModal({
         }}
         className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
-        <h3 className="text-lg font-semibold text-slate-900">Добавить сотрудника</h3>
+        <h3 className="text-lg font-semibold text-slate-900">{t('title')}</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Создаётся сразу в статусе «Оплачено»
+          {t('subtitle')}
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Должность</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('position')}</label>
             <input
               type="text"
               value={position}
@@ -107,7 +109,7 @@ export function AddStaffModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Имя фамилия</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('fullName')}</label>
             <input
               type="text"
               value={fullName}
@@ -118,7 +120,7 @@ export function AddStaffModal({
 
           {onSalaryChange ? (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Зарплата</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">{t('salary')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -132,7 +134,7 @@ export function AddStaffModal({
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t('bankTransfer')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -144,7 +146,7 @@ export function AddStaffModal({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox1')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -156,7 +158,7 @@ export function AddStaffModal({
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox2')}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -171,7 +173,7 @@ export function AddStaffModal({
           )}
 
           <div className="rounded-xl border border-[#D8D1CB] bg-[#f8f4ef] px-3 py-2 text-sm text-slate-700">
-            Итого зарплата: <span className="font-semibold">{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
+            {t('totalSalary')} <span className="font-semibold">{Number.isFinite(total) ? total.toFixed(2) : '0.00'}</span>
           </div>
         </div>
 
@@ -182,14 +184,14 @@ export function AddStaffModal({
             disabled={saving}
             className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
           >
-            {saving ? 'Сохранение...' : 'Добавить'}
+            {saving ? t('saving') : t('add')}
           </button>
         </div>
       </form>
@@ -212,6 +214,7 @@ export function PayStaffSalaryModal({
   onClose,
   onSubmit,
 }: PayStaffSalaryModalProps) {
+  const t = useTranslations('PayStaffSalaryModal');
   if (!open) return null;
 
   return (
@@ -223,14 +226,14 @@ export function PayStaffSalaryModal({
         }}
         className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
-        <h3 className="text-lg font-semibold text-slate-900">Оплата зарплаты</h3>
+        <h3 className="text-lg font-semibold text-slate-900">{t('title')}</h3>
         <p className="mt-1 text-sm text-slate-600">
-          {fullName}. Сумма: {formatMoney(salary, currency)}
+          {t('summary', { fullName, amount: formatMoney(salary, currency) })}
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('bankTransfer')}</label>
             <input
               type="number"
               step="0.01"
@@ -241,7 +244,7 @@ export function PayStaffSalaryModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox1')}</label>
             <input
               type="number"
               step="0.01"
@@ -252,7 +255,7 @@ export function PayStaffSalaryModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('cashbox2')}</label>
             <input
               type="number"
               step="0.01"
@@ -271,14 +274,14 @@ export function PayStaffSalaryModal({
             disabled={saving}
             className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
           >
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? t('saving') : t('save')}
           </button>
         </div>
       </form>
@@ -304,6 +307,7 @@ export function EditStaffSalaryModal({
   onClose,
   onSubmit,
 }: EditStaffSalaryModalProps) {
+  const t = useTranslations('EditStaffSalaryModal');
   if (!open) return null;
 
   return (
@@ -315,11 +319,11 @@ export function EditStaffSalaryModal({
         }}
         className="w-full max-w-[42rem] rounded-2xl bg-white p-5 shadow-xl md:p-6"
       >
-        <h3 className="text-lg font-semibold text-slate-900">Изменить зарплату</h3>
+        <h3 className="text-lg font-semibold text-slate-900">{t('title')}</h3>
         <p className="mt-1 text-sm text-slate-600">{fullName}</p>
 
         <div className="mt-4 grid grid-cols-1 gap-3">
-          <label className="mb-1 block text-sm font-medium text-slate-700">Новая зарплата</label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">{t('newSalary')}</label>
           <input
             type="number"
             step="0.01"
@@ -330,14 +334,14 @@ export function EditStaffSalaryModal({
           />
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Статус оплаты</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('paymentStatus')}</label>
             <select
               value={salaryStatus}
               onChange={(e) => onSalaryStatusChange(e.target.value as 'UNPAID' | 'PAID')}
               className="w-full rounded-xl border border-[#D8D1CB] px-3 py-2.5"
             >
-              <option value="UNPAID">Не оплачено</option>
-              <option value="PAID">Оплачено</option>
+              <option value="UNPAID">{t('statusUnpaid')}</option>
+              <option value="PAID">{t('statusPaid')}</option>
             </select>
           </div>
 
@@ -345,7 +349,7 @@ export function EditStaffSalaryModal({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Безналичные
+                  {t('bankTransfer')}
                 </label>
                 <input
                   type="number"
@@ -358,7 +362,7 @@ export function EditStaffSalaryModal({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Наличные касса 1
+                  {t('cashbox1')}
                 </label>
                 <input
                   type="number"
@@ -371,7 +375,7 @@ export function EditStaffSalaryModal({
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  Наличные касса 2
+                  {t('cashbox2')}
                 </label>
                 <input
                   type="number"
@@ -393,7 +397,7 @@ export function EditStaffSalaryModal({
             disabled={saving}
             className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
           >
-            Удалить
+            {t('delete')}
           </button>
           <div className="flex justify-end gap-2">
             <button
@@ -402,14 +406,14 @@ export function EditStaffSalaryModal({
               disabled={saving}
               className="rounded-xl border border-[#CFC6BF] px-4 py-2 text-sm font-medium text-slate-700 hover:bg-[#F4EFEB] disabled:opacity-60"
             >
-              Отмена
+              {t('cancel')}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-xl bg-[#FF6A13] px-4 py-2 text-sm font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
             >
-              {saving ? 'Сохранение...' : 'Сохранить'}
+              {saving ? t('saving') : t('save')}
             </button>
           </div>
         </div>

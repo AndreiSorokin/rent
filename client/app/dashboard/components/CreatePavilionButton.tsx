@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Permission } from '@/types/store';
 import { hasPermission } from '@/lib/permissions';
 
@@ -10,6 +11,8 @@ export function CreatePavilionButton({
   permissions: Permission[];
   onClick: () => void;
 }) {
+  const t = useTranslations('CreatePavilionButton');
+
   if (!hasPermission(permissions, 'CREATE_PAVILIONS')) return null;
 
   return (
@@ -17,7 +20,7 @@ export function CreatePavilionButton({
       onClick={onClick}
       className="mb-4 px-4 py-2 bg-green-600 text-white rounded"
     >
-      + Add Pavilion
+      {t('addPavilion')}
     </button>
   );
 }

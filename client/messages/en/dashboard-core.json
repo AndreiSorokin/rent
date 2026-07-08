@@ -1,0 +1,112 @@
+{
+  "StoresPage": {
+    "loadError": "Failed to load properties",
+    "loadingCabinet": "Loading your dashboard...",
+    "welcome": "Welcome,",
+    "defaultUserName": "User",
+    "subtitle": "Property management dashboard",
+    "title": "My Properties",
+    "createStore": "Add property",
+    "profile": "Profile",
+    "changePassword": "Change password",
+    "loadingUser": "Loading user...",
+    "emptyTitle": "You don't have any properties yet",
+    "emptySubtitle": "Click \"Add property\" to create your first property.",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "address": "Address: {address}",
+    "addressNotSpecified": "Not specified",
+    "manage": "Manage →"
+  },
+  "PavilionList": {
+    "pavilionLabel": "Pavilion {number}",
+    "statusLabel": "Status:",
+    "statusRented": "RENTED",
+    "statusAvailable": "AVAILABLE",
+    "statusPrepaid": "PREPAID",
+    "tenantLabel": "Tenant: {name}",
+    "edit": "Edit",
+    "delete": "Delete",
+    "recordPayment": "Record monthly rent & utilities →",
+    "additionalCharges": "Additional charges",
+    "addCharge": "+ Add charge",
+    "noAdditionalCharges": "No additional charges",
+    "pay": "Pay",
+    "confirmDeleteCharge": "Delete \"{name}\"?",
+    "deleteChargeFailed": "Failed to delete charge. Please try again."
+  },
+  "PavilionStats": {
+    "total": "Total: {count}",
+    "rented": "Rented: {count}",
+    "prepaid": "Prepaid: {count}",
+    "free": "Available: {count}"
+  },
+  "IncomeSummary": {
+    "title": "Income",
+    "formula": "Formula: rent + utilities + additional charges (across all pavilions)",
+    "forecast": "Forecast income: {amount}",
+    "actual": "Actual income: {amount}"
+  },
+  "ExpensesSummary": {
+    "title": "Expenses",
+    "description": "Total across all pavilions from the expense tables on pavilion pages",
+    "forecast": "Total forecast: {amount}",
+    "actual": "Total actual: {amount}"
+  },
+  "PaymentSummary": {
+    "title": "Summary",
+    "pavilionsSummary": "Pavilions: total {total}, rented {rented}, prepaid {prepaid}, available {free}",
+    "expected": "Expected: {amount}",
+    "paid": "Paid: {amount}",
+    "reconciliation": "Reconciliation: {amount}",
+    "debt": "Debt: {amount}"
+  },
+  "CreatePavilionButton": {
+    "addPavilion": "+ Add Pavilion"
+  },
+  "CreateStoreModal": {
+    "nameRequired": "Enter a property name",
+    "createSuccess": "Property created successfully",
+    "createFailed": "Failed to create property",
+    "title": "Create new property",
+    "nameLabel": "Property name*",
+    "namePlaceholder": "e.g. Alpha Shopping Mall",
+    "optionalFieldsTitle": "Optional fields",
+    "addressLabel": "Property address",
+    "descriptionLabel": "Property description",
+    "descriptionPlaceholder": "Short description of the property",
+    "billingSectionTitle": "Company billing details",
+    "billingCompanyNameLabel": "Company name",
+    "billingPlaceholder": "For invoicing",
+    "billingLegalAddressLabel": "Company legal address",
+    "billingInnLabel": "Company tax ID (INN)",
+    "billingInnPlaceholder": "10 or 12 digits",
+    "contactPhoneLabel": "Contact phone",
+    "contactEmailLabel": "Contact email",
+    "currencyLabel": "Property currency",
+    "currencyDefault": "Default: RUB",
+    "currencyRub": "Russian ruble (₽)",
+    "currencyKzt": "Kazakhstani tenge (₸)",
+    "timeZoneLabel": "Property time zone",
+    "timeZonePlaceholder": "e.g. Moscow, Astana, Novosibirsk",
+    "timeZoneHint": "Major cities in Russia and Kazakhstan are available. If left blank, UTC will be used.",
+    "photosLabel": "Property photos",
+    "photosSelected": "Photos selected: {count}",
+    "photosHint": "You can add one or more photos",
+    "cancel": "Cancel",
+    "creating": "Creating...",
+    "create": "Create"
+  },
+  "InviteUserModal": {
+    "invalidEmail": "Enter a valid email",
+    "inviteFailed": "Failed to invite user. Please try again.",
+    "title": "Invite user",
+    "subtitle": "Grant access to the property by email.",
+    "close": "Close",
+    "emailLabel": "User email",
+    "hint": "The user will get access to the property after accepting the invitation.",
+    "cancel": "Cancel",
+    "inviting": "Inviting...",
+    "invite": "Invite"
+  }
+}

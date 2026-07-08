@@ -1,34 +1,37 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Building2, ChartColumnBig, ReceiptText, Store } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { seoSolutionPages } from './seoPages';
 
-export const metadata: Metadata = {
-  title: 'Решения для контроля торгового объекта | Rendlify',
-  description:
-    'Подборка страниц о том, как Rendlify помогает контролировать торговый объект, арендаторов, павильоны, доходы и расходы в реальном времени.',
-  alternates: {
-    canonical: '/solutions',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('SolutionsIndexPage.meta');
+  return {
+    title: t('title'),
+    description: t('description'),
+    alternates: {
+      canonical: '/solutions',
+    },
+  };
+}
 
 const icons = [Building2, ReceiptText, Store, ChartColumnBig];
 
-export default function SolutionsIndexPage() {
+export default async function SolutionsIndexPage() {
+  const t = await getTranslations('SolutionsIndexPage');
+
   return (
     <main className="min-h-screen bg-[#f9f5f0] text-[#111111]">
       <section className="mx-auto max-w-7xl px-6 py-12 md:px-10 md:py-16">
         <div className="max-w-4xl">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#6B6B6B]">
-            Решения Rendlify
+            {t('eyebrow')}
           </p>
           <h1 className="mt-3 text-4xl font-extrabold leading-tight md:text-5xl">
-            Платформа под реальные задачи собственника и управляющего
+            {t('title')}
           </h1>
           <p className="mt-5 text-base leading-7 text-[#4B5563] md:text-lg">
-            Здесь собраны ключевые сценарии, по которым пользователи ищут систему вроде
-            Rendlify: контроль торгового объекта, управление павильонами, арендаторами,
-            платежами, доходами и расходами.
+            {t('description')}
           </p>
         </div>
 
@@ -54,7 +57,7 @@ export default function SolutionsIndexPage() {
                   href={`/solutions/${page.slug}`}
                   className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#FF6A13] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#E65C00]"
                 >
-                  Перейти на страницу
+                  {t('openPage')}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </article>

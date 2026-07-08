@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { EditPavilionModal } from './EditPavilionModal';
 import { AddAdditionalChargeModal } from './AddAdditionalChargeModal';
 import { PayAdditionalChargeModal } from './PayAdditionalChargeModal';
@@ -24,6 +25,7 @@ export function PavilionList({
   refresh: () => void;
   onDelete: (id: number) => void;
 }) {
+  const t = useTranslations('PavilionList');
   const [editingPavilion, setEditingPavilion] = useState<Pavilion | null>(null);
   const [addingChargeForPavilion, setAddingChargeForPavilion] = useState<Pavilion | null>(null);
   const [payingMonthlyPavilion, setPayingMonthlyPavilion] = useState<Pavilion | null>(null);
@@ -48,9 +50,9 @@ export function PavilionList({
         <div key={p.id} className="border rounded-lg p-4 bg-white shadow-sm">
           <div className="flex justify-between items-start mb-3">
             <div>
-              <div className="font-semibold text-lg">Pavilion {p.number}</div>
+              <div className="font-semibold text-lg">{t('pavilionLabel', { number: p.number })}</div>
               <div className="text-sm text-gray-600">
-                Status:{' '}
+                {t('statusLabel')}{' '}
                 <span
                   className={
                     p.status === 'RENTED'
@@ -61,14 +63,14 @@ export function PavilionList({
                   }
                 >
                   {p.status === 'RENTED'
-                    ? 'ЗАНЯТ'
+                    ? t('statusRented')
                     : p.status === 'AVAILABLE'
-                      ? 'СВОБОДЕН'
-                      : 'ПРЕДОПЛАТА'}
+                      ? t('statusAvailable')
+                      : t('statusPrepaid')}
                 </span>
               </div>
               {p.tenantName && (
-                <div className="text-sm text-gray-700 mt-1">Tenant: {p.tenantName}</div>
+                <div className="text-sm text-gray-700 mt-1">{t('tenantLabel', { name: p.tenantName })}</div>
               )}
             </div>
 
@@ -78,7 +80,7 @@ export function PavilionList({
                   onClick={() => setEditingPavilion(p)}
                   className="text-blue-600 hover:underline text-sm"
                 >
-                  Edit
+                  {t('edit')}
                 </button>
               )}
               {canDelete && (
@@ -86,7 +88,7 @@ export function PavilionList({
                   onClick={() => onDelete(p.id)}
                   className="text-red-600 hover:underline text-sm"
                 >
-                  Delete
+                  {t('delete')}
                 </button>
               )}
             </div>
@@ -97,25 +99,25 @@ export function PavilionList({
               onClick={() => setPayingMonthlyPavilion(p)}
               className="text-green-600 hover:underline text-sm mb-3 block"
             >
-              Record monthly rent & utilities →
+              {t('recordPayment')}
             </button>
           )}
 
           <div className="mt-3 pt-3 border-t">
             <div className="flex justify-between items-center mb-2">
-              <div className="font-medium text-sm">Additional charges</div>
+              <div className="font-medium text-sm">{t('additionalCharges')}</div>
               {canManageCharges && p.status === 'RENTED' && (
                 <button
                   onClick={() => setAddingChargeForPavilion(p)}
                   className="text-xs text-blue-600 hover:underline"
                 >
-                  + Add charge
+                  {t('addCharge')}
                 </button>
               )}
             </div>
 
             {(!p.additionalCharges || p.additionalCharges.length === 0) && (
-              <div className="text-xs text-gray-500 py-1">No additional charges</div>
+              <div className="text-xs text-gray-500 py-1">{t('noAdditionalCharges')}</div>
             )}
 
             {p.additionalCharges?.map((charge) => (
@@ -141,24 +143,24 @@ export function PavilionList({
                       }
                       className="text-green-600 hover:underline text-xs"
                     >
-                      Pay
+                      {t('pay')}
                     </button>
                   )}
                   {hasPermission(permissions, 'DELETE_CHARGES') && (
                     <button
                       onClick={async () => {
-                        if (!confirm(`Delete "${charge.name}"?`)) return;
+                        if (!confirm(t('confirmDeleteCharge', { name: charge.name }))) return;
                         try {
                           await deleteAdditionalCharge(p.id, charge.id);
                           refresh();
                         } catch (err) {
                           console.error('Delete failed:', err);
-                          alert('Failed to delete charge. Please try again.');
+                          alert(t('deleteChargeFailed'));
                         }
                       }}
                       className="text-red-600 hover:underline text-xs"
                     >
-                      Delete
+                      {t('delete')}
                     </button>
                   )}
                 </div>

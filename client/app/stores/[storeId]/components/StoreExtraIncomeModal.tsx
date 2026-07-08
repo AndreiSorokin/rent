@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { formatMoney } from '@/lib/currency';
 import {
   createStoreExtraIncome,
@@ -36,6 +37,7 @@ export function StoreExtraIncomeModal({
   onClose,
   onChanged,
 }: Props) {
+  const t = useTranslations('StoreExtraIncomeModal');
   const inputClass =
     'rounded-xl border border-[#d8d1cb] bg-white px-2 py-1.5 text-sm text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:ring-2 focus:ring-[#ff6a13]/20';
 
@@ -65,7 +67,7 @@ export function StoreExtraIncomeModal({
       setItems(data || []);
     } catch (err) {
       console.error(err);
-      alert('Не удалось загрузить доп. приход');
+      alert(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +92,7 @@ export function StoreExtraIncomeModal({
     const parsedCash2 = Number(cash2 || 0);
 
     if (!cleanName) {
-      alert('Введите название доп. прихода');
+      alert(t('nameRequired'));
       return;
     }
     if (
@@ -98,11 +100,11 @@ export function StoreExtraIncomeModal({
         (value) => Number.isNaN(value) || value < 0,
       )
     ) {
-      alert('Суммы должны быть неотрицательными');
+      alert(t('amountsNonNegative'));
       return;
     }
     if (Math.abs(parsedAmount - (parsedBank + parsedCash1 + parsedCash2)) > 0.01) {
-      alert('Сумма должна быть равна сумме по каналам оплаты');
+      alert(t('amountMismatch'));
       return;
     }
 
@@ -126,21 +128,21 @@ export function StoreExtraIncomeModal({
       if (onChanged) await onChanged();
     } catch (err) {
       console.error(err);
-      alert('Не удалось добавить доп. приход');
+      alert(t('createError'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (incomeId: number) => {
-    if (!confirm('Удалить этот доп. приход?')) return;
+    if (!confirm(t('confirmDelete'))) return;
     try {
       await deleteStoreExtraIncome(storeId, incomeId);
       await load();
       if (onChanged) await onChanged();
     } catch (err) {
       console.error(err);
-      alert('Не удалось удалить доп. приход');
+      alert(t('deleteError'));
     }
   };
 
@@ -151,9 +153,9 @@ export function StoreExtraIncomeModal({
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white p-5 shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-extrabold text-[#111111]">Доп. приход (объект)</h2>
+            <h2 className="text-xl font-extrabold text-[#111111]">{t('title')}</h2>
             <p className="text-sm text-[#6b6b6b]">
-              Уровень объекта. Учитывается в СВОДКЕ и бух. таблице.
+              {t('description')}
             </p>
           </div>
           <button
@@ -161,13 +163,13 @@ export function StoreExtraIncomeModal({
             onClick={onClose}
             className="rounded-xl border border-[#d8d1cb] bg-white px-3 py-1.5 text-sm font-semibold text-[#111111] transition hover:bg-[#f4efeb]"
           >
-            Закрыть
+            {t('close')}
           </button>
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
           <label className="text-sm font-medium text-[#6b6b6b]" htmlFor="extra-income-period">
-            Месяц:
+            {t('monthLabel')}
           </label>
           <input
             id="extra-income-period"
@@ -177,20 +179,20 @@ export function StoreExtraIncomeModal({
             className={inputClass}
           />
           <div className="text-sm font-semibold text-[#111111]">
-            Итого за месяц: {formatMoney(total, currency)}
+            {t('totalForMonth', { amount: formatMoney(total, currency) })}
           </div>
         </div>
 
         {canCreate && (
           <div className="mb-4 rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-            <p className="mb-2 text-sm font-semibold text-[#111111]">Новый доп. приход</p>
+            <p className="mb-2 text-sm font-semibold text-[#111111]">{t('newEntry')}</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={inputClass}
-                placeholder="Название"
+                placeholder={t('namePlaceholder')}
               />
               <input
                 type="date"
@@ -205,7 +207,7 @@ export function StoreExtraIncomeModal({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className={inputClass}
-                placeholder="Общая сумма"
+                placeholder={t('totalAmountPlaceholder')}
               />
               <input
                 type="number"
@@ -214,7 +216,7 @@ export function StoreExtraIncomeModal({
                 value={bank}
                 onChange={(e) => setBank(e.target.value)}
                 className={inputClass}
-                placeholder="Безналичные"
+                placeholder={t('bankTransferPlaceholder')}
               />
               <input
                 type="number"
@@ -223,7 +225,7 @@ export function StoreExtraIncomeModal({
                 value={cash1}
                 onChange={(e) => setCash1(e.target.value)}
                 className={inputClass}
-                placeholder="Наличные касса 1"
+                placeholder={t('cash1Placeholder')}
               />
               <input
                 type="number"
@@ -232,7 +234,7 @@ export function StoreExtraIncomeModal({
                 value={cash2}
                 onChange={(e) => setCash2(e.target.value)}
                 className={inputClass}
-                placeholder="Наличные касса 2"
+                placeholder={t('cash2Placeholder')}
               />
             </div>
             <button
@@ -241,17 +243,17 @@ export function StoreExtraIncomeModal({
               disabled={saving}
               className="mt-2 rounded-xl bg-[#ff6a13] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-60"
             >
-              Добавить
+              {t('add')}
             </button>
           </div>
         )}
 
         <div>
-          <p className="mb-2 text-sm font-semibold text-[#111111]">История</p>
+          <p className="mb-2 text-sm font-semibold text-[#111111]">{t('history')}</p>
           {loading ? (
-            <p className="text-sm text-[#6b6b6b]">Загрузка...</p>
+            <p className="text-sm text-[#6b6b6b]">{t('loading')}</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-[#6b6b6b]">Записей нет</p>
+            <p className="text-sm text-[#6b6b6b]">{t('noRecords')}</p>
           ) : (
             <div className="space-y-2">
               {items.map((item) => (
@@ -268,9 +270,11 @@ export function StoreExtraIncomeModal({
                     </div>
                   </div>
                   <div className="mt-1 text-xs text-[#6b6b6b]">
-                    Безнал: {formatMoney(Number(item.bankTransferPaid ?? 0), currency)} | Касса 1:{' '}
-                    {formatMoney(Number(item.cashbox1Paid ?? 0), currency)} | Касса 2:{' '}
-                    {formatMoney(Number(item.cashbox2Paid ?? 0), currency)}
+                    {t('breakdown', {
+                      bank: formatMoney(Number(item.bankTransferPaid ?? 0), currency),
+                      cash1: formatMoney(Number(item.cashbox1Paid ?? 0), currency),
+                      cash2: formatMoney(Number(item.cashbox2Paid ?? 0), currency),
+                    })}
                   </div>
                   {canDelete && (
                     <div className="mt-2 text-right">
@@ -279,7 +283,7 @@ export function StoreExtraIncomeModal({
                         onClick={() => handleDelete(item.id)}
                         className="rounded-lg border border-[#ef4444]/40 bg-[#ef4444]/10 px-2 py-1 text-sm font-semibold text-[#b91c1c] transition hover:bg-[#ef4444]/20"
                       >
-                        Удалить
+                        {t('delete')}
                       </button>
                     </div>
                   )}

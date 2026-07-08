@@ -1,0 +1,57 @@
+{
+  "StorePage": {
+    "loading": "Loading the property...",
+    "notFound": "Store not found",
+    "errors": {
+      "loadFailed": "Failed to load store data"
+    },
+    "statusLabels": {
+      "available": "AVAILABLE",
+      "rented": "RENTED",
+      "prepaid": "PREPAID"
+    },
+    "paymentStatusLabels": {
+      "paid": "Paid",
+      "partial": "Partially paid",
+      "unpaid": "Not paid"
+    },
+    "pavilions": {
+      "title": "Pavilions",
+      "addButton": "Add pavilion",
+      "searchPlaceholder": "Search by pavilion name",
+      "filters": {
+        "categoryDefault": "Category",
+        "statusDefault": "Status",
+        "groupDefault": "Groups",
+        "paymentStatusDefault": "Payment status"
+      },
+      "loadingPavilions": "Loading pavilions...",
+      "emptyNoPavilions": "No pavilions in this store yet",
+      "emptyNoFilterMatch": "No pavilions match the current filters",
+      "table": {
+        "transfer": "Reorder",
+        "pavilion": "Pavilion",
+        "area": "m²",
+        "status": "Status",
+        "payment": "Payment",
+        "category": "Category",
+        "tenantName": "Tenant name",
+        "groups": "Groups"
+      },
+      "dragHandle": {
+        "titleEnabled": "Drag to reorder",
+        "titleDisabled": "Sorting by payment is active",
+        "ariaLabel": "Move pavilion {number}"
+      },
+      "carryLabel": "Carry: {value}",
+      "vacantLabel": "Vacant",
+      "noContractBadge": "No contract",
+      "noGroupsLabel": "No groups",
+      "displayLimit": {
+        "show50": "Show first 50",
+        "show100": "Show first 100",
+        "showAll": "Show all"
+      }
+    }
+  }
+}

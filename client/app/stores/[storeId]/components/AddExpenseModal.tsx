@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { formatMoney } from '@/lib/currency';
 
 type AddExpenseModalProps = {
@@ -26,6 +27,7 @@ export function AddExpenseModal({
   onClose,
   onSubmit,
 }: AddExpenseModalProps) {
+  const t = useTranslations('AddExpenseModal');
   const [name, setName] = useState(defaultName);
   const [amount, setAmount] = useState('');
   const [bankTransfer, setBankTransfer] = useState('');
@@ -55,26 +57,26 @@ export function AddExpenseModal({
       <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl md:p-6">
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Если каналы оплаты не заполнены, расход будет создан как «Не оплачено».
+          {t('hint')}
         </p>
 
         <div className="mt-4 space-y-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Название
+              {t('nameLabel')}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5"
-              placeholder="Введите название расхода"
+              placeholder={t('namePlaceholder')}
             />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Сумма
+              {t('amountLabel')}
             </label>
             <input
               type="number"
@@ -90,7 +92,7 @@ export function AddExpenseModal({
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Безналичные
+                {t('bankTransferLabel')}
               </label>
               <input
                 type="number"
@@ -104,7 +106,7 @@ export function AddExpenseModal({
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Наличные касса 1
+                {t('cashbox1Label')}
               </label>
               <input
                 type="number"
@@ -118,7 +120,7 @@ export function AddExpenseModal({
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                Наличные касса 2
+                {t('cashbox2Label')}
               </label>
               <input
                 type="number"
@@ -133,7 +135,7 @@ export function AddExpenseModal({
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-            Каналы оплаты: {formatMoney(channelsTotal, currency)}
+            {t('channelsTotal', { amount: formatMoney(channelsTotal, currency) })}
           </div>
         </div>
 
@@ -144,7 +146,7 @@ export function AddExpenseModal({
             disabled={saving}
             className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -156,11 +158,11 @@ export function AddExpenseModal({
               const cash2Value = Number(cashbox2 || 0);
 
               if (!name.trim()) {
-                alert('Введите название расхода');
+                alert(t('errorNameRequired'));
                 return;
               }
               if (Number.isNaN(amountValue) || amountValue < 0) {
-                alert('Некорректная сумма');
+                alert(t('errorInvalidAmount'));
                 return;
               }
               if (
@@ -171,14 +173,14 @@ export function AddExpenseModal({
                 cash1Value < 0 ||
                 cash2Value < 0
               ) {
-                alert('Каналы оплаты должны быть неотрицательными');
+                alert(t('errorNegativeChannels'));
                 return;
               }
               if (
                 channelsTotal > 0 &&
                 Math.abs(channelsTotal - amountValue) > 0.01
               ) {
-                alert('Сумма должна совпадать с суммой каналов оплаты');
+                alert(t('errorAmountMismatch'));
                 return;
               }
 
@@ -197,7 +199,7 @@ export function AddExpenseModal({
             }}
             className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
           >
-            {saving ? 'Сохранение...' : 'Добавить'}
+            {saving ? t('saving') : t('submit')}
           </button>
         </div>
       </div>

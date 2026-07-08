@@ -1,42 +1,43 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ErrorMessage } from '@/components/messages/StatusMessage';
 
-const PERMISSION_LABELS = {
-  VIEW_PAVILIONS: 'Просмотр павильонов',
-  VIEW_STAFF: 'Просмотр штатного расписания',
-  MANAGE_STAFF: 'Управление штатным расписанием',
-  CREATE_PAVILIONS: 'Создавать павильоны',
-  EXPORT_STORE_DATA: 'Выгружать данные',
-  MANAGE_MEDIA: 'Работа с описаниями и изображениями',
-  EDIT_PAVILIONS: 'Изменять павильоны',
-  DELETE_PAVILIONS: 'Удалять павильоны',
-  VIEW_PAYMENTS: 'Просмотр оплат',
-  VIEW_SUMMARY: 'Просмотр сводки',
-  VIEW_ACTIVITY: 'Просмотр журнала действий',
-  CREATE_PAYMENTS: 'Записывать оплаты',
-  EDIT_PAYMENTS: 'Изменять оплаты',
-  VIEW_CHARGES: 'Просмотр начислений',
-  CREATE_CHARGES: 'Создавать начисления',
-  EDIT_CHARGES: 'Изменять начисления',
-  DELETE_CHARGES: 'Удалять начисления',
-  VIEW_CONTRACTS: 'Просмотр договоров',
-  UPLOAD_CONTRACTS: 'Загружать договоры',
-  DELETE_CONTRACTS: 'Удалять договоры',
-  INVITE_USERS: 'Приглашать пользователей',
-  REMOVE_USERS: 'Удалять пользователей из объекта',
-  ASSIGN_PERMISSIONS: 'Управлять правами доступа',
-} as const;
+const PERMISSION_KEYS = [
+  'VIEW_PAVILIONS',
+  'VIEW_STAFF',
+  'MANAGE_STAFF',
+  'CREATE_PAVILIONS',
+  'EXPORT_STORE_DATA',
+  'MANAGE_MEDIA',
+  'EDIT_PAVILIONS',
+  'DELETE_PAVILIONS',
+  'VIEW_PAYMENTS',
+  'VIEW_SUMMARY',
+  'VIEW_ACTIVITY',
+  'CREATE_PAYMENTS',
+  'EDIT_PAYMENTS',
+  'VIEW_CHARGES',
+  'CREATE_CHARGES',
+  'EDIT_CHARGES',
+  'DELETE_CHARGES',
+  'VIEW_CONTRACTS',
+  'UPLOAD_CONTRACTS',
+  'DELETE_CONTRACTS',
+  'INVITE_USERS',
+  'REMOVE_USERS',
+  'ASSIGN_PERMISSIONS',
+] as const;
 
-type Permission = keyof typeof PERMISSION_LABELS;
+type Permission = (typeof PERMISSION_KEYS)[number];
 
 const PERMISSION_SECTIONS: Array<{
-  title: string;
+  sectionKey: 'pavilions' | 'paymentsAnalytics' | 'charges' | 'documents' | 'usersStaff';
   items: Permission[];
 }> = [
   {
-    title: 'Объекты аренды',
+    sectionKey: 'pavilions',
     items: [
       'VIEW_PAVILIONS',
       'CREATE_PAVILIONS',
@@ -47,7 +48,7 @@ const PERMISSION_SECTIONS: Array<{
     ],
   },
   {
-    title: 'Оплаты и аналитика',
+    sectionKey: 'paymentsAnalytics',
     items: [
       'VIEW_PAYMENTS',
       'VIEW_SUMMARY',
@@ -57,15 +58,15 @@ const PERMISSION_SECTIONS: Array<{
     ],
   },
   {
-    title: 'Начисления',
+    sectionKey: 'charges',
     items: ['VIEW_CHARGES', 'CREATE_CHARGES', 'EDIT_CHARGES', 'DELETE_CHARGES'],
   },
   {
-    title: 'Документы',
+    sectionKey: 'documents',
     items: ['VIEW_CONTRACTS', 'UPLOAD_CONTRACTS', 'DELETE_CONTRACTS'],
   },
   {
-    title: 'Пользователи и штат',
+    sectionKey: 'usersStaff',
     items: [
       'INVITE_USERS',
       'REMOVE_USERS',
@@ -91,6 +92,12 @@ export function ManagePermissionsModal({
   onSave,
   onClose,
 }: ManagePermissionsModalProps) {
+  const t = useTranslations('ManagePermissionsModal');
+  const sectionTitles = t.raw('sections') as Record<
+    'pavilions' | 'paymentsAnalytics' | 'charges' | 'documents' | 'usersStaff',
+    string
+  >;
+  const permissionLabels = t.raw('permissions') as Record<Permission, string>;
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(currentPermissions);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +118,7 @@ export function ManagePermissionsModal({
       await onSave(userId, selectedPermissions);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Не удалось сохранить права доступа');
+      setError(err?.message || t('errorSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -123,7 +130,7 @@ export function ManagePermissionsModal({
         <div className="flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur">
           <div>
             <h2 className="text-xl font-extrabold text-[#111111]">
-              Управление правами доступа
+              {t('title')}
             </h2>
             <p className="mt-1 text-sm text-[#6b6b6b]">{userEmail}</p>
           </div>
@@ -131,7 +138,7 @@ export function ManagePermissionsModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            aria-label="Закрыть"
+            aria-label={t('close')}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#d8d1cb] bg-white text-xl leading-none text-[#6b6b6b] transition hover:bg-[#f4efeb] hover:text-[#111111] disabled:opacity-50"
           >
             ×
@@ -144,11 +151,11 @@ export function ManagePermissionsModal({
           <div className="space-y-4">
             {PERMISSION_SECTIONS.map((section) => (
               <section
-                key={section.title}
+                key={section.sectionKey}
                 className="rounded-2xl border border-[#d8d1cb] bg-[#f8f4ef] p-4"
               >
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#6b6b6b]">
-                  {section.title}
+                  {sectionTitles[section.sectionKey]}
                 </h3>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {section.items.map((value) => {
@@ -169,7 +176,7 @@ export function ManagePermissionsModal({
                           className="h-4 w-4 rounded border-[#d8d1cb] text-[#ff6a13] focus:ring-[#ff6a13]"
                         />
                         <span className="text-sm font-medium text-[#111111]">
-                          {PERMISSION_LABELS[value]}
+                          {permissionLabels[value]}
                         </span>
                       </label>
                     );
@@ -187,7 +194,7 @@ export function ManagePermissionsModal({
             disabled={saving}
             className="rounded-xl border border-[#d8d1cb] bg-white px-4 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="button"
@@ -195,7 +202,7 @@ export function ManagePermissionsModal({
             disabled={saving}
             className="rounded-xl bg-[#ff6a13] px-4 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
-            {saving ? 'Сохранение...' : 'Сохранить изменения'}
+            {saving ? t('saving') : t('saveChanges')}
           </button>
         </div>
       </div>

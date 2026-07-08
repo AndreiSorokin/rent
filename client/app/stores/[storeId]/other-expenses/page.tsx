@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { apiFetch } from '@/lib/api';
 import { formatMoney } from '@/lib/currency';
 import { hasPermission } from '@/lib/permissions';
@@ -43,15 +44,16 @@ function paymentChannelsLines(
   cashbox1Paid: number | null | undefined,
   cashbox2Paid: number | null | undefined,
   currency: 'RUB' | 'KZT',
+  t: ReturnType<typeof useTranslations>,
 ) {
   const lines: string[] = [];
   const bank = Number(bankTransferPaid ?? 0);
   const cash1 = Number(cashbox1Paid ?? 0);
   const cash2 = Number(cashbox2Paid ?? 0);
 
-  if (bank > 0) lines.push(`Безналичные: ${formatMoney(bank, currency)}`);
-  if (cash1 > 0) lines.push(`Наличные касса 1: ${formatMoney(cash1, currency)}`);
-  if (cash2 > 0) lines.push(`Наличные касса 2: ${formatMoney(cash2, currency)}`);
+  if (bank > 0) lines.push(t('paymentChannels.bankTransfer', { amount: formatMoney(bank, currency) }));
+  if (cash1 > 0) lines.push(t('paymentChannels.cashbox1', { amount: formatMoney(cash1, currency) }));
+  if (cash2 > 0) lines.push(t('paymentChannels.cashbox2', { amount: formatMoney(cash2, currency) }));
 
   return lines;
 }
@@ -76,6 +78,7 @@ export default function StoreOtherExpensesPage() {
   const storeId = Number(params.storeId);
   const dialog = useDialog();
   const toast = useToast();
+  const t = useTranslations('StoreOtherExpensesPage');
 
   const [store, setStore] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -106,7 +109,7 @@ export default function StoreOtherExpensesPage() {
       setError(null);
     } catch (err) {
       console.error(err);
-      setError('Не удалось загрузить прочие расходы');
+      setError(t('loadError'));
     } finally {
       setLoading(false);
     }
@@ -156,7 +159,7 @@ export default function StoreOtherExpensesPage() {
 
     const note = createModal.note.trim();
     if (!note) {
-      toast.error('Введите название расхода');
+      toast.error(t('toast.enterName'));
       return;
     }
 
@@ -167,7 +170,7 @@ export default function StoreOtherExpensesPage() {
       const cash2 = Number(createModal.cashbox2Paid || 0);
       const amount = bank + cash1 + cash2;
       if (amount <= 0 || [bank, cash1, cash2].some((v) => Number.isNaN(v) || v < 0)) {
-        toast.error('Введите корректные суммы по каналам оплаты');
+        toast.error(t('toast.enterValidChannelAmounts'));
         return;
       }
 
@@ -184,7 +187,7 @@ export default function StoreOtherExpensesPage() {
       await fetchStore();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось добавить прочий расход');
+      toast.error(t('toast.createError'));
     } finally {
       setSaving(false);
     }
@@ -200,17 +203,17 @@ export default function StoreOtherExpensesPage() {
     const paidAmount = bank + cash1 + cash2;
 
     if (!note) {
-      toast.error('Введите корректное название');
+      toast.error(t('toast.enterValidName'));
       return;
     }
 
     if (editModal.status === 'PAID') {
       if ([bank, cash1, cash2].some((value) => Number.isNaN(value) || value < 0)) {
-        toast.error('Суммы по каналам оплаты должны быть неотрицательными');
+        toast.error(t('toast.nonNegativeChannels'));
         return;
       }
       if (paidAmount <= 0) {
-        toast.error('Введите сумму хотя бы в одном канале оплаты');
+        toast.error(t('toast.enterAtLeastOneChannel'));
         return;
       }
     }
@@ -241,7 +244,7 @@ export default function StoreOtherExpensesPage() {
       await fetchStore();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось обновить прочий расход');
+      toast.error(t('toast.updateError'));
     } finally {
       setSaving(false);
     }
@@ -249,10 +252,10 @@ export default function StoreOtherExpensesPage() {
 
   const handleDelete = async (expenseId: number) => {
     const confirmed = await dialog.confirm({
-      title: 'Удаление расхода',
-      message: 'Удалить этот расход?',
+      title: t('deleteDialog.title'),
+      message: t('deleteDialog.message'),
       tone: 'danger',
-      confirmText: 'Удалить',
+      confirmText: t('deleteDialog.confirmText'),
     });
     if (!confirmed) return;
     try {
@@ -261,13 +264,13 @@ export default function StoreOtherExpensesPage() {
       await fetchStore();
     } catch (err) {
       console.error(err);
-      toast.error('Не удалось удалить расход');
+      toast.error(t('toast.deleteError'));
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <FullScreenLoader label="Загружаем расходы..." />;
+  if (loading) return <FullScreenLoader label={t('loading')} />;
   if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
   if (!store) return null;
 
@@ -280,28 +283,28 @@ export default function StoreOtherExpensesPage() {
         <section className="rounded-2xl border border-[#d8d1cb] bg-white p-6 shadow-[0_12px_36px_-20px_rgba(17,17,17,0.2)] md:p-8">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">Прочие расходы</h1>
+              <h1 className="text-xl font-semibold text-[#111111] md:text-2xl">{t('title')}</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/stores/${storeId}/expenses-history/other`}
                 className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
               >
-                Все расходы
+                {t('allExpenses')}
               </Link>
               <input
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
                 className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm text-[#111111]"
-                title="Фильтр по дате"
+                title={t('dateFilterTitle')}
               />
               {filterDate && (
                 <button
                   onClick={() => setFilterDate('')}
                   className="rounded-lg border border-[#d8d1cb] bg-white px-3 py-2 text-sm font-medium text-[#111111] hover:bg-[#f4efeb]"
                 >
-                  Сбросить
+                  {t('reset')}
                 </button>
               )}
               {canCreate && (
@@ -317,7 +320,7 @@ export default function StoreOtherExpensesPage() {
                   className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#1D4ED8]"
                 >
                   <CirclePlus className="h-4 w-4" />
-                  Добавить расход
+                  {t('addExpense')}
                 </button>
               )}
             </div>
@@ -326,12 +329,12 @@ export default function StoreOtherExpensesPage() {
             <ExpenseSearchInput
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Поиск по названию расхода"
+              placeholder={t('searchPlaceholder')}
             />
           </div>
           <div className="mb-4 rounded-xl border border-[#E5DED8] bg-[#F9F5F1] px-4 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-[#6B6B6B]">
-              Общая сумма расходов
+              {t('totalAmountLabel')}
             </p>
             <p className="mt-1 text-xl font-semibold text-[#111111]">
               {formatMoney(otherExpensesTotal, currency)}
@@ -339,29 +342,29 @@ export default function StoreOtherExpensesPage() {
           </div>
 
           {otherExpenses.length === 0 ? (
-            <p className="text-[#6b6b6b]">Расходов пока нет</p>
+            <p className="text-[#6b6b6b]">{t('emptyState')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead className="bg-[#F4EFEB]">
                   <tr>
                     <th className="rounded-l-xl px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                      Дата
+                      {t('table.date')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                      Название
+                      {t('table.name')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                      Статус
+                      {t('table.status')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[#6B6B6B]">
-                      Каналы оплаты
+                      {t('table.paymentChannels')}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                      Сумма
+                      {t('table.amount')}
                     </th>
                     <th className="rounded-r-xl px-4 py-3 text-right text-xs font-medium uppercase text-[#6B6B6B]">
-                      Действия
+                      {t('table.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -373,7 +376,7 @@ export default function StoreOtherExpensesPage() {
                       </td>
                       <td className="px-4 py-2.5 align-middle">
                         <p className="max-w-[260px] truncate text-sm font-medium text-[#111111]">
-                          {expense.note || 'Прочий расход'}
+                          {expense.note || t('defaultExpenseName')}
                         </p>
                       </td>
                       <td className="px-4 py-2.5 align-middle text-sm text-[#374151]">
@@ -384,7 +387,7 @@ export default function StoreOtherExpensesPage() {
                               : 'bg-amber-100 text-amber-700'
                           }`}
                         >
-                          {expense.status === 'PAID' ? 'Оплачено' : 'Не оплачено'}
+                          {expense.status === 'PAID' ? t('statusPaid') : t('statusUnpaid')}
                         </span>
                       </td>
                       <td className="px-4 py-2.5 align-middle text-xs text-slate-600">
@@ -395,12 +398,13 @@ export default function StoreOtherExpensesPage() {
                               expense.cashbox1Paid,
                               expense.cashbox2Paid,
                               currency,
+                              t,
                             );
-                            if (!lines.length) return <div>Каналы оплаты не заданы</div>;
+                            if (!lines.length) return <div>{t('noPaymentChannels')}</div>;
                             return lines.map((line) => <div key={`${expense.id}-${line}`}>{line}</div>);
                           })()
                         ) : (
-                          <div>Каналы оплаты не заданы</div>
+                          <div>{t('noPaymentChannels')}</div>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-right align-middle text-sm font-bold text-slate-900">
@@ -433,7 +437,7 @@ export default function StoreOtherExpensesPage() {
                             }}
                             className="rounded-lg border border-[#CFC6BF] bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-[#ede7e2]"
                           >
-                            Оплатить/Изменить
+                            {t('payOrEdit')}
                           </button>
                         ) : (
                           <span className="text-xs text-[#6B6B6B]">-</span>
@@ -459,9 +463,9 @@ export default function StoreOtherExpensesPage() {
             }}
             className="w-full max-w-[34rem] rounded-xl border border-[#D8D1CB] bg-white p-5 shadow-xl"
           >
-            <h3 className="text-lg font-semibold text-slate-900">Новый прочий расход</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{t('createModal.title')}</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Создаётся сразу в статусе «Оплачено».
+              {t('createModal.hint')}
             </p>
 
             <div className="mt-4 space-y-3">
@@ -472,11 +476,11 @@ export default function StoreOtherExpensesPage() {
                   setCreateModal((prev) => (prev ? { ...prev, note: e.target.value } : prev))
                 }
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                placeholder="Название расхода"
+                placeholder={t('createModal.namePlaceholder')}
               />
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Безналичные</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('createModal.bankTransferLabel')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -488,11 +492,11 @@ export default function StoreOtherExpensesPage() {
                       )
                     }
                     className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
+                    placeholder={t('createModal.amountPlaceholder')}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 1</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('createModal.cashbox1Label')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -504,11 +508,11 @@ export default function StoreOtherExpensesPage() {
                       )
                     }
                     className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
+                    placeholder={t('createModal.amountPlaceholder')}
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Наличные касса 2</label>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">{t('createModal.cashbox2Label')}</label>
                   <input
                     type="number"
                     step="0.01"
@@ -520,7 +524,7 @@ export default function StoreOtherExpensesPage() {
                       )
                     }
                     className="w-full rounded-lg border border-slate-300 px-3 py-2"
-                    placeholder="0"
+                    placeholder={t('createModal.amountPlaceholder')}
                   />
                 </div>
               </div>
@@ -533,14 +537,14 @@ export default function StoreOtherExpensesPage() {
                 disabled={saving}
                 className="rounded-lg border px-4 py-2 hover:bg-slate-100 disabled:opacity-60"
               >
-                Отмена
+                {t('createModal.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={saving}
                 className="rounded-lg bg-[#FF6A13] px-4 py-2 font-medium text-white hover:bg-[#E65C00] disabled:opacity-60"
               >
-                {saving ? 'Сохранение...' : 'Сохранить'}
+                {saving ? t('createModal.saving') : t('createModal.save')}
               </button>
             </div>
           </form>
@@ -549,7 +553,7 @@ export default function StoreOtherExpensesPage() {
 
       <ExpenseEditModal
         open={Boolean(editModal)}
-        title="Изменить прочий расход"
+        title={t('editModal.title')}
         nameValue={editModal?.note ?? ''}
         status={editModal?.status ?? 'UNPAID'}
         bankTransferPaid={editModal?.bankTransferPaid ?? 0}

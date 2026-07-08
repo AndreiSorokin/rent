@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AuthField } from '@/components/auth/AuthField';
 import { AuthMessage } from '@/components/auth/AuthMessage';
 import { AuthShell } from '@/components/auth/AuthShell';
@@ -10,6 +11,7 @@ import { apiFetch } from '@/lib/api';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations('RegisterPage');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,25 +32,25 @@ export default function RegisterPage() {
         normalized.includes('letters') &&
         normalized.includes('numbers'))
     ) {
-      return 'Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ';
+      return t('errorPasswordWeak');
     }
     if (
       normalized.includes('verification code is required') ||
       normalized.includes('verification code is invalid') ||
       normalized.includes('invalid or expired')
     ) {
-      return 'Неверный или просроченный код подтверждения';
+      return t('errorInvalidCode');
     }
     if (normalized.includes('email already registered') || normalized.includes('already registered')) {
-      return 'Пользователь с таким email уже зарегистрирован';
+      return t('errorEmailTaken');
     }
     if (normalized.includes('email verification service is not configured')) {
-      return 'Сервис отправки email не настроен';
+      return t('errorEmailServiceUnavailable');
     }
     if (normalized.includes('consent to personal data processing is required')) {
-      return 'Для регистрации нужно принять пользовательское соглашение и подтвердить согласие на обработку персональных данных';
+      return t('errorConsentRequired');
     }
-    return 'Не удалось выполнить регистрацию. Попробуйте снова.';
+    return t('errorGeneric');
   };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -58,22 +60,22 @@ export default function RegisterPage() {
 
     const isStrongPassword = /^(?=.*\p{L})(?=.*\d)(?=.*[^\p{L}\d]).{6,}$/u.test(password);
     if (!isStrongPassword) {
-      setError('Пароль должен быть минимум 6 символов и содержать буквы, цифры и специальный символ');
+      setError(t('errorPasswordWeak'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
+      setError(t('errorPasswordsMismatch'));
       return;
     }
 
     if (!verificationCode.trim()) {
-      setError('Введите код подтверждения из email');
+      setError(t('errorCodeRequired'));
       return;
     }
 
     if (!acceptedConsent) {
-      setError('Для регистрации нужно принять пользовательское соглашение и подтвердить согласие на обработку персональных данных');
+      setError(t('errorConsentRequired'));
       return;
     }
 
@@ -102,7 +104,7 @@ export default function RegisterPage() {
     setSuccessMessage('');
 
     if (!email.trim()) {
-      setError('Введите email для подтверждения');
+      setError(t('errorEmailRequired'));
       return;
     }
 
@@ -113,7 +115,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       setCodeSent(true);
-      setSuccessMessage('Код подтверждения отправлен на ваш email');
+      setSuccessMessage(t('codeSentMessage'));
     } catch (err: any) {
       setError(mapRegisterError(String(err?.message || '')));
     } finally {
@@ -123,17 +125,17 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Регистрация"
-      subtitle="Заполните данные и подтвердите email"
-      sideTitle="Создайте аккаунт для команды"
-      sideDescription="После регистрации вы сможете управлять объектами, начислениями и доступами в единой системе."
-      sideFooter="Для завершения регистрации нужен код подтверждения из email, принятие пользовательского соглашения и согласие с условиями обработки персональных данных."
+      title={t('title')}
+      subtitle={t('subtitle')}
+      sideTitle={t('sideTitle')}
+      sideDescription={t('sideDescription')}
+      sideFooter={t('sideFooter')}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthField
           id="name"
-          label="Имя"
-          placeholder="Иван Иванов"
+          label={t('nameLabel')}
+          placeholder={t('namePlaceholder')}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -143,8 +145,8 @@ export default function RegisterPage() {
           type="email"
           autoComplete="email"
           required
-          label="Email"
-          placeholder="Email"
+          label={t('emailLabel')}
+          placeholder={t('emailPlaceholder')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -155,17 +157,13 @@ export default function RegisterPage() {
           disabled={sendingCode || !email.trim()}
           className="w-full rounded-xl border border-[#ff6a13] bg-white px-4 py-2.5 font-semibold text-[#ff6a13] transition hover:bg-[#ff6a13] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {sendingCode
-            ? 'Отправка...'
-            : codeSent
-              ? 'Отправить код повторно'
-              : 'Отправить код подтверждения'}
+          {sendingCode ? t('sendingCode') : codeSent ? t('sendCodeAgain') : t('sendCode')}
         </button>
 
         <AuthField
           id="verificationCode"
-          label="Код подтверждения"
-          placeholder="Введите код из письма"
+          label={t('codeLabel')}
+          placeholder={t('codePlaceholder')}
           value={verificationCode}
           onChange={(e) => setVerificationCode(e.target.value)}
         />
@@ -175,8 +173,8 @@ export default function RegisterPage() {
           type="password"
           autoComplete="new-password"
           required
-          label="Пароль"
-          placeholder="Введите пароль"
+          label={t('passwordLabel')}
+          placeholder={t('passwordPlaceholder')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -186,15 +184,13 @@ export default function RegisterPage() {
           type="password"
           autoComplete="new-password"
           required
-          label="Повторите пароль"
-          placeholder="Повторите пароль"
+          label={t('confirmPasswordLabel')}
+          placeholder={t('confirmPasswordPlaceholder')}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
 
-        <p className="text-xs leading-6 text-[#6b6b6b]">
-          Пароль: минимум 6 символов, буквы, цифры и специальный символ.
-        </p>
+        <p className="text-xs leading-6 text-[#6b6b6b]">{t('passwordHint')}</p>
 
         <label className="flex items-start gap-3 rounded-2xl border border-[#E8E1DA] bg-[#F9F5F0] px-4 py-4 text-sm leading-6 text-[#374151]">
           <input
@@ -204,33 +200,33 @@ export default function RegisterPage() {
             className="mt-1 h-4 w-4 rounded border-[#CFC6BF] text-[#FF6A13] focus:ring-[#FF6A13]"
           />
           <span>
-            Я ознакомился и принимаю{' '}
+            {t('consentPrefix')}{' '}
             <Link
               href="/offer"
               className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
             >
-              Публичную оферту
+              {t('consentOffer')}
             </Link>
             ,{' '}
             <Link
               href="/user-agreement"
               className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
             >
-              Пользовательское соглашение
+              {t('consentUserAgreement')}
             </Link>
             ,{' '}
             <Link
               href="/site-consent"
               className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
             >
-              Согласие пользователя сайта на обработку персональных данных
+              {t('consentSiteConsent')}
             </Link>{' '}
-            и{' '}
+            {t('consentAnd')}{' '}
             <Link
               href="/privacy"
               className="font-semibold text-[#111111] underline underline-offset-2 hover:text-[#ff6a13]"
             >
-              Политику обработки персональных данных
+              {t('consentPrivacy')}
             </Link>
             .
           </span>
@@ -244,14 +240,14 @@ export default function RegisterPage() {
           disabled={loading || !acceptedConsent}
           className="w-full rounded-xl bg-[#111111] px-4 py-2.5 font-semibold text-white transition hover:bg-[#2a2a2a] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+          {loading ? t('submitLoading') : t('submit')}
         </button>
       </form>
 
       <p className="mt-5 text-sm text-[#6b6b6b]">
-        Уже есть аккаунт?{' '}
+        {t('haveAccount')}{' '}
         <Link href="/login" className="font-semibold text-[#111111] hover:underline">
-          Войти
+          {t('login')}
         </Link>
       </p>
     </AuthShell>

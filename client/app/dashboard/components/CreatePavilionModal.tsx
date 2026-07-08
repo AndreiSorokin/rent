@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { FormattedDateInput } from '@/components/FormattedDateInput';
 import { useToast } from '@/components/toast/ToastProvider';
 import { apiFetch } from '@/lib/api';
@@ -35,6 +36,7 @@ export function CreatePavilionModal({
   onSaved,
 }: CreatePavilionModalProps) {
   const toast = useToast();
+  const t = useTranslations('CreatePavilionModal');
   const inputClass =
     'w-full rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] px-3 py-2 text-[#111111] outline-none transition placeholder:text-[#6b6b6b] focus:border-[#ff6a13] focus:bg-white focus:ring-2 focus:ring-[#ff6a13]/20';
   const labelClass = 'mb-1 block text-sm font-semibold text-[#111111]';
@@ -87,14 +89,12 @@ export function CreatePavilionModal({
     const needsTenant = status === 'RENTED' || status === 'PREPAID';
 
     if (!number || !squareMeters || !pricePerSqM || !category) {
-      toast.error('Заполните все обязательные поля, включая категорию');
+      toast.error(t('errors.missingRequiredFields'));
       return;
     }
 
     if (needsTenant && !tenantName.trim()) {
-      toast.error(
-        'Для статуса «ЗАНЯТ» или «ПРЕДОПЛАТА» укажите наименование организации',
-      );
+      toast.error(t('errors.tenantRequired'));
       return;
     }
 
@@ -128,15 +128,13 @@ export function CreatePavilionModal({
 
       if (status === 'PREPAID') {
         if (prepaymentTarget <= 0) {
-          toast.error('Сумма предоплаты должна быть больше 0');
+          toast.error(t('errors.prepaymentAmountPositive'));
           setLoading(false);
           return;
         }
 
         if (Math.abs(prepayChannelsTotal - prepaymentTarget) > 0.01) {
-          toast.error(
-            'Сумма по каналам оплаты должна совпадать с суммой предоплаты',
-          );
+          toast.error(t('errors.channelsSumMismatch'));
           setLoading(false);
           return;
         }
@@ -192,10 +190,10 @@ export function CreatePavilionModal({
         setContractExpiresOnTouched(false);
       }
 
-      toast.success('Объект аренды успешно создан');
+      toast.success(t('success.created'));
       onSaved();
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка создания павильона');
+      toast.error(err.message || t('errors.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -211,12 +209,12 @@ export function CreatePavilionModal({
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d8d1cb] bg-white shadow-[0_20px_60px_-30px_rgba(17,17,17,0.45)]"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8e1da] bg-white/95 px-6 py-4 backdrop-blur-sm">
-          <h2 className="text-lg font-extrabold text-[#111111]">Создать новый павильон</h2>
+          <h2 className="text-lg font-extrabold text-[#111111]">{t('title')}</h2>
           <button
             type="button"
             onClick={onClose}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#f4efeb] hover:text-[#111111]"
-            aria-label="Закрыть"
+            aria-label={t('close')}
           >
             <span aria-hidden>×</span>
           </button>
@@ -224,25 +222,25 @@ export function CreatePavilionModal({
 
         <div className="p-6 space-y-5">
           <div>
-            <label className={labelClass}>Номер павильона</label>
+            <label className={labelClass}>{t('fields.number')}</label>
             <input
               type="text"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
               className={inputClass}
-              placeholder="Например: A-12"
+              placeholder={t('fields.numberPlaceholder')}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Категория из существующих</label>
+            <label className={labelClass}>{t('fields.existingCategory')}</label>
             {!newCategory.trim() ? (
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 className={inputClass}
               >
-                <option value="">Не выбрано</option>
+                <option value="">{t('fields.notSelected')}</option>
                 {existingCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
@@ -251,31 +249,31 @@ export function CreatePavilionModal({
               </select>
             ) : (
               <p className="text-sm text-gray-500">
-                Вы вводите новую категорию, поэтому выбор из списка скрыт.
+                {t('fields.newCategoryHidesSelect')}
               </p>
             )}
           </div>
 
           <div>
-            <label className={labelClass}>Или введите новую категорию</label>
+            <label className={labelClass}>{t('fields.newCategoryLabel')}</label>
             {!selectedCategory ? (
               <input
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 className={inputClass}
-                placeholder="Например: Одежда"
+                placeholder={t('fields.newCategoryPlaceholder')}
               />
             ) : (
               <p className="text-sm text-gray-500">
-                Выбрана существующая категория, поле новой категории скрыто.
+                {t('fields.selectedCategoryHidesNew')}
               </p>
             )}
           </div>
 
           <div>
-            <label className={labelClass}>Описание павильона</label>
-            <label className={labelClass}>Площадь (м²)</label>
+            <label className={labelClass}>{t('fields.pavilionDescription')}</label>
+            <label className={labelClass}>{t('fields.squareMeters')}</label>
             <input
               type="number"
               step="0.01"
@@ -287,7 +285,7 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Цена за м²</label>
+            <label className={labelClass}>{t('fields.pricePerSqM')}</label>
             <input
               type="number"
               step="0.01"
@@ -299,57 +297,56 @@ export function CreatePavilionModal({
           </div>
 
           <div>
-            <label className={labelClass}>Статус</label>
+            <label className={labelClass}>{t('fields.status')}</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className={inputClass}
             >
-              <option value="AVAILABLE">СВОБОДЕН</option>
-              <option value="RENTED">ЗАНЯТ</option>
-              <option value="PREPAID">ПРЕДОПЛАТА</option>
+              <option value="AVAILABLE">{t('statusOptions.available')}</option>
+              <option value="RENTED">{t('statusOptions.rented')}</option>
+              <option value="PREPAID">{t('statusOptions.prepaid')}</option>
             </select>
           </div>
 
           {(status === 'RENTED' || status === 'PREPAID') && (
             <div>
-              <label className={labelClass}>Наименование организации</label>
+              <label className={labelClass}>{t('fields.tenantName')}</label>
               <input
                 type="text"
                 value={tenantName}
                 onChange={(e) => setTenantName(e.target.value)}
                 className={inputClass}
-                placeholder="Например: ООО Ромашка"
+                placeholder={t('fields.tenantNamePlaceholder')}
               />
             </div>
           )}
 
           {(status === 'RENTED' || status === 'PREPAID') && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-800">Договор для этого статуса</p>
+              <p className="text-sm font-semibold text-amber-800">{t('contract.title')}</p>
               <p className="mt-1 text-sm text-amber-700">
-                Для статусов «ЗАНЯТ» и «ПРЕДОПЛАТА» рекомендуется загрузить договор сразу.
-                Если сохранить без договора, павильон позже будет отмечен как требующий внимания.
+                {t('contract.recommendation')}
               </p>
               {canUploadContracts ? (
                 <div className="mt-3 space-y-3">
                   <div className="space-y-3">
                     <div className="flex min-h-[92px] flex-col">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                        Номер договора
+                        {t('contract.number')}
                       </label>
                       <input
                         type="text"
                         value={contractNumber}
                         onChange={(e) => setContractNumber(e.target.value)}
                         className={inputClass}
-                        placeholder="Например: 12/2026"
+                        placeholder={t('contract.numberPlaceholder')}
                       />
                       <div className="mt-1 min-h-[20px]" aria-hidden="true" />
                     </div>
                     <div className="flex min-h-[92px] flex-col">
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                        Дата окончания договора
+                        {t('contract.expiresOn')}
                       </label>
                       <FormattedDateInput
                         value={contractExpiresOn}
@@ -365,14 +362,14 @@ export function CreatePavilionModal({
                       <div className="mt-1 min-h-[20px]">
                         {contractExpiresOnInvalid && (
                           <p className="text-xs text-[#b91c1c]">
-                            Введите дату в формате дд.мм.гггг
+                            {t('contract.dateFormatError')}
                           </p>
                         )}
                       </div>
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Файл договора</label>
+                    <label className={labelClass}>{t('contract.file')}</label>
                     <input
                       type="file"
                       accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.jpg,.jpeg,.png"
@@ -381,15 +378,14 @@ export function CreatePavilionModal({
                     />
                     <p className="mt-2 text-xs text-[#6b6b6b]">
                       {contractFile
-                        ? `Выбран файл: ${contractFile.name}`
-                        : 'Файл можно добавить сейчас или позже на странице павильона'}
+                        ? t('contract.fileSelected', { name: contractFile.name })
+                        : t('contract.fileHint')}
                     </p>
                   </div>
                 </div>
               ) : (
                 <p className="mt-3 text-xs text-amber-700">
-                  У вас нет права на загрузку договоров. При необходимости договор можно
-                  добавить позже пользователем с правом «Загружать договоры».
+                  {t('contract.noPermission')}
                 </p>
               )}
             </div>
@@ -397,7 +393,7 @@ export function CreatePavilionModal({
 
           {status === 'RENTED' && (
             <div>
-              <label className={labelClass}>Реклама</label>
+              <label className={labelClass}>{t('fields.advertising')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -413,7 +409,7 @@ export function CreatePavilionModal({
           {status === 'PREPAID' && (
             <>
               <div>
-                <label className={labelClass}>Месяц предоплаты</label>
+                <label className={labelClass}>{t('prepayment.month')}</label>
                 <input
                   type="month"
                   value={prepaymentMonth}
@@ -423,7 +419,7 @@ export function CreatePavilionModal({
               </div>
               <div>
                 <label className={labelClass}>
-                  Сумма предоплаты (если пусто, будет полная аренда)
+                  {t('prepayment.amount')}
                 </label>
                 <input
                   type="number"
@@ -431,12 +427,12 @@ export function CreatePavilionModal({
                   value={prepaymentAmount}
                   onChange={(e) => setPrepaymentAmount(e.target.value)}
                   className={inputClass}
-                  placeholder="Например: 1200"
+                  placeholder={t('prepayment.amountPlaceholder')}
                 />
               </div>
               <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
                 <p className="mb-2 text-sm font-semibold text-[#111111]">
-                  Каналы оплаты предоплаты
+                  {t('prepayment.channelsTitle')}
                 </p>
                 <div className="space-y-2">
                   <input
@@ -446,7 +442,7 @@ export function CreatePavilionModal({
                     value={prepaymentBankTransferPaid}
                     onChange={(e) => setPrepaymentBankTransferPaid(e.target.value)}
                     className={inputClass}
-                    placeholder="Безналичные"
+                    placeholder={t('channels.bankTransfer')}
                   />
                   <input
                     type="number"
@@ -455,7 +451,7 @@ export function CreatePavilionModal({
                     value={prepaymentCashbox1Paid}
                     onChange={(e) => setPrepaymentCashbox1Paid(e.target.value)}
                     className={inputClass}
-                    placeholder="Наличные - касса 1"
+                    placeholder={t('channels.cashbox1')}
                   />
                   <input
                     type="number"
@@ -464,7 +460,7 @@ export function CreatePavilionModal({
                     value={prepaymentCashbox2Paid}
                     onChange={(e) => setPrepaymentCashbox2Paid(e.target.value)}
                     className={inputClass}
-                    placeholder="Наличные - касса 2"
+                    placeholder={t('channels.cashbox2')}
                   />
                 </div>
               </div>
@@ -472,30 +468,30 @@ export function CreatePavilionModal({
           )}
 
           <div className="rounded-xl border border-[#d8d1cb] bg-[#f8f4ef] p-3">
-            <p className="mb-2 text-sm font-semibold text-[#111111]">Описание и фото павильона</p>
+            <p className="mb-2 text-sm font-semibold text-[#111111]">{t('media.title')}</p>
 
             <div className="mb-3">
               <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                Описание
+                {t('media.description')}
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 className={inputClass}
-                placeholder="Добавьте описание павильона для арендаторов"
+                placeholder={t('media.descriptionPlaceholder')}
               />
               <p className="mt-2 text-xs text-[#6b6b6b]">
-                Описание можно оставить пустым и заполнить позже.
+                {t('media.descriptionHint')}
               </p>
             </div>
 
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.08em] text-[#6b6b6b]">
-                Фото
+                {t('media.photos')}
               </label>
               <div className="mb-3 flex h-32 items-center justify-center rounded-2xl border border-dashed border-[#d8d1cb] bg-white text-sm text-[#6b6b6b]">
-                Фото появятся после сохранения павильона
+                {t('media.photosPlaceholder')}
               </div>
 
               <input
@@ -526,8 +522,8 @@ export function CreatePavilionModal({
               )}
               <div className="mt-2 text-xs text-[#6b6b6b]">
                 {photos.length > 0
-                  ? `Выбрано файлов: ${photos.length}`
-                  : 'Можно добавить JPG, PNG и WEBP до 10 МБ.'}
+                  ? t('media.filesSelected', { count: photos.length })
+                  : t('media.fileHint')}
               </div>
             </div>
           </div>
@@ -540,14 +536,14 @@ export function CreatePavilionModal({
             disabled={loading}
             className="rounded-xl border border-[#d8d1cb] bg-white px-5 py-2.5 font-semibold text-[#111111] transition hover:bg-[#f4efeb] disabled:opacity-50"
           >
-            Отмена
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={loading}
             className="rounded-xl bg-[#ff6a13] px-5 py-2.5 font-semibold text-white transition hover:bg-[#e85a0c] disabled:opacity-50"
           >
-            {loading ? 'Создание...' : 'Создать павильон'}
+            {loading ? t('creating') : t('submit')}
           </button>
         </div>
       </form>
