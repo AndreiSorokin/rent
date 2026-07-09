@@ -1490,6 +1490,15 @@ export default function StorePage() {
                         const carryAdjustment = Number(p.paymentCarryAdjustment ?? 0);
                         const carryBalance = -carryAdjustment;
                         const hasCarryAdjustment = Math.abs(carryBalance) > 0.009;
+                        const carryLabelText = hasCarryAdjustment
+                          ? t('pavilions.carryLabel', { value: formatMoney(carryBalance, store.currency) })
+                          : '';
+                        const carryTextSizeClass =
+                          carryLabelText.length > 22
+                            ? 'text-[9px]'
+                            : carryLabelText.length > 19
+                              ? 'text-[10px]'
+                              : 'text-xs';
                         const requiresContract =
                           p.status === 'RENTED' || p.status === 'PREPAID';
                         const hasContract =
@@ -1519,7 +1528,7 @@ export default function StorePage() {
                           )
                         }
                       >
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           <button
                             type="button"
                             draggable={canReorderPavilions}
@@ -1549,13 +1558,13 @@ export default function StorePage() {
                             ⋮⋮
                           </button>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-[#111111]">
+                        <td className="px-4 py-3 align-top text-sm font-medium text-[#111111]">
                           {p.number}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           {p.squareMeters ?? 0}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           <span
                             className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
                               p.status === 'RENTED'
@@ -1568,30 +1577,30 @@ export default function StorePage() {
                             {statusLabel[p.status] ?? p.status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           <div className="space-y-1">
                             <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
+                              className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${paymentStatus.className}`}
                             >
                               {paymentStatus.label}
                             </span>
                             {hasCarryAdjustment && (
                               <div
-                                className={`text-xs ${
+                                className={`whitespace-nowrap ${carryTextSizeClass} ${
                                   carryBalance < 0
                                     ? 'text-amber-700'
                                     : 'text-emerald-700'
                                 }`}
                               >
-                                {t('pavilions.carryLabel', { value: formatMoney(carryBalance, store.currency) })}
+                                {carryLabelText}
                               </div>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           {p.category || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           <div className="space-y-1">
                             <div>{p.tenantName || t('pavilions.vacantLabel')}</div>
                             {missingContract && (
@@ -1601,7 +1610,7 @@ export default function StorePage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-[#374151]">
+                        <td className="px-4 py-3 align-top text-sm text-[#374151]">
                           <div
                             className="space-y-2"
                             onClick={(e) => e.stopPropagation()}

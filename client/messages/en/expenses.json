@@ -155,6 +155,7 @@
     "loading": "Loading expense history...",
     "categoryNotFound": "Category not found",
     "back": "Back",
+    "searchPlaceholder": "Search by expense name",
     "emptyState": "No records for previous months yet",
     "totalAmountLabel": "Total amount",
     "statusPaid": "Paid",
