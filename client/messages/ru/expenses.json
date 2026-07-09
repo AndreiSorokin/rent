@@ -155,6 +155,7 @@
     "loading": "Загружаем историю расходов...",
     "categoryNotFound": "Категория не найдена",
     "back": "Назад",
+    "searchPlaceholder": "Поиск по названию расхода",
     "emptyState": "За предыдущие месяцы записей пока нет",
     "totalAmountLabel": "Общая сумма",
     "statusPaid": "Оплачено",

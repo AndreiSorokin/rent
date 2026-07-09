@@ -21,6 +21,7 @@ import {
 import { hasPermission } from '@/lib/permissions';
 import type { Permission } from '@/types/store';
 import { StoreSidebar } from '../../components/StoreSidebar';
+import { ExpenseSearchInput } from '../../components/ExpenseSearchInput';
 
 type HistoryCategory = 'household' | 'other' | 'admin' | 'staff';
 
@@ -130,6 +131,7 @@ export default function StoreExpenseHistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const t = useTranslations('StoreExpenseHistoryPage');
   const adminTypeLabels = t.raw('adminExpenseTypes') as Record<string, string>;
   const defaultHouseholdName = t('defaultHouseholdName');
@@ -226,8 +228,15 @@ export default function StoreExpenseHistoryPage() {
   const groupedHistory = useMemo(() => {
     const timeZone = store?.timeZone || 'UTC';
     const currentMonthKey = getCurrentMonthKeyInTimeZone(timeZone);
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('ru-RU');
     const filtered = items
       .filter((item) => getMonthKeyInTimeZone(item.createdAt, timeZone) !== currentMonthKey)
+      .filter(
+        (item) =>
+          !normalizedQuery ||
+          item.title.toLocaleLowerCase('ru-RU').includes(normalizedQuery) ||
+          (item.subtitle ?? '').toLocaleLowerCase('ru-RU').includes(normalizedQuery),
+      )
       .sort(
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -247,7 +256,7 @@ export default function StoreExpenseHistoryPage() {
       total: monthItems.reduce((sum, item) => sum + Number(item.amount ?? 0), 0),
       items: monthItems,
     }));
-  }, [items, store?.timeZone]);
+  }, [items, searchQuery, store?.timeZone]);
 
   if (!category || !meta) {
     return <div className="p-6 text-center text-red-600">{t('categoryNotFound')}</div>;
@@ -298,6 +307,14 @@ export default function StoreExpenseHistoryPage() {
                 >
                   {t('back')}
                 </Link>
+              </div>
+
+              <div className="mb-4">
+                <ExpenseSearchInput
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder={t('searchPlaceholder')}
+                />
               </div>
 
               {groupedHistory.length === 0 ? (
