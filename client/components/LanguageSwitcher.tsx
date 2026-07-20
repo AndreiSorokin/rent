@@ -30,7 +30,7 @@ export function LanguageSwitcher() {
 
   return (
     <div
-      className="fixed right-3 top-3 z-[130] flex items-center gap-0.5 rounded-full border border-[#D8D1CB] bg-white/95 p-1 text-xs font-semibold shadow-sm backdrop-blur"
+      className="fixed right-3 top-16 z-[130] flex items-center gap-0.5 rounded-full border border-[#D8D1CB] bg-white/95 p-1 text-xs font-semibold shadow-sm backdrop-blur lg:top-3"
       aria-label={t('ariaLabel')}
     >
       {LANGUAGES.map((lang) => (
