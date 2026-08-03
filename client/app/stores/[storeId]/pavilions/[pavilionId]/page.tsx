@@ -527,15 +527,24 @@ export default function PavilionPage() {
     });
   };
 
+  // Discount startsAt/endsAt are always created as whole-UTC-month boundaries
+  // (see CreateDiscountModal's monthToFirstDayISO/monthToLastDayISO), matching
+  // the backend's month bucketing. Bucketing by the store's local time zone here
+  // would shift endsAt (e.g. 23:59:59.999 UTC on the last day) into the next
+  // calendar day/month for stores ahead of UTC, making an expired discount look
+  // active for one extra month.
+  const getUTCMonthKey = (value: string | Date) => {
+    const date = new Date(value);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  };
+
   const getDiscountForPeriod = (period: Date) => {
     if (!pavilion) return 0;
-    const targetMonthKey = getMonthKeyInTimeZone(period, pavilion.store?.timeZone || 'UTC');
+    const targetMonthKey = getUTCMonthKey(period);
 
     return pavilion.discounts.reduce((sum, discount) => {
-      const startsAtKey = getMonthKeyInTimeZone(discount.startsAt, pavilion.store?.timeZone || 'UTC');
-      const endsAtKey = discount.endsAt
-        ? getMonthKeyInTimeZone(discount.endsAt, pavilion.store?.timeZone || 'UTC')
-        : null;
+      const startsAtKey = getUTCMonthKey(discount.startsAt);
+      const endsAtKey = discount.endsAt ? getUTCMonthKey(discount.endsAt) : null;
       const startsBeforeMonthEnds = startsAtKey <= targetMonthKey;
       const endsAfterMonthStarts = endsAtKey === null || endsAtKey >= targetMonthKey;
       return startsBeforeMonthEnds && endsAfterMonthStarts ? sum + discount.amount : sum;
@@ -1097,11 +1106,11 @@ export default function PavilionPage() {
                         {formatMoney(discount.amount, currency)}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        {formatDateInStoreTimeZone(discount.startsAt, storeTimeZone)}
+                        {formatDateInStoreTimeZone(discount.startsAt, 'UTC')}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {discount.endsAt
-                          ? formatDateInStoreTimeZone(discount.endsAt, storeTimeZone)
+                          ? formatDateInStoreTimeZone(discount.endsAt, 'UTC')
                           : t('discounts.unlimited')}
                       </td>
                       <td className="px-6 py-4 text-sm">
