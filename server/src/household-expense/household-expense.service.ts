@@ -99,7 +99,7 @@ export class HouseholdExpenseService {
         discountStart.getTime() <= monthEnd.getTime() &&
         (!discountEnd || discountEnd.getTime() >= monthStart.getTime());
       if (!intersects) return sum;
-      return sum + Number(discount.amount ?? 0) * pavilion.squareMeters;
+      return sum + Number(discount.amount ?? 0);
     }, 0);
 
     const expectedRent =

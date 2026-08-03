@@ -4684,7 +4684,6 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -4818,11 +4817,7 @@ export class StoresService implements OnModuleInit, OnModuleDestroy {
         const discount =
           pavilion.status === PavilionStatus.PREPAID
             ? 0
-            : this.getMonthlyDiscountTotal(
-                pavilion.discounts,
-                pavilion.squareMeters,
-                previousPeriod,
-              );
+            : this.getMonthlyDiscountTotal(pavilion.discounts, previousPeriod);
         const expectedRent =
           pavilion.status === PavilionStatus.PREPAID
             ? baseRent

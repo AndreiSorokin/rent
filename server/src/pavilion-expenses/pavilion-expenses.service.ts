@@ -30,7 +30,6 @@ export class PavilionExpensesService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -42,7 +41,7 @@ export class PavilionExpensesService {
         discountStart.getTime() <= monthEnd.getTime() &&
         (!discountEnd || discountEnd.getTime() >= monthStart.getTime());
       if (!intersects) return sum;
-      return sum + Number(discount.amount ?? 0) * squareMeters;
+      return sum + Number(discount.amount ?? 0);
     }, 0);
   }
 
@@ -116,11 +115,7 @@ export class PavilionExpensesService {
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0
-        : this.getMonthlyDiscountTotal(
-            pavilion.discounts,
-            pavilion.squareMeters,
-            normalizedPeriod,
-          );
+        : this.getMonthlyDiscountTotal(pavilion.discounts, normalizedPeriod);
     const expectedRent =
       pavilion.status === PavilionStatus.PREPAID
         ? baseRent

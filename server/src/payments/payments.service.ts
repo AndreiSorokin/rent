@@ -94,7 +94,6 @@ export class PaymentsService {
     );
     const monthlyDiscount = this.getMonthlyDiscountTotal(
       pavilion.discounts,
-      pavilion.squareMeters,
       normalizedPeriod,
     );
     const expectedRent = ledger.expectedRent;
@@ -185,7 +184,6 @@ export class PaymentsService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -1087,7 +1085,6 @@ async addPayment(
     );
     const monthlyDiscount = this.getMonthlyDiscountTotal(
       pavilion.discounts,
-      pavilion.squareMeters,
       normalizedPeriod,
     );
     const expectedRent =

@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PavilionStatus } from '@prisma/client';
-import { endOfMonth, startOfMonth } from 'date-fns';
+import { addMonths, endOfMonth, startOfMonth } from 'date-fns';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { StoreActivityService } from 'src/store-activity/store-activity.service';
 
@@ -71,7 +71,7 @@ export class DiscountsService {
         note: created.note,
       },
     });
-    await this.refreshRelevantPeriods(pavilionId, startsAt, endsAt ?? undefined);
+    await this.refreshLedgerChainFromPeriod(pavilionId, startsAt);
     return created;
   }
 
@@ -113,17 +113,12 @@ export class DiscountsService {
         note: discount.note,
       },
     });
-    await this.refreshRelevantPeriods(
-      pavilionId,
-      discount.startsAt,
-      discount.endsAt ?? undefined,
-    );
+    await this.refreshLedgerChainFromPeriod(pavilionId, discount.startsAt);
     return deleted;
   }
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -140,20 +135,21 @@ export class DiscountsService {
     }, 0);
   }
 
-  private async refreshRelevantPeriods(
-    pavilionId: number,
-    startsAt: Date,
-    endsAt?: Date,
-  ) {
-    const periods = new Set<number>([
-      startOfMonth(new Date()).getTime(),
-      startOfMonth(startsAt).getTime(),
-    ]);
-    if (endsAt) {
-      periods.add(startOfMonth(endsAt).getTime());
+  private async refreshLedgerChainFromPeriod(pavilionId: number, fromPeriod: Date) {
+    const start = startOfMonth(fromPeriod);
+    const current = startOfMonth(new Date());
+
+    if (start.getTime() > current.getTime()) {
+      await this.refreshMonthlyLedger(pavilionId, start);
+      return;
     }
-    for (const ts of periods) {
-      await this.refreshMonthlyLedger(pavilionId, new Date(ts));
+
+    for (
+      let cursor = start;
+      cursor.getTime() <= current.getTime();
+      cursor = startOfMonth(addMonths(cursor, 1))
+    ) {
+      await this.refreshMonthlyLedger(pavilionId, cursor);
     }
   }
 
@@ -228,11 +224,7 @@ export class DiscountsService {
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0
-        : this.getMonthlyDiscountTotal(
-            pavilion.discounts,
-            pavilion.squareMeters,
-            normalizedPeriod,
-          );
+        : this.getMonthlyDiscountTotal(pavilion.discounts, normalizedPeriod);
     const expectedRent =
       pavilion.status === PavilionStatus.PREPAID
         ? baseRent

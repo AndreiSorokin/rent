@@ -568,7 +568,7 @@ export class AnalyticsService {
         const monthlyDiscount =
           p.status === PavilionStatus.PREPAID
             ? 0
-            : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+            : this.getMonthlyDiscountTotal(p.discounts, period);
         forecastRent +=
           p.status === PavilionStatus.PREPAID
             ? baseRent
@@ -641,7 +641,7 @@ export class AnalyticsService {
         const monthlyDiscount =
           p.status === PavilionStatus.PREPAID
             ? 0
-            : this.getMonthlyDiscountTotal(p.discounts, p.squareMeters, period);
+            : this.getMonthlyDiscountTotal(p.discounts, period);
         incomeForecastRent +=
           p.status === PavilionStatus.PREPAID
             ? baseRent
@@ -1074,11 +1074,7 @@ export class AnalyticsService {
         const monthlyDiscount =
           pavilion.status === PavilionStatus.PREPAID
             ? 0
-            : this.getMonthlyDiscountTotal(
-                pavilion.discounts,
-                pavilion.squareMeters,
-                period,
-              );
+            : this.getMonthlyDiscountTotal(pavilion.discounts, period);
         const expectedRent =
           pavilion.status === PavilionStatus.PREPAID
             ? baseRent
@@ -1974,7 +1970,7 @@ export class AnalyticsService {
       const monthlyDiscount =
         pavilion.status === PavilionStatus.PREPAID
           ? 0
-          : this.getMonthlyDiscountTotal(pavilion.discounts, pavilion.squareMeters, period);
+          : this.getMonthlyDiscountTotal(pavilion.discounts, period);
       const rent =
         pavilion.status === PavilionStatus.PREPAID
           ? baseRent
@@ -2058,7 +2054,6 @@ export class AnalyticsService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
