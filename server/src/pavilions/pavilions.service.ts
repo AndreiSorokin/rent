@@ -197,11 +197,7 @@ export class PavilionsService {
 
     const baseRent =
       pavilion.rentAmount ?? pavilion.squareMeters * pavilion.pricePerSqM;
-    const discount = this.getMonthlyDiscountTotal(
-      pavilion.discounts,
-      pavilion.squareMeters,
-      now,
-    );
+    const discount = this.getMonthlyDiscountTotal(pavilion.discounts, now);
 
     const expectedRent =
       pavilion.status === PavilionStatus.AVAILABLE
@@ -1517,7 +1513,6 @@ export class PavilionsService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -1601,11 +1596,7 @@ export class PavilionsService {
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0
-        : this.getMonthlyDiscountTotal(
-            pavilion.discounts,
-            pavilion.squareMeters,
-            normalizedPeriod,
-          );
+        : this.getMonthlyDiscountTotal(pavilion.discounts, normalizedPeriod);
     const expectedRent =
       pavilion.status === PavilionStatus.PREPAID
         ? baseRent

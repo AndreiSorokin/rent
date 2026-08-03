@@ -410,7 +410,6 @@ export class AdditionalChargeService {
 
   private getMonthlyDiscountTotal(
     discounts: Array<{ amount: number; startsAt: Date; endsAt: Date | null }>,
-    squareMeters: number,
     period: Date,
   ) {
     const monthStart = startOfMonth(period);
@@ -496,11 +495,7 @@ export class AdditionalChargeService {
     const monthlyDiscount =
       pavilion.status === PavilionStatus.PREPAID
         ? 0
-        : this.getMonthlyDiscountTotal(
-            pavilion.discounts,
-            pavilion.squareMeters,
-            normalizedPeriod,
-          );
+        : this.getMonthlyDiscountTotal(pavilion.discounts, normalizedPeriod);
     const expectedRent =
       pavilion.status === PavilionStatus.PREPAID
         ? baseRent
