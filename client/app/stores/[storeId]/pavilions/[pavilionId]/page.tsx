@@ -810,12 +810,8 @@ export default function PavilionPage() {
                         (pay.utilitiesPaid || 0) +
                         (pay.advertisingPaid || 0) +
                         periodAdditionalPaid;
-                      const balance =
-                        ledgerForPeriod?.monthDelta != null
-                          ? -Number(ledgerForPeriod.monthDelta)
-                          : paid - expectedWithCarry;
+                      const balance = paid - expectedWithCarry;
 
-                          console.log('Ledger: ', ledgerForPeriod)
                       return (
                         <tr key={pay.id}>
                           <td className="whitespace-nowrap px-6 py-4 text-sm">
