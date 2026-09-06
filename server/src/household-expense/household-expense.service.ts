@@ -498,7 +498,7 @@ export class HouseholdExpenseService {
         bankTransferPaid: -Number((deleted as any).bankTransferPaid ?? 0),
         cashbox1Paid: -Number((deleted as any).cashbox1Paid ?? 0),
         cashbox2Paid: -Number((deleted as any).cashbox2Paid ?? 0),
-        occurredAt: deleted.createdAt,
+        occurredAt: new Date(),
       });
     }
     if ((deleted as any).pavilionId) {
@@ -656,7 +656,7 @@ export class HouseholdExpenseService {
       bankTransferPaid: nextBank - previousBank,
       cashbox1Paid: nextCash1 - previousCash1,
       cashbox2Paid: nextCash2 - previousCash2,
-      occurredAt: expense.createdAt,
+      occurredAt: new Date(),
     });
     if (expense.pavilionId) {
       await this.refreshLedgerChainFromPeriod(expense.pavilionId, expense.createdAt);
