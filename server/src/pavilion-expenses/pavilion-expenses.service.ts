@@ -651,7 +651,7 @@ export class PavilionExpensesService {
       bankTransferPaid: nextBank - previousBank,
       cashbox1Paid: nextCash1 - previousCash1,
       cashbox2Paid: nextCash2 - previousCash2,
-      occurredAt: expense.createdAt,
+      occurredAt: new Date(),
     });
     if (expense.pavilionId) {
       await this.refreshLedgerChainFromPeriod(expense.pavilionId, expense.createdAt);
@@ -699,7 +699,7 @@ export class PavilionExpensesService {
         bankTransferPaid: -Number(deleted.bankTransferPaid ?? 0),
         cashbox1Paid: -Number(deleted.cashbox1Paid ?? 0),
         cashbox2Paid: -Number(deleted.cashbox2Paid ?? 0),
-        occurredAt: deleted.createdAt,
+        occurredAt: new Date(),
       });
     }
     if (deleted.pavilionId) {
